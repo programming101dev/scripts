@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Exit the script if any command fails
+set -e
+
 # Define the target directory where you want to clone repositories
 target_directory=".."
 

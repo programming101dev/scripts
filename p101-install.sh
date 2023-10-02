@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Exit the script if any command fails
+set -e
+
 # List of directories
 directories=(
     "lib_error"
@@ -29,8 +32,14 @@ for dir in "${directories[@]}"; do
     # Run cmake install with sudo
     sudo cmake --install build
 
-    # Optional: Add additional commands or actions here
+    # Retrieve the owner of the 'build' directory
+    build_owner=$(stat -f "%Su" build)
+
+    # Change the ownership of install_manifest.txt to match 'build' directory owner
+    sudo chown "$build_owner" build/install_manifest.txt
 
     # Return to the original directory
     popd || exit
 done
+
+# The script will exit here if any CMake command fails
