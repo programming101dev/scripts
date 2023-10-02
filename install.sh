@@ -36,4 +36,7 @@ for dir in "${directories[@]}"; do
     popd || exit
 done
 
-# The script will exit here if any CMake command fails
+# Check if sudoldconf command exists and run it if it does
+if command -v ldconf &> /dev/null; then
+    sudo ldconf
+fi

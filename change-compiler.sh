@@ -850,7 +850,7 @@ WARNING_FLAGS=(
   "-Wwritable-strings"
   "-Wzero-length-array"
   "-Wc++-compat"
-  "-Wabi"
+#  "-Wabi"
 # these need special support for the makefile      "-W#pragma-messages"
 # these need special support for the makefile      "-W#warnings"
 )
