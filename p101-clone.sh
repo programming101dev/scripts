@@ -28,8 +28,9 @@ for repo_url in "${repositories[@]}"; do
 
     # Check if the directory already exists
     if [ -d "$full_target_directory" ]; then
-        echo "Repository '$repo_name' already exists. Skipping."
-    else
+        echo "Repository '$repo_name' already exists. Pulling changes."
+        # Change to the repository directory and pull
+        (cd "$full_target_directory" && git pull)    else
         # Clone the repository
         git clone "$repo_url" "$full_target_directory"
 
