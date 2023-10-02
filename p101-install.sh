@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 # List of directories
 directories=(
@@ -14,7 +14,7 @@ directories=(
 # Loop through the directories
 for dir in "${directories[@]}"; do
     # Change to the directory
-    cd "$dir" || continue
+    pushd "../$dir" || continue
 
     # Check if the 'build' directory exists
     if [ ! -d "build" ]; then
@@ -32,5 +32,5 @@ for dir in "${directories[@]}"; do
     # Optional: Add additional commands or actions here
 
     # Return to the original directory
-    cd - || exit
+    popd || exit
 done

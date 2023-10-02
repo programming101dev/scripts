@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 # Define the target directory where you want to clone repositories
 target_directory=".."
