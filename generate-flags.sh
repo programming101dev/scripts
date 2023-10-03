@@ -4,7 +4,8 @@
 set -e
 
 # Function to check if a flag is supported by the compiler
-is_flag_supported() {
+is_flag_supported()
+{
     local compiler="$1"
     local flag="$2"
     if ("$compiler" $flag -E - < /dev/null &> /dev/null); then
@@ -855,7 +856,7 @@ SANITIZER_FLAGS=(
     "-fsanitize=pointer-overflow"
     "-fsanitize=builtin"
     "-fsanitize-address-use-after-scope"
-#        "-fcf-protection=full" # M1 (and I assume M2) Mac does not support this
+    "-fcf-protection=full"
     "-fharden-compares"
     "-fharden-conditional-branches"
     "-fstack-protector-all"
@@ -864,9 +865,9 @@ SANITIZER_FLAGS=(
     "-fno-delete-null-pointer-checks"
     "-fno-omit-frame-pointer"
     "-fstrict-flex-arrays"
-#        "-fsanitize-coverage=trace-pc"
-#        "-fsanitize-coverage=trace-cmp"
-#        "-finstrument-functions"
+#    "-fsanitize-coverage=trace-pc"
+    "-fsanitize-coverage=trace-cmp"
+#    "-finstrument-functions"
 )
 
 ANALYZER_FLAGS=(
@@ -948,7 +949,8 @@ compilers=("gcc" "clang" "gcc13" "gcc-13" "clang-16")
 supported_compilers=()
 
 # Function to check if a compiler exists and add it to the supported list
-check_compiler() {
+check_compiler()
+{
     local compiler="$1"
     if command -v "$compiler" &>/dev/null; then
         supported_compilers+=("$compiler")
