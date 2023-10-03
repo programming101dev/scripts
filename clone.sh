@@ -15,6 +15,7 @@ repositories=(
     "https://github.com/programming101dev/lib_posix_xsi.git"
     "https://github.com/programming101dev/lib_posix_optional.git"
     "https://github.com/programming101dev/lib_unix.git"
+    "https://github.com/programming101dev/lib_fsm.git"
     "https://github.com/programming101dev/c-examples.git"
 )
 

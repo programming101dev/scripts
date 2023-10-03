@@ -26,6 +26,7 @@ directories=(
     "lib_posix_xsi"
     "lib_posix_optional"
     "lib_unix"
+    "lib_fsm"
 )
 
 # Loop through the directories
