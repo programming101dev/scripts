@@ -3,6 +3,24 @@
 # Exit the script if any command fails
 set -e
 
+sys_name=$(uname -s)
+architecture=$(uname -m)
+
+darwin_architecture=""
+
+if [[ $sys_name == "Darwin" ]]; then
+    if [[ $architecture == "arm64" ]]; then
+        darwin_architecture="arm64"  # Running on Darwin arm64 (M1)
+    elif [[ $architecture == "x86_64" ]]; then
+        darwin_architecture="x86_64"  # Running on Darwin x86_64 (Intel)
+    else
+        darwin_architecture="unknown"  # Unknown architecture on Darwin
+    fi
+else
+    darwin_architecture="not_darwin"  # Not running on Darwin
+fi
+
+
 # Function to check if a flag is supported by the compiler
 is_flag_supported()
 {
@@ -856,7 +874,11 @@ SANITIZER_FLAGS=(
     "-fsanitize=pointer-overflow"
     "-fsanitize=builtin"
     "-fsanitize-address-use-after-scope"
+if [[ $darwin_architecture == "arm64" ]]; then
+    "-fcf-protection=branch"
+else
     "-fcf-protection=full"
+fi
     "-fharden-compares"
     "-fharden-conditional-branches"
     "-fstack-protector-all"
