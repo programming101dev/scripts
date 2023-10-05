@@ -874,11 +874,6 @@ SANITIZER_FLAGS=(
     "-fsanitize=pointer-overflow"
     "-fsanitize=builtin"
     "-fsanitize-address-use-after-scope"
-if [[ $darwin_architecture == "arm64" ]]; then
-    "-fcf-protection=branch"
-else
-    "-fcf-protection=full"
-fi
     "-fharden-compares"
     "-fharden-conditional-branches"
     "-fstack-protector-all"
@@ -891,6 +886,12 @@ fi
     "-fsanitize-coverage=trace-cmp"
 #    "-finstrument-functions"
 )
+
+if [[ $darwin_architecture == "arm64" ]]; then
+    WARNING_FLAGS+=("-fcf-protection=branch")
+else
+    WARNING_FLAGS+=("-fcf-protection=full")
+fi
 
 ANALYZER_FLAGS=(
 # this needs to be handled better        "--analyze"
