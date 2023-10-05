@@ -842,9 +842,8 @@ WARNING_FLAGS=(
   "-Wwritable-strings"
   "-Wzero-length-array"
   "-Wc++-compat"
-#  "-Wabi"
-# these need special support for the makefile      "-W#pragma-messages"
-# these need special support for the makefile      "-W#warnings"
+  "-W#pragma-messages"
+  "-W#warnings"
 )
 
 SANITIZER_FLAGS=(
@@ -882,8 +881,8 @@ SANITIZER_FLAGS=(
     "-fno-delete-null-pointer-checks"
     "-fno-omit-frame-pointer"
     "-fstrict-flex-arrays"
-#    "-fsanitize-coverage=trace-pc"
     "-fsanitize-coverage=trace-cmp"
+#    "-fsanitize-coverage=trace-pc"
 #    "-finstrument-functions"
 )
 
@@ -966,7 +965,7 @@ process_flags()
 }
 
 # Initialize the list of potential compilers
-compilers=("gcc" "clang" "gcc13" "gcc-13" "clang-16")
+compilers=("gcc" "clang" "gcc13" "gcc-13" "clang-16" "clang-17")
 
 # Initialize an empty list to store supported compilers
 supported_compilers=()
