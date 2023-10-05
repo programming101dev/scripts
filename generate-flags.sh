@@ -888,7 +888,7 @@ SANITIZER_FLAGS=(
 )
 
 if [[ $darwin_architecture == "arm64" ]]; then
-    WARNING_FLAGS+=("-fcf-protection=branch")
+    WARNING_FLAGS+=("-fcf-protection=null")
 else
     WARNING_FLAGS+=("-fcf-protection=full")
 fi
