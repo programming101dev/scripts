@@ -29,6 +29,19 @@ for dir in "${directories[@]}"; do
     # Run cmake build with clean first
     cmake --build build --clean-first
 
+    # Run cmake install with sudo
+    sudo cmake --install build
+
+    # Retrieve the owner of the 'build' directory
+    if [ "$(uname -s)" = "Darwin" ]; then
+        build_owner=$(stat -f "%Su" build)
+    else
+        build_owner=$(ls -ld "build" | awk '{print $3}')  # Linux)
+    fi
+
+    # Change the ownership of install_manifest.txt to match 'build' directory owner
+    sudo chown "$build_owner" build/install_manifest.txt
+
     # Return to the original directory
     popd || exit
 done
