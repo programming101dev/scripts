@@ -3,6 +3,24 @@
 # Exit the script if any command fails
 set -e
 
+sys_name=$(uname -s)
+architecture=$(uname -m)
+
+darwin_architecture=""
+
+if [[ $sys_name == "Darwin" ]]; then
+    if [[ $architecture == "arm64" ]]; then
+        darwin_architecture="arm64"  # Running on Darwin arm64 (M1)
+    elif [[ $architecture == "x86_64" ]]; then
+        darwin_architecture="x86_64"  # Running on Darwin x86_64 (Intel)
+    else
+        darwin_architecture="unknown"  # Unknown architecture on Darwin
+    fi
+else
+    darwin_architecture="not_darwin"  # Not running on Darwin
+fi
+
+
 # Function to check if a flag is supported by the compiler
 is_flag_supported()
 {
@@ -824,9 +842,8 @@ WARNING_FLAGS=(
   "-Wwritable-strings"
   "-Wzero-length-array"
   "-Wc++-compat"
-#  "-Wabi"
-# these need special support for the makefile      "-W#pragma-messages"
-# these need special support for the makefile      "-W#warnings"
+  "-W#pragma-messages"
+  "-W#warnings"
 )
 
 SANITIZER_FLAGS=(
@@ -856,7 +873,6 @@ SANITIZER_FLAGS=(
     "-fsanitize=pointer-overflow"
     "-fsanitize=builtin"
     "-fsanitize-address-use-after-scope"
-    "-fcf-protection=full"
     "-fharden-compares"
     "-fharden-conditional-branches"
     "-fstack-protector-all"
@@ -865,10 +881,16 @@ SANITIZER_FLAGS=(
     "-fno-delete-null-pointer-checks"
     "-fno-omit-frame-pointer"
     "-fstrict-flex-arrays"
-#    "-fsanitize-coverage=trace-pc"
     "-fsanitize-coverage=trace-cmp"
+#    "-fsanitize-coverage=trace-pc"
 #    "-finstrument-functions"
 )
+
+if [[ $darwin_architecture == "arm64" ]]; then
+    WARNING_FLAGS+=("-fcf-protection=null")
+else
+    WARNING_FLAGS+=("-fcf-protection=full")
+fi
 
 ANALYZER_FLAGS=(
 # this needs to be handled better        "--analyze"
@@ -943,7 +965,7 @@ process_flags()
 }
 
 # Initialize the list of potential compilers
-compilers=("gcc" "clang" "gcc13" "gcc-13" "clang-16")
+compilers=("gcc" "clang" "gcc13" "gcc-13" "clang-16" "clang-17")
 
 # Initialize an empty list to store supported compilers
 supported_compilers=()
