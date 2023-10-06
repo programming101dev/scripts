@@ -40,4 +40,3 @@ fi
 ./clone.sh
 ./change-compiler.sh -c "$compiler"
 ./build.sh
-./install.sh
