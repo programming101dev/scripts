@@ -32,7 +32,7 @@ directories=(
 # Loop through the directories
 for dir in "${directories[@]}"; do
     # Change to the directory
-    pushd "../$dir" || exit
+    pushd "../libraries/$dir" || exit
 
     # Construct the full path to the 'build' directory
     build_directory="build"

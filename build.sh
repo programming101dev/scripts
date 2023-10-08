@@ -18,7 +18,7 @@ directories=(
 # Loop through the directories
 for dir in "${directories[@]}"; do
     # Change to the directory
-    pushd "../$dir" || continue
+    pushd "../libraries/$dir" || continue
 
     # Check if the 'build' directory exists
     if [ ! -d "build" ]; then

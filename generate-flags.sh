@@ -28,7 +28,11 @@ is_flag_supported()
     local flag="$2"
     if ("$compiler" $flag -E - < /dev/null &> /dev/null); then
         echo "Flag '$flag' is supported by $compiler."
-        supported_flags+=" $flag"
+        if [ -z "$supported_flags" ]; then
+            supported_flags="$flag"
+        else
+            supported_flags+=" $flag"
+        fi
     else
         echo "Flag '$flag' is not supported by $compiler."
     fi
@@ -917,29 +921,11 @@ process_flags()
     echo "Checking: $compiler"
 
     # Remove existing flag files
-    rm -f "../${compiler}_debug_flags.txt" "../${compiler}_analyzer_flags.txt" "../${compiler}_warning_flags.txt" "../${compiler}_sanitizer_flags.txt"
-
-    # Reset the supported_flags variable for debug flags
-    supported_flags=""
-
-    # Call the function to check if each flag is supported
-    for flag in "${DEBUG_FLAGS[@]}"; do
-        is_flag_supported "$compiler" "$flag"
-    done
-
-    # Write the supported debug flags to debug_flags.txt as one line with spaces
-    echo "$supported_flags" > "../${compiler}_debug_flags.txt"
-
-    # Reset the supported_flags variable for analyzer flags
-    supported_flags=""
-
-    # Call the function to check if each analyzer flag is supported
-    for flag in "${ANALYZER_FLAGS[@]}"; do
-        is_flag_supported "$compiler" "$flag"
-    done
-
-    # Write the supported analyzer flags to analyzer_flags.txt as one line with spaces
-    echo "$supported_flags" > "../${compiler}_analyzer_flags.txt"
+    if [ -d "../libraries/flags/${compiler}" ]; then
+        rm -f "../libraries/flags/${compiler}/warning_flags.txt" "../libraries/flags/${compiler}/debug_flags.txt" "../libraries/flags/${compiler}/analyzer_flags.txt" "../libraries/flags/${compiler}/sanitizer_flags.txt"
+    else
+        mkdir -p "../libraries/flags/${compiler}"
+    fi
 
     # Reset the supported_flags variable for warning flags
     supported_flags=""
@@ -950,7 +936,29 @@ process_flags()
     done
 
     # Write the supported warning flags to warning_flags.txt as one line with spaces
-    echo "$supported_flags" > "../${compiler}_warning_flags.txt"
+    echo "$supported_flags" > "../libraries/flags/${compiler}/warning_flags.txt"
+
+    # Reset the supported_flags variable for debug flags
+    supported_flags=""
+
+    # Call the function to check if each flag is supported
+    for flag in "${DEBUG_FLAGS[@]}"; do
+        is_flag_supported "$compiler" "$flag"
+    done
+
+    # Write the supported debug flags to debug_flags.txt as one line with spaces
+    echo "$supported_flags" > "../libraries/flags/${compiler}/debug_flags.txt"
+
+    # Reset the supported_flags variable for analyzer flags
+    supported_flags=""
+
+    # Call the function to check if each analyzer flag is supported
+    for flag in "${ANALYZER_FLAGS[@]}"; do
+        is_flag_supported "$compiler" "$flag"
+    done
+
+    # Write the supported analyzer flags to analyzer_flags.txt as one line with spaces
+    echo "$supported_flags" > "../libraries/flags/${compiler}/analyzer_flags.txt"
 
     # Reset the supported_flags variable for sanitizer flags
     supported_flags=""
@@ -961,7 +969,7 @@ process_flags()
     done
 
     # Write the supported sanitizer flags to sanitizer_flags.txt as one line with spaces
-    echo "$supported_flags" > "../${compiler}_sanitizer_flags.txt"
+    echo "$supported_flags" > "../libraries/flags/${compiler}/sanitizer_flags.txt"
 }
 
 # Initialize the list of potential compilers
