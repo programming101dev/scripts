@@ -3,27 +3,42 @@
 # Exit the script if any command fails
 set -e
 
-# Define an associative array for repositories and their target directories
-declare -A repo_directories=(
-    ["https://github.com/programming101dev/lib_error.git"]="../libraries/lib_error"
-    ["https://github.com/programming101dev/lib_env.git"]="../libraries/lib_env"
-    ["https://github.com/programming101dev/lib_c.git"]="../libraries/lib_c"
-    ["https://github.com/programming101dev/lib_posix.git"]="../libraries/lib_posix"
-    ["https://github.com/programming101dev/lib_posix_xsi.git"]="../libraries/lib_posix_xsi"
-    ["https://github.com/programming101dev/lib_posix_optional.git"]="../libraries/lib_posix_optional"
-    ["https://github.com/programming101dev/lib_unix.git"]="../libraries/lib_unix"
-    ["https://github.com/programming101dev/lib_fsm.git"]="../libraries/lib_fsm"
-    ["https://github.com/programming101dev/c-examples.git"]="../examples/c-examples"
-    ["https://github.com/programming101dev/template-c.git"]="../templates/template-c"
-    ["https://github.com/programming101dev/template-cpp.git"]="../templates/template-cpp"
+# Define an array of repository URLs
+repo_urls=(
+    "https://github.com/programming101dev/lib_error.git"
+    "https://github.com/programming101dev/lib_env.git"
+    "https://github.com/programming101dev/lib_c.git"
+    "https://github.com/programming101dev/lib_posix.git"
+    "https://github.com/programming101dev/lib_posix_xsi.git"
+    "https://github.com/programming101dev/lib_posix_optional.git"
+    "https://github.com/programming101dev/lib_unix.git"
+    "https://github.com/programming101dev/lib_fsm.git"
+    "https://github.com/programming101dev/c-examples.git"
+    "https://github.com/programming101dev/template-c.git"
+    "https://github.com/programming101dev/template-cpp.git"
 )
 
-# Loop through the associative array and clone repositories
-for repo_url in "${!repo_directories[@]}"; do
-    # Extract the target directory for this repository
-    repo_directory="${repo_directories[$repo_url]}"
+# Define an array of target directories
+target_directories=(
+    "../libraries/lib_error"
+    "../libraries/lib_env"
+    "../libraries/lib_c"
+    "../libraries/lib_posix"
+    "../libraries/lib_posix_xsi"
+    "../libraries/lib_posix_optional"
+    "../libraries/lib_unix"
+    "../libraries/lib_fsm"
+    "../examples/c-examples"
+    "../templates/template-c"
+    "../templates/template-cpp"
+)
 
-    echo $repo_directory
+# Loop through the arrays and clone repositories
+for ((i=0; i<${#repo_urls[@]}; i++)); do
+    repo_url="${repo_urls[$i]}"
+    repo_directory="${target_directories[$i]}"
+
+    echo "$repo_directory"
 
     # Check if the directory already exists
     if [ -d "$repo_directory" ]; then

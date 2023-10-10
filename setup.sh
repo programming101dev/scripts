@@ -4,20 +4,25 @@
 set -e
 
 # Initialize compiler variable
-compiler=""
+c_compiler=""
+cxx_compiler=""
 
 # Function to display script usage
 usage() {
-    echo "Usage: $0 -c <COMPILER>"
-    echo "  -c COMPILER   Specify the compiler name (e.g., gcc or clang)"
+    echo "Usage: $0 -c <C COMPILER> -x <C++ OMPILER>"
+    echo "  -c C COMPILER     Specify the c compiler name (e.g., gcc or clang)"
+    echo "  -x C++ COMPILER   Specify the c++ compiler name (e.g., gcc++ or clang++)"
     exit 1
 }
 
 # Parse command-line options using getopt
-while getopts ":c:" opt; do
+while getopts ":c:x:" opt; do
   case $opt in
     c)
-      compiler="$OPTARG"
+      c_compiler="$OPTARG"
+      ;;
+    x)
+      cxx_compiler="$OPTARG"
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
@@ -31,13 +36,38 @@ while getopts ":c:" opt; do
 done
 
 # Check if the compiler argument is provided
-if [ -z "$compiler" ]; then
-  echo "Error: Compiler argument (-c) is required."
+if [ -z "$c_compiler" ]; then
+  echo "Error: C Compiler argument (-c) is required."
   usage
 fi
 
-# Call the specified scripts with any additional arguments
+# Check if the compiler argument is provided
+if [ -z "$cxx_compiler" ]; then
+  echo "Error: C++ Compiler argument (-x) is required."
+  usage
+fi
+
 ./clone.sh
 ./generate-flags.sh
-./change-compiler.sh -c "$compiler"
+./change-compiler.sh -c "$c_compiler"
 ./build.sh
+
+pushd ../examples/c-examples
+./generate-flags.sh
+./generate-makefiles.sh -c $c_compiler
+./run-makefiles.sh
+popd
+
+pushd ../templates/template-c
+./generate-flags.sh
+./generate-cmakelists.sh -c $c_compiler
+cmake -S . -B build -DCMAKE_CXX_COMPILER=$c_compiler
+cmake --build build --clean-first
+popd
+
+pushd ../templates/template-cpp
+./generate-flags.sh
+./generate-cmakelists.sh -c $cxx_compiler
+cmake -S . -B build -DCMAKE_CXX_COMPILER=$cxx_compiler
+cmake --build build --clean-first
+popd
