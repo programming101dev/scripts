@@ -867,7 +867,6 @@ SANITIZER_FLAGS=(
     "-fsanitize=bounds"
     "-fsanitize=bounds-strict"
     "-fsanitize=alignment"
-#    "-fsanitize=object-size"
     "-fsanitize=float-divide-by-zero"
     "-fsanitize=float-cast-overflow"
     "-fsanitize=nonnull-attribute"
@@ -885,7 +884,7 @@ SANITIZER_FLAGS=(
     "-fno-delete-null-pointer-checks"
     "-fno-omit-frame-pointer"
     "-fstrict-flex-arrays"
-    "-fsanitize-coverage=trace-cmp"
+#    "-fsanitize-coverage=trace-cmp"
 #    "-fsanitize-coverage=trace-pc"
 #    "-finstrument-functions"
 )
