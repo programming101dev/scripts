@@ -61,7 +61,7 @@ popd
 pushd ../templates/template-c
 ./generate-flags.sh
 ./generate-cmakelists.sh -c $c_compiler
-cmake -S . -B build -DCMAKE_CXX_COMPILER=$c_compiler
+cmake -S . -B build -DCMAKE_C_COMPILER=$c_compiler
 cmake --build build --clean-first
 popd
 
