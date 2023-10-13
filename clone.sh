@@ -44,7 +44,9 @@ for ((i=0; i<${#repo_urls[@]}; i++)); do
     if [ -d "$repo_directory" ]; then
         echo "Repository '$repo_directory' already exists. Pulling changes."
         # Change to the repository directory and pull
-        (cd "$repo_directory" && git pull)
+        pushd "$repo_directory"
+        git pull
+        popd
     else
         # Clone the repository
         git clone "$repo_url" "$repo_directory"
