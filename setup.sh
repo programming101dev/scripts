@@ -77,12 +77,14 @@ popd
 
 pushd ../templates/template-c
 ./generate-flags.sh
-./generate-cmakelists.sh -c $c_compiler -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+./generate-cmakelists.sh
+./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
 ./build.sh
 popd
 
 pushd ../templates/template-cpp
 ./generate-flags.sh
-./generate-cmakelists.sh -c $cxx_compiler -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+./generate-cmakelists.sh
+./change-compiler.sh -c "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
 ./build.sh
 popd
