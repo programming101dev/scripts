@@ -981,6 +981,7 @@ supported_compilers=()
 check_compiler()
 {
     local compiler="$1"
+
     if command -v "$compiler" &>/dev/null; then
         supported_compilers+=("$compiler")
     fi

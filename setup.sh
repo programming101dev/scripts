@@ -63,26 +63,26 @@ if [ -z "$cxx_compiler" ]; then
 fi
 
 ./clone.sh
-./generate-flags.sh
+
+./generate-libraries-flags.sh
+./generate-examples-flags.sh
+
 ./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
 ./build.sh
 
 pushd ../examples/c-examples
-./generate-flags.sh
 ./generate-makefiles.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
 ./run-makefiles.sh
 popd
 
 pushd ../templates/template-c
 ./generate-flags.sh
-./generate-cmakelists.sh -c $c_compiler
-cmake -S . -B build -DCMAKE_C_COMPILER="$c_compiler" -DCLANG_FORMAT_NAME="$clang_format_name" -DCLANG_TIDY_NAME="$clang_tidy_name" -DCPPCHECK_NAME="$cppcheck_name"
-cmake --build build --clean-first
+./generate-cmakelists.sh -c $c_compiler -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+./build.sh
 popd
 
 pushd ../templates/template-cpp
 ./generate-flags.sh
-./generate-cmakelists.sh -c $cxx_compiler
-cmake -S . -B build -DCMAKE_CXX_COMPILER="$cxx_compiler" -DCLANG_FORMAT_NAME="$clang_format_name" -DCLANG_TIDY_NAME="$clang_tidy_name" -DCPPCHECK_NAME="$cppcheck_name"
-cmake --build build --clean-first
+./generate-cmakelists.sh -c $cxx_compiler -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+./build.sh
 popd
