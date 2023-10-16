@@ -51,7 +51,14 @@ for dir in "${directories[@]}"; do
     # Change the ownership of install_manifest.txt to match 'build' directory owner
     sudo chown "$build_owner" build/install_manifest.txt
 
-    sudo ldconfig
+    # Check if the command 'ldconfig' exists on the system
+    if command -v ldconfig >/dev/null; then
+        # 'ldconfig' exists, run it with sudo
+        sudo ldconfig
+    elif command -v update_dyld_shared_cache >/dev/null; then
+        # 'ldconfig' doesn't exist, but 'update_dyld_shared_cache' does, run it with sudo
+        sudo update_dyld_shared_cache -force
+    fi
 
     # Return to the original directory
     popd || exit
