@@ -5,20 +5,28 @@ set -e
 
 # List of directories
 directories=(
-    "lib_error"
-    "lib_env"
-    "lib_c"
-    "lib_posix"
-    "lib_posix_xsi"
-    "lib_posix_optional"
-    "lib_unix"
-    "lib_fsm"
+    "libraries/lib_error"
+    "libraries/lib_env"
+    "libraries/lib_c"
+    "libraries/lib_posix"
+    "libraries/lib_posix_xsi"
+    "libraries/lib_posix_optional"
+    "libraries/lib_unix"
+    "libraries/lib_fsm"
+    "examples/lib_error_examples"
+    "examples/lib_env_examples"
+    "examples/lib_c_examples"
+    "examples/lib_posix_examples"
+    "examples/lib_posix_xsi_examples"
+    "examples/lib_posix_optional_examples"
+    "examples/lib_unix_examples"
+    "examples/lib_fsm_examples"
 )
 
 # Loop through the directories
 for dir in "${directories[@]}"; do
     # Change to the directory
-    pushd "../libraries/$dir" || continue
+    pushd "../$dir" || continue
 
     # Check if the 'build' directory exists
     if [ ! -d "build" ]; then
