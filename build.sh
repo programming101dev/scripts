@@ -63,5 +63,3 @@ for dir in "${directories[@]}"; do
     # Return to the original directory
     popd || exit
 done
-
-# The script will exit here if any CMake command fails
