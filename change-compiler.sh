@@ -64,6 +64,7 @@ directories=(
 
 # Loop through the directories
 for dir in "${directories[@]}"; do
+    echo "Working on $dir"
     # Change to the directory
     pushd "../libraries/$dir" || exit
 
@@ -85,6 +86,7 @@ for dir in "${directories[@]}"; do
 
     # Return to the original directory
     popd || exit
+    echo ""
 done
 
 echo "CMake configuration completed with compiler: $c_compiler"

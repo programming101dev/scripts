@@ -43,6 +43,8 @@ for dir in "${directories[@]}"; do
     # Change the ownership of install_manifest.txt to match 'build' directory owner
     sudo chown "$build_owner" build/install_manifest.txt
 
+    sudo ldconfig
+
     # Return to the original directory
     popd || exit
 done
