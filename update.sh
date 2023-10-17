@@ -3,6 +3,8 @@
 # Exit the script if any command fails
 set -e
 
+./check-env.sh
+
 c_compiler=""
 cxx_compiler=""
 clang_format_name="clang-format"
