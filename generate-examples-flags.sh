@@ -971,25 +971,8 @@ process_flags()
     echo "$supported_flags" > "../examples/flags/${compiler}/sanitizer_flags.txt"
 }
 
-# Initialize the list of potential compilers
-compilers=("gcc" "clang" "gcc13" "gcc-13" "clang-15" "clang-16" "clang-17" "clang-18" "clang15" "clang16" "clang17" "clang18" "clang-devel" "clang++-devel")
-
-# Initialize an empty list to store supported compilers
-supported_compilers=()
-
-# Function to check if a compiler exists and add it to the supported list
-check_compiler()
-{
-    local compiler="$1"
-    if command -v "$compiler" &>/dev/null; then
-        supported_compilers+=("$compiler")
-    fi
-}
-
-# Loop through the list of potential compilers and check their existence
-for compiler in "${compilers[@]}"; do
-    check_compiler "$compiler"
-done
+# Read the list of supported compilers
+supported_compilers=($(cat supported_c_compilers.txt))
 
 # Loop over each compiler
 for compiler in "${supported_compilers[@]}"; do

@@ -4,6 +4,7 @@
 set -e
 
 ./check-env.sh
+./check-compilers.sh
 
 c_compiler=""
 cxx_compiler=""
