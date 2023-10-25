@@ -1,8 +1,6 @@
 # Exit the script if any command fails
 set -e
 
-./check-env.sh
-
 clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"

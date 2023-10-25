@@ -3,7 +3,6 @@
 # Exit the script if any command fails
 set -e
 
-./check-env.sh
 ./check-compilers.sh
 
 c_compiler=""
@@ -64,6 +63,8 @@ if [ -z "$cxx_compiler" ]; then
   echo "Error: c++ compiler argument (-x) is required."
   usage
 fi
+
+./check-env.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
 
 ./clone.sh
 
