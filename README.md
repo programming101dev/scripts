@@ -1,5 +1,22 @@
-# scripts
-run ./clone.sh
-run ./generate-flags.sh
-run ./change-compiler.sh -c gcc (or clang, or any other compiler name that is on your system)
-run ./build.sh
+# After Clone
+./setup.sh -c <c-compiler> -x <c++ compiler>
+
+# To Update
+./build.sh
+
+# To Change the Compiler
+./change-compiler.sh -c <c-compiler> -x <c++ compiler>
+./build.sh
+
+# To Copy a Template
+./copy-template -t <template> -d <destination>
+
+# Compilers
+The list of valid compilers can be found in:
+- supported_c_compilers.txt
+- supported_cxx_compilers.txt
+
+# Templates
+The list of templates is:
+- c
+- cpp
