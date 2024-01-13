@@ -32,7 +32,7 @@ for dir in "${directories[@]}"; do
     if [ ! -d "build" ]; then
         # If it doesn't exist, create it and run cmake configure
         mkdir build
-        cmake -S . -B build
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
     fi
 
     # Run cmake build with clean first
