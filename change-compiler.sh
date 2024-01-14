@@ -90,7 +90,7 @@ for dir in "${directories[@]}"; do
     mkdir -p "$build_directory"
 
     # Run cmake configure with the specified compiler
-    cmake -S . -B "$build_directory" -DCMAKE_C_COMPILER="$c_compiler" -DCLANG_FORMAT_NAME="$clang_format_name" -DCLANG_TIDY_NAME="$clang_tidy_name" -DCPPCHECK_NAME="$cppcheck_name"
+    cmake -S . -B "$build_directory" -DCMAKE_C_COMPILER="$c_compiler" -DCLANG_FORMAT_NAME="$clang_format_name" -DCLANG_TIDY_NAME="$clang_tidy_name" -DCPPCHECK_NAME="$cppcheck_name" -DCMAKE_BUILD_TYPE=Debug
 
     # Return to the original directory
     popd || exit
