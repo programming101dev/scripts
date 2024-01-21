@@ -7,10 +7,6 @@ set -e
 c_compilers=("gcc" "clang" "gcc13" "gcc-13" "clang-15" "clang-16" "clang-17" "clang-18" "clang15" "clang16" "clang17" "clang18" "clang-devel")
 cxx_compilers=("g++" "clang++" "g++13" "g++-13" "clang++-15" "clang++-16" "clang++-17" "clang++-18" "clang++15" "clang++16" "clang++17" "clang++18" "clang++-devel")
 
-# Initialize an empty list to store supported compilers
-supported_c_compilers=()
-supported_cxx_compilers=()
-
 # Function to check if a compiler exists and add it to the supported list
 check_compiler()
 {

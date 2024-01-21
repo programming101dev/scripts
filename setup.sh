@@ -3,8 +3,6 @@
 # Exit the script if any command fails
 set -e
 
-./check-compilers.sh
-
 c_compiler=""
 cxx_compiler=""
 clang_format_name="clang-format"
@@ -16,7 +14,7 @@ usage()
 {
     echo "Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>]"
     echo "  -c c compiler     Specify the c compiler name (e.g. gcc or clang)"
-    echo "  -x c++ compiler   Specify the c++ compiler name (e.g. gcc++ or clang++)"
+    echo "  -x cxx compiler   Specify the cxx compiler name (e.g. gcc++ or clang++)"
     echo "  -f clang-format   Specify the clang-format name (e.g. clang-tidy or clang-tidy-17)"
     echo "  -t clang-tidy     Specify the clang-tidy name (e.g. clang-tidy or clang-tidy-17)"
     echo "  -k cppcheck       Specify the cppcheck name (e.g. cppcheck)"
@@ -60,35 +58,14 @@ fi
 
 # Check if the compiler argument is provided
 if [ -z "$cxx_compiler" ]; then
-  echo "Error: c++ compiler argument (-x) is required."
+  echo "Error: cxx compiler argument (-x) is required."
   usage
 fi
 
 ./check-env.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-
-./clone.sh
-
-./generate-libraries-flags.sh
-./generate-examples-flags.sh
-
+./clone-repos.sh
+./check-compilers.sh
+./generate-flags.sh
+./link-flags.sh
 ./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
 ./build.sh
-
-pushd ../examples/c-examples
-./generate-makefiles.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-./run-makefiles.sh
-popd
-
-pushd ../templates/template-c
-./generate-flags.sh
-./generate-cmakelists.sh
-./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-./build.sh
-popd
-
-pushd ../templates/template-cpp
-./generate-flags.sh
-./generate-cmakelists.sh
-./change-compiler.sh -c "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-./build.sh
-popd

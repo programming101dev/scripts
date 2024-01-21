@@ -4,25 +4,30 @@
 set -e
 
 c_compiler=""
+cxx_compiler=""
 clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
 
 usage()
 {
-    echo "Usage: $0 -c <C compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>]"
-    echo "  -c c compiler     Specify the c compiler name (e.g. gcc or clang)"
-    echo "  -f clang-format   Specify the clang-format name (e.g. clang-tidy or clang-tidy-17)"
-    echo "  -t clang-tidy     Specify the clang-tidy name (e.g. clang-tidy or clang-tidy-17)"
-    echo "  -k cppcheck       Specify the cppcheck name (e.g. cppcheck)"
+    echo "Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>]"
+    echo "  -c c compiler     Specify the C compiler name (e.g., gcc or clang)"
+    echo "  -x cxx compiler   Specify the C++ compiler name (e.g., g++ or clang++)"
+    echo "  -f clang-format   Specify the clang-format name (e.g., clang-tidy or clang-tidy-17)"
+    echo "  -t clang-tidy     Specify the clang-tidy name (e.g., clang-tidy or clang-tidy-17)"
+    echo "  -k cppcheck       Specify the cppcheck name (e.g., cppcheck)"
     exit 1
 }
 
 # Parse command-line options using getopt
-while getopts ":c:f:t:k:" opt; do
+while getopts ":c:x:f:t:k:" opt; do
   case $opt in
     c)
       c_compiler="$OPTARG"
+      ;;
+    x)
+      cxx_compiler="$OPTARG"
       ;;
     f)
       clang_format_name="$OPTARG"
@@ -44,57 +49,33 @@ while getopts ":c:f:t:k:" opt; do
   esac
 done
 
-# Check if the compiler argument is provided
+# Check if the C compiler argument is provided
 if [ -z "$c_compiler" ]; then
-  echo "Error: c compiler argument (-c) is required."
+  echo "Error: C compiler argument (-c) is required."
   usage
 fi
 
-# List of directories
-directories=(
-    "libraries/lib_error"
-    "libraries/lib_env"
-    "libraries/lib_c"
-    "libraries/lib_posix"
-    "libraries/lib_posix_xsi"
-    "libraries/lib_posix_optional"
-    "libraries/lib_unix"
-    "libraries/lib_fsm"
-    "examples/lib_error_examples"
-    "examples/lib_env_examples"
-    "examples/lib_c_examples"
-    "examples/lib_posix_examples"
-    "examples/lib_posix_xsi_examples"
-    "examples/lib_posix_optional_examples"
-    "examples/lib_unix_examples"
-    "examples/lib_fsm_examples"
-)
+# Check if the C++ compiler argument is provided
+if [ -z "$cxx_compiler" ]; then
+  echo "Error: C++ compiler argument (-x) is required."
+  usage
+fi
 
-# Loop through the directories
-for dir in "${directories[@]}"; do
-    echo "Working on $dir"
-    # Change to the directory
-    pushd "../$dir" || exit
-
-    # Construct the full path to the 'build' directory
-    build_directory="build"
-
-    # Check if the 'build' directory exists
-    if [ -d "$build_directory" ]; then
-        # If it exists, delete it
-        rm -r "$build_directory"
-        echo "Deleted 'build' directory in $dir."
+# Read directories and types from repos.txt
+while IFS='|' read -r repo_url dir repo_type; do
+    echo "Working on $dir ($repo_type)"
+    if pushd "$dir" >/dev/null 2>&1; then
+        # Check if it's a C or C++ repository and execute the appropriate command
+        if [ "$repo_type" = "c" ]; then
+            ./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+        elif [ "$repo_type" = "cxx" ]; then
+            ./change-compiler.sh -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+        fi
+        popd >/dev/null 2>&1
+    else
+        echo "Directory $dir not found."
     fi
-
-    # Create the 'build' directory
-    mkdir -p "$build_directory"
-
-    # Run cmake configure with the specified compiler
-    cmake -S . -B "$build_directory" -DCMAKE_C_COMPILER="$c_compiler" -DCLANG_FORMAT_NAME="$clang_format_name" -DCLANG_TIDY_NAME="$clang_tidy_name" -DCPPCHECK_NAME="$cppcheck_name" -DCMAKE_BUILD_TYPE=Debug
-
-    # Return to the original directory
-    popd || exit
     echo ""
-done
+done < repos.txt
 
-echo "CMake configuration completed with compiler: $c_compiler"
+echo "Completed operations in all directories with c compiler: $c_compiler and cxx compiler: $cxx_compiler"

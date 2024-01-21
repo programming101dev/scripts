@@ -69,6 +69,12 @@ for ((i=0; i<max_iterations; i++)); do
         ./run-makefiles.sh
         popd
 
+        pushd ../programs/simple-port-forwarder
+        ./generate-cmakelists.sh
+        ./change-compiler.sh -c "$current_c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+        ./build.sh
+        popd
+
         pushd ../templates/template-c
         ./generate-cmakelists.sh
         ./change-compiler.sh -c "$current_c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"

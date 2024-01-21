@@ -3,63 +3,26 @@
 # Exit the script if any command fails
 set -e
 
-# List of directories
-directories=(
-    "libraries/lib_error"
-    "libraries/lib_env"
-    "libraries/lib_c"
-    "libraries/lib_posix"
-    "libraries/lib_posix_xsi"
-    "libraries/lib_posix_optional"
-    "libraries/lib_unix"
-    "libraries/lib_fsm"
-    "examples/lib_error_examples"
-    "examples/lib_env_examples"
-    "examples/lib_c_examples"
-    "examples/lib_posix_examples"
-    "examples/lib_posix_xsi_examples"
-    "examples/lib_posix_optional_examples"
-    "examples/lib_unix_examples"
-    "examples/lib_fsm_examples"
-)
+# Read directories and types from repos.txt
+repos=()
+while IFS='|' read -r repo_url dir repo_type; do
+    repos+=("$dir|$repo_type")
+done < "repos.txt"
 
-# Loop through the directories
-for dir in "${directories[@]}"; do
-    # Change to the directory
-    pushd "../$dir" || continue
+# Loop through the directories and repo types
+for repo in "${repos[@]}"; do
+    IFS='|' read -r dir repo_type <<< "$repo"
 
-    # Check if the 'build' directory exists
-    if [ ! -d "build" ]; then
-        # If it doesn't exist, create it and run cmake configure
-        mkdir build
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+    echo "Processing $dir ($repo_type)"
+    pushd "$dir" || continue
+
+    ./build.sh
+
+    if [ -f "install.sh" ]; then
+      ./install.sh
     fi
 
-    # Run cmake build with clean first
-    cmake --build build --clean-first
-
-    # Run cmake install with sudo
-    sudo cmake --install build
-
-    # Retrieve the owner of the 'build' directory
-    if [ "$(uname -s)" = "Darwin" ]; then
-        build_owner=$(stat -f "%Su" build)
-    else
-        build_owner=$(ls -ld "build" | awk '{print $3}')  # Linux)
-    fi
-
-    # Change the ownership of install_manifest.txt to match 'build' directory owner
-    sudo chown "$build_owner" build/install_manifest.txt
-
-    # Check if the command 'ldconfig' exists on the system
-    if command -v ldconfig >/dev/null; then
-        # 'ldconfig' exists, run it with sudo
-        sudo ldconfig
-    elif command -v update_dyld_shared_cache >/dev/null; then
-        # 'ldconfig' doesn't exist, but 'update_dyld_shared_cache' does, run it with sudo
-        sudo update_dyld_shared_cache -force
-    fi
-
-    # Return to the original directory
     popd || exit
 done
+
+echo "Build process completed for all directories."

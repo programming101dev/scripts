@@ -63,24 +63,6 @@ if [ -z "$cxx_compiler" ]; then
 fi
 
 ./check-env.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-
-./clone.sh
-./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+./clone-repos.sh
+./change-compiler.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
 ./build.sh
-
-pushd ../examples/c-examples
-./generate-makefiles.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-./run-makefiles.sh
-popd
-
-pushd ../templates/template-c
-./generate-cmakelists.sh
-./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-./build.sh
-popd
-
-pushd ../templates/template-cpp
-./generate-cmakelists.sh
-./change-compiler.sh -c "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-./build.sh
-popd
