@@ -69,7 +69,7 @@ while IFS='|' read -r repo_url dir repo_type; do
         if [ "$repo_type" = "c" ]; then
             ./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
         elif [ "$repo_type" = "cxx" ]; then
-            ./change-compiler.sh -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+            ./change-compiler.sh -c "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
         fi
         popd >/dev/null 2>&1
     else
