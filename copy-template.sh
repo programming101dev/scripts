@@ -51,8 +51,17 @@ if [ ! -d "$dest_dir" ]; then
   mkdir -p "$dest_dir"
 fi
 
+# Copy the supported compilers file
+compilers_file="supported_${template_name}_compilers.txt"
+if [ -e "$source_dir/$compilers_file" ]; then
+  cp "$source_dir/$compilers_file" "$dest_dir"
+  echo "Copied $compilers_file to $dest_dir"
+else
+  echo "$compilers_file not found in the template directory. Skipping."
+fi
+
 # List of files and directories to copy
-files_to_copy=("flags" ".clang-format" "build.sh" "change-compiler.sh" "files.txt" "generate-cmakelists.sh" "generate-flags.sh" "README.md")
+files_to_copy=(".flags" ".clang-format" ".gitignore" "build.sh" "change-compiler.sh" "check-compilers.sh" "files.txt" "generate-cmakelists.sh" "generate-flags.sh" "README.md" "src" "include")
 
 # Copy files and directories to the destination directory
 for item in "${files_to_copy[@]}"; do
@@ -76,3 +85,19 @@ for item in "${files_to_copy[@]}"; do
 done
 
 echo "Copy operation complete."
+
+# Navigate to the destination directory
+pushd "$dest_dir" || exit
+
+# Check if .flags exists and run scripts if it doesn't
+if [ ! -e ".flags" ]; then
+  echo "Running check-compilers.sh and generate-flags.sh scripts."
+  ./check-compilers.sh
+  ./generate-flags.sh
+else
+  echo ".flags file already exists."
+fi
+
+# Return to the original directory
+popd || exit
+

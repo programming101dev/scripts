@@ -6,8 +6,11 @@ set -e
 # Function to detect system architecture
 detect_architecture()
 {
-    local sys_name=$(uname -s)
-    local architecture=$(uname -m)
+    local sys_name
+    local architecture
+
+    sys_name=$(uname -s)
+    architecture=$(uname -m)
 
     if [[ $sys_name == "Darwin" ]]; then
         case $architecture in
@@ -26,7 +29,7 @@ is_flag_supported() {
     local flag="$2"
     local supported_flags_ref="$3"
 
-    if ("$compiler" $flag -E - < /dev/null &> /dev/null); then
+    if ("$compiler" "$flag" -E - < /dev/null &> /dev/null); then
         echo "Flag '$flag' is supported by $compiler."
         eval "$supported_flags_ref+=('$flag')"
     else
