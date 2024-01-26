@@ -62,6 +62,7 @@ process_flags()
 {
     local compiler="$1"
     local darwin_architecture="$2"
+    local language="$3"
     local warning_flags=(
       "-Wno-invalid-command-line-argument"
       "-Wno-unused-command-line-argument"
@@ -75,7 +76,6 @@ process_flags()
       "-Warith-conversion"
       "-Warray-bounds"
       "-Wattribute-alias=2"
-      "-Wbad-function-cast"
       "-Wbool-compare"
       "-Wbool-operation"
       "-Wcast-align"
@@ -90,7 +90,6 @@ process_flags()
       "-Wdangling-pointer"
       "-Wdangling-pointer=2"
       "-Wdate-time"
-      "-Wdeclaration-after-statement"
       "-Wdisabled-optimization"
       "-Wdouble-promotion"
       "-Wduplicated-branches"
@@ -98,7 +97,6 @@ process_flags()
       "-Wempty-body"
       "-Wenum-compare"
       "-Wenum-conversion"
-      "-Wenum-int-mismatch"
       "-Wexpansion-to-defined"
       "-Wextra"
       "-Wfatal-errors"
@@ -114,7 +112,6 @@ process_flags()
       "-Wformat=2"
       "-Wframe-address"
       "-Wignored-qualifiers"
-      "-Wimplicit"
       "-Wimplicit-fallthrough"
       "-Wimplicit-fallthrough=3"
       "-Winfinite-recursion"
@@ -123,7 +120,6 @@ process_flags()
       "-Wint-in-bool-context"
       "-Winvalid-pch"
       "-Winvalid-utf8"
-      "-Wjump-misses-init"
       "-Wlogical-not-parentheses"
       "-Wlogical-op"
       "-Wmain"
@@ -138,14 +134,9 @@ process_flags()
       "-Wmissing-format-attribute"
       "-Wmissing-include-dirs"
       "-Wmissing-noreturn"
-      "-Wmissing-parameter-type"
-      "-Wmissing-prototypes"
       "-Wmissing-variable-declarations"
       "-Wmultistatement-macros"
-      "-Wnested-externs"
       "-Wnull-dereference"
-      "-Wold-style-declaration"
-      "-Wold-style-definition"
       "-Wopenacc-parallelism"
       "-Wopenmp-simd"
       "-Woverlength-strings"
@@ -154,7 +145,6 @@ process_flags()
       "-Wparentheses"
       "-Wpedantic"
       "-Wpointer-arith"
-      "-Wpointer-sign"
       "-Wredundant-decls"
       "-Wrestrict"
       "-Wreturn-type"
@@ -174,7 +164,6 @@ process_flags()
       "-Wstrict-aliasing"
       "-Wstrict-aliasing=3"
       "-Wstrict-flex-arrays"
-      "-Wstrict-prototypes"
       "-Wstring-compare"
       "-Wswitch"
       "-Wswitch-default"
@@ -209,9 +198,7 @@ process_flags()
       "-Wxor-used-as-pow"
       "-Wzero-length-bounds"
       "-Wbidi-chars=unpaired,ucn"
-      "-Wc++-compat"
       "-W"
-      "-Wabsolute-value"
       "-Waddress-of-packed-member"
       "-Waddress-of-temporary"
       "-Waix-compat"
@@ -377,7 +364,6 @@ process_flags()
       "-Wdollar-in-identifier-extension"
       "-Wdtor-name"
       "-Wdtor-typedef"
-      "-Wduplicate-decl-specifier"
       "-Wduplicate-enum"
       "-Wduplicate-method-arg"
       "-Wduplicate-method-match"
@@ -495,8 +481,6 @@ process_flags()
       "-Wimplicit-fallthrough-per-function"
       "-Wimplicit-fixed-point-conversion"
       "-Wimplicit-float-conversion"
-      "-Wimplicit-function-declaration"
-      "-Wimplicit-int"
       "-Wimplicit-int-conversion"
       "-Wimplicit-int-float-conversion"
       "-Wimplicit-retain-self"
@@ -511,7 +495,6 @@ process_flags()
       "-Wincompatible-library-redeclaration"
       "-Wincompatible-ms-pragma-section"
       "-Wincompatible-ms-struct"
-      "-Wincompatible-pointer-types"
       "-Wincompatible-pointer-types-discards-qualifiers"
       "-Wincompatible-property-type"
       "-Wincompatible-sysroot"
@@ -531,7 +514,6 @@ process_flags()
       "-Winline-namespace-reopened-noninline"
       "-Winline-new-delete"
       "-Winstantiation-after-specialization"
-      "-Wint-conversion"
       "-Wint-conversions"
       "-Wint-to-pointer-cast"
       "-Wint-to-void-pointer-cast"
@@ -632,7 +614,6 @@ process_flags()
       "-Wover-aligned"
       "-Woverflow"
       "-Woverloaded-shift-op-parentheses"
-      "-Woverride-init"
       "-Woverride-module"
       "-Woverriding-method-mismatch"
       "-Woverriding-option"
@@ -647,7 +628,6 @@ process_flags()
       "-Wpointer-compare"
       "-Wpointer-integer-compare"
       "-Wpointer-to-enum-cast"
-      "-Wpointer-to-int-cast"
       "-Wpointer-type-mismatch"
       "-Wpotentially-direct-selector"
       "-Wpotentially-evaluated-expression"
@@ -929,7 +909,31 @@ process_flags()
     #    "-finstrument-functions"
     )
 
-    if [[ $darwin_architecture == "arm64" ]]; then
+    if [[ $language == "c" ]]; then
+        warning_flags+=("-Wbad-function-cast")
+        warning_flags+=("-Wdeclaration-after-statement")
+        warning_flags+=("-Wenum-int-mismatch")
+        warning_flags+=("-Wimplicit")
+        warning_flags+=("-Wjump-misses-init")
+        warning_flags+=("-Wmissing-parameter-type")
+        warning_flags+=("-Wmissing-prototypes")
+        warning_flags+=("-Wnested-externs")
+        warning_flags+=("-Wold-style-declaration")
+        warning_flags+=("-Wold-style-definition")
+        warning_flags+=("-Wpointer-sign")
+        warning_flags+=("-Wstrict-prototypes")
+        warning_flags+=("-Wc++-compat")
+        warning_flags+=("-Wabsolute-value")
+        warning_flags+=("-Wduplicate-decl-specifier")
+        warning_flags+=("-Wimplicit-function-declaration")
+        warning_flags+=("-Wimplicit-int")
+        warning_flags+=("-Wincompatible-pointer-types")
+        warning_flags+=("-Wint-conversion")
+        warning_flags+=("-Woverride-init")
+        warning_flags+=("-Wpointer-to-int-cast")
+    fi
+
+    if [[ $compiler == "arm64" ]]; then
         warning_flags+=("-fcf-protection=null")
     else
         warning_flags+=("-fcf-protection=full")
@@ -964,10 +968,10 @@ done < supported_cxx_compilers.txt
 
 # Process C compilers
 for compiler in "${supported_c_compilers[@]}"; do
-    process_flags "$compiler"
+    process_flags "$compiler" "c"
 done
 
 # Process C++ compilers
 for compiler in "${supported_cxx_compilers[@]}"; do
-    process_flags "$compiler"
+    process_flags "$compiler" "cxx"
 done
