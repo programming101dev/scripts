@@ -29,7 +29,7 @@ is_flag_supported() {
     local flag="$2"
     local supported_flags_ref="$3"
 
-    if ("$compiler" "$flag" -Werror -Wunknown-warning-option -E - < /dev/null &> /dev/null); then
+    if ("$compiler" "$flag" -E - < /dev/null &> /dev/null); then
         echo "Flag '$flag' is supported by $compiler."
         eval "$supported_flags_ref+=('$flag')"
     else
@@ -41,20 +41,49 @@ is_flag_supported() {
 process_compiler_flags()
 {
     local compiler="$1"
-    local flag_category="$2"
-    local flags=("${!3}")
+    local category="$2"
+    shift 2
+    local flags=("$@")
     local supported_flags=()
 
     for flag in "${flags[@]}"; do
         is_flag_supported "$compiler" "$flag" supported_flags
     done
 
-    # Concatenate the flags, trimming the trailing space
+    # Concatenate the flags
     local flags_string
     flags_string=$(IFS=" "; echo "${supported_flags[*]}")
 
-    # Write to file without trailing space
-    printf "%s" "$flags_string" > "../.flags/${compiler}/${flag_category}_flags.txt"
+    # Write to file
+    printf "%s" "$flags_string" > "../.flags/${compiler}/${category}_flags.txt"
+}
+
+process_sanitizer_category()
+{
+    local compiler="$1"
+    local category_name="$2"
+    local flags_array_name="$3"
+    local supported_flags=()
+
+    # Convert the string into an actual array
+    eval "local flags_array=(\"\${${flags_array_name}[@]}\")"
+
+    # Check the first flag
+    is_flag_supported "$compiler" "${flags_array[0]}" supported_flags
+
+    # Then, check the rest of the flags
+    for i in "${!flags_array[@]}"; do
+        if [[ $i -ne 0 ]]; then  # Skip the first element
+            is_flag_supported "$compiler" "${flags_array[$i]}" supported_flags
+        fi
+    done
+
+    # Concatenate the supported flags
+    local flags_string
+    flags_string=$(IFS=" "; echo "${supported_flags[*]}")
+
+    # Write to file
+    printf "%s" "$flags_string" > "../.flags/${compiler}/${category_name}_flags.txt"
 }
 
 # Main processing function
@@ -63,6 +92,145 @@ process_flags()
     local compiler="$1"
     local darwin_architecture="$2"
     local language="$3"
+
+    # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Static-Analyzer-Options.html
+    local analyzer_flags=(
+        "--analyzer"
+        "-Xanalyzer"
+        "-fanalyzer"
+        "-Wanalyzer-allocation-size"
+        "-Wanalyzer-deref-before-check"
+        "-Wanalyzer-double-fclose"
+        "-Wanalyzer-double-free"
+        "-Wanalyzer-exposure-through-output-file"
+        "-Wanalyzer-exposure-through-uninit-copy"
+        "-Wanalyzer-fd-access-mode-mismatch"
+        "-Wanalyzer-fd-double-close"
+        "-Wanalyzer-fd-leak"
+        "-Wanalyzer-fd-phase-mismatch"
+        "-Wanalyzer-fd-type-mismatch"
+        "-Wanalyzer-fd-use-after-close"
+        "-Wanalyzer-fd-use-without-check"
+        "-Wanalyzer-file-leak"
+        "-Wanalyzer-free-of-non-heap"
+        "-Wanalyzer-imprecise-fp-arithmetic"
+        "-Wanalyzer-infinite-recursion"
+        "-Wanalyzer-jump-through-null"
+        "-Wanalyzer-malloc-leak"
+        "-Wanalyzer-mismatching-deallocation"
+        "-Wanalyzer-null-argument"
+        "-Wanalyzer-null-dereference"
+        "-Wanalyzer-out-of-bounds"
+        "-Wanalyzer-possible-null-argument"
+        "-Wanalyzer-possible-null-dereference"
+        "-Wanalyzer-putenv-of-auto-var"
+        "-Wanalyzer-shift-count-negative"
+        "-Wanalyzer-shift-count-overflow"
+        "-Wanalyzer-stale-setjmp-buffer"
+        "-Wanalyzer-symbol-too-complex"
+        "-Wanalyzer-too-complex"
+        "-fanalyzer-transitivity"
+        "-Wanalyzer-unsafe-call-within-signal-handler"
+        "-Wanalyzer-use-after-free"
+        "-Wanalyzer-use-of-pointer-in-stale-stack-frame"
+        "-Wanalyzer-use-of-uninitialized-value"
+        "-Wanalyzer-va-arg-type-mismatch"
+        "-Wanalyzer-va-list-exhausted"
+        "-Wanalyzer-va-list-leak"
+        "-Wanalyzer-va-list-use-after-va-end"
+        "-fanalyzer-verbosity=3"
+        "-Wanalyzer-write-to-const"
+        "-Wanalyzer-write-to-string-literal"
+    )
+
+    # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Debugging-Options.html
+    local debug_flags=(
+        "-g"
+        "-g3"
+        "-ggdb"
+        "-ggdb3"
+        "-gbtf"
+        "-gctf2"
+        "-fvar-tracking"
+        "-fvar-tracking-assignments"
+        "-gdescribe-die"
+        "-gpubnames"
+        "-ggnu-pubnames"
+        "-fdebug-types-section"
+        "-grecord-gcc-switches"
+        "-gas-loc-support"
+        "-gas-locview-support"
+        "-gcolumn-info"
+        "-gstatement-frontiers"
+        "-gvariable-location-views"
+        "-ginternal-reset-location-views"
+        "-ginline-points"
+        "-feliminate-unused-debug-types"
+        #"-fdebug-macro"
+        "-glldb"
+        "-fno-discard-value-names"
+    )
+##-femit-class-debug-always
+
+    local optimization_flags=(
+      "-O0"
+    )
+
+    # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Optimize-Options.html
+    local optimize_flags=(
+        "-fno-fast-math"
+        "-fstrict-float-cast-overflow"
+        "-fmath-errno"
+        "-ftrapping-math"
+        "-fhonor-infinities"
+        "-fhonor-nans"
+        "-fnoapprox-func"
+        "-fsigned-zeros"
+        "-fno-associative-math"
+        "-fno-reciprocal-math"
+        "-fno-unsafe-math-optimizations"
+        "-fnofinite-math-only"
+        "-frounding-math"
+        "-ffp-model=strict"
+        "-ffp-exception-behavior=strict"
+        "-ffp-eval-method=source"
+        "-fprotect-parens"
+        "-fexcess-precision:standard"
+        "-fno-cx-limited-range"
+        "-fno-cx-fortran-rules"
+    )
+
+    local instrumentation_flags=(
+      "-faddrsig"
+      "-fbasic-block-sections=all"
+      "-fharden-compares"
+      "-fharden-conditional-branches"
+      "-fno-sanitize-ignorelist"
+      "-fno-sanitize-recover=all"
+      "-fno-stack-limit"
+      "-fsanitize=shadow-call-stack"
+      "-fsanitize-trap=all"
+      "-fsanitize=unreachable"
+      "-fstack-check"
+      "-fstack-clash-protection"
+      "-fstack-protector"
+      "-fstack-protector-all"
+      "-fstack-protector-strong"
+      "-ftls-model=global-dynamic"
+      "-funique-internal-linkage-names"
+
+      #"-fsanitize=object-size"
+      #"-fsanitize-coverage=trace-pc"
+      #"-fsplit-stack"
+      #-f[no-]sanitize-coverage=
+      #-f[no-]sanitize-address-outline-instrumentation
+      #-f[no-]sanitize-stats
+      #-femulated-tls
+      #-mhwdiv=
+      #-m[no-]crc
+      #-mgeneral-regs-only
+      ###-Winterference-size
+    )
 
     # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Warning-Options.html
     local warning_flags=(
@@ -219,204 +387,56 @@ process_flags()
       ###-Wstack-protector
     )
 
-    # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Static-Analyzer-Options.html
-    local analyzer_flags=(
-        "--analyzer"
-        "-Xanalyzer"
-        "-fanalyzer"
-        "-Wanalyzer-allocation-size"
-        "-Wanalyzer-deref-before-check"
-        "-Wanalyzer-double-fclose"
-        "-Wanalyzer-double-free"
-        "-Wanalyzer-exposure-through-output-file"
-        "-Wanalyzer-exposure-through-uninit-copy"
-        "-Wanalyzer-fd-access-mode-mismatch"
-        "-Wanalyzer-fd-double-close"
-        "-Wanalyzer-fd-leak"
-        "-Wanalyzer-fd-phase-mismatch"
-        "-Wanalyzer-fd-type-mismatch"
-        "-Wanalyzer-fd-use-after-close"
-        "-Wanalyzer-fd-use-without-check"
-        "-Wanalyzer-file-leak"
-        "-Wanalyzer-free-of-non-heap"
-        "-Wanalyzer-imprecise-fp-arithmetic"
-        "-Wanalyzer-infinite-recursion"
-        "-Wanalyzer-jump-through-null"
-        "-Wanalyzer-malloc-leak"
-        "-Wanalyzer-mismatching-deallocation"
-        "-Wanalyzer-null-argument"
-        "-Wanalyzer-null-dereference"
-        "-Wanalyzer-out-of-bounds"
-        "-Wanalyzer-possible-null-argument"
-        "-Wanalyzer-possible-null-dereference"
-        "-Wanalyzer-putenv-of-auto-var"
-        "-Wanalyzer-shift-count-negative"
-        "-Wanalyzer-shift-count-overflow"
-        "-Wanalyzer-stale-setjmp-buffer"
-        "-Wanalyzer-symbol-too-complex"
-        "-Wanalyzer-too-complex"
-        "-fanalyzer-transitivity"
-        "-Wanalyzer-unsafe-call-within-signal-handler"
-        "-Wanalyzer-use-after-free"
-        "-Wanalyzer-use-of-pointer-in-stale-stack-frame"
-        "-Wanalyzer-use-of-uninitialized-value"
-        "-Wanalyzer-va-arg-type-mismatch"
-        "-Wanalyzer-va-list-exhausted"
-        "-Wanalyzer-va-list-leak"
-        "-Wanalyzer-va-list-use-after-va-end"
-        "-fanalyzer-verbosity=3"
-        "-Wanalyzer-write-to-const"
-        "-Wanalyzer-write-to-string-literal"
-    )
-
-    # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Debugging-Options.html
-    local debug_flags=(
-        "-g"
-        "-g3"
-        "-ggdb"
-        "-ggdb3"
-        "-gbtf"
-        "-gctf2"
-        "-fvar-tracking"
-        "-fvar-tracking-assignments"
-        "-gdescribe-die"
-        "-gpubnames"
-        "-ggnu-pubnames"
-        "-fdebug-types-section"
-        "-grecord-gcc-switches"
-        "-gas-loc-support"
-        "-gas-locview-support"
-        "-gcolumn-info"
-        "-gstatement-frontiers"
-        "-gvariable-location-views"
-        "-ginternal-reset-location-views"
-        "-ginline-points"
-        "-feliminate-unused-debug-types"
-        #"-fdebug-macro"
-        "-glldb"
-        "-fno-discard-value-names"
-    )
-##-femit-class-debug-always
-
-    local optimization_flags=(
-      "-O0"
-    )
-
-    # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Optimize-Options.html
-    local optimize_flags=(
-    "-fno-fast-math"
-    "-fstrict-float-cast-overflow"
-    "-fmath-errno"
-    "-ftrapping-math"
-    "-fhonor-infinities"
-    "-fhonor-nans"
-    "-fnoapprox-func"
-    "-fsigned-zeros"
-    "-fno-associative-math"
-    "-fno-reciprocal-math"
-    "-fno-unsafe-math-optimizations"
-    "-fnofinite-math-only"
-    "-frounding-math"
-    "-ffp-model=strict"
-    "-ffp-exception-behavior=strict"
-    "-ffp-eval-method=source"
-    "-fprotect-parens"
-    "-fexcess-precision:standard"
-    "-fno-cx-limited-range"
-    "-fno-cx-fortran-rules"
-    )
-
     # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Instrumentation-Options.html
-    local instrumentation_flags=(
-      # address options
-      #"-fsanitize=address"
-      #"-fsanitize-address-use-after-scope"
+    local address_sanitizer_flags=(
+        "-fsanitize=address"
+        "-fsanitize-address-use-after-scope"
+    )
 
-      # cfi options
-      #"-fsanitize=cfi"
-      #"-fsanitize-cfi-cross-dso"
-      #"-fsanitize-cfi-icall-generalize-pointers"
-      #"-fsanitize-cfi-icall-experimental-normalize-integers"
+    local cfi_sanitizer_flags=(
+        "-fsanitize=cfi"
+        "-fsanitize-cfi-cross-dso"
+        "-fsanitize-cfi-icall-generalize-pointers"
+        "-fsanitize-cfi-icall-experimental-normalize-integers"
+    )
 
-      # dataflow options
-      #"-fsanitize=dataflow"
+    local dataflow_sanitizer_flags=(
+        "-fsanitize=dataflow"
+    )
 
-      # hwaddress options
-      #"-fsanitize=hwaddress"
+    local hwaddress_sanitizer_flags=(
+        "-fsanitize=hwaddress"
+    )
 
-      # integer options
-      #"-fsanitize=integer"
+    local memory_sanitizer_flags=(
+        "-fsanitize=memory"
+    )
 
-      # leak options
-      #"-fsanitize=leak"
-
-      # memory options
-      #"-fsanitize=memory"
-
-      # undefined options
-      #"-fsanitize=undefined"
-      #"-fsanitize=alignment"
-      #"-fsanitize=bool"
-      #"-fsanitize=bounds"
-      #"-fsanitize=bounds-strict"
-      #"-fsanitize=builtin"
-      #"-fsanitize=enum"
-      #"-fsanitize=float-cast-overflow"
-      #"-fsanitize=float-divide-by-zero"
-      #"-fsanitize=function"
-      #"-fsanitize=integer-divide-by-zero"
-      #"-fsanitize=nonnull-attribute"
-      #"-fsanitize=null"
-      #"-fsanitize=pointer-compare"
-      #"-fsanitize=pointer-subtract"
-      #"-fsanitize=return"
-      #"-fsanitize=returns-nonnull-attribute"
-      #"-fsanitize=shift"
-      #"-fsanitize=shift-exponent"
-      #"-fsanitize=shift-base"
-      #"-fsanitize=signed-integer-overflow"
-      #"-fsanitize-undefined-trap-on-error"
-      #"-fsanitize=vla-bound"
-
-      # pointer-overflow options
-      #"-fsanitize=pointer-overflow"
-
-      # safe-stack options
-      #"-fsanitize=safe-stack"
-
-      # thread options
-      #"-fsanitize=thread"
-
-      # Miscellaneous options
-      "-faddrsig"
-      "-fbasic-block-sections=all"
-      "-fharden-compares"
-      "-fharden-conditional-branches"
-      "-fno-sanitize-ignorelist"
-      "-fno-sanitize-recover=all"
-      "-fno-stack-limit"
-      "-fsanitize=shadow-call-stack"
-      "-fsanitize-trap=all"
-      "-fsanitize=unreachable"
-      "-fstack-check"
-      "-fstack-clash-protection"
-      "-fstack-protector"
-      "-fstack-protector-all"
-      "-fstack-protector-strong"
-      "-ftls-model=global-dynamic"
-      "-funique-internal-linkage-names"
-
-      #"-fsanitize=object-size"
-      #"-fsanitize-coverage=trace-pc"
-      #"-fsplit-stack"
-      #-f[no-]sanitize-coverage=
-      #-f[no-]sanitize-address-outline-instrumentation
-      #-f[no-]sanitize-stats
-      #-femulated-tls
-      #-mhwdiv=
-      #-m[no-]crc
-      #-mgeneral-regs-only
-      ###-Winterference-size
+    local undefined_sanitizer_flags=(
+        "-fsanitize=undefined"
+        "-fsanitize=alignment"
+        "-fsanitize=bool"
+        "-fsanitize=bounds"
+        "-fsanitize=bounds-strict"
+        "-fsanitize=builtin"
+        "-fsanitize=enum"
+        "-fsanitize=float-cast-overflow"
+        "-fsanitize=float-divide-by-zero"
+        "-fsanitize=function"
+        "-fsanitize=integer"
+        "-fsanitize=integer-divide-by-zero"
+        "-fsanitize=nonnull-attribute"
+        "-fsanitize=null"
+        "-fsanitize=pointer-compare"
+        "-fsanitize=pointer-subtract"
+        "-fsanitize=return"
+        "-fsanitize=returns-nonnull-attribute"
+        "-fsanitize=shift"
+        "-fsanitize=shift-exponent"
+        "-fsanitize=shift-base"
+        "-fsanitize=signed-integer-overflow"
+        "-fsanitize-undefined-trap-on-error"
+        "-fsanitize=vla-bound"
     )
 
     if [[ $language == "c" ]]; then
@@ -442,41 +462,41 @@ process_flags()
         warning_flags+=("-Woverride-init")
         warning_flags+=("-Wpointer-to-int-cast")
     else
-      warning_flags+=("-Wduplicate-decl-specifier")
-      warning_flags+=("-Wimplicit")
-      warning_flags+=("-Wtraditional")
-      warning_flags+=("-Wtraditional-conversion")
-      warning_flags+=("-Wdeclaration-after-statement")
-      warning_flags+=("-Wabsolute-value")
-      warning_flags+=("-Wbad-function-cast")
-      warning_flags+=("-Wenum-int-mismatch")
-      warning_flags+=("-Wjump-misses-init")
-      warning_flags+=("-Wstrict-prototypes")
-      warning_flags+=("-Wold-style-declaration")
-      warning_flags+=("-Wmissing-parameter-type")
-      warning_flags+=("-Wmissing-prototypes")
-      warning_flags+=("-Woverride-init")
-      warning_flags+=("-Wnested-externs")
-      warning_flags+=("-Wpointer-sign")
-      warning_flags+=("-Wambiguous-member-template")
-      warning_flags+=("-Wbind-to-temporary-copy")
+        warning_flags+=("-Wduplicate-decl-specifier")
+        warning_flags+=("-Wimplicit")
+        warning_flags+=("-Wtraditional")
+        warning_flags+=("-Wtraditional-conversion")
+        warning_flags+=("-Wdeclaration-after-statement")
+        warning_flags+=("-Wabsolute-value")
+        warning_flags+=("-Wbad-function-cast")
+        warning_flags+=("-Wenum-int-mismatch")
+        warning_flags+=("-Wjump-misses-init")
+        warning_flags+=("-Wstrict-prototypes")
+        warning_flags+=("-Wold-style-declaration")
+        warning_flags+=("-Wmissing-parameter-type")
+        warning_flags+=("-Wmissing-prototypes")
+        warning_flags+=("-Woverride-init")
+        warning_flags+=("-Wnested-externs")
+        warning_flags+=("-Wpointer-sign")
+        warning_flags+=("-Wambiguous-member-template")
+        warning_flags+=("-Wbind-to-temporary-copy")
 
-      # C++ options
-      #instrumentation_flags+=("-fsanitize=vptr")
+        # C++ options
+        #instrumentation_flags+=("-fsanitize=vptr")
 
-      # VTable
-      instrumentation_flags+=("-fvtable-verify=preinit")
-      instrumentation_flags+=("-fvtv-debug")
-      instrumentation_flags+=("-fstrict-vtable-pointers")
-      instrumentation_flags+=("-fwhole-program-vtables")
-      instrumentation_flags+=("-fforce-emit-vtables")
+        # VTable
+        instrumentation_flags+=("-fvtable-verify=preinit")
+        instrumentation_flags+=("-fvtv-debug")
+        instrumentation_flags+=("-fstrict-vtable-pointers")
+        instrumentation_flags+=("-fwhole-program-vtables")
+        instrumentation_flags+=("-fforce-emit-vtables")
 
-      # linker
-      #instrumentation_flags+=("-f[no]split-lto-unit")
+        # linker
+        #instrumentation_flags+=("-f[no]split-lto-unit")
 
-      # memory options
-      instrumentation_flags+=("-fno-assume-sane-operator-new")
-      instrumentation_flags+=("-fassume-nothrow-exception-dtor")
+        # memory options
+        instrumentation_flags+=("-fno-assume-sane-operator-new")
+        instrumentation_flags+=("-fassume-nothrow-exception-dtor")
     fi
 
     if [[ $compiler == "arm64" ]]; then
@@ -493,11 +513,18 @@ process_flags()
     rm -f "$flag_dir"/*
 
     # Process each flag category
-    process_compiler_flags "$compiler" "warning" warning_flags[@]
-    process_compiler_flags "$compiler" "analyzer" analyzer_flags[@]
-    process_compiler_flags "$compiler" "debug" debug_flags[@]
-    process_compiler_flags "$compiler" "optimization" optimization_flags[@]
-    process_compiler_flags "$compiler" "instrumentation" instrumentation_flags[@]
+    process_compiler_flags "$compiler" "analyzer" "${analyzer_flags[@]}"
+    process_compiler_flags "$compiler" "debug" "${debug_flags[@]}"
+    process_compiler_flags "$compiler" "instrumentation" "${instrumentation_flags[@]}"
+    process_compiler_flags "$compiler" "optimization" "${optimization_flags[@]}"
+    process_compiler_flags "$compiler" "optimize" "${optimize_flags[@]}"
+    process_compiler_flags "$compiler" "warning" "${warning_flags[@]}"
+    process_sanitizer_category "$compiler" "address_sanitizer" "address_sanitizer_flags"
+    process_sanitizer_category "$compiler" "cfi_sanitizer" "cfi_sanitizer_flags"
+    process_sanitizer_category "$compiler" "dataflow_sanitizer" "dataflow_sanitizer_flags"
+    process_sanitizer_category "$compiler" "hwaddress_sanitizer" "hwaddress_sanitizer_flags"
+    process_sanitizer_category "$compiler" "memory_sanitizer" "memory_sanitizer_flags"
+    process_sanitizer_category "$compiler" "undefined_sanitizer" "undefined_sanitizer_flags"
 }
 
 darwin_architecture=$(detect_architecture)
