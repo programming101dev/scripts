@@ -1,6 +1,10 @@
+#!/usr/bin/env bash
+
 # Exit the script if any command fails
 set -e
 
+c_compiler=""
+cxx_compiler=""
 clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
@@ -8,7 +12,7 @@ cppcheck_name="cppcheck"
 # Function to display script usage
 usage()
 {
-    echo "Usage: $0 [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>]"
+    echo "Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>]"
     echo "  -f clang-format   Specify the clang-format name (e.g. clang-tidy or clang-tidy-17)"
     echo "  -t clang-tidy     Specify the clang-tidy name (e.g. clang-tidy or clang-tidy-17)"
     echo "  -k cppcheck       Specify the cppcheck name (e.g. cppcheck)"
@@ -18,6 +22,12 @@ usage()
 # Parse command-line options using getopt
 while getopts ":f:t:k:" opt; do
   case $opt in
+    c)
+      c_compiler="$OPTARG"
+      ;;
+    x)
+      cxx_compiler="$OPTARG"
+      ;;
     f)
       clang_format_name="$OPTARG"
       ;;
@@ -38,68 +48,58 @@ while getopts ":f:t:k:" opt; do
   esac
 done
 
-./clone.sh
+./clone-repos.sh
 
-# Load the supported_c_compilers.txt and supported_cxx_compilers.txt files
-supported_c_compilers=($(cat supported_c_compilers.txt))
-supported_cxx_compilers=($(cat supported_cxx_compilers.txt))
+# Define the paths
+flags_version="../.flags/version.txt"
+current_version="./version.txt"
+update=false
 
-# Initialize separate counters for C and C++ compilers
-c_counter=0
-cxx_counter=0
-
-# Calculate the maximum number of iterations needed
-max_c_iterations=${#supported_c_compilers[@]}
-max_cxx_iterations=${#supported_cxx_compilers[@]}
-max_iterations=$((max_c_iterations > max_cxx_iterations ? max_c_iterations : max_cxx_iterations))
-
-# Loop through the maximum number of iterations
-for ((i=0; i<max_iterations; i++)); do
-    # Get the current C compiler and C++ compiler, or use the last one if the list is shorter
-    current_c_compiler="${supported_c_compilers[c_counter]:-${supported_c_compilers[-1]}}"
-    current_cxx_compiler="${supported_cxx_compilers[cxx_counter]:-${supported_cxx_compilers[-1]}}"
-
-    if [ -n "$current_c_compiler" ]; then
-        echo "Running update.sh with -c $current_c_compiler -x $current_cxx_compiler"
-        ./change-compiler.sh -c "$current_c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-        ./build.sh
-
-        pushd ../examples/c-examples
-        ./generate-makefiles.sh -c "$current_c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-        ./run-makefiles.sh
-        popd
-
-        pushd ../programs/simple-port-forwarder
-        ./generate-cmakelists.sh
-        ./change-compiler.sh -c "$current_c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-        ./build.sh
-        popd
-
-        pushd ../templates/template-c
-        ./generate-cmakelists.sh
-        ./change-compiler.sh -c "$current_c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-        ./build.sh
-        popd
-
-        pushd ../templates/template-cpp
-        ./generate-cmakelists.sh
-        ./change-compiler.sh -c "$current_cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-        ./build.sh
-        popd
+# Check if the version.txt exists in ../flags
+if [ -f "$flags_version" ]; then
+    if ! diff -q "$flags_version" "$current_version" > /dev/null; then
+        update=true
     fi
+else
+    update=true
+fi
 
-    # Increment the counters
-    ((c_counter++))
-    ((cxx_counter++))
+# Compare the value of update variable
+if [ "$update" = true ]; then
+  ./check-compilers.sh
+  ./generate-flags.sh
+  ./link-flags.sh
+  cp "$current_version" "$flags_version"
+fi
 
-    # Reset the counters when reaching the end of a list
-    if [ "$c_counter" -ge "$max_c_iterations" ]; then
-        c_counter=0
-    fi
+# Read the C compilers from the file into an array
+c_compilers=()
+while IFS= read -r line; do
+    c_compilers+=("$line")
+done < "supported_c_compilers.txt"
 
-    if [ "$cxx_counter" -ge "$max_cxx_iterations" ]; then
-        cxx_counter=0
-    fi
+# Read the C++ compilers from the file into an array
+cxx_compilers=()
+while IFS= read -r line; do
+    cxx_compilers+=("$line")
+done < "supported_cxx_compilers.txt"
+
+# Get the length of the longest array
+max_length=${#c_compilers[@]}
+if [ ${#cxx_compilers[@]} -gt $max_length ]; then
+    max_length=${#cxx_compilers[@]}
+fi
+
+# Loop through the arrays
+for (( i = 0; i < max_length; i++ )); do
+    # If the current index is greater than the length of the C compiler array,
+    # we use the last element of the C compiler array
+    c_compiler_index=$(( i < ${#c_compilers[@]} ? i : ${#c_compilers[@]} - 1 ))
+
+    # Similarly, for the C++ compiler array
+    cxx_compiler_index=$(( i < ${#cxx_compilers[@]} ? i : ${#cxx_compilers[@]} - 1 ))
+
+    ./generate-cmakelists.sh
+    ./change-compiler.sh -c "${c_compilers[$c_compiler_index]}" -x "${cxx_compilers[$cxx_compiler_index]}" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+    ./build.sh
 done
-
-exit 0

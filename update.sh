@@ -64,6 +64,29 @@ fi
 
 ./check-env.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
 ./clone-repos.sh
+
+# Define the paths
+flags_version="../.flags/version.txt"
+current_version="./version.txt"
+update=false
+
+# Check if the version.txt exists in ../flags
+if [ -f "$flags_version" ]; then
+    if ! diff -q "$flags_version" "$current_version" > /dev/null; then
+        update=true
+    fi
+else
+    update=true
+fi
+
+# Compare the value of update variable
+if [ "$update" = true ]; then
+  ./check-compilers.sh
+  ./generate-flags.sh
+  ./link-flags.sh
+  cp "$current_version" "$flags_version"
+fi
+
 ./generate-cmakelists.sh
 ./change-compiler.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
 ./build.sh
