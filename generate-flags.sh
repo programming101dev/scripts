@@ -328,69 +328,94 @@ process_flags()
 
     # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Instrumentation-Options.html
     local instrumentation_flags=(
+      # address options
       #"-fsanitize=address"
-      "-fsanitize=memory"
-      #"-fsanitize=thread"
+      #"-fsanitize-address-use-after-scope"
+
+      # cfi options
+      #"-fsanitize=cfi"
+      #"-fsanitize-cfi-cross-dso"
+      #"-fsanitize-cfi-icall-generalize-pointers"
+      #"-fsanitize-cfi-icall-experimental-normalize-integers"
+
+      # dataflow options
+      #"-fsanitize=dataflow"
+
+      # hwaddress options
       #"-fsanitize=hwaddress"
-      "-fsanitize=pointer-compare"
-      "-fsanitize=pointer-subtract"
-      "-fsanitize=shadow-call-stack"
-#      "-fsanitize=leak"
-      "-fsanitize=undefined"
-      "-fsanitize=shift"
-      "-fsanitize=shift-exponent"
-      "-fsanitize=shift-base"
-      "-fsanitize=integer-divide-by-zero"
-      "-fsanitize=unreachable"
-      "-fsanitize=vla-bound"
-      "-fsanitize=null"
-      "-fsanitize=return"
-      "-fsanitize=signed-integer-overflow"
-      "-fsanitize=bounds"
-      "-fsanitize=bounds-strict"
-      "-fsanitize=alignment"
-      #"-fsanitize=object-size"
-      "-fsanitize=float-divide-by-zero"
-      "-fsanitize=float-cast-overflow"
-      "-fsanitize=nonnull-attribute"
-      "-fsanitize=returns-nonnull-attribute"
-      "-fsanitize=bool"
-      "-fsanitize=enum"
-      "-fsanitize=pointer-overflow"
-      "-fsanitize=builtin"
-      "-fsanitize-address-use-after-scope"
-      "-fsanitize-undefined-trap-on-error"
-      #"-fsanitize-coverage=trace-pc"
+
+      # integer options
+      #"-fsanitize=integer"
+
+      # leak options
+      #"-fsanitize=leak"
+
+      # memory options
+      #"-fsanitize=memory"
+
+      # undefined options
+      #"-fsanitize=undefined"
+      #"-fsanitize=alignment"
+      #"-fsanitize=bool"
+      #"-fsanitize=bounds"
+      #"-fsanitize=bounds-strict"
+      #"-fsanitize=builtin"
+      #"-fsanitize=enum"
+      #"-fsanitize=float-cast-overflow"
+      #"-fsanitize=float-divide-by-zero"
+      #"-fsanitize=function"
+      #"-fsanitize=integer-divide-by-zero"
+      #"-fsanitize=nonnull-attribute"
+      #"-fsanitize=null"
+      #"-fsanitize=pointer-compare"
+      #"-fsanitize=pointer-subtract"
+      #"-fsanitize=return"
+      #"-fsanitize=returns-nonnull-attribute"
+      #"-fsanitize=shift"
+      #"-fsanitize=shift-exponent"
+      #"-fsanitize=shift-base"
+      #"-fsanitize=signed-integer-overflow"
+      #"-fsanitize-undefined-trap-on-error"
+      #"-fsanitize=vla-bound"
+
+      # pointer-overflow options
+      #"-fsanitize=pointer-overflow"
+
+      # safe-stack options
+      #"-fsanitize=safe-stack"
+
+      # thread options
+      #"-fsanitize=thread"
+
+      # Miscellaneous options
+      "-faddrsig"
+      "-fbasic-block-sections=all"
       "-fharden-compares"
       "-fharden-conditional-branches"
+      "-fno-sanitize-ignorelist"
+      "-fno-sanitize-recover=all"
+      "-fno-stack-limit"
+      "-fsanitize=shadow-call-stack"
+      "-fsanitize-trap=all"
+      "-fsanitize=unreachable"
+      "-fstack-check"
+      "-fstack-clash-protection"
       "-fstack-protector"
       "-fstack-protector-all"
       "-fstack-protector-strong"
-      "-fstack-check"
-      "-fstack-clash-protection"
-      "-fno-stack-limit"
+      "-ftls-model=global-dynamic"
+      "-funique-internal-linkage-names"
+
+      #"-fsanitize=object-size"
+      #"-fsanitize-coverage=trace-pc"
       #"-fsplit-stack"
-      "-fsanitize=dataflow"
-      "-fsanitize=cfi"
-      "-fsanitize=function"
-      #"-fsanitize=safe-stack"
-      "-fno-sanitize-recover=all"
-      "-fsanitize-trap=all"
-      "-fno-sanitize-ignorelist"
       #-f[no-]sanitize-coverage=
       #-f[no-]sanitize-address-outline-instrumentation
       #-f[no-]sanitize-stats
-      "-fsanitize-cfi-cross-dso"
-      "-fsanitize-cfi-icall-generalize-pointers"
-      "-fsanitize-cfi-icall-experimental-normalize-integers"
-      "-ftls-model=global-dynamic"
       #-femulated-tls
       #-mhwdiv=
       #-m[no-]crc
       #-mgeneral-regs-only
-      "-faddrsig"
-      "-funique-internal-linkage-names"
-      "-fbasic-block-sections=all"
       ###-Winterference-size
     )
 
@@ -435,13 +460,21 @@ process_flags()
       warning_flags+=("-Wpointer-sign")
       warning_flags+=("-Wambiguous-member-template")
       warning_flags+=("-Wbind-to-temporary-copy")
-      instrumentation_flags+=("-fsanitize=vptr")
+
+      # C++ options
+      #instrumentation_flags+=("-fsanitize=vptr")
+
+      # VTable
       instrumentation_flags+=("-fvtable-verify=preinit")
       instrumentation_flags+=("-fvtv-debug")
       instrumentation_flags+=("-fstrict-vtable-pointers")
       instrumentation_flags+=("-fwhole-program-vtables")
-      instrumentation_flags+=("-f[no]split-lto-unit")
       instrumentation_flags+=("-fforce-emit-vtables")
+
+      # linker
+      #instrumentation_flags+=("-f[no]split-lto-unit")
+
+      # memory options
       instrumentation_flags+=("-fno-assume-sane-operator-new")
       instrumentation_flags+=("-fassume-nothrow-exception-dtor")
     fi

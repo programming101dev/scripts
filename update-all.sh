@@ -99,6 +99,8 @@ for (( i = 0; i < max_length; i++ )); do
     # Similarly, for the C++ compiler array
     cxx_compiler_index=$(( i < ${#cxx_compilers[@]} ? i : ${#cxx_compilers[@]} - 1 ))
 
+    echo "${c_compilers[$c_compiler_index]} : ${cxx_compilers[$cxx_compiler_index]}"
+
     ./generate-cmakelists.sh
     ./change-compiler.sh -c "${c_compilers[$c_compiler_index]}" -x "${cxx_compilers[$cxx_compiler_index]}" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
     ./build.sh
