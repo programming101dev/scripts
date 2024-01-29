@@ -24,12 +24,21 @@ detect_architecture()
 }
 
 # Function to check if a flag is supported by the compiler
-is_flag_supported() {
+is_flag_supported()
+{
     local compiler="$1"
     local flag="$2"
     local supported_flags_ref="$3"
 
-    if ("$compiler" "$flag" -E - < /dev/null &> /dev/null); then
+    local extra_flags=""
+
+    # If the compiler is Clang, set the extra flags
+    if [[ "$compiler" == clang* ]]; then
+        extra_flags="-Winvalid-command-line-argument -Wunused-command-line-argument"
+    fi
+
+    # Check if the flag is supported by the compiler, including extra flags if set
+    if ("$compiler" "$flag" $extra_flags -Werror -E - < /dev/null &> /dev/null); then
         echo "Flag '$flag' is supported by $compiler."
         eval "$supported_flags_ref+=('$flag')"
     else
@@ -95,8 +104,6 @@ process_flags()
 
     # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Static-Analyzer-Options.html
     local analyzer_flags=(
-        "--analyzer"
-        "-Xanalyzer"
         "-fanalyzer"
         "-Wanalyzer-allocation-size"
         "-Wanalyzer-deref-before-check"
@@ -128,7 +135,7 @@ process_flags()
         "-Wanalyzer-shift-count-overflow"
         "-Wanalyzer-stale-setjmp-buffer"
         "-Wanalyzer-symbol-too-complex"
-        "-Wanalyzer-too-complex"
+#        "-Wanalyzer-too-complex"
         "-fanalyzer-transitivity"
         "-Wanalyzer-unsafe-call-within-signal-handler"
         "-Wanalyzer-use-after-free"
@@ -159,7 +166,7 @@ process_flags()
         "-fdebug-types-section"
         "-grecord-gcc-switches"
         "-gas-loc-support"
-        "-gas-locview-support"
+#        "-gas-locview-support"
         "-gcolumn-info"
         "-gstatement-frontiers"
         "-gvariable-location-views"
@@ -170,7 +177,7 @@ process_flags()
         "-glldb"
         "-fno-discard-value-names"
     )
-##-femit-class-debug-always
+    ##-femit-class-debug-always
 
     local optimization_flags=(
       "-O0"
@@ -212,7 +219,7 @@ process_flags()
       "-fsanitize-trap=all"
       "-fsanitize=unreachable"
       "-fstack-check"
-      "-fstack-clash-protection"
+#      "-fstack-clash-protection"
       "-fstack-protector"
       "-fstack-protector-all"
       "-fstack-protector-strong"
@@ -233,6 +240,7 @@ process_flags()
     )
 
     # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Warning-Options.html
+    # https://clang.llvm.org/docs/DiagnosticsReference.html#wanalyzer-incompatible-plugin
     local warning_flags=(
       "-Wno-poison-system-directories"
       "-Wno-invalid-command-line-argument"
@@ -293,7 +301,7 @@ process_flags()
       "-Wmaybe-uninitialized"
       "-Wunknown-pragmas"
       "-Wstrict-aliasing"
-      "-Wstrict-overflow=5"
+#      "-Wstrict-overflow=5"
       "-Wstring-compare"
       "-Wstringop-overflow=4"
       "-Wstrict-flex-arrays"
@@ -302,6 +310,8 @@ process_flags()
       "-Wsuggest-attribute=noreturn"
       "-Wmissing-noreturn"
       "-Wsuggest-attribute=malloc"
+      "-Wsuggest-attribute=returns_nonnull"
+      "-Wno-suggest-attribute=returns_nonnull"
       "-Wsuggest-attribute=format"
       "-Wmissing-format-attribute"
       "-Wsuggest-attribute=cold"
@@ -373,7 +383,7 @@ process_flags()
       "-Wint-in-bool-context"
       "-Winvalid-pch"
       "-Winvalid-utf8"
-      "-Wlong-long"
+      # "-Wlong-long"
       "-Wvector-operation-performance"
       "-Wvla"
       "-Wvla-parameter"
@@ -385,6 +395,65 @@ process_flags()
       "-Weverything"
       "-Wno-unsafe-buffer-usage"
       ###-Wstack-protector
+      "-W#pragma-messages"
+      "-W#warnings"
+      "-WCFString-literal"
+      "-WCL4"
+      "-Waddress-of-packed-member"
+      "-Waddress-of-temporary"
+      "-Walign-mismatch"
+      "-Walloca-with-align-alignof"
+      "-Walways-inline-coroutine"
+      "-Wambiguous-ellipsis"
+      "-Wambiguous-macro"
+      "-Wanalyzer-incompatible-plugin"
+      "-Wanon-enum-enum-conversion"
+      "-Wapinotes"
+      "-Wargument-outside-range"
+      "-Wargument-undefined-behaviour"
+      "-Warray-bounds-pointer-arithmetic"
+      "-Wasm-operand-widths"
+      "-Wassign-enum"
+      "-Wassume"
+      "-Wat-protocol"
+      "-Watimport-in-framework-header"
+      "-Watomic-access"
+      "-Watomic-alignment"
+      "-Watomic-implicit-seq-cst"
+      "-Watomic-memory-ordering"
+      "-Watomic-properties"
+      "-Wattribute-packed-for-bitfield"
+      "-Wattribute-warning"
+      "-Wattributes"
+      "-Wauto-decl-extensions"
+      "-Wauto-import"
+      "-Wavailability"
+      "-Wavr-rtlib-linking-quirks"
+      "-Wbackend-plugin"
+      "-Wbackslash-newline-escape"
+      "-Wbinary-literal"
+      "-Wbit-int-extension"
+      "-Wbitfield-constant-conversion"
+      "-Wbitfield-enum-conversion"
+      "-Wbitfield-width"
+      "-Wbitwise-conditional-parentheses"
+      "-Wbitwise-instead-of-logical"
+      "-Wbitwise-op-parentheses"
+      "-Wblock-capture-autoreleasing"
+      "-Wbool-conversion"
+      "-Wbool-operation"
+      "-Wbraced-scalar-init"
+      "-Wbranch-protection"
+      "-Wbridge-cast"
+      "-Wbuiltin-assume-aligned-alignment"
+      "-Wbuiltin-macro-redefined"
+      "-Wbuiltin-memcpy-chk-size"
+      "-Wbuiltin-requires-header"
+      "-Wcalled-once-parameter"
+      "-Wcast-calling-convention"
+      "-Wcast-function-type-strict"
+      "-Wcast-of-sel-type"
+      "-Wcast-qual-unrelated"
     )
 
     # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Instrumentation-Options.html
@@ -411,6 +480,18 @@ process_flags()
     local memory_sanitizer_flags=(
         "-fsanitize=memory"
     )
+
+    local pointer_overflow_sanitizer_flags=(
+          "-fsanitize=pointer-overflow"
+      )
+
+    local safe_stack_flags=(
+          "--fsanitize=safe-stack"
+      )
+
+    local thread_sanitizer_flags=(
+          "-fsanitize=thread"
+      )
 
     local undefined_sanitizer_flags=(
         "-fsanitize=undefined"
@@ -462,30 +543,25 @@ process_flags()
         warning_flags+=("-Woverride-init")
         warning_flags+=("-Wpointer-to-int-cast")
     else
-        warning_flags+=("-Wduplicate-decl-specifier")
-        warning_flags+=("-Wimplicit")
-        warning_flags+=("-Wtraditional")
-        warning_flags+=("-Wtraditional-conversion")
-        warning_flags+=("-Wdeclaration-after-statement")
-        warning_flags+=("-Wabsolute-value")
-        warning_flags+=("-Wbad-function-cast")
-        warning_flags+=("-Wenum-int-mismatch")
-        warning_flags+=("-Wjump-misses-init")
-        warning_flags+=("-Wstrict-prototypes")
-        warning_flags+=("-Wold-style-declaration")
-        warning_flags+=("-Wmissing-parameter-type")
-        warning_flags+=("-Wmissing-prototypes")
-        warning_flags+=("-Woverride-init")
-        warning_flags+=("-Wnested-externs")
-        warning_flags+=("-Wpointer-sign")
         warning_flags+=("-Wambiguous-member-template")
         warning_flags+=("-Wbind-to-temporary-copy")
+        warning_flags+=("-Wabstract-final-class")
+        warning_flags+=("-Wabstract-vbase-init")
+        warning_flags+=("-Wambiguous-delete")
+        warning_flags+=("-Wambiguous-reversed-operator")
+        warning_flags+=("-Wanonymous-pack-parens")
+        warning_flags+=("-Wauto-disable-vptr-sanitizer")
+        warning_flags+=("-Wauto-storage-class")
+        warning_flags+=("-Wauto-var-id")
+        warning_flags+=("-Wbind-to-temporary-copy")
+        warning_flags+=("-Wbinding-in-condition")
+        warning_flags+=("-Wcall-to-pure-virtual-from-ctor-dtor")
 
         # C++ options
         #instrumentation_flags+=("-fsanitize=vptr")
 
         # VTable
-        instrumentation_flags+=("-fvtable-verify=preinit")
+        #instrumentation_flags+=("-fvtable-verify=preinit")
         instrumentation_flags+=("-fvtv-debug")
         instrumentation_flags+=("-fstrict-vtable-pointers")
         instrumentation_flags+=("-fwhole-program-vtables")
@@ -524,6 +600,9 @@ process_flags()
     process_sanitizer_category "$compiler" "dataflow_sanitizer" "dataflow_sanitizer_flags"
     process_sanitizer_category "$compiler" "hwaddress_sanitizer" "hwaddress_sanitizer_flags"
     process_sanitizer_category "$compiler" "memory_sanitizer" "memory_sanitizer_flags"
+    process_sanitizer_category "$compiler" "pointer_overflow_sanitizer_flags" "pointer_overflow_sanitizer_flags"
+    process_sanitizer_category "$compiler" "safe_stack_flags" "safe_stack_flags"
+    process_sanitizer_category "$compiler" "thread_sanitizer_flags" "thread_sanitizer_flags"
     process_sanitizer_category "$compiler" "undefined_sanitizer" "undefined_sanitizer_flags"
 }
 
