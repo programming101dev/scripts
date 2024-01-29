@@ -156,8 +156,6 @@ process_flags()
         "-g3"
         "-ggdb"
         "-ggdb3"
-        "-gbtf"
-        "-gctf2"
         "-fvar-tracking"
         "-fvar-tracking-assignments"
         "-gdescribe-die"
