@@ -458,6 +458,7 @@ process_flags()
     local address_sanitizer_flags=(
         "-fsanitize=address"
         "-fsanitize-address-use-after-scope"
+        "-fsanitize=leak"
     )
 
     local cfi_sanitizer_flags=(
@@ -598,7 +599,7 @@ process_flags()
     process_sanitizer_category "$compiler" "dataflow_sanitizer" "dataflow_sanitizer_flags"
     process_sanitizer_category "$compiler" "hwaddress_sanitizer" "hwaddress_sanitizer_flags"
     process_sanitizer_category "$compiler" "memory_sanitizer" "memory_sanitizer_flags"
-    process_sanitizer_category "$compiler" "pointer_overflow_sanitizer_flags" "pointer_overflow_sanitizer_flags"
+    process_sanitizer_category "$compiler" "pointer_overflow_sanitizer" "pointer_overflow_sanitizer_flags"
     process_sanitizer_category "$compiler" "safe_stack_flags" "safe_stack_flags"
     process_sanitizer_category "$compiler" "thread_sanitizer_flags" "thread_sanitizer_flags"
     process_sanitizer_category "$compiler" "undefined_sanitizer" "undefined_sanitizer_flags"
