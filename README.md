@@ -54,8 +54,8 @@ To setup the system the first time, run:
 
 To the see the list of possible compilers:
 ```bash
-cat supported_c_compilers
-cat supported_cxx_compilers
+cat supported_c_compilers.txt
+cat supported_cxx_compilers.txt
 ```
 
 ## **Running the update.sh Script**
