@@ -84,6 +84,7 @@ if [ "$update" = true ]; then
   ./check-compilers.sh
   ./generate-flags.sh
   ./link-flags.sh
+  ./link-compilers.sh
   cp "$current_version" "$flags_version"
 fi
 

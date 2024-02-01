@@ -67,6 +67,7 @@ fi
 ./check-compilers.sh
 ./generate-flags.sh
 ./link-flags.sh
+./link-compilers.sh
 ./generate-cmakelists.sh
 ./change-compiler.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
 ./build.sh
