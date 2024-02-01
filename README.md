@@ -1,4 +1,4 @@
-# c-examples Repository Guide
+# scripts Repository Guide
 
 Welcome to the `scripts` repository. This guide will help you set up and run the provided scripts.
 
