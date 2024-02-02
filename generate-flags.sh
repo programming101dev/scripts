@@ -213,7 +213,6 @@ process_flags()
       "-fno-sanitize-ignorelist"
       "-fno-sanitize-recover=all"
       "-fno-stack-limit"
-      "-fsanitize=shadow-call-stack"
       "-fsanitize-trap=all"
       "-fsanitize=unreachable"
       "-fstack-check"
@@ -574,10 +573,11 @@ process_flags()
         instrumentation_flags+=("-fassume-nothrow-exception-dtor")
     fi
 
-    if [[ $compiler == "arm64" ]]; then
+    if [[ "$darwin_architecture" == "arm64" ]]; then
         instrumentation_flags+=("-fcf-protection=null")
     else
         instrumentation_flags+=("-fcf-protection=full")
+        instrumentation_flags+=("-fsanitize=shadow-call-stack")
     fi
 
     echo "Checking: $compiler"
