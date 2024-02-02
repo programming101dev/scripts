@@ -575,7 +575,7 @@ process_flags()
 
     if [[ "$darwin_architecture" == "arm64" ]]; then
         instrumentation_flags+=("-fcf-protection=null")
-        
+
         if [[ "$compiler" == "gcc-13" ]]; then
             address_sanitizer_flags=()
         fi
