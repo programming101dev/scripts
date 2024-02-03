@@ -222,6 +222,7 @@ process_flags()
       "-fstack-protector-strong"
       "-ftls-model=global-dynamic"
       "-funique-internal-linkage-names"
+      "-Wno-thread-safety-negative"
 
       #"-fsanitize=object-size"
       #"-fsanitize-coverage=trace-pc"
