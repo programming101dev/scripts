@@ -452,6 +452,7 @@ process_flags()
       "-Wcast-of-sel-type"
       "-Wcast-qual-unrelated"
       "-Wno-thread-safety-analysis"
+      "-Wno-thread-safety-negative"
     )
 
     # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Instrumentation-Options.html
