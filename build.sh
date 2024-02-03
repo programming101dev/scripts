@@ -16,6 +16,10 @@ for repo in "${repos[@]}"; do
     echo "Processing $dir ($repo_type)"
     pushd "$dir" || continue
 
+    if [ -f "uninstall.sh" ]; then
+      ./uninstall.sh
+    fi
+
     ./build.sh
 
     if [ -f "install.sh" ]; then
