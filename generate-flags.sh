@@ -452,14 +452,13 @@ process_flags()
       "-Wcast-of-sel-type"
       "-Wcast-qual-unrelated"
       "-Wno-thread-safety-analysis"
-      "-Wno-thread-safety-negative"
     )
 
     # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Instrumentation-Options.html
     local address_sanitizer_flags=(
         "-fsanitize=address"
         "-fsanitize-address-use-after-scope"
-        "-fsanitize=leak"
+        "-fsanitize=leakc d "
     )
 
     local cfi_sanitizer_flags=(
