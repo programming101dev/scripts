@@ -48,6 +48,7 @@ while getopts ":f:t:k:" opt; do
   esac
 done
 
+./pull.sh
 ./clone-repos.sh
 
 # Define the paths
@@ -101,6 +102,7 @@ for (( i = 0; i < max_length; i++ )); do
 
     echo "${c_compilers[$c_compiler_index]} : ${cxx_compilers[$cxx_compiler_index]}"
 
+    ./check-env.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
     ./generate-cmakelists.sh
     ./change-compiler.sh -c "${c_compilers[$c_compiler_index]}" -x "${cxx_compilers[$cxx_compiler_index]}" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
     ./build.sh
