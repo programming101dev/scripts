@@ -3,8 +3,6 @@
 # Exit the script if any command fails
 set -e
 
-c_compiler=""
-cxx_compiler=""
 clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
@@ -22,12 +20,6 @@ usage()
 # Parse command-line options using getopt
 while getopts ":f:t:k:" opt; do
   case $opt in
-    c)
-      c_compiler="$OPTARG"
-      ;;
-    x)
-      cxx_compiler="$OPTARG"
-      ;;
     f)
       clang_format_name="$OPTARG"
       ;;
@@ -101,6 +93,8 @@ for (( i = 0; i < max_length; i++ )); do
     cxx_compiler_index=$(( i < ${#cxx_compilers[@]} ? i : ${#cxx_compilers[@]} - 1 ))
 
     echo "${c_compilers[$c_compiler_index]} : ${cxx_compilers[$cxx_compiler_index]}"
+    c_compiler="${c_compilers[$c_compiler_index]}"
+    cxx_compiler="${cxx_compilers[$cxx_compiler_index]}"
 
     ./check-env.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
     ./generate-cmakelists.sh
