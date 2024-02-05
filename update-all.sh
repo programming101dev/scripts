@@ -98,6 +98,6 @@ for (( i = 0; i < max_length; i++ )); do
 
     ./check-env.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
     ./generate-cmakelists.sh
-    ./change-compiler.sh -c "${c_compilers[$c_compiler_index]}" -x "${cxx_compilers[$cxx_compiler_index]}" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+    ./change-compiler.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
     ./build.sh
 done
