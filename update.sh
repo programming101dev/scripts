@@ -62,6 +62,7 @@ if [ -z "$cxx_compiler" ]; then
   usage
 fi
 
+./pull.sh
 ./check-env.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
 ./clone-repos.sh
 
@@ -69,6 +70,7 @@ fi
 flags_version="../.flags/version.txt"
 current_version="./version.txt"
 update=false
+
 
 # Check if the version.txt exists in ../flags
 if [ -f "$flags_version" ]; then
