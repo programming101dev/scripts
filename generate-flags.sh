@@ -222,7 +222,6 @@ process_flags()
       "-fstack-protector-strong"
       "-ftls-model=global-dynamic"
       "-funique-internal-linkage-names"
-      "-Wno-thread-safety-negative"
 
       #"-fsanitize=object-size"
       #"-fsanitize-coverage=trace-pc"
@@ -453,6 +452,7 @@ process_flags()
       "-Wcast-of-sel-type"
       "-Wcast-qual-unrelated"
       "-Wno-thread-safety-analysis"
+      "-Wno-thread-safety-negative"
     )
 
     # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Instrumentation-Options.html
