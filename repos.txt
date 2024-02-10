@@ -6,6 +6,7 @@ https://github.com/programming101dev/lib_posix_xsi.git|../libraries/lib_posix_xs
 https://github.com/programming101dev/lib_posix_optional.git|../libraries/lib_posix_optional|c
 https://github.com/programming101dev/lib_unix.git|../libraries/lib_unix|c
 https://github.com/programming101dev/lib_fsm.git|../libraries/lib_fsm|c
+https://github.com/programming101dev/lib_convert.git|../libraries/lib_convert|c
 https://github.com/programming101dev/c-examples.git|../examples/c-examples|c
 https://github.com/programming101dev/lib_error_examples.git|../examples/lib_error_examples|c
 https://github.com/programming101dev/lib_env_examples.git|../examples/lib_env_examples|c

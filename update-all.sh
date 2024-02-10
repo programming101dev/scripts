@@ -61,9 +61,11 @@ fi
 if [ "$update" = true ]; then
   ./check-compilers.sh
   ./generate-flags.sh
-  ./link-flags.sh
   cp "$current_version" "$flags_version"
 fi
+
+./link-flags.sh
+./link-compilers.sh
 
 # Read the C compilers from the file into an array
 c_compilers=()
