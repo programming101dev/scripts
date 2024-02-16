@@ -7,38 +7,32 @@ create_symlinks() {
     local cxx_compilers_file="${current_dir}/supported_cxx_compilers.txt"  # Absolute path to the C++ compilers file
     local repos_file="repos.txt"  # File with repository information
 
-    # Read target directories from repos.txt file
-    local target_dirs=()
+    # Read target directories and types from repos.txt file
     while IFS='|' read -r repo_url dir repo_type; do
-        target_dirs+=("$dir")
+        # Determine which compiler file to link based on repo_type
+        case "$repo_type" in
+            c)
+                local symlink_target="${c_compilers_file}"
+                local symlink_location="${dir}/supported_c_compilers.txt"
+                ;;
+            cxx)
+                local symlink_target="${cxx_compilers_file}"
+                local symlink_location="${dir}/supported_cxx_compilers.txt"
+                ;;
+            *)
+                echo "Unsupported repo type for $dir. Skipping."
+                continue
+                ;;
+        esac
+
+        # Check if symlink already exists and create it if not
+        if [ -L "$symlink_location" ] || [ -e "$symlink_location" ]; then
+            echo "Symlink at $symlink_location already exists. Skipping."
+        else
+            ln -s "$symlink_target" "$symlink_location"
+            echo "Created symlink at $symlink_location"
+        fi
     done < "$repos_file"
-
-    # Create symlinks in each target directory for both files
-    for dir in "${target_dirs[@]}"; do
-        # For supported_c_compilers.txt
-        local symlink_target_c="${c_compilers_file}"
-        local symlink_location_c="${dir}/supported_c_compilers.txt"
-
-        # For supported_cxx_compilers.txt
-        local symlink_target_cxx="${cxx_compilers_file}"
-        local symlink_location_cxx="${dir}/supported_cxx_compilers.txt"
-
-        # Check if C compilers symlink already exists and create it if not
-        if [ -L "$symlink_location_c" ] || [ -e "$symlink_location_c" ]; then
-            echo "Symlink for C compilers at $symlink_location_c already exists. Skipping."
-        else
-            ln -s "$symlink_target_c" "$symlink_location_c"
-            echo "Created symlink for C compilers at $symlink_location_c"
-        fi
-
-        # Check if C++ compilers symlink already exists and create it if not
-        if [ -L "$symlink_location_cxx" ] || [ -e "$symlink_location_cxx" ]; then
-            echo "Symlink for C++ compilers at $symlink_location_cxx already exists. Skipping."
-        else
-            ln -s "$symlink_target_cxx" "$symlink_location_cxx"
-            echo "Created symlink for C++ compilers at $symlink_location_cxx"
-        fi
-    done
 }
 
 create_symlinks
