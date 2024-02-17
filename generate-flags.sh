@@ -571,61 +571,6 @@ process_flags()
         "-fsanitize=vla-bound"
     )
 
-#    if [[ $language == "c" ]]; then
-#        warning_flags+=("-Wbad-function-cast")
-#        warning_flags+=("-Wdeclaration-after-statement")
-#        warning_flags+=("-Wenum-int-mismatch")
-#        warning_flags+=("-Wimplicit")
-#        warning_flags+=("-Wjump-misses-init")
-#        warning_flags+=("-Wmissing-parameter-type")
-#        warning_flags+=("-Wmissing-prototypes")
-#        warning_flags+=("-Wnested-externs")
-#        warning_flags+=("-Wold-style-declaration")
-#        warning_flags+=("-Wold-style-definition")
-#        warning_flags+=("-Wpointer-sign")
-#        warning_flags+=("-Wstrict-prototypes")
-#        warning_flags+=("-Wc++-compat")
-#        warning_flags+=("-Wabsolute-value")
-#        warning_flags+=("-Wduplicate-decl-specifier")
-#        warning_flags+=("-Wimplicit-function-declaration")
-#        warning_flags+=("-Wimplicit-int")
-#        warning_flags+=("-Wincompatible-pointer-types")
-#        warning_flags+=("-Wint-conversion")
-#        warning_flags+=("-Woverride-init")
-#        warning_flags+=("-Wpointer-to-int-cast")
-#    else
-#        warning_flags+=("-Wambiguous-member-template")
-#        warning_flags+=("-Wbind-to-temporary-copy")
-#        warning_flags+=("-Wabstract-final-class")
-#        warning_flags+=("-Wabstract-vbase-init")
-#        warning_flags+=("-Wambiguous-delete")
-#        warning_flags+=("-Wambiguous-reversed-operator")
-#        warning_flags+=("-Wanonymous-pack-parens")
-#        warning_flags+=("-Wauto-disable-vptr-sanitizer")
-#        warning_flags+=("-Wauto-storage-class")
-#        warning_flags+=("-Wauto-var-id")
-#        warning_flags+=("-Wbind-to-temporary-copy")
-#        warning_flags+=("-Wbinding-in-condition")
-#        warning_flags+=("-Wcall-to-pure-virtual-from-ctor-dtor")
-
-        # C++ options
-        #instrumentation_flags+=("-fsanitize=vptr")
-
-        # VTable
-        #instrumentation_flags+=("-fvtable-verify=preinit")
-#        instrumentation_flags+=("-fvtv-debug")
-#        instrumentation_flags+=("-fstrict-vtable-pointers")
-#        instrumentation_flags+=("-fwhole-program-vtables")
-#        instrumentation_flags+=("-fforce-emit-vtables")
-
-        # linker
-        #instrumentation_flags+=("-f[no]split-lto-unit")
-
-        # memory options
-#        instrumentation_flags+=("-fno-assume-sane-operator-new")
-#        instrumentation_flags+=("-fassume-nothrow-exception-dtor")
- #   fi
-
     if [[ "$darwin_architecture" == "arm64" ]]; then
         instrumentation_flags+=("-fcf-protection=null")
 
