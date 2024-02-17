@@ -251,7 +251,6 @@ process_flags()
       "-fforce-emit-vtables"
       "-fno-assume-sane-operator-new"
       "-fassume-nothrow-exception-dtor"
-      "-fsanitize=shadow-call-stack"
     )
 
     # https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Warning-Options.html
@@ -635,7 +634,7 @@ process_flags()
         fi
     else
         instrumentation_flags+=("-fcf-protection=full")
-#        instrumentation_flags+=("-fsanitize=shadow-call-stack")
+        instrumentation_flags+=("-fsanitize=shadow-call-stack")
     fi
 
     echo "Checking: $compiler"
