@@ -669,7 +669,21 @@ tmp_c_src=$(mktemp "/tmp/test_src_XXXXXX.c")
 echo "int main(void) { return 0; }" > "$tmp_c_src"
 
 tmp_cxx_src=$(mktemp "/tmp/test_src_XXXXXX.cpp")
-echo "int main(void) { return 0; }" > "$tmp_cxx_src"
+echo "#include <iostream>
+
+class SimpleClass {
+public:
+    virtual void greet() {
+        std::cout << \"Hello, world!\" << std::endl;
+    }
+    virtual ~SimpleClass() {} // Including a virtual destructor for good practice
+};
+
+int main() {
+    SimpleClass obj;
+    obj.greet();
+    return 0;
+}" > "$tmp_cxx_src"
 
 trap "rm -f '$tmp_c_src' '$tmp_cxx_src'" EXIT
 
