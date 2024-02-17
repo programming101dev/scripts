@@ -38,7 +38,7 @@ is_flag_supported()
     fi
 
     # Attempt to compile and link the temporary source file with the specified flag
-    if $compiler $flag $extra_flags -Werror -o /tmp/test_output "$tmp_src" &> /dev/null; then
+    if $compiler -Werror $extra_flags $flag -o /tmp/test_output "$tmp_src" &> /dev/null; then
         if [[ -f /tmp/test_output ]]; then
             echo "Flag '$flag' is supported by $compiler."
             eval "$supported_flags_ref+=('$flag')"
@@ -49,7 +49,6 @@ is_flag_supported()
         echo "Flag '$flag' is not supported by $compiler."
     fi
 
-    # Clean up the test output to prevent accumulation of temporary files
     rm -f /tmp/test_output
 }
 
