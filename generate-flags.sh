@@ -1203,7 +1203,7 @@ process_flags()
       "-Wtemplate-in-declaration-name"
       "-Wtentative-definition-incomplete-type"
       "-Wthread-safety"
-      "-Wthread-safety-analysis"
+# TODO - fails on FreeBSD      "-Wthread-safety-analysis"
       "-Wthread-safety-attributes"
       "-Wthread-safety-beta"
       "-Wthread-safety-negative"
