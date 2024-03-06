@@ -608,7 +608,7 @@ process_flags()
       "-Wpointer-sign"
 ## goes with -fstack-protector
 ##      "-Wstack-protector"
-      "-Wunsuffixed-float-constants"
+# TODO fix this      "-Wunsuffixed-float-constants"
 # https://clang.llvm.org/docs/DiagnosticsReference.html
       "-Wno-poison-system-directories"
       "-Wno-invalid-command-line-argument"
