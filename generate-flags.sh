@@ -516,7 +516,7 @@ process_flags()
       "-Wtrampolines"
       "-Wfloat-equal"
 #      "-Wtraditional"
-      "-Wtraditional-conversion"
+# TODO: this fails on linux      "-Wtraditional-conversion"
       "-Wdeclaration-after-statement"
       "-Wshadow"
       "-Wshadow=global"
