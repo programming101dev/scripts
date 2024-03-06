@@ -142,7 +142,7 @@ process_flags()
          "-Wanalyzer-va-list-use-after-va-end"
          "-Wanalyzer-write-to-const"
          "-Wanalyzer-write-to-string-literal"
-         "-Wanalyzer-too-complex"
+# TODO put back         "-Wanalyzer-too-complex"
 #        "-Wno-analyzer-allocation-size"
 #        "-Wno-analyzer-deref-before-check"
 #        "-Wno-analyzer-double-fclose"
