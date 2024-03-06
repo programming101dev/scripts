@@ -352,7 +352,7 @@ process_flags()
 #        "-fstack-protector-strong"
         "-fstack-protector-explicit"
         "-fstack-check"
-        "-fstack-clash-protection"
+# TODO this and the one above are mutually exclusive        "-fstack-clash-protection"
 #        "-fstack-limit-register=reg"
 #        "-fstack-limit-symbol=sym"
 #        "-fno-stack-limit"
