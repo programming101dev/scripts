@@ -195,7 +195,7 @@ process_flags()
 #        "-ftrapv"
 #        "-fwrapv"
 #        "-fwrapv-pointer"
-        "-fstrict-overflow"
+# TODO add back in        "-fstrict-overflow"
 #        "-fexceptions"
 #        "-fnon-call-exceptions"
         "-fdelete-dead-exceptions"
