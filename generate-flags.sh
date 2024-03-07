@@ -111,7 +111,7 @@ process_flags()
          "-Wanalyzer-exposure-through-uninit-copy"
          "-Wanalyzer-fd-access-mode-mismatch"
          "-Wanalyzer-fd-double-close"
-         "-Wanalyzer-fd-leak"
+# TODO too many false positives         "-Wanalyzer-fd-leak"
          "-Wanalyzer-fd-phase-mismatch"
          "-Wanalyzer-fd-type-mismatch"
          "-Wanalyzer-fd-use-after-close"
