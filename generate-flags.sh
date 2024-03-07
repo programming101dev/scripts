@@ -356,7 +356,7 @@ process_flags()
 #        "-fstack-limit-register=reg"
 #        "-fstack-limit-symbol=sym"
 #        "-fno-stack-limit"
-        "-fsplit-stack"
+# TODO clang on linux says no        "-fsplit-stack"
         "-fvtable-verify=std"
 #        "-fvtable-verify=preinit"
 #        "-fvtable-verify=none"
