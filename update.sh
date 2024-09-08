@@ -71,7 +71,6 @@ flags_version="../.flags/version.txt"
 current_version="./version.txt"
 update=false
 
-
 # Check if the version.txt exists in ../flags
 if [ -f "$flags_version" ]; then
     if ! diff -q "$flags_version" "$current_version" > /dev/null; then
