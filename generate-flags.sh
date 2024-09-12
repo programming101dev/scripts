@@ -1506,7 +1506,7 @@ int main() {
     return 0;
 }" > "$tmp_cxx_src"
 
-trap "rm -f '$tmp_c_src' '$tmp_cxx_src'" EXIT
+trap "rm -f '$tmp_c_src' '$tmp_cxx_src' '*.gcno'" EXIT
 
 # Read the list of supported compilers and process each
 supported_c_compilers=()
