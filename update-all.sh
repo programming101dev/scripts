@@ -6,7 +6,7 @@ set -e
 clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
-sanitiers=""
+sanitizers=""
 
 # Function to display script usage
 usage()
@@ -15,7 +15,7 @@ usage()
     echo "  -f clang-format   Specify the clang-format name (e.g. clang-tidy or clang-tidy-17)"
     echo "  -t clang-tidy     Specify the clang-tidy name (e.g. clang-tidy or clang-tidy-17)"
     echo "  -k cppcheck       Specify the cppcheck name (e.g. cppcheck)"
-    echo "  -s sanitizers     Specify the sanitiers to use name (e.g. address,undefined)"
+    echo "  -s sanitizers     Specify the sanitizers to use name (e.g. address,undefined)"
     exit 1
 }
 
@@ -103,8 +103,8 @@ for (( i = 0; i < max_length; i++ )); do
     c_compiler="${c_compilers[$c_compiler_index]}"
     cxx_compiler="${cxx_compilers[$cxx_compiler_index]}"
 
-    ./check-env.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitiers"
+    ./check-env.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
     ./generate-cmakelists.sh
-    ./change-compiler.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitiers"
+    ./change-compiler.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
     ./build.sh
 done

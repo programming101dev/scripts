@@ -8,7 +8,7 @@ cxx_compiler=""
 clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
-sanitiers=""
+sanitizers=""
 
 # Function to display script usage
 usage()
@@ -19,7 +19,7 @@ usage()
     echo "  -f clang-format   Specify the clang-format name (e.g. clang-tidy or clang-tidy-17)"
     echo "  -t clang-tidy     Specify the clang-tidy name (e.g. clang-tidy or clang-tidy-17)"
     echo "  -k cppcheck       Specify the cppcheck name (e.g. cppcheck)"
-    echo "  -s sanitizers     Specify the sanitiers to use name (e.g. address,undefined)"
+    echo "  -s sanitizers     Specify the sanitizers to use name (e.g. address,undefined)"
     exit 1
 }
 
@@ -68,7 +68,7 @@ if [ -z "$cxx_compiler" ]; then
 fi
 
 ./pull.sh
-./check-env.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitiers"
+./check-env.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
 ./clone-repos.sh
 
 # Define the paths
@@ -95,5 +95,5 @@ fi
 ./link-flags.sh
 ./link-compilers.sh
 ./generate-cmakelists.sh
-./change-compiler.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitiers"
+./change-compiler.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
 ./build.sh
