@@ -8,20 +8,22 @@ cxx_compiler=""
 clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
+sanitiers=""
 
 usage()
 {
-    echo "Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>]"
+    echo "Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>]"
     echo "  -c c compiler     Specify the C compiler name (e.g., gcc or clang)"
     echo "  -x cxx compiler   Specify the C++ compiler name (e.g., g++ or clang++)"
     echo "  -f clang-format   Specify the clang-format name (e.g., clang-tidy or clang-tidy-17)"
     echo "  -t clang-tidy     Specify the clang-tidy name (e.g., clang-tidy or clang-tidy-17)"
     echo "  -k cppcheck       Specify the cppcheck name (e.g., cppcheck)"
+    echo "  -s sanitizers     Specify the sanitiers to use name (e.g. address,undefined)"
     exit 1
 }
 
 # Parse command-line options using getopt
-while getopts ":c:x:f:t:k:" opt; do
+while getopts ":c:x:f:t:k:s:" opt; do
   case $opt in
     c)
       c_compiler="$OPTARG"
@@ -37,6 +39,9 @@ while getopts ":c:x:f:t:k:" opt; do
       ;;
     k)
       cppcheck_name="$OPTARG"
+      ;;
+    s)
+      sanitizers="$OPTARG"
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
@@ -61,15 +66,17 @@ if [ -z "$cxx_compiler" ]; then
   usage
 fi
 
+echo "$sanitiers" > $sanitiers.txt
+
 # Read directories and types from repos.txt
 while IFS='|' read -r repo_url dir repo_type; do
     echo "Working on $dir ($repo_type)"
     if pushd "$dir" >/dev/null 2>&1; then
         # Check if it's a C or C++ repository and execute the appropriate command
         if [ "$repo_type" = "c" ]; then
-            ./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+            ./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitiers"
         elif [ "$repo_type" = "cxx" ]; then
-            ./change-compiler.sh -c "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+            ./change-compiler.sh -c "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitiers"
         fi
         popd >/dev/null 2>&1
     else
