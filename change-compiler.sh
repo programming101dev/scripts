@@ -66,7 +66,7 @@ if [ -z "$cxx_compiler" ]; then
   usage
 fi
 
-echo "sanitizers" > sanitizers.txt
+echo "$sanitizers" > sanitizers.txt
 
 # Read directories and types from repos.txt
 while IFS='|' read -r repo_url dir repo_type; do
