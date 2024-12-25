@@ -8,7 +8,7 @@ cxx_compiler=""
 clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
-sanitizers="address,undefined,leak"
+sanitizers="address,leak,pointer_overflow,undefined"
 
 usage()
 {
