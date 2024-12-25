@@ -6,7 +6,7 @@ set -e
 clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
-sanitizers=""
+sanitizers="address,leak,pointer_overflow,undefined"
 
 # Function to display script usage
 usage()
