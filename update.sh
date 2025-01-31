@@ -111,5 +111,5 @@ fi
 ./link-flags.sh
 ./link-compilers.sh
 
-./build-repo.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
+./build-repo.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers" -S
 

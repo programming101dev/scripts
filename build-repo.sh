@@ -9,48 +9,33 @@ clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
 sanitizers="address,leak,pointer_overflow,undefined"
+skip_ldconfig=false  # Track if -s was passed
 
 usage()
 {
-    echo "Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>]"
+    echo "Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [-s]"
     echo "  -c c compiler     Specify the C compiler name (e.g., gcc or clang)"
     echo "  -x cxx compiler   Specify the C++ compiler name (e.g., g++ or clang++)"
     echo "  -f clang-format   Specify the clang-format name (e.g., clang-tidy or clang-tidy-17)"
     echo "  -t clang-tidy     Specify the clang-tidy name (e.g., clang-tidy or clang-tidy-17)"
     echo "  -k cppcheck       Specify the cppcheck name (e.g., cppcheck)"
-    echo "  -s sanitizers     Specify the sanitizers to use name (e.g. address,undefined)"
+    echo "  -s sanitizers     Specify the sanitizers to use (e.g., address,undefined)"
+    echo "  -S                Skip running ldconfig/update_dyld_shared_cache (converted to -S for install.sh)"
     exit 1
 }
 
 # Parse command-line options using getopt
-while getopts ":c:x:f:t:k:s:" opt; do
-  case $opt in
-    c)
-      c_compiler="$OPTARG"
-      ;;
-    x)
-      cxx_compiler="$OPTARG"
-      ;;
-    f)
-      clang_format_name="$OPTARG"
-      ;;
-    t)
-      clang_tidy_name="$OPTARG"
-      ;;
-    k)
-      cppcheck_name="$OPTARG"
-      ;;
-    s)
-      sanitizers="$OPTARG"
-      ;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2
-      usage
-      ;;
-    :)
-      echo "Option -$OPTARG requires an argument." >&2
-      usage
-      ;;
+while getopts ":c:x:f:t:k:s:S" opt; do
+  case "$opt" in
+    c) c_compiler="$OPTARG" ;;
+    x) cxx_compiler="$OPTARG" ;;
+    f) clang_format_name="$OPTARG" ;;
+    t) clang_tidy_name="$OPTARG" ;;
+    k) cppcheck_name="$OPTARG" ;;
+    s) sanitizers="$OPTARG" ;;
+    S) skip_ldconfig=true ;;
+    \?) echo "Invalid option: -$OPTARG" >&2; usage ;;
+    :) echo "Option -$OPTARG requires an argument." >&2; usage ;;
   esac
 done
 
@@ -91,16 +76,20 @@ while IFS='|' read -r repo_url dir repo_type; do
       ./build.sh
 
       if [ -f "install.sh" ]; then
-        ./install.sh -s
+        if [ "$skip_ldconfig" = true ]; then
+          ./install.sh -s  # Convert -s to -S for install.sh
+        else
+          ./install.sh
+        fi
       fi
 
-      # Check if the command 'ldconfig' exists on the system
-     if command -v ldconfig >/dev/null; then
-          # 'ldconfig' exists, run it with sudo
-          sudo ldconfig
-      elif command -v update_dyld_shared_cache >/dev/null; then
-          # 'ldconfig' doesn't exist, but 'update_dyld_shared_cache' does, run it with sudo
-          sudo update_dyld_shared_cache -force
+      # **Skip ldconfig if -s was provided**
+      if [ "$skip_ldconfig" = false ]; then
+        if command -v ldconfig >/dev/null; then
+            sudo ldconfig
+        elif command -v update_dyld_shared_cache >/dev/null; then
+            sudo update_dyld_shared_cache -force
+        fi
       fi
 
       popd >/dev/null 2>&1
@@ -110,4 +99,4 @@ while IFS='|' read -r repo_url dir repo_type; do
     echo ""
 done < repos.txt
 
-echo "Completed operations in all directories with c compiler: $c_compiler and cxx compiler: $cxx_compiler"
+echo "Completed operations in all directories with C compiler: $c_compiler and C++ compiler: $cxx_compiler"
