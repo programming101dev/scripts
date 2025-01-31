@@ -71,16 +71,41 @@ echo "$sanitizers" > sanitizers.txt
 # Read directories and types from repos.txt
 while IFS='|' read -r repo_url dir repo_type; do
     echo "Working on $dir ($repo_type)"
+
     if pushd "$dir" >/dev/null 2>&1; then
-        # Check if it's a C or C++ repository and execute the appropriate command
-        if [ "$repo_type" = "c" ]; then
-            ./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
-        elif [ "$repo_type" = "cxx" ]; then
-            ./change-compiler.sh -c "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
-        fi
-        popd >/dev/null 2>&1
+      if [ -f "generate-cmakelists.sh" ]; then
+        ./generate-cmakelists.sh
+      fi
+
+      # Check if it's a C or C++ repository and execute the appropriate command
+      if [ "$repo_type" = "c" ]; then
+          ./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
+      elif [ "$repo_type" = "cxx" ]; then
+          ./change-compiler.sh -c "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
+      fi
+
+      if [ -f "uninstall.sh" ]; then
+        ./uninstall.sh
+      fi
+
+      ./build.sh
+
+      if [ -f "install.sh" ]; then
+        ./install.sh -s
+      fi
+
+      # Check if the command 'ldconfig' exists on the system
+     if command -v ldconfig >/dev/null; then
+          # 'ldconfig' exists, run it with sudo
+          sudo ldconfig
+      elif command -v update_dyld_shared_cache >/dev/null; then
+          # 'ldconfig' doesn't exist, but 'update_dyld_shared_cache' does, run it with sudo
+          sudo update_dyld_shared_cache -force
+      fi
+
+      popd >/dev/null 2>&1
     else
-        echo "Directory $dir not found."
+      echo "Directory $dir not found."
     fi
     echo ""
 done < repos.txt

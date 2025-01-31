@@ -92,10 +92,24 @@ if [ "$update" = true ]; then
   cp "$current_version" "$flags_version"
 fi
 
+# Ensure the compiler is listed in supported_c_compilers.txt
+if ! grep -Fxq "$c_compiler" supported_c_compilers.txt; then
+    echo "Error: The specified compiler '$c_compiler' is not in supported_c_compilers.txt."
+    echo "Supported compilers:"
+    cat supported_c_compilers.txt
+    exit 1
+fi
+
+# Ensure the C++ compiler is listed in supported_cxx_compilers.txt
+if ! grep -Fxq "$cxx_compiler" supported_cxx_compilers.txt; then
+    echo "Error: The specified C++ compiler '$cxx_compiler' is not in supported_cxx_compilers.txt."
+    echo "Supported C++ compilers:"
+    cat supported_cxx_compilers.txt
+    exit 1
+fi
+
 ./link-flags.sh
 ./link-compilers.sh
-#./generate-cmakelists.sh
-#./change-compiler.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
-#./build.sh
 
-./x.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
+./build-repo.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
+
