@@ -58,10 +58,6 @@ while IFS='|' read -r repo_url dir repo_type; do
     echo "Working on $dir ($repo_type)"
 
     if pushd "$dir" >/dev/null 2>&1; then
-      if [ -f "generate-cmakelists.sh" ]; then
-        ./generate-cmakelists.sh
-      fi
-
       # Check if it's a C or C++ repository and execute the appropriate command
       if [ "$repo_type" = "c" ]; then
           ./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
