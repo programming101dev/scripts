@@ -1485,26 +1485,64 @@ process_flags()
     done
 }
 
-# Create a temporary source file at the start
+# Create a temporary C source file (sanitizer stress test)
 tmp_c_src=$(mktemp "/tmp/test_src_XXXXXX.c")
-echo "int main(void) { return 0; }" > "$tmp_c_src"
+cat > "$tmp_c_src" <<EOF
+#include <stdlib.h>
+#include <stdio.h>
 
+int main(void) {
+    int *ptr = NULL;
+    int arr[2] = {0, 1};
+    int x = 10;
+    int y = 0;
+    int z;
+
+    // 1. Null pointer dereference
+    *ptr = 5;
+
+    // 2. Division by zero
+    z = x / y;
+
+    // 3. Array out of bounds
+    z = arr[5];
+
+    // 4. Signed integer overflow
+    int a = 2147483647;
+    int b = a + 1;
+
+    // 5. Use-after-free
+    int *uaf = malloc(sizeof(int));
+    if (!uaf) {
+        return 1;
+    }
+    free(uaf);
+    *uaf = 42;
+
+    printf("%d %d %d %d\n", z, b, *ptr, *uaf); // Avoid warnings
+    return 0;
+}
+EOF
+
+# Create a temporary C++ source file (simple virtual class test)
 tmp_cxx_src=$(mktemp "/tmp/test_src_XXXXXX.cpp")
-echo "#include <iostream>
+cat > "$tmp_cxx_src" <<EOF
+#include <iostream>
 
 class SimpleClass {
 public:
     virtual void greet() {
-        std::cout << \"Hello, world!\" << std::endl;
+        std::cout << "Hello, world!" << std::endl;
     }
-    virtual ~SimpleClass() {} // Including a virtual destructor for good practice
+    virtual ~SimpleClass() {}
 };
 
 int main() {
     SimpleClass obj;
     obj.greet();
     return 0;
-}" > "$tmp_cxx_src"
+}
+EOF
 
 trap "rm -f '$tmp_c_src' '$tmp_cxx_src' '*.gcno'" EXIT
 
