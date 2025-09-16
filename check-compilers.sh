@@ -7,8 +7,8 @@ set -e
 OS=$(uname)
 
 # Initialize the list of potential compilers with Clang (common across all OS)
-c_compilers=("gcc13" "gcc-13" "gcc-14" "clang" "clang-15" "clang-16" "clang-17" "clang-18" "clang15" "clang16" "clang17" "clang18" "clang-devel")
-cxx_compilers=("g++13" "g++-13" "g++-14" "clang++" "clang++-15" "clang++-16" "clang++-17" "clang++-18" "clang++15" "clang++16" "clang++17" "clang++18" "clang++-devel")
+c_compilers=("gcc13" "gcc-13" "gcc-14" "gcc-15" "clang" "clang-15" "clang-16" "clang-17" "clang-18" "clang-19" "clang-20" "clang-21" "clang15" "clang16" "clang17" "clang18" "clang19" "clang20" "clang21" "clang-devel")
+cxx_compilers=("g++13" "g++-13" "g++-14" "g++-15" "clang++" "clang++-15" "clang++-16" "clang++-17" "clang++-18" "clang++-19" "clang++-20" "clang++-21" "clang++15" "clang++16" "clang++17" "clang++18" "clang++19" "clang++20" "clang++21" "clang++-devel")
 
 # Append GCC compilers if the OS is not macOS (Darwin)
 if [[ "$OS" != "Darwin" ]]; then
