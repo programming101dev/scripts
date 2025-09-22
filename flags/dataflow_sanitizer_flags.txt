@@ -1,0 +1,7 @@
+        "-fsanitize=dataflow"
+#        "-dfsan-combine-pointer-labels-on-store"
+        "-dfsan-combine-offset-labels-on-gep"
+#        "-dfsan-event-callbacks"
+        "-dfsan-conditional-callbacks"
+        "-dfsan-track-origins=2"
+#        "-dfsan-instrument-with-call-threshold"

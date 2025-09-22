@@ -1,0 +1,7 @@
+        "-fsanitize=address"
+        "-fsanitize-address-use-after-scope"
+        "-fsanitize=pointer-compare"
+        "-fsanitize=pointer-subtract"
+        "-fsanitize-address-use-after-return=always"
+#        "-fsanitize-address-use-after-return=never"
+#        "-fsanitize-address-use-after-return=runtime"

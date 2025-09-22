@@ -1,0 +1,2 @@
+        "-fsanitize=memory"
+        "-fsanitize-memory-track-origins"
