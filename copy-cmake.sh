@@ -76,5 +76,6 @@ scan_root() {
 scan_root "$ROOT_DIR/examples"
 scan_root "$ROOT_DIR/libraries"
 scan_root "$ROOT_DIR/programs"
+scan_root "$ROOT_DIR/templates"
 
 exit 0

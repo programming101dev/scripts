@@ -429,38 +429,66 @@ set(TIDY_EMPTY_DB "${CMAKE_BINARY_DIR}/tidy-empty-db")
 file(MAKE_DIRECTORY "${TIDY_EMPTY_DB}")
 file(WRITE "${TIDY_EMPTY_DB}/compile_commands.json" "[]")
 
-# clang-tidy checks (drop unused-macros)
-set(TIDY_CHECKS
-        "*,-clang-diagnostic-unused-macros,"
-        "-llvmlibc-restrict-system-libc-headers,"
-        "-altera-struct-pack-align,-readability-identifier-length,-altera-unroll-loops,"
-        "-cppcoreguidelines-init-variables,-cert-err33-c,-modernize-macro-to-enum,"
-        "-bugprone-easily-swappable-parameters,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,"
-        "-altera-id-dependent-backward-branch,-concurrency-mt-unsafe,-misc-unused-parameters,"
-        "-hicpp-signed-bitwise,-google-readability-todo,-cert-msc30-c,-cert-msc50-cpp,"
-        "-readability-function-cognitive-complexity,-clang-analyzer-security.insecureAPI.strcpy,"
-        "-cert-env33-c,-android-cloexec-accept,-misc-include-cleaner,-llvm-header-guard,"
-        "-cppcoreguidelines-macro-to-enum,-llvmlibc-implementation-in-namespace,-llvmlibc-callee-namespace"
+# Build the -checks arg as a single string
+set(TIDY_CHECKS_LIST
+        "*"
+        "-clang-diagnostic-unused-macros"
+        "-llvmlibc-restrict-system-libc-headers"
+        "-altera-struct-pack-align"
+        "-readability-identifier-length"
+        "-altera-unroll-loops"
+        "-cppcoreguidelines-init-variables"
+        "-cert-err33-c"
+        "-modernize-macro-to-enum"
+        "-bugprone-easily-swappable-parameters"
+        "-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling"
+        "-altera-id-dependent-backward-branch"
+        "-concurrency-mt-unsafe"
+        "-misc-unused-parameters"
+        "-hicpp-signed-bitwise"
+        "-google-readability-todo"
+        "-cert-msc30-c"
+        "-cert-msc50-cpp"
+        "-readability-function-cognitive-complexity"
+        "-clang-analyzer-security.insecureAPI.strcpy"
+        "-cert-env33-c"
+        "-android-cloexec-accept"
+        "-misc-include-cleaner"
+        "-llvm-header-guard"
+        "-cppcoreguidelines-macro-to-enum"
+        "-llvmlibc-implementation-in-namespace"
+        "-llvmlibc-callee-namespace"
 )
+list(JOIN TIDY_CHECKS_LIST "," TIDY_CHECKS_ARG)
 
-# Language for tools
+# Language & a standard (helpful when no compile DB is used)
 if(_PLANG STREQUAL "C")
     set(TOOL_LANG_ARG -x c)
+    set(TIDY_STD --extra-arg=-std=c11)
 else()
     set(TOOL_LANG_ARG -x c++)
+    set(TIDY_STD --extra-arg=-std=c++20)
 endif()
 
-# clang-tidy (no compiler flags; but pass required -D and -I)
-if(ALL_SOURCE_FILES OR ALL_HEADER_FILES)
-    add_custom_target(clang-tidy-check
-            COMMAND ${CLANG_TIDY} ${ALL_SOURCE_FILES} ${ALL_HEADER_FILES}
-            -quiet --warnings-as-errors='*'
-            -checks=${TIDY_CHECKS}
-            -p ${TIDY_EMPTY_DB}
-            -- ${TOOL_LANG_ARG} ${TOOL_DEFINES} ${TOOL_I_FLAGS}
-            COMMENT "Running clang-tidy (minimal defines/includes; DB disabled)"
+# Inputs
+set(TIDY_INPUTS ${ALL_SOURCE_FILES} ${ALL_HEADER_FILES})
+
+if(TIDY_INPUTS)
+    # Unique name to avoid clashes across subprojects
+    add_custom_target(${PROJECT_NAME}__clang-tidy
+            COMMAND ${CLANG_TIDY} ${TIDY_INPUTS}
+            -quiet
+            --warnings-as-errors=*          # <- no quotes
+            -checks=${TIDY_CHECKS_ARG}
+            -- ${TOOL_LANG_ARG} ${TIDY_STD} ${TOOL_DEFINES} ${TOOL_I_FLAGS}
+            COMMENT "Running clang-tidy (joined -checks; DB disabled)"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMAND_EXPAND_LISTS)
+            COMMAND_EXPAND_LISTS
+    )
+    # Fold into your 'check' target if you like
+    if(TARGET check)
+        add_dependencies(check ${PROJECT_NAME}__clang-tidy)
+    endif()
 endif()
 
 # Analyzer enable switch: default ON only if actual compiler is Clang
