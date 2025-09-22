@@ -1,69 +1,107 @@
 #!/bin/sh
+# update-all.sh — drive ./update.sh across C and C++ compiler lists
+# Portable: POSIX sh, uses only awk, paste, cut, printf, test, getopts
 
-# Exit the script if any command fails
-set -e
+set -eu
 
+# Defaults
 clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
 sanitizers="address,leak,pointer_overflow,undefined"
 
-# Function to display script usage
+c_list_file="supported_c_compilers.txt"
+cxx_list_file="supported_cxx_compilers.txt"
+driver="./update.sh"
+
 usage() {
-    echo "Usage: $0 [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>]"
-    echo "  -f clang-format   Specify the clang-format name (e.g. clang-format-17)"
-    echo "  -t clang-tidy     Specify the clang-tidy name (e.g. clang-tidy-17)"
-    echo "  -k cppcheck       Specify the cppcheck name (e.g. cppcheck)"
-    echo "  -s sanitizers     Specify the sanitizers to use (e.g. address,undefined)"
+    printf '%s\n' \
+"Usage: $0 [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [-C <c-list>] [-X <cxx-list>] [-u <update.sh>]
+  -f clang-format   Name of clang-format, default ${clang_format_name}
+  -t clang-tidy     Name of clang-tidy,   default ${clang_tidy_name}
+  -k cppcheck       Name of cppcheck,     default ${cppcheck_name}
+  -s sanitizers     Comma list,           default ${sanitizers}
+  -C file           C compilers list,     default ${c_list_file}
+  -X file           C++ compilers list,   default ${cxx_list_file}
+  -u file           Path to update.sh,    default ${driver}"
     exit 1
 }
 
-# Parse command-line options (POSIX-compliant)
-while getopts "f:t:k:s:" opt; do
+# Parse options
+while getopts "f:t:k:s:C:X:u:h" opt; do
   case "$opt" in
-    f) clang_format_name="$OPTARG" ;;
-    t) clang_tidy_name="$OPTARG" ;;
-    k) cppcheck_name="$OPTARG" ;;
-    s) sanitizers="$OPTARG" ;;
-    \?) echo "Invalid option: -$OPTARG" >&2; usage ;;
-    :) echo "Option -$OPTARG requires an argument." >&2; usage ;;
+    f) clang_format_name=$OPTARG ;;
+    t) clang_tidy_name=$OPTARG ;;
+    k) cppcheck_name=$OPTARG ;;
+    s) sanitizers=$OPTARG ;;
+    C) c_list_file=$OPTARG ;;
+    X) cxx_list_file=$OPTARG ;;
+    u) driver=$OPTARG ;;
+    h|*) usage ;;
   esac
 done
 
-# Read compilers from supported files using a loop (POSIX-compliant)
-c_compilers=""
-while IFS= read -r line || [ -n "$line" ]; do
-    c_compilers="$c_compilers $line"
-done < "supported_c_compilers.txt"
+# Preconditions
+[ -f "$c_list_file" ] || { printf 'Error: C list not found: %s\n' "$c_list_file" >&2; exit 2; }
+[ -f "$cxx_list_file" ] || { printf 'Error: C++ list not found: %s\n' "$cxx_list_file" >&2; exit 2; }
+[ -x "$driver" ] || { printf 'Error: driver not executable: %s\n' "$driver" >&2; exit 2; }
 
-cxx_compilers=""
-while IFS= read -r line || [ -n "$line" ]; do
-    cxx_compilers="$cxx_compilers $line"
-done < "supported_cxx_compilers.txt"
+# Sanitize lists: drop comments and blank lines, trim whitespace
+# Works on BSD/GNU awk
+sanitize() {
+    awk 'NF && $1 !~ /^#/ { print $1 }' "$1"
+}
 
-# Convert space-separated list to an array-like iteration
-set -- $c_compilers
-c_count=$#
+# Ensure at least one entry remains after sanitization
+c_count=$(sanitize "$c_list_file" | wc -l | awk '{print $1}')
+x_count=$(sanitize "$cxx_list_file" | wc -l | awk '{print $1}')
+[ "$c_count" -gt 0 ] || { printf 'Error: no C compilers listed in %s\n' "$c_list_file" >&2; exit 3; }
+[ "$x_count" -gt 0 ] || { printf 'Error: no C++ compilers listed in %s\n' "$cxx_list_file" >&2; exit 3; }
 
-set -- $cxx_compilers
-cxx_count=$#
+# Pair rows with paste. If one file is shorter, paste emits empty fields.
+# Reuse the last nonempty value for whichever side is empty.
+# The loop runs as many rows as the longer list.
+# Works with BSD/GNU paste (-d) and POSIX read.
+last_c=""
+last_x=""
 
-# Determine the max number of iterations
-max_length=$c_count
-if [ "$cxx_count" -gt "$max_length" ]; then
-    max_length=$cxx_count
-fi
+# Use a subshell so we can set IFS without affecting parent
+(
+    IFS='|'
+    # shellcheck disable=SC2002
+    paste -d '|' \
+        "$(sanitize "$c_list_file" | sed 's/.*/&/')" \
+        "$(sanitize "$cxx_list_file" | sed 's/.*/&/')" 2>/dev/null \
+    || {
+        # If the command substitution above confuses some shells, fall back to temp files
+        tmpc=$(mktemp 2>/dev/null || mktemp -t c_list) || exit 1
+        tmpx=$(mktemp 2>/dev/null || mktemp -t x_list) || exit 1
+        sanitize "$c_list_file" >"$tmpc"
+        sanitize "$cxx_list_file" >"$tmpx"
+        paste -d '|' "$tmpc" "$tmpx"
+        rm -f "$tmpc" "$tmpx"
+    }
+) | while IFS='|' read -r c x; do
+    # If paste produced fewer rows on the shorter side, it yields an empty field.
+    if [ -n "${c:-}" ]; then last_c=$c; fi
+    if [ -n "${x:-}" ]; then last_x=$x; fi
 
-# Run update.sh once per compiler pair
-i=0
-while [ "$i" -lt "$max_length" ]; do
-    # Get compiler at index i, defaulting to the last element if out of range
-    c_compiler=$(echo $c_compilers | cut -d' ' -f$(( i + 1 )) 2>/dev/null || echo $c_compiler)
-    cxx_compiler=$(echo $cxx_compilers | cut -d' ' -f$(( i + 1 )) 2>/dev/null || echo $cxx_compiler)
+    # Reuse last seen nonempty
+    [ -n "${c:-}" ] || c=$last_c
+    [ -n "${x:-}" ] || x=$last_x
 
-    echo "Updating repositories with: $c_compiler : $cxx_compiler"
+    # Final guard
+    if [ -z "$c" ] || [ -z "$x" ]; then
+        printf 'Warning: skipping empty pair: C="%s" CXX="%s"\n' "$c" "$x" >&2
+        continue
+    fi
 
-    ./update.sh -c "$c_compiler" -x "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
-
-    i=$((i + 1))
+    printf 'Updating repositories with: %s : %s\n' "$c" "$x"
+    "$driver" \
+      -c "$c" \
+      -x "$x" \
+      -f "$clang_format_name" \
+      -t "$clang_tidy_name" \
+      -k "$cppcheck_name" \
+      -s "$sanitizers"
 done

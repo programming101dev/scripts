@@ -125,21 +125,47 @@ classify_support() {
     return 1
   fi
 
-  # strict: fail on unknown/unused for both GCC/Clang
   local extra=(-Werror)
   if is_clang_like "$cc"; then
     extra+=(-Werror=unknown-warning-option -Werror=unused-command-line-argument)
   fi
 
-  if [[ "$mode" == "compile" ]]; then
-    ( cd "$srcdir" && "$cc" -x "$lang" -c -o /dev/null "$flag" "./$srcbase" "${extra[@]}" >"$tmpout" 2>&1 ) || rc=$?
-  else
-    ( cd "$srcdir" && "$cc" -x "$lang" -fsyntax-only "$flag" "./$srcbase" "${extra[@]}" >"$tmpout" 2>&1 ) || rc=$?
-  fi
-  cat "$tmpout" >>"$log"
+  # helper to run and capture, then apply reject patterns
+  run_and_check() {
+    local cmd_desc="$1"; shift
+    local rc_local=0
+    : >"$tmpout"
+    ( "$@" >"$tmpout" 2>&1 ) || rc_local=$?
+    cat "$tmpout" >>"$log"
+    if grep -Eiq "$(reject_patterns | paste -sd'|' -)" "$tmpout"; then
+      rc_local=1
+    fi
+    return "$rc_local"
+  }
 
-  if grep -Eiq "$(reject_patterns | paste -sd'|' -)" "$tmpout"; then
-    rc=1
+  if [[ "$mode" == "compile" ]]; then
+    # Phase 1: compile to object with the flag
+    local obj="$TMP/obj.$RANDOM.o"
+    run_and_check "compile" bash -lc \
+      "cd '$srcdir' && '$cc' -x '$lang' -c -o '$obj' '$flag' './$srcbase' ${extra[*]}" || rc=1
+
+    # Phase 2: link a tiny binary with the same flag
+    # This is where Apple Clang reports 'argument unused during compilation' for -pg.
+    if [[ $rc -eq 0 ]]; then
+      local exe="$TMP/a.$RANDOM.out"
+      run_and_check "link" bash -lc \
+        "cd '$srcdir' && '$cc' -x '$lang' './$srcbase' -o '$exe' '$flag' ${extra[*]}" || rc=1
+      rm -f "$exe"
+    fi
+    rm -f "$obj"
+
+  elif [[ "$mode" == "link" ]]; then
+    run_and_check "link" bash -lc \
+      "cd '$srcdir' && '$cc' -x '$lang' './$srcbase' -o '$TMP/a.$RANDOM.out' '$flag' ${extra[*]}" || rc=1
+
+  else # syntax
+    run_and_check "syntax" bash -lc \
+      "cd '$srcdir' && '$cc' -x '$lang' -fsyntax-only '$flag' './$srcbase' ${extra[*]}" || rc=1
   fi
 
   if [[ $rc -eq 0 ]]; then
