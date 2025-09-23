@@ -498,6 +498,7 @@ if(PROJECT_LANGUAGE STREQUAL "C")
                 -- -x ${_TIDY_LANG} ${_TIDY_STD}
                 -Wno-unknown-warning-option
                 -Wno-unused-command-line-argument
+                ${_TIDY_LINUX_CLANG_STDINC_ARGS}
                 ${_TIDY_RESOURCE_ARGS}
                 ${_GNU_SYSINCS}
                 ${TOOL_DEFINES}
