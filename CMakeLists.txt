@@ -138,12 +138,74 @@ else ()
     message(WARNING "Could not determine Clang resource dir, clang-tidy may pick GCC headers.")
 endif ()
 
-# The args passed to the compiler that clang-tidy invokes
-set(_TIDY_RESOURCE_ARGS "")
+# ---------- Build -extra-arg-before bundle for clang-tidy ----------
+# Collect system include dirs reported by the clang that tidy will drive
+function(collect_tidy_clang_sysincs_c OUT)
+    set(_clang ${CLANG_ANALYZER_EXE})
+    if (NOT _clang AND CMAKE_C_COMPILER_ID MATCHES ".*Clang")
+        set(_clang ${CMAKE_C_COMPILER})
+    endif()
+    if (NOT _clang)
+        set(${OUT} "" PARENT_SCOPE)
+        return()
+    endif()
+
+    execute_process(
+            COMMAND ${_clang} -E -x c - -v
+            INPUT_FILE /dev/null
+            OUTPUT_QUIET
+            ERROR_VARIABLE _err)
+
+    string(REGEX REPLACE "\r?\n" ";" _lines "${_err}")
+    set(_grab OFF)
+    set(_incs "")
+    foreach(L IN LISTS _lines)
+        if(L MATCHES "^#include <.*> search starts here:")
+            set(_grab ON)
+            continue()
+        endif()
+        if(_grab AND L MATCHES "^End of search list\\.")
+            break()
+        endif()
+        if(_grab)
+            string(STRIP "${L}" L)
+            if(EXISTS "${L}")
+                list(APPEND _incs "${L}")
+            endif()
+        endif()
+    endforeach()
+
+    if (CLANG_RESOURCE_DIR)
+        list(FILTER _incs EXCLUDE REGEX "^${CLANG_RESOURCE_DIR}/include/?$")
+    endif()
+
+    set(${OUT} "${_incs}" PARENT_SCOPE)
+endfunction()
+
+set(TIDY_EXTRA_BEFORE_ARGS "")
 if (CLANG_RESOURCE_DIR)
-    list(APPEND _TIDY_RESOURCE_ARGS -resource-dir ${CLANG_RESOURCE_DIR})
-    list(APPEND _TIDY_RESOURCE_ARGS -isystem ${CLANG_RESOURCE_DIR}/include)
-endif ()
+    list(APPEND TIDY_EXTRA_BEFORE_ARGS
+            -resource-dir "${CLANG_RESOURCE_DIR}"
+            -isystem "${CLANG_RESOURCE_DIR}/include")
+endif()
+
+# On Linux, replace default std includes with Clang’s view
+if (UNIX AND NOT APPLE)
+    collect_tidy_clang_sysincs_c(_CLANG_SYSINCS)
+    list(APPEND TIDY_EXTRA_BEFORE_ARGS -nostdinc)
+    if (CLANG_RESOURCE_DIR)
+        list(APPEND TIDY_EXTRA_BEFORE_ARGS -isystem "${CLANG_RESOURCE_DIR}/include")
+    endif()
+    foreach(_d IN LISTS _CLANG_SYSINCS)
+        list(APPEND TIDY_EXTRA_BEFORE_ARGS -isystem "${_d}")
+    endforeach()
+endif()
+
+# Expand as -extra-arg-before=...
+set(TIDY_EXTRA_BEFORE "")
+foreach(arg IN LISTS TIDY_EXTRA_BEFORE_ARGS)
+    list(APPEND TIDY_EXTRA_BEFORE "-extra-arg-before=${arg}")
+endforeach()
 
 # =============================  Probe .flags helpers  =============================
 function(get_flags_dir OUTVAR)
@@ -422,43 +484,6 @@ if(PROJECT_LANGUAGE STREQUAL "C")
         list(APPEND _TIDY_I_FLAGS -isystem ${_inc})
     endforeach()
 
-    # GCC system includes only when actually using GCC for C
-    function(collect_gnu_system_includes_c OUT)
-        if(NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
-            set(${OUT} "" PARENT_SCOPE)
-            return()
-        endif()
-        execute_process(
-                COMMAND ${CMAKE_C_COMPILER} -E -x c - -v
-                INPUT_FILE /dev/null
-                OUTPUT_QUIET
-                ERROR_VARIABLE _err)
-        string(REGEX REPLACE "\r?\n" ";" _lines "${_err}")
-        set(_grab OFF)
-        set(_incs "")
-        foreach(L IN LISTS _lines)
-            if(L MATCHES "^#include <.*> search starts here:")
-                set(_grab ON)
-                continue()
-            endif()
-            if(_grab AND L MATCHES "^End of search list\\.")
-                break()
-            endif()
-            if(_grab)
-                string(STRIP "${L}" L)
-                if(EXISTS "${L}")
-                    list(APPEND _incs -isystem "${L}")
-                endif()
-            endif()
-        endforeach()
-        set(${OUT} "${_incs}" PARENT_SCOPE)
-    endfunction()
-
-    set(_GNU_SYSINCS "")
-    if(NOT APPLE)
-        collect_gnu_system_includes_c(_GNU_SYSINCS)
-    endif()
-
     set(TIDY_CHECKS_LIST
             "*"
             "-clang-diagnostic-unused-macros"
@@ -489,7 +514,7 @@ if(PROJECT_LANGUAGE STREQUAL "C")
 
     if(TIDY_TU_INPUTS)
         add_custom_target(${PROJECT_NAME}__clang-tidy
-                COMMAND ${CLANG_TIDY} ${TIDY_TU_INPUTS}
+                COMMAND ${CLANG_TIDY} ${TIDY_EXTRA_BEFORE} ${TIDY_TU_INPUTS}
                 -quiet
                 --header-filter=${TIDY_HEADER_FILTER}
                 --system-headers=false
@@ -498,12 +523,9 @@ if(PROJECT_LANGUAGE STREQUAL "C")
                 -- -x ${_TIDY_LANG} ${_TIDY_STD}
                 -Wno-unknown-warning-option
                 -Wno-unused-command-line-argument
-                ${_TIDY_LINUX_CLANG_STDINC_ARGS}
-                ${_TIDY_RESOURCE_ARGS}
-                ${_GNU_SYSINCS}
                 ${TOOL_DEFINES}
                 ${_TIDY_I_FLAGS}
-                COMMENT "Running clang-tidy (C only, DB-less, minimal flags)"
+                COMMENT "Running clang-tidy (C only, DB-less, Clang headers forced)"
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                 COMMAND_EXPAND_LISTS)
         set_property(TARGET ${PROJECT_NAME}__clang-tidy PROPERTY VERBATIM ON)
@@ -511,7 +533,7 @@ if(PROJECT_LANGUAGE STREQUAL "C")
 
     if(ALL_HEADER_FILES)
         add_custom_target(${PROJECT_NAME}__clang-tidy_headers
-                COMMAND ${CLANG_TIDY} ${ALL_HEADER_FILES}
+                COMMAND ${CLANG_TIDY} ${TIDY_EXTRA_BEFORE} ${ALL_HEADER_FILES}
                 -quiet
                 --header-filter=${TIDY_HEADER_FILTER}
                 --system-headers=false
@@ -520,11 +542,9 @@ if(PROJECT_LANGUAGE STREQUAL "C")
                 -- -x ${_TIDY_LANG} ${_TIDY_STD}
                 -Wno-unknown-warning-option
                 -Wno-unused-command-line-argument
-                ${_TIDY_RESOURCE_ARGS}
-                ${_GNU_SYSINCS}
                 ${TOOL_DEFINES}
                 ${_TIDY_I_FLAGS}
-                COMMENT "Running clang-tidy on headers (C only, DB-less)"
+                COMMENT "Running clang-tidy on headers (C only, DB-less, Clang headers forced)"
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                 COMMAND_EXPAND_LISTS)
         set_property(TARGET ${PROJECT_NAME}__clang-tidy_headers PROPERTY VERBATIM ON)
