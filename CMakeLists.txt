@@ -117,10 +117,32 @@ find_program(CLANG_ANALYZER_EXE NAMES clang clang-20 clang-19 clang-18)
 message(STATUS "Found clang-format: ${CLANG_FORMAT}")
 message(STATUS "Found clang-tidy:   ${CLANG_TIDY}")
 message(STATUS "Found cppcheck:     ${CPPCHECK}")
-message(STATUS "Found clang (for analyzer): ${CLANG_ANALYZER_EXE}")
+message(STATUS "Found clang (for analyzer/tidy resource-dir): ${CLANG_ANALYZER_EXE}")
 
 if (NOT CLANG_FORMAT OR NOT CLANG_TIDY OR NOT CPPCHECK)
     message(FATAL_ERROR "Required tools (clang-format, clang-tidy, cppcheck) not found.")
+endif ()
+
+# ---------- Resolve Clang resource dir for headers like <stdatomic.h> ----------
+set(CLANG_RESOURCE_DIR "")
+if (CLANG_ANALYZER_EXE)
+    execute_process(
+            COMMAND ${CLANG_ANALYZER_EXE} -print-resource-dir
+            OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET)
+endif ()
+if (CLANG_RESOURCE_DIR)
+    message(STATUS "Clang resource dir: ${CLANG_RESOURCE_DIR}")
+else ()
+    message(WARNING "Could not determine Clang resource dir, clang-tidy may pick GCC headers.")
+endif ()
+
+# The args passed to the compiler that clang-tidy invokes
+set(_TIDY_RESOURCE_ARGS "")
+if (CLANG_RESOURCE_DIR)
+    list(APPEND _TIDY_RESOURCE_ARGS -resource-dir ${CLANG_RESOURCE_DIR})
+    list(APPEND _TIDY_RESOURCE_ARGS -isystem ${CLANG_RESOURCE_DIR}/include)
 endif ()
 
 # =============================  Probe .flags helpers  =============================
@@ -387,14 +409,11 @@ endif ()
 # ---------- clang-tidy (DB-less, C-only) ----------
 if(PROJECT_LANGUAGE STREQUAL "C")
 
-    # Language / -std from your CMake settings
     set(_TIDY_LANG c)
     set(_TIDY_STD -std=c11)
 
-    # Header filter: anchored to the repo
     set(TIDY_HEADER_FILTER "^${CMAKE_SOURCE_DIR}")
 
-    # Minimal include flags for tidy
     set(_TIDY_I_FLAGS "")
     if(HAVE_LOCAL_INCLUDE_DIR)
         list(APPEND _TIDY_I_FLAGS -I${LOCAL_INCLUDE_DIR})
@@ -403,7 +422,7 @@ if(PROJECT_LANGUAGE STREQUAL "C")
         list(APPEND _TIDY_I_FLAGS -isystem ${_inc})
     endforeach()
 
-    # GCC (non-Apple): harvest real system include dirs for tidy (C only)
+    # GCC system includes only when actually using GCC for C
     function(collect_gnu_system_includes_c OUT)
         if(NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
             set(${OUT} "" PARENT_SCOPE)
@@ -440,7 +459,6 @@ if(PROJECT_LANGUAGE STREQUAL "C")
         collect_gnu_system_includes_c(_GNU_SYSINCS)
     endif()
 
-    # Checks
     set(TIDY_CHECKS_LIST
             "*"
             "-clang-diagnostic-unused-macros"
@@ -466,10 +484,7 @@ if(PROJECT_LANGUAGE STREQUAL "C")
             "-llvm-header-guard")
     list(JOIN TIDY_CHECKS_LIST "," TIDY_CHECKS_ARG)
 
-    # Escape '*' so the shell will not glob it
     set(_TIDY_WARN_AS_ERRORS "\\*")
-
-    # Lint translation units (headers get covered via TUs)
     set(TIDY_TU_INPUTS ${ALL_SOURCE_FILES})
 
     if(TIDY_TU_INPUTS)
@@ -483,6 +498,7 @@ if(PROJECT_LANGUAGE STREQUAL "C")
                 -- -x ${_TIDY_LANG} ${_TIDY_STD}
                 -Wno-unknown-warning-option
                 -Wno-unused-command-line-argument
+                ${_TIDY_RESOURCE_ARGS}
                 ${_GNU_SYSINCS}
                 ${TOOL_DEFINES}
                 ${_TIDY_I_FLAGS}
@@ -492,7 +508,6 @@ if(PROJECT_LANGUAGE STREQUAL "C")
         set_property(TARGET ${PROJECT_NAME}__clang-tidy PROPERTY VERBATIM ON)
     endif()
 
-    # Optional header-only pass
     if(ALL_HEADER_FILES)
         add_custom_target(${PROJECT_NAME}__clang-tidy_headers
                 COMMAND ${CLANG_TIDY} ${ALL_HEADER_FILES}
@@ -504,6 +519,7 @@ if(PROJECT_LANGUAGE STREQUAL "C")
                 -- -x ${_TIDY_LANG} ${_TIDY_STD}
                 -Wno-unknown-warning-option
                 -Wno-unused-command-line-argument
+                ${_TIDY_RESOURCE_ARGS}
                 ${_GNU_SYSINCS}
                 ${TOOL_DEFINES}
                 ${_TIDY_I_FLAGS}
