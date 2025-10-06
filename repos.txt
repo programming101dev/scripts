@@ -18,4 +18,5 @@ https://github.com/programming101dev/lib_unix_examples.git|../examples/lib_unix_
 https://github.com/programming101dev/lib_fsm_examples.git|../examples/lib_fsm_examples|c
 https://github.com/programming101dev/simple-port-forwarder.git|../programs/simple-port-forwarder|c
 https://github.com/programming101dev/template-c.git|../templates/template-c|c
+https://github.com/programming101dev/template-c.git|../templates/template-c-program|c
 https://github.com/programming101dev/template-cpp.git|../templates/template-cxx|cxx
