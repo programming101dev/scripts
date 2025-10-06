@@ -139,7 +139,6 @@ else ()
 endif ()
 
 # ---------- Build -extra-arg-before bundle for clang-tidy ----------
-# Collect system include dirs reported by the clang that tidy will drive
 function(collect_tidy_clang_sysincs_c OUT)
     set(_clang ${CLANG_ANALYZER_EXE})
     if (NOT _clang AND CMAKE_C_COMPILER_ID MATCHES ".*Clang")
@@ -149,13 +148,11 @@ function(collect_tidy_clang_sysincs_c OUT)
         set(${OUT} "" PARENT_SCOPE)
         return()
     endif()
-
     execute_process(
             COMMAND ${_clang} -E -x c - -v
             INPUT_FILE /dev/null
             OUTPUT_QUIET
             ERROR_VARIABLE _err)
-
     string(REGEX REPLACE "\r?\n" ";" _lines "${_err}")
     set(_grab OFF)
     set(_incs "")
@@ -174,11 +171,9 @@ function(collect_tidy_clang_sysincs_c OUT)
             endif()
         endif()
     endforeach()
-
     if (CLANG_RESOURCE_DIR)
         list(FILTER _incs EXCLUDE REGEX "^${CLANG_RESOURCE_DIR}/include/?$")
     endif()
-
     set(${OUT} "${_incs}" PARENT_SCOPE)
 endfunction()
 
@@ -188,8 +183,6 @@ if (CLANG_RESOURCE_DIR)
             -resource-dir "${CLANG_RESOURCE_DIR}"
             -isystem "${CLANG_RESOURCE_DIR}/include")
 endif()
-
-# On Linux, replace default std includes with Clang’s view
 if (UNIX AND NOT APPLE)
     collect_tidy_clang_sysincs_c(_CLANG_SYSINCS)
     list(APPEND TIDY_EXTRA_BEFORE_ARGS -nostdinc)
@@ -200,8 +193,6 @@ if (UNIX AND NOT APPLE)
         list(APPEND TIDY_EXTRA_BEFORE_ARGS -isystem "${_d}")
     endforeach()
 endif()
-
-# Expand as -extra-arg-before=...
 set(TIDY_EXTRA_BEFORE "")
 foreach(arg IN LISTS TIDY_EXTRA_BEFORE_ARGS)
     list(APPEND TIDY_EXTRA_BEFORE "-extra-arg-before=${arg}")
@@ -345,6 +336,50 @@ macro(MAKE_ABSOLUTE_PATHS VAR_NAME)
     set(${VAR_NAME} ${_TMP})
 endmacro()
 
+# =============================  clang-format helper script  =============================
+set(RUN_CF "${CMAKE_BINARY_DIR}/run-clang-format.cmake")
+file(WRITE "${RUN_CF}" [=[
+if(NOT DEFINED CLANG_FORMAT)
+  message(FATAL_ERROR "CLANG_FORMAT not set")
+endif()
+
+if(NOT DEFINED FILES)
+  message(FATAL_ERROR "FILES not set")
+endif()
+
+string(REPLACE "|" ";" file_list "${FILES}")
+list(LENGTH file_list nfiles)
+message(STATUS "clang-format: formatting ${nfiles} files")
+
+foreach(f IN LISTS file_list)
+  if(EXISTS "${f}")
+    execute_process(COMMAND "${CLANG_FORMAT}" --style=file -i "${f}")
+  else()
+    message(WARNING "clang-format: missing file '${f}'")
+  endif()
+endforeach()
+]=])
+
+# Aggregator placeholder
+if (NOT TARGET format)
+    add_custom_target(format)
+endif()
+
+# =============================  Collect-only attach for target files =============================
+# Records files and target names; real formatting is created after all targets are declared.
+function(attach_clang_format TARGET_NAME)
+    if (NOT TARGET ${TARGET_NAME})
+        message(FATAL_ERROR "attach_clang_format called for non-existent target '${TARGET_NAME}'")
+    endif()
+    set(_FILES ${ARGN})
+    if (_FILES)
+        # remember files
+        set_property(GLOBAL APPEND PROPERTY P101_FORMAT_FILES "${_FILES}")
+    endif()
+    # remember the target
+    set_property(GLOBAL APPEND PROPERTY P101_FORMAT_TARGETS "${TARGET_NAME}")
+endfunction()
+
 # =============================  Targets: exe/lib  =============================
 set(ALL_SOURCE_FILES "")
 set(ALL_HEADER_FILES "")
@@ -378,11 +413,10 @@ if (EXECUTABLE_TARGETS)
                 list(APPEND _EXE_FINAL_LIBS ${LINK_LIB})
             endif ()
         endforeach ()
-
         target_link_libraries(${EXE} PRIVATE project_options sys_paths ${_EXE_FINAL_LIBS})
-        if (TARGET format)
-            add_dependencies(${EXE} format)
-        endif ()
+
+        # record only target's files for the global formatting step
+        attach_clang_format(${EXE} ${${EXE}_SOURCES} ${${EXE}_HEADERS})
     endforeach ()
 endif ()
 
@@ -418,11 +452,43 @@ if (LIBRARY_TARGETS)
         target_sources(${LIB} PRIVATE ${${LIB}_SOURCES})
         target_include_directories(${LIB} PUBLIC ${BUILD_INCLUDE_IF_EXISTS} $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
         target_link_libraries(${LIB} PRIVATE project_options sys_paths ${FINAL_LINK_LIBRARIES})
-        if (TARGET format)
-            add_dependencies(${LIB} format)
-        endif ()
+
+        # record only target's files for the global formatting step
+        attach_clang_format(${LIB} ${${LIB}_SOURCES} ${${LIB}_HEADERS})
     endforeach ()
 endif ()
+
+# =============================  Real formatting step built from recorded files =============================
+# Union of all files provided by targets
+get_property(_FMT_FILES GLOBAL PROPERTY P101_FORMAT_FILES)
+if (_FMT_FILES)
+    list(REMOVE_DUPLICATES _FMT_FILES)
+    list(JOIN _FMT_FILES "|" _FMT_FILES_JOINED)
+    set(_STAMP "${CMAKE_BINARY_DIR}/format.targets.stamp")
+    add_custom_command(
+            OUTPUT "${_STAMP}"
+            COMMAND ${CMAKE_COMMAND} -DCLANG_FORMAT=${CLANG_FORMAT} -DFILES=${_FMT_FILES_JOINED} -P "${RUN_CF}"
+            COMMAND ${CMAKE_COMMAND} -E touch "${_STAMP}"
+            DEPENDS ${_FMT_FILES}
+            VERBATIM
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMENT "clang-format all files that belong to declared targets")
+    add_custom_target(format_targets DEPENDS "${_STAMP}")
+else()
+    add_custom_target(format_targets) # present but empty
+endif()
+add_dependencies(format format_targets)
+
+# Ensure each build target waits for formatting
+get_property(_FMT_TGTS GLOBAL PROPERTY P101_FORMAT_TARGETS)
+if (_FMT_TGTS)
+    list(REMOVE_DUPLICATES _FMT_TGTS)
+    foreach(_t IN LISTS _FMT_TGTS)
+        if (TARGET ${_t})
+            add_dependencies(${_t} format_targets)
+        endif()
+    endforeach()
+endif()
 
 # =============================  Tool wiring  =============================
 # Extract only -D* from STANDARD_FLAGS for tools
@@ -441,32 +507,6 @@ endif ()
 foreach (_inc ${EXTERNAL_INCLUDE_DIRS})
     list(APPEND TOOL_I_FLAGS -I${_inc})
 endforeach ()
-
-# ---------- clang-format ----------
-set(_ALL_FILES ${ALL_SOURCE_FILES} ${ALL_HEADER_FILES})
-list(REMOVE_DUPLICATES _ALL_FILES)
-set(RUN_CF "${CMAKE_BINARY_DIR}/run-clang-format.cmake")
-file(WRITE "${RUN_CF}" [=[
-if(NOT DEFINED CLANG_FORMAT) message(FATAL_ERROR "CLANG_FORMAT not set") endif()
-if(NOT DEFINED FILES)        message(FATAL_ERROR "FILES not set")        endif()
-string(REPLACE "|" ";" file_list "${FILES}")
-list(LENGTH file_list nfiles)
-message(STATUS "clang-format: formatting ${nfiles} files")
-foreach(f IN LISTS file_list)
-  if(EXISTS "${f}")
-    execute_process(COMMAND "${CLANG_FORMAT}" --style=file -i "${f}")
-  else()
-    message(WARNING "clang-format: missing file '${f}'")
-  endif()
-endforeach()
-]=])
-if (_ALL_FILES)
-    list(JOIN _ALL_FILES "|" _ALL_FILES_JOINED)
-    add_custom_target(format
-            COMMAND ${CMAKE_COMMAND} -DCLANG_FORMAT=${CLANG_FORMAT} -DFILES=${_ALL_FILES_JOINED} -P "${RUN_CF}"
-            COMMENT "Running clang-format on sources and headers"
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-endif ()
 
 # ---------- clang-tidy (DB-less, C-only) ----------
 if(PROJECT_LANGUAGE STREQUAL "C")
@@ -529,6 +569,7 @@ if(PROJECT_LANGUAGE STREQUAL "C")
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                 COMMAND_EXPAND_LISTS)
         set_property(TARGET ${PROJECT_NAME}__clang-tidy PROPERTY VERBATIM ON)
+        add_dependencies(${PROJECT_NAME}__clang-tidy format)  # analyze formatted code
     endif()
 
     if(ALL_HEADER_FILES)
@@ -548,6 +589,7 @@ if(PROJECT_LANGUAGE STREQUAL "C")
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                 COMMAND_EXPAND_LISTS)
         set_property(TARGET ${PROJECT_NAME}__clang-tidy_headers PROPERTY VERBATIM ON)
+        add_dependencies(${PROJECT_NAME}__clang-tidy_headers format)
         add_dependencies(${PROJECT_NAME}__clang-tidy ${PROJECT_NAME}__clang-tidy_headers)
     endif()
 
@@ -577,6 +619,7 @@ if (ENABLE_CLANG_ANALYZER_DEFAULT OR ENABLE_CLANG_ANALYZER)
                 COMMENT "Running Clang Static Analyzer (minimal defines/includes)"
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                 COMMAND_EXPAND_LISTS)
+        add_dependencies(clang-analyze format)
     endif ()
 endif ()
 
@@ -597,6 +640,7 @@ if (ALL_SOURCE_FILES OR ALL_HEADER_FILES)
             COMMENT "Running cppcheck (minimal defines/includes)"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMAND_EXPAND_LISTS)
+    add_dependencies(cppcheck-check format)
 endif ()
 
 # ---------- aggregate 'check' ----------
@@ -610,6 +654,7 @@ endif ()
 if (TARGET clang-analyze)
     add_dependencies(check clang-analyze)
 endif ()
+add_dependencies(check format)
 
 # =============================  Install rules  =============================
 if (LIBRARY_TARGETS)
