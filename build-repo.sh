@@ -80,13 +80,13 @@ while IFS='|' read -r repo_url dir repo_type; do
       fi
 
       # **Skip ldconfig if -s was provided**
-      if [ "$skip_ldconfig" = false ]; then
-        if command -v ldconfig >/dev/null; then
-            sudo ldconfig
-        elif command -v update_dyld_shared_cache >/dev/null; then
-            sudo update_dyld_shared_cache -force
-        fi
-      fi
+#      if [ "$skip_ldconfig" = false ]; then
+#        if command -v ldconfig >/dev/null; then
+#            sudo ldconfig
+#        elif command -v update_dyld_shared_cache >/dev/null; then
+#            sudo update_dyld_shared_cache -force
+#        fi
+#      fi
 
       popd >/dev/null 2>&1
     else

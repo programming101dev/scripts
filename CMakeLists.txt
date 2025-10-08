@@ -656,27 +656,21 @@ if (TARGET clang-analyze)
 endif ()
 add_dependencies(check format)
 
-# =============================  Install rules  =============================
+# =============================  Install rules (no CMake exports)  =============================
 if (LIBRARY_TARGETS)
     install(TARGETS ${LIBRARY_TARGETS}
-            EXPORT ${PROJECT_NAME}Targets
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif ()
+
 if (EXECUTABLE_TARGETS)
     install(TARGETS ${EXECUTABLE_TARGETS}
-            EXPORT ${PROJECT_NAME}Targets
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif ()
+
 if (HAVE_LOCAL_INCLUDE_DIR)
     install(DIRECTORY ${LOCAL_INCLUDE_DIR}/
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             FILES_MATCHING PATTERN "*.h")
-endif ()
-if (EXECUTABLE_TARGETS OR LIBRARY_TARGETS)
-    install(EXPORT ${PROJECT_NAME}Targets
-            FILE ${PROJECT_NAME}Targets.cmake
-            NAMESPACE ${PROJECT_NAME}::
-            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
 endif ()
