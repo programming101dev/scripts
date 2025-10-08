@@ -65,7 +65,7 @@ x_count=$(sanitize "$cxx_list_file" | wc -l | awk '{print $1}')
 last_c=""
 last_x=""
 
-# Use a subshell so we can set IFS without affecting parent
+# Use a subshell so we can set IFS without affecting the parent
 (
     IFS='|'
     # shellcheck disable=SC2002

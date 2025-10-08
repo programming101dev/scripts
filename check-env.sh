@@ -14,8 +14,8 @@ usage()
 {
     echo "Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>]"
     echo "  -c c compiler     Specify the c compiler name (e.g. gcc or clang)"
-    echo "  -x c++ compiler   Specify the c compiler name (e.g. gcc or clang)"
-    echo "  -f clang-format   Specify the clang-format name (e.g. clang-tidy or clang-tidy-17)"
+    echo "  -x c++ compiler   Specify the c++ compiler name (e.g. g++ or clang++)"
+    echo "  -f clang-format   Specify the clang-format name (e.g. clang-format or clang-format-17)"
     echo "  -t clang-tidy     Specify the clang-tidy name (e.g. clang-tidy or clang-tidy-17)"
     echo "  -k cppcheck       Specify the cppcheck name (e.g. cppcheck)"
     echo "  -s sanitizers     Specify the sanitizers to use name (e.g. address,undefined)"
@@ -62,7 +62,7 @@ fi
 
 # Check if the compiler argument is provided
 if [ -z "$cxx_compiler" ]; then
-  echo "Error: cx++ compiler argument (-x) is required."
+  echo "Error: c++ compiler argument (-x) is required."
   usage
 fi
 
