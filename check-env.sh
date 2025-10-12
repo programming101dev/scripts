@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-
-# Exit the script if any command fails
-set -e
+set -euo pipefail
 
 c_compiler=""
 cxx_compiler=""
@@ -10,87 +8,119 @@ clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
 sanitizers=""
 
-usage()
-{
-    echo "Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>]"
-    echo "  -c c compiler     Specify the c compiler name (e.g. gcc or clang)"
-    echo "  -x c++ compiler   Specify the c++ compiler name (e.g. g++ or clang++)"
-    echo "  -f clang-format   Specify the clang-format name (e.g. clang-format or clang-format-17)"
-    echo "  -t clang-tidy     Specify the clang-tidy name (e.g. clang-tidy or clang-tidy-17)"
-    echo "  -k cppcheck       Specify the cppcheck name (e.g. cppcheck)"
-    echo "  -s sanitizers     Specify the sanitizers to use name (e.g. address,undefined)"
-    exit 1
+usage() {
+  cat <<'USAGE'
+Usage: check-env.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [-h]
+  -c <cc>          C compiler (e.g. gcc, clang, gcc-15)
+  -x <cxx>         C++ compiler (e.g. g++, clang++, g++-15)
+  -f <name>        clang-format executable name [default: clang-format]
+  -t <name>        clang-tidy executable name   [default: clang-tidy]
+  -k <name>        cppcheck executable name     [default: cppcheck]
+  -s <list>        sanitizers (comma-separated, optional; e.g. address,undefined)
+  -h               show this help and exit
+Exit status: number of missing/invalid tools (0 means all good).
+USAGE
 }
 
-# Parse command-line options using getopt
-while getopts ":c:x:f:t:k:s:" opt; do
-  case $opt in
-    c)
-      c_compiler="$OPTARG"
-      ;;
-    x)
-      cxx_compiler="$OPTARG"
-      ;;
-    f)
-      clang_format_name="$OPTARG"
-      ;;
-    t)
-      clang_tidy_name="$OPTARG"
-      ;;
-    k)
-      cppcheck_name="$OPTARG"
-      ;;
-    s)
-      sanitizers="$OPTARG"
-      ;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2
-      usage
-      ;;
-    :)
-      echo "Option -$OPTARG requires an argument." >&2
-      usage
-      ;;
+# Parse options
+while getopts ":c:x:f:t:k:s:h" opt; do
+  case "$opt" in
+    c) c_compiler="$OPTARG" ;;
+    x) cxx_compiler="$OPTARG" ;;
+    f) clang_format_name="$OPTARG" ;;
+    t) clang_tidy_name="$OPTARG" ;;
+    k) cppcheck_name="$OPTARG" ;;
+    s) sanitizers="$OPTARG" ;;
+    h) usage; exit 0 ;;
+    \?) echo "Invalid option: -$OPTARG" >&2; usage; exit 2 ;;
+    :)  echo "Option -$OPTARG requires an argument." >&2; usage; exit 2 ;;
   esac
 done
 
-# Check if the compiler argument is provided
-if [ -z "$c_compiler" ]; then
-  echo "Error: c compiler argument (-c) is required."
-  usage
+# Required args
+if [[ -z "$c_compiler" ]]; then
+  echo "Error: -c <C compiler> is required." >&2
+  usage; exit 2
+fi
+if [[ -z "$cxx_compiler" ]]; then
+  echo "Error: -x <C++ compiler> is required." >&2
+  usage; exit 2
 fi
 
-# Check if the compiler argument is provided
-if [ -z "$cxx_compiler" ]; then
-  echo "Error: c++ compiler argument (-x) is required."
-  usage
-fi
+# Helpers
+have() { command -v "$1" >/dev/null 2>&1; }
 
-# Function to check if a tool is in the PATH
-check_tool() {
-    if command -v "$1" >/dev/null 2>&1; then
-        echo "$1 found in PATH"
-        return 0
-    else
-        echo "$1 not found in PATH"
-        return 1
-    fi
+compile_test() {
+  # compile_test <compiler> <lang>
+  local cc="$1" lang="$2"
+  local tmpdir src exe
+  tmpdir="$(mktemp -d 2>/dev/null || mktemp -d -t ccprobe)"
+  src="$tmpdir/t.$lang"
+  exe="$tmpdir/a.out"
+  if [[ "$lang" == "c" ]]; then
+    printf 'int main(void){return 0;}\n' >"$src"
+  else
+    printf 'int main(){return 0;}\n' >"$src"
+  fi
+  if "$cc" -x "$lang" "$src" -o "$exe" >/dev/null 2>&1; then
+    rm -rf "$tmpdir"
+    return 0
+  else
+    rm -rf "$tmpdir"
+    return 1
+  fi
 }
 
-# List of tools to check
-tools=("cmake" "$c_compiler" "$cxx_compiler" "$clang_format_name" "$clang_tidy_name" "$cppcheck_name")
+# Build the unique tools list, preserving order
+declare -a tools=()
+append_unique() {
+  local x
+  for x in "$@"; do
+    [[ -z "$x" ]] && continue
+    local seen=0
+    local y
+    for y in "${tools[@]:-}"; do
+      if [[ "$y" == "$x" ]]; then seen=1; break; fi
+    done
+    (( seen == 0 )) && tools+=("$x")
+  done
+}
+append_unique "cmake" "$c_compiler" "$cxx_compiler" "$clang_format_name" "$clang_tidy_name" "$cppcheck_name"
 
-# Initialize a counter for missing tools
-missing_count=0
+missing=0
 
-# Loop through the list of tools
-for tool in "${tools[@]}"; do
-    check_tool "$tool" || ((missing_count++))
+# Simple presence checks
+for t in "${tools[@]}"; do
+  if ! have "$t"; then
+    echo "missing: $t"
+    ((missing++))
+  fi
 done
 
-# Return the count of missing tools
-echo "Total missing tools: $missing_count"
+# Compiler sanity checks only if present
+if have "$c_compiler"; then
+  if ! compile_test "$c_compiler" "c"; then
+    echo "broken: $c_compiler (cannot compile a trivial C program)"
+    ((missing++))
+  fi
+fi
+if have "$cxx_compiler"; then
+  if ! compile_test "$cxx_compiler" "c++"; then
+    echo "broken: $cxx_compiler (cannot compile a trivial C++ program)"
+    ((missing++))
+  fi
+fi
 
-# Exit with the count of missing tools as the status code
-exit "$missing_count"
+# Optional: just record sanitizers, do not validate here.
+if [[ -n "${sanitizers:-}" ]]; then
+  printf '%s\n' "$sanitizers" > sanitizers.txt
+fi
 
+# Summary and exit code equals number of missing/broken items
+if (( missing == 0 )); then
+  echo "All required tools OK."
+else
+  echo "Total missing/broken tools: $missing"
+fi
+
+exit "$missing"

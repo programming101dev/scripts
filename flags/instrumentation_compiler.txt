@@ -1,0 +1,59 @@
+# Compiler-accepted flags (no link-only switches here)
+
+# Profiling
+-p
+-pg
+
+# Coverage / profiling data
+-fprofile-arcs
+--coverage
+-ftest-coverage
+-fprofile-abs-path                      # clang only
+#-fprofile-dir=path
+#-fprofile-generate=path
+#-fprofile-info-section                 # clang only
+#-fprofile-info-section=name            # clang only
+#-fprofile-note=path
+#-fprofile-prefix-path=path
+#-fprofile-prefix-map=old=new
+#-fprofile-update=single
+#-fprofile-update=atomic
+-fprofile-update=prefer-atomic          # clang (GCC may not accept)
+#-fprofile-filter-files=regex           # clang only
+#-fprofile-exclude-files=regex          # clang only
+-fprofile-reproducible=multithreaded    # clang only
+#-fprofile-reproducible=parallel-runs   # clang only
+#-fprofile-reproducible=serial          # clang only
+
+# Hardening / instrumentation
+-fharden-compares                       # clang >= 17
+-fharden-conditional-branches           # clang >= 17
+
+# Stack protection and checks
+#-fstack-protector
+-fstack-protector-all
+#-fstack-protector-strong
+-fstack-protector-explicit
+-fstack-check                           # GCC only
+#-fstack-clash-protection               # choose instead of -fstack-check where supported
+#-fstack-limit-register=reg             # GCC only
+#-fstack-limit-symbol=sym               # GCC only
+#-fno-stack-limit                       # GCC only
+#-fsplit-stack                          # GCC on some targets; clang usually no
+
+# C++ VTable verification (Clang)
+-fvtable-verify=std                     # clang C++ only
+#-fvtable-verify=preinit                # clang C++ only
+#-fvtable-verify=none                   # clang C++ only
+#-fvtv-debug                            # clang C++ only
+#-fvtv-counts                           # clang C++ only
+
+# Function entry/exit hooks
+-finstrument-functions
+-finstrument-functions-once
+#-finstrument-functions-exclude-file-list=f
+#-finstrument-functions-exclude-function-list=
+
+# Patchable entries / special profiling
+#-fpatchable-function-entry=            # needs a value
+#-fcs-profile-generate                  # clang only

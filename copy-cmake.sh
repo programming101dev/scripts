@@ -1,12 +1,13 @@
 #!/bin/sh
-# Portable sync: copy scripts/CMakeLists.txt into any repo dir containing config.cmake
+# Copy scripts/CMakeLists.txt into each repo listed in repos.txt.
+# repos.txt format: <git-url>|<dest-path>|<lang>
 
 set -eu
 
 usage() {
   printf '%s\n' "Usage: $0 [-n] [-v]
   -n  dry run (show what would change, no writes)
-  -v  verbose (also report up-to-date targets)"
+  -v  verbose (also report up-to-date or skipped targets)"
   exit 0
 }
 
@@ -21,14 +22,15 @@ while getopts "nvh" opt; do
   esac
 done
 
-# Resolve paths
+# Paths
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-ROOT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 SRC_CMAKE="$SCRIPT_DIR/CMakeLists.txt"
+REPOS_FILE="$SCRIPT_DIR/repos.txt"
 
 [ -f "$SRC_CMAKE" ] || { printf 'Error: %s not found.\n' "$SRC_CMAKE" >&2; exit 1; }
+[ -f "$REPOS_FILE" ] || { printf 'Error: %s not found.\n' "$REPOS_FILE" >&2; exit 1; }
 
-# copy helper (only if missing or content differs)
+# Copy helper
 copy_if_needed() {
   dest_dir=$1
   dest="$dest_dir/CMakeLists.txt"
@@ -45,9 +47,8 @@ copy_if_needed() {
       printf '[dry-run] create: %s\n' "$dest_dir"
     fi
   else
-    # ensure directory exists (it does, but keep this harmless)
-    mkdir -p -- "$dest_dir"
-    cp -- "$SRC_CMAKE" "$dest"
+    mkdir -p "$dest_dir"
+    cp "$SRC_CMAKE" "$dest"
     if [ -f "$dest" ]; then
       printf 'Updated: %s\n' "$dest_dir"
     else
@@ -56,26 +57,38 @@ copy_if_needed() {
   fi
 }
 
-# Walk these roots; prune common build/VC dirs; act on any config.cmake
-scan_root() {
-  base=$1
-  [ -d "$base" ] || return 0
+# Process repos.txt in current directory
+while IFS= read -r line || [ -n "$line" ]; do
+  # Strip CR if CRLF file, trim whitespace
+  line=${line%$'\r'}
+  line=$(printf '%s' "$line" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  [ -z "$line" ] && continue
+  case "$line" in \#*) continue ;; esac
 
-  # POSIX-find friendly prune & match
-  # shellcheck disable=SC2039
-  find "$base" \
-    -type d \( -name .git -o -name .svn -o -name .hg -o -name build -o -name dist -o -name out -o -name bin -o -name obj -o -name ".flags" -o -name ".idea" -o -name ".vscode" -o -name "cmake-build-*" \) -prune -o \
-    -type f -name config.cmake -print |
-  while IFS= read -r cfg; do
-    repo_dir=$(dirname -- "$cfg")
-    copy_if_needed "$repo_dir"
-  done
-}
+  dest_field=$(printf '%s' "$line" | awk -F'|' '{print $2}')
 
-# Limit search to the “repositories” you showed
-scan_root "$ROOT_DIR/examples"
-scan_root "$ROOT_DIR/libraries"
-scan_root "$ROOT_DIR/programs"
-scan_root "$ROOT_DIR/templates"
+  if [ -z "$dest_field" ]; then
+    printf 'Skip: bad line (missing dest): %s\n' "$line" >&2
+    continue
+  fi
+
+  # Resolve to absolute path (in case of relative like ../libraries/lib_c)
+  dest_dir=$(CDPATH= cd -- "$dest_field" 2>/dev/null && pwd) || {
+    [ "$VERBOSE" -eq 1 ] && printf 'Skip: cannot resolve %s\n' "$dest_field"
+    continue
+  }
+
+  if [ ! -d "$dest_dir" ]; then
+    [ "$VERBOSE" -eq 1 ] && printf 'Skip: not a directory: %s\n' "$dest_dir"
+    continue
+  fi
+
+  if [ ! -f "$dest_dir/config.cmake" ]; then
+    [ "$VERBOSE" -eq 1 ] && printf 'Skip: no config.cmake in %s\n' "$dest_dir"
+    continue
+  fi
+
+  copy_if_needed "$dest_dir"
+done < "$REPOS_FILE"
 
 exit 0

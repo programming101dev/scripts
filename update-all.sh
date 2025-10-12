@@ -1,6 +1,6 @@
 #!/bin/sh
 # update-all.sh — drive ./update.sh across C and C++ compiler lists
-# Portable: POSIX sh, uses only awk, paste, cut, printf, test, getopts
+# Portable: POSIX sh; uses awk, printf, getopts
 
 set -eu
 
@@ -27,7 +27,7 @@ usage() {
     exit 1
 }
 
-# Parse options
+# Options
 while getopts "f:t:k:s:C:X:u:h" opt; do
   case "$opt" in
     f) clang_format_name=$OPTARG ;;
@@ -42,61 +42,49 @@ while getopts "f:t:k:s:C:X:u:h" opt; do
 done
 
 # Preconditions
-[ -f "$c_list_file" ] || { printf 'Error: C list not found: %s\n' "$c_list_file" >&2; exit 2; }
+[ -f "$c_list_file" ]   || { printf 'Error: C list not found: %s\n' "$c_list_file" >&2; exit 2; }
 [ -f "$cxx_list_file" ] || { printf 'Error: C++ list not found: %s\n' "$cxx_list_file" >&2; exit 2; }
-[ -x "$driver" ] || { printf 'Error: driver not executable: %s\n' "$driver" >&2; exit 2; }
 
-# Sanitize lists: drop comments and blank lines, trim whitespace
-# Works on BSD/GNU awk
-sanitize() {
-    awk 'NF && $1 !~ /^#/ { print $1 }' "$1"
+# Resolve driver (name or path)
+case "$driver" in
+  /*|./*|../*)
+    [ -x "$driver" ] || { printf 'Error: driver not executable: %s\n' "$driver" >&2; exit 2; }
+    ;;
+  *)
+    driver_path=$(command -v "$driver" 2>/dev/null || true)
+    [ -n "$driver_path" ] && driver=$driver_path
+    [ -x "$driver" ] || { printf 'Error: driver not found/executable: %s\n' "$driver" >&2; exit 2; }
+    ;;
+esac
+
+# Count non-empty, non-comment lines (both GNU/BSD awk ok)
+count_nonempty() {
+  awk 'NF && $1 !~ /^#/' "$1" | wc -l | awk '{print $1}'
 }
 
-# Ensure at least one entry remains after sanitization
-c_count=$(sanitize "$c_list_file" | wc -l | awk '{print $1}')
-x_count=$(sanitize "$cxx_list_file" | wc -l | awk '{print $1}')
+c_count=$(count_nonempty "$c_list_file")
+x_count=$(count_nonempty "$cxx_list_file")
 [ "$c_count" -gt 0 ] || { printf 'Error: no C compilers listed in %s\n' "$c_list_file" >&2; exit 3; }
 [ "$x_count" -gt 0 ] || { printf 'Error: no C++ compilers listed in %s\n' "$cxx_list_file" >&2; exit 3; }
 
-# Pair rows with paste. If one file is shorter, paste emits empty fields.
-# Reuse the last nonempty value for whichever side is empty.
-# The loop runs as many rows as the longer list.
-# Works with BSD/GNU paste (-d) and POSIX read.
-last_c=""
-last_x=""
-
-# Use a subshell so we can set IFS without affecting the parent
-(
-    IFS='|'
-    # shellcheck disable=SC2002
-    paste -d '|' \
-        "$(sanitize "$c_list_file" | sed 's/.*/&/')" \
-        "$(sanitize "$cxx_list_file" | sed 's/.*/&/')" 2>/dev/null \
-    || {
-        # If the command substitution above confuses some shells, fall back to temp files
-        tmpc=$(mktemp 2>/dev/null || mktemp -t c_list) || exit 1
-        tmpx=$(mktemp 2>/dev/null || mktemp -t x_list) || exit 1
-        sanitize "$c_list_file" >"$tmpc"
-        sanitize "$cxx_list_file" >"$tmpx"
-        paste -d '|' "$tmpc" "$tmpx"
-        rm -f "$tmpc" "$tmpx"
-    }
-) | while IFS='|' read -r c x; do
-    # If paste produced fewer rows on the shorter side, it yields an empty field.
-    if [ -n "${c:-}" ]; then last_c=$c; fi
-    if [ -n "${x:-}" ]; then last_x=$x; fi
-
-    # Reuse last seen nonempty
-    [ -n "${c:-}" ] || c=$last_c
-    [ -n "${x:-}" ] || x=$last_x
-
-    # Final guard
-    if [ -z "$c" ] || [ -z "$x" ]; then
-        printf 'Warning: skipping empty pair: C="%s" CXX="%s"\n' "$c" "$x" >&2
-        continue
-    fi
-
+# Pair lines by repeating last seen entry when one list is shorter.
+# Output lines as "C|CXX".
+awk '
+  FNR==NR { if (NF && $1 !~ /^#/) C[++nC]=$1; next }
+           { if (NF && $1 !~ /^#/) X[++nX]=$1 }
+  END     {
+             if (nC==0 || nX==0) exit 1
+             max = (nC>nX)?nC:nX
+             for (i=1;i<=max;i++) {
+               c = (i<=nC)?C[i]:C[nC]
+               x = (i<=nX)?X[i]:X[nX]
+               if (c=="" || x=="") continue
+               printf "%s|%s\n", c, x
+             }
+           }
+' "$c_list_file" "$cxx_list_file" | while IFS='|' read -r c x; do
     printf 'Updating repositories with: %s : %s\n' "$c" "$x"
+    # Quote all args to preserve spaces if any tool names are absolute paths.
     "$driver" \
       -c "$c" \
       -x "$x" \

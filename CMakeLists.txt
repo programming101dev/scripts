@@ -1,531 +1,467 @@
-cmake_minimum_required(VERSION 3.21)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+cmake_minimum_required(VERSION 3.20)
 
-# =============================  Project config  =============================
-if (NOT EXISTS "${CMAKE_SOURCE_DIR}/config.cmake")
-    message(FATAL_ERROR "Missing config.cmake, define project settings there.")
-endif ()
-include("${CMAKE_SOURCE_DIR}/config.cmake")
+# =========================
+# Project config (external; no fallbacks)
+# =========================
+include("${CMAKE_CURRENT_SOURCE_DIR}/config.cmake" OPTIONAL RESULT_VARIABLE _HAVE_CFG)
+if(NOT _HAVE_CFG)
+    message(FATAL_ERROR "config.cmake not found next to CMakeLists.txt")
+endif()
 
-set(_REQ_VARS PROJECT_NAME PROJECT_VERSION PROJECT_DESCRIPTION PROJECT_LANGUAGE)
-foreach (_v IN LISTS _REQ_VARS)
-    if (NOT DEFINED ${_v} OR "${${_v}}" STREQUAL "")
-        message(FATAL_ERROR "${_v} is not defined or empty in config.cmake")
-    endif ()
-endforeach ()
+foreach(_req IN ITEMS
+        PROJECT_NAME PROJECT_VERSION PROJECT_DESCRIPTION PROJECT_LANGUAGE STANDARD_FLAGS
+)
+    if(NOT DEFINED ${_req})
+        message(FATAL_ERROR "config.cmake must define ${_req}")
+    endif()
+    if("${${_req}}" STREQUAL "")
+        message(FATAL_ERROR "config.cmake variable ${_req} must be non-empty")
+    endif()
+endforeach()
 
-string(TOUPPER "${PROJECT_LANGUAGE}" _PLANG)
-if (NOT _PLANG MATCHES "^(C|CXX)$")
-    message(FATAL_ERROR "PROJECT_LANGUAGE must be C or CXX, got '${PROJECT_LANGUAGE}'")
-endif ()
-if ((NOT EXECUTABLE_TARGETS) AND (NOT LIBRARY_TARGETS))
-    message(FATAL_ERROR "At least one of EXECUTABLE_TARGETS or LIBRARY_TARGETS must be nonempty.")
-endif ()
+if(NOT PROJECT_LANGUAGE MATCHES "^(C|CXX)$")
+    message(FATAL_ERROR "PROJECT_LANGUAGE must be 'C' or 'CXX'")
+endif()
 
-project(${PROJECT_NAME} VERSION ${PROJECT_VERSION} DESCRIPTION "${PROJECT_DESCRIPTION}" LANGUAGES ${PROJECT_LANGUAGE})
+project(${PROJECT_NAME}
+        VERSION     ${PROJECT_VERSION}
+        DESCRIPTION "${PROJECT_DESCRIPTION}"
+        LANGUAGES   ${PROJECT_LANGUAGE})
 
-message(STATUS "Loaded config.cmake variables:")
-message(STATUS "  PROJECT_NAME: ${PROJECT_NAME}")
-message(STATUS "  PROJECT_VERSION: ${PROJECT_VERSION}")
-message(STATUS "  PROJECT_DESCRIPTION: ${PROJECT_DESCRIPTION}")
-message(STATUS "  PROJECT_LANGUAGE: ${PROJECT_LANGUAGE}")
-message(STATUS "  EXECUTABLE_TARGETS: ${EXECUTABLE_TARGETS}")
-message(STATUS "  LIBRARY_TARGETS: ${LIBRARY_TARGETS}")
-message(STATUS "  STANDARD_FLAGS: ${STANDARD_FLAGS}")
-message(STATUS "  SANITIZER_LIST: ${SANITIZER_LIST}")
+# --- Ensure /usr/local/include isn't implicit so we emit -I/usr/local/include
+foreach(_lang IN ITEMS C CXX)
+    if(DEFINED CMAKE_${_lang}_IMPLICIT_INCLUDE_DIRECTORIES)
+        list(REMOVE_ITEM CMAKE_${_lang}_IMPLICIT_INCLUDE_DIRECTORIES "/usr/local/include")
+        set(CMAKE_${_lang}_IMPLICIT_INCLUDE_DIRECTORIES
+                "${CMAKE_${_lang}_IMPLICIT_INCLUDE_DIRECTORIES}" CACHE STRING "" FORCE)
+    endif()
+endforeach()
 
-# =============================  System paths  =============================
-set(EXTERNAL_INCLUDE_DIRS "")
-foreach (_inc IN ITEMS /usr/local/include)
-    if (EXISTS "${_inc}")
-        list(APPEND EXTERNAL_INCLUDE_DIRS "${_inc}")
-    endif ()
-endforeach ()
-set(EXTERNAL_LIBRARY_DIRS "")
-foreach (_lib IN ITEMS /usr/local/lib /usr/local/lib64)
-    if (EXISTS "${_lib}")
-        list(APPEND EXTERNAL_LIBRARY_DIRS "${_lib}")
-    endif ()
-endforeach ()
-foreach (_inc ${EXTERNAL_INCLUDE_DIRS})
-    include_directories(BEFORE SYSTEM "${_inc}")
-endforeach ()
-foreach (_lib ${EXTERNAL_LIBRARY_DIRS})
-    link_directories("${_lib}")
-endforeach ()
+# Derive helpers for language/compilers
+if(PROJECT_LANGUAGE STREQUAL "CXX")
+    set(_LANG CXX)
+    set(_COMPILER_ID "${CMAKE_CXX_COMPILER_ID}")
+    set(_COMPILER    "${CMAKE_CXX_COMPILER}")
+else()
+    set(_LANG C)
+    set(_COMPILER_ID "${CMAKE_C_COMPILER_ID}")
+    set(_COMPILER    "${CMAKE_C_COMPILER}")
+endif()
 
-set(LOCAL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
-set(HAVE_LOCAL_INCLUDE_DIR FALSE)
-if (EXISTS "${LOCAL_INCLUDE_DIR}")
-    set(HAVE_LOCAL_INCLUDE_DIR TRUE)
-endif ()
-set(BUILD_INCLUDE_IF_EXISTS $<$<BOOL:${HAVE_LOCAL_INCLUDE_DIR}>:${LOCAL_INCLUDE_DIR}>)
+# =========================
+# Tool paths (required/optional)
+# =========================
+set(ICON "🔧" CACHE STRING "Icon prefix")
 
-add_library(sys_paths INTERFACE)
-if (EXTERNAL_INCLUDE_DIRS)
-    target_include_directories(sys_paths INTERFACE ${EXTERNAL_INCLUDE_DIRS})
-endif ()
-if (EXTERNAL_LIBRARY_DIRS)
-    target_link_directories(sys_paths INTERFACE ${EXTERNAL_LIBRARY_DIRS})
-endif ()
+# Required: clang-tidy + run-clang-tidy (invoked unconditionally)
+find_program(CLANG_TIDY_NAME
+        NAMES clang-tidy
+        REQUIRED
+        DOC "clang-tidy executable used by the build")
+find_program(RUN_CLANG_TIDY_NAME
+        NAMES run-clang-tidy
+        REQUIRED
+        DOC "run-clang-tidy wrapper used by the build")
 
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
+# Optional: clang-format (format-before-compile) and scan-build (separate target)
+find_program(CLANG_FORMAT_NAME
+        NAMES clang-format
+        DOC "clang-format executable used by the build")
+find_program(SCAN_BUILD_NAME
+        NAMES scan-build
+        DOC "scan-build executable used by the build")
+
+# Enforce: cppcheck must exist and will always run
+find_program(CPPCHECK_NAME NAMES cppcheck REQUIRED DOC "cppcheck executable used by the build")
+
+# Sanitizers requested (comma-separated names) -> read matching *_sanitizer_flags.txt
+set(SANITIZER_LIST "" CACHE STRING "Comma-separated sanitizers to try to enable")
+
+# Extra public include/link roots (caller-controlled; defaults provided below)
+set(P101_PUBLIC_INCLUDE_DIRS "/usr/local/include"              CACHE STRING "Extra public include dirs")
+set(P101_PUBLIC_LINK_DIRS    "/usr/local/lib;/usr/local/lib64" CACHE STRING "Extra link dirs")
+
+# Ensure defaults stick if cache has blank values
+if(NOT DEFINED P101_PUBLIC_INCLUDE_DIRS OR P101_PUBLIC_INCLUDE_DIRS STREQUAL "")
+    set(P101_PUBLIC_INCLUDE_DIRS "/usr/local/include" CACHE STRING "Extra public include dirs" FORCE)
+endif()
+if(NOT DEFINED P101_PUBLIC_LINK_DIRS OR P101_PUBLIC_LINK_DIRS STREQUAL "")
+    set(P101_PUBLIC_LINK_DIRS "/usr/local/lib;/usr/local/lib64" CACHE STRING "Extra link dirs" FORCE)
+endif()
+
+# clang-tidy / cppcheck knobs
+set(P101_TIDY_CHECKS       ""   CACHE STRING "clang-tidy --checks= (empty -> sane default)")
+set(P101_TIDY_EXTRA_ARGS   ""   CACHE STRING "Extra clang-tidy args (space-separated)")
+set(P101_CPPCHECK_ARGS     ""   CACHE STRING "cppcheck args (space-separated)")
+set(P101_HEADER_FILTER     ".*" CACHE STRING "Regex for -header-filter (default: all)")
+
+# Requested cppcheck suppressions (space-separated)
+set(CPPCHECK_SUPPRESSIONS
+        "missingIncludeSystem unusedFunction staticFunction constParameterPointer unmatchedSuppression checkersReport"
+        CACHE STRING "Space-separated cppcheck suppressions"
+)
+
+# Per-TU analyze behavior
+set(P101_ANALYZE_FAIL_ON_DIAGNOSTICS OFF CACHE BOOL "Fail build if analyze stage emits diagnostics")
+
+# === Clang Static Analyzer "in-depth" controls ===
+set(P101_CLANG_SA_PROFILE "deep" CACHE STRING "CSA profile: basic|deep")
+set_property(CACHE P101_CLANG_SA_PROFILE PROPERTY STRINGS basic deep)
+set(P101_CLANG_SA_FAIL_ON_DIAGNOSTICS ON CACHE BOOL "Fail build on any CSA diagnostic")
+set(P101_CLANG_SA_EXTRA_ARGS "" CACHE STRING "Extra --analyze args for clang (space-separated)")
+
+# NEW: allow disabling specific CSA checkers (comma-separated fully-qualified names)
+# Example default disables the "insecureAPI" false-positive-y fprintf/strcpy family.
+set(P101_CLANG_SA_DISABLE_CHECKERS
+        "security.insecureAPI.DeprecatedOrUnsafeBufferHandling,security.insecureAPI.strcpy"
+        CACHE STRING "Comma-separated Clang Static Analyzer checkers to disable (e.g. security.insecureAPI.DeprecatedOrUnsafeBufferHandling,security.insecureAPI.strcpy)")
+
+# =========================
+# QoL
+# =========================
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Export compile_commands.json" FORCE)
 include(GNUInstallDirs)
-if (NOT CMAKE_INSTALL_INCLUDEDIR)
-    set(CMAKE_INSTALL_INCLUDEDIR include)
-endif ()
-if (NOT CMAKE_INSTALL_LIBDIR)
-    set(CMAKE_INSTALL_LIBDIR lib)
-endif ()
-if (NOT CMAKE_INSTALL_BINDIR)
-    set(CMAKE_INSTALL_BINDIR bin)
-endif ()
-message(STATUS "Install dirs: inc='${CMAKE_INSTALL_INCLUDEDIR}', lib='${CMAKE_INSTALL_LIBDIR}', bin='${CMAKE_INSTALL_BINDIR}'")
 
-# =============================  Global build opts  =============================
-set(CMAKE_C_VISIBILITY_PRESET default)
-set(CMAKE_CXX_VISIBILITY_PRESET default)
-set(CMAKE_VISIBILITY_INLINES_HIDDEN OFF)
-option(BUILD_SHARED_LIBS "Build shared libraries" ON)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# Disable CMake’s built-in analyzers; we drive them manually in a strict order
+set(CMAKE_C_CLANG_TIDY   "" CACHE STRING "Disabled; we run clang-tidy ourselves" FORCE)
+set(CMAKE_CXX_CLANG_TIDY "" CACHE STRING "Disabled; we run clang-tidy ourselves" FORCE)
+set(CMAKE_C_CPPCHECK     "" CACHE STRING "Disabled; we run cppcheck ourselves"   FORCE)
+set(CMAKE_CXX_CPPCHECK   "" CACHE STRING "Disabled; we run cppcheck ourselves"   FORCE)
 
-if (_PLANG STREQUAL "C")
-    set(_COMPILER_EXE "${CMAKE_C_COMPILER}")
-else ()
-    set(_COMPILER_EXE "${CMAKE_CXX_COMPILER}")
-endif ()
-message(STATUS "Using Compiler: ${_COMPILER_EXE}")
-get_filename_component(COMPILER_NAME "${_COMPILER_EXE}" NAME)
-message(STATUS "Compiler Name: ${COMPILER_NAME}")
+# Echo compile/link commands
+set(_LAUNCH_CMD "echo \"${ICON} compiling/linking: $*\" && exec \"$@\"")
+if(PROJECT_LANGUAGE STREQUAL "CXX")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "/bin/sh" "-c" "${_LAUNCH_CMD}" "cmake-launch")
+else()
+    set(CMAKE_C_COMPILER_LAUNCHER   "/bin/sh" "-c" "${_LAUNCH_CMD}" "cmake-launch")
+endif()
 
-# =============================  Tools discovery  =============================
-if (NOT DEFINED CLANG_FORMAT_NAME)
-    set(CLANG_FORMAT_NAME clang-format)
-endif ()
-if (NOT DEFINED CLANG_TIDY_NAME)
-    set(CLANG_TIDY_NAME clang-tidy)
-endif ()
-if (NOT DEFINED CPPCHECK_NAME)
-    set(CPPCHECK_NAME cppcheck)
-endif ()
+# Split cache strings to lists
+separate_arguments(P101_PUBLIC_INCLUDE_DIRS_LIST NATIVE_COMMAND "${P101_PUBLIC_INCLUDE_DIRS}")
+separate_arguments(P101_PUBLIC_LINK_DIRS_LIST    NATIVE_COMMAND "${P101_PUBLIC_LINK_DIRS}")
+separate_arguments(P101_TIDY_EXTRA_ARGS_LIST     NATIVE_COMMAND "${P101_TIDY_EXTRA_ARGS}")
+separate_arguments(P101_CPPCHECK_ARGS_LIST       NATIVE_COMMAND "${P101_CPPCHECK_ARGS}")
+separate_arguments(CPPCHECK_SUPPRESSIONS_LIST    NATIVE_COMMAND "${CPPCHECK_SUPPRESSIONS}")
+separate_arguments(P101_CLANG_SA_EXTRA_ARGS_LIST NATIVE_COMMAND "${P101_CLANG_SA_EXTRA_ARGS}")
 
-find_program(CLANG_FORMAT NAMES ${CLANG_FORMAT_NAME})
-find_program(CLANG_TIDY NAMES ${CLANG_TIDY_NAME})
-find_program(CPPCHECK NAMES ${CPPCHECK_NAME})
-find_program(CLANG_ANALYZER_EXE NAMES clang clang-20 clang-19 clang-18)
+# --- macOS convenience: Homebrew/MacPorts roots ---
+if(APPLE)
+    list(APPEND P101_PUBLIC_INCLUDE_DIRS_LIST /opt/homebrew/include /opt/local/include)
+    list(APPEND P101_PUBLIC_LINK_DIRS_LIST    /opt/homebrew/lib    /opt/local/lib)
+endif()
 
-message(STATUS "Found clang-format: ${CLANG_FORMAT}")
-message(STATUS "Found clang-tidy:   ${CLANG_TIDY}")
-message(STATUS "Found cppcheck:     ${CPPCHECK}")
-message(STATUS "Found clang (for analyzer/tidy resource-dir): ${CLANG_ANALYZER_EXE}")
+# Filter helper (keep existing dirs only)
+function(_p101_filter_existing_dirs OUT)
+    set(_out "")
+    foreach(_d IN LISTS ARGN)
+        if(IS_DIRECTORY "${_d}")
+            list(APPEND _out "${_d}")
+        else()
+            message(STATUS "Skipping missing include/link dir: ${_d}")
+        endif()
+    endforeach()
+    set(${OUT} "${_out}" PARENT_SCOPE)
+endfunction()
 
-if (NOT CLANG_FORMAT OR NOT CLANG_TIDY OR NOT CPPCHECK)
-    message(FATAL_ERROR "Required tools (clang-format, clang-tidy, cppcheck) not found.")
-endif ()
-
-# ---------- Resolve Clang resource dir for headers like <stdatomic.h> ----------
-set(CLANG_RESOURCE_DIR "")
-if (CLANG_ANALYZER_EXE)
-    execute_process(
-            COMMAND ${CLANG_ANALYZER_EXE} -print-resource-dir
-            OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+# =========================
+# macOS SDK (helps tidy/try_compile)
+# =========================
+set(MAC_SYSROOT "")
+if(APPLE)
+    execute_process(COMMAND xcrun --show-sdk-path
+            OUTPUT_VARIABLE MAC_SYSROOT
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET)
-endif ()
-if (CLANG_RESOURCE_DIR)
-    message(STATUS "Clang resource dir: ${CLANG_RESOURCE_DIR}")
-else ()
-    message(WARNING "Could not determine Clang resource dir, clang-tidy may pick GCC headers.")
-endif ()
-
-# ---------- Build -extra-arg-before bundle for clang-tidy ----------
-function(collect_tidy_clang_sysincs_c OUT)
-    set(_clang ${CLANG_ANALYZER_EXE})
-    if (NOT _clang AND CMAKE_C_COMPILER_ID MATCHES ".*Clang")
-        set(_clang ${CMAKE_C_COMPILER})
-    endif()
-    if (NOT _clang)
-        set(${OUT} "" PARENT_SCOPE)
-        return()
-    endif()
-    execute_process(
-            COMMAND ${_clang} -E -x c - -v
-            INPUT_FILE /dev/null
-            OUTPUT_QUIET
-            ERROR_VARIABLE _err)
-    string(REGEX REPLACE "\r?\n" ";" _lines "${_err}")
-    set(_grab OFF)
-    set(_incs "")
-    foreach(L IN LISTS _lines)
-        if(L MATCHES "^#include <.*> search starts here:")
-            set(_grab ON)
-            continue()
-        endif()
-        if(_grab AND L MATCHES "^End of search list\\.")
-            break()
-        endif()
-        if(_grab)
-            string(STRIP "${L}" L)
-            if(EXISTS "${L}")
-                list(APPEND _incs "${L}")
-            endif()
-        endif()
-    endforeach()
-    if (CLANG_RESOURCE_DIR)
-        list(FILTER _incs EXCLUDE REGEX "^${CLANG_RESOURCE_DIR}/include/?$")
-    endif()
-    set(${OUT} "${_incs}" PARENT_SCOPE)
-endfunction()
-
-set(TIDY_EXTRA_BEFORE_ARGS "")
-if (CLANG_RESOURCE_DIR)
-    list(APPEND TIDY_EXTRA_BEFORE_ARGS
-            -resource-dir "${CLANG_RESOURCE_DIR}"
-            -isystem "${CLANG_RESOURCE_DIR}/include")
 endif()
-if (UNIX AND NOT APPLE)
-    collect_tidy_clang_sysincs_c(_CLANG_SYSINCS)
-    list(APPEND TIDY_EXTRA_BEFORE_ARGS -nostdinc)
-    if (CLANG_RESOURCE_DIR)
-        list(APPEND TIDY_EXTRA_BEFORE_ARGS -isystem "${CLANG_RESOURCE_DIR}/include")
-    endif()
-    foreach(_d IN LISTS _CLANG_SYSINCS)
-        list(APPEND TIDY_EXTRA_BEFORE_ARGS -isystem "${_d}")
-    endforeach()
-endif()
-set(TIDY_EXTRA_BEFORE "")
-foreach(arg IN LISTS TIDY_EXTRA_BEFORE_ARGS)
-    list(APPEND TIDY_EXTRA_BEFORE "-extra-arg-before=${arg}")
-endforeach()
 
-# =============================  Probe .flags helpers  =============================
-function(get_flags_dir OUTVAR)
-    if (_PLANG STREQUAL "C")
-        get_filename_component(_base "${CMAKE_C_COMPILER}" NAME)
-        set(_id "${CMAKE_C_COMPILER_ID}")
-    else ()
-        get_filename_component(_base "${CMAKE_CXX_COMPILER}" NAME)
-        set(_id "${CMAKE_CXX_COMPILER_ID}")
-    endif ()
-    set(_try1 "${CMAKE_SOURCE_DIR}/.flags/${_base}")
-    set(_try2 "${CMAKE_SOURCE_DIR}/.flags/${_id}")
-    if (EXISTS "${_try1}")
-        set(${OUTVAR} "${_try1}" PARENT_SCOPE)
-    elseif (EXISTS "${_try2}")
-        set(${OUTVAR} "${_try2}" PARENT_SCOPE)
-    else ()
-        message(WARNING "No .flags directory for '${_base}' or '${_id}'. Looked in:\n  ${_try1}\n  ${_try2}")
+# =========================
+# Flags: choose exactly one folder based on compiler basename
+# =========================
+get_filename_component(_CC_BASE "${_COMPILER}" NAME) # e.g. gcc-15 or clang
+set(_FLAGS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.flags")
+
+set(_FLAG_DIRS_USED "")
+if(EXISTS "${_FLAGS_ROOT}/${_CC_BASE}")
+    set(_FLAG_DIRS_USED "${_FLAGS_ROOT}/${_CC_BASE}")
+else()
+    message(STATUS "No flags dir for ${_CC_BASE}; no compiler flags will be loaded.")
+endif()
+message(STATUS "Flag dirs used:    ${_FLAG_DIRS_USED}")
+
+# Helper to read space/newline-separated flags into a list
+function(_p101_read_flags FILE OUTVAR)
+    if(EXISTS "${FILE}")
+        file(READ "${FILE}" _raw)
+        string(REGEX REPLACE "[\r\n]+" " " _flat "${_raw}")
+        separate_arguments(_tok NATIVE_COMMAND "${_flat}")
+        set(${OUTVAR} "${_tok}" PARENT_SCOPE)
+    else()
         set(${OUTVAR} "" PARENT_SCOPE)
-    endif ()
+    endif()
 endfunction()
 
-function(read_flags_file FILEPATH OUTLIST)
-    if (NOT EXISTS "${FILEPATH}")
-        set(${OUTLIST} "" PARENT_SCOPE)
-        return()
-    endif ()
-    set(_tokens "")
-    file(STRINGS "${FILEPATH}" _lines)
-    foreach (_L IN LISTS _lines)
-        string(STRIP "${_L}" _L)
-        if (_L STREQUAL "" OR _L MATCHES "^[ \t]*#")
+# Collect compile/link/analyzer flags
+set(P101_EXTRA_CFLAGS "")
+set(P101_EXTRA_LDFLAGS "")
+set(P101_ANALYZER_ONLY_CFLAGS "")  # strictly analyzer_flags.txt content
+
+if(_FLAG_DIRS_USED)
+    foreach(_ff IN ITEMS
+            analyzer_flags.txt
+            code_generation_flags.txt
+            debug_flags.txt
+            optimization_flags.txt
+            warning_flags.txt
+            instrumentation_flags.txt
+            instrumentation_compiler.txt
+    )
+        set(_p "${_FLAG_DIRS_USED}/${_ff}")
+        _p101_read_flags("${_p}" _f)
+        if(NOT _f)
             continue()
-        endif ()
-        string(REGEX REPLACE "^\"(.*)\"$" "\\1" _L "${_L}")
-        separate_arguments(_split UNIX_COMMAND "${_L}")
-        list(APPEND _tokens ${_split})
-    endforeach ()
-    list(TRANSFORM _tokens REPLACE "[\r“”‘’]" "")
-    set(${OUTLIST} "${_tokens}" PARENT_SCOPE)
-endfunction()
+        endif()
 
-function(load_flag_group GROUP_BASENAME OUTLIST)
-    get_flags_dir(_FDIR)
-    if (_FDIR STREQUAL "")
-        set(${OUTLIST} "" PARENT_SCOPE)
-        return()
-    endif ()
-    read_flags_file("${_FDIR}/${GROUP_BASENAME}.txt" _TOK)
-    if (_TOK)
-        message(STATUS "Loaded ${GROUP_BASENAME} from ${_FDIR}/${GROUP_BASENAME}.txt")
-    endif ()
-    set(${OUTLIST} "${_TOK}" PARENT_SCOPE)
-endfunction()
+        if(_ff STREQUAL "analyzer_flags.txt")
+            list(APPEND P101_ANALYZER_ONLY_CFLAGS ${_f})
+        elseif(_ff MATCHES "instrumentation_compiler")
+            list(APPEND P101_EXTRA_CFLAGS ${_f})
+        elseif(_ff MATCHES "instrumentation_flags")
+            list(APPEND P101_EXTRA_LDFLAGS ${_f})
+        elseif(_ff MATCHES "code_generation|debug|optimization|warning")
+            list(APPEND P101_EXTRA_CFLAGS ${_f})
+        endif()
+    endforeach()
+endif()
 
-function(load_sanitizer_flags OUTPUT_VAR)
-    if (NOT DEFINED SANITIZER_LIST OR "${SANITIZER_LIST}" STREQUAL "")
-        set(${OUTPUT_VAR} "" PARENT_SCOPE)
-        return()
-    endif ()
-    if (APPLE AND (CMAKE_${_PLANG}_COMPILER_ID STREQUAL "GNU"))
-        message(WARNING "GCC on macOS cannot link sanitizer runtimes; ignoring SANITIZER_LIST='${SANITIZER_LIST}'. Use clang on macOS.")
-        set(${OUTPUT_VAR} "" PARENT_SCOPE)
-        return()
-    endif ()
-    get_flags_dir(_FDIR)
-    if (_FDIR STREQUAL "")
-        set(${OUTPUT_VAR} "" PARENT_SCOPE)
-        return()
-    endif ()
-    set(SAN_FLAGS "")
-    string(REPLACE "," ";" SANITIZER_NAMES "${SANITIZER_LIST}")
-    foreach (SAN ${SANITIZER_NAMES})
-        read_flags_file("${_FDIR}/${SAN}_sanitizer_flags.txt" _SAN_TOK)
-        foreach (TK IN LISTS _SAN_TOK)
-            if (TK MATCHES "^-fsanitize=")
-                list(APPEND SAN_FLAGS "${TK}")
-            endif ()
-        endforeach ()
-    endforeach ()
-    list(REMOVE_DUPLICATES SAN_FLAGS)
-    set(${OUTPUT_VAR} "${SAN_FLAGS}" PARENT_SCOPE)
-endfunction()
+message(STATUS "Extra CFLAGS: ${P101_EXTRA_CFLAGS}")
+message(STATUS "Analyzer-only CFLAGS: ${P101_ANALYZER_ONLY_CFLAGS}")
+message(STATUS "Extra LDFLAGS: ${P101_EXTRA_LDFLAGS}")
 
-# =============================  Load probed groups  =============================
-load_flag_group("analyzer_flags" P101_ANALYZER_FLAGS)
-load_flag_group("code_generation_flags" P101_CODEGEN_FLAGS)
-load_flag_group("debug_flags" P101_DEBUG_FLAGS)
-load_flag_group("instrumentation_flags" P101_INSTR_FLAGS)
-load_flag_group("optimization_flags" P101_OPT_FLAGS)
-load_flag_group("warning_flags" P101_WARNING_FLAGS)
-load_sanitizer_flags(P101_SANITIZER_FLAGS)
+# =========================
+# Sanitizers from files (same folder)
+# =========================
+string(REPLACE "," ";" _REQ_SAN_LIST "${SANITIZER_LIST}")
+set(_P101_SANITIZER_COMPILE_OPTS "")
+set(_P101_SANITIZER_LINK_OPTS   "")
 
-message(STATUS "Loaded probed flags (for build):")
-message(STATUS "  analyzer:        ${P101_ANALYZER_FLAGS}")
-message(STATUS "  code_generation: ${P101_CODEGEN_FLAGS}")
-message(STATUS "  debug:           ${P101_DEBUG_FLAGS}")
-message(STATUS "  instrumentation:${P101_INSTR_FLAGS}")
-message(STATUS "  optimization:    ${P101_OPT_FLAGS}")
-message(STATUS "  warning:         ${P101_WARNING_FLAGS}")
-if (P101_SANITIZER_FLAGS)
-    message(STATUS "  sanitizers:      ${P101_SANITIZER_FLAGS}")
-endif ()
+set(_SAN_OK TRUE)
+if(APPLE AND _COMPILER_ID STREQUAL "GNU")
+    set(_SAN_OK FALSE)
+endif()
 
-# =============================  Interface compile opts  =============================
-add_library(project_options INTERFACE)
-foreach (_lib ${EXTERNAL_LIBRARY_DIRS})
-    target_link_directories(project_options INTERFACE "${_lib}")
-endforeach ()
-target_compile_options(project_options INTERFACE
-        ${STANDARD_FLAGS}
-        ${P101_ANALYZER_FLAGS}
-        ${P101_CODEGEN_FLAGS}
-        ${P101_DEBUG_FLAGS}
-        ${P101_INSTR_FLAGS}
-        ${P101_OPT_FLAGS}
-        ${P101_WARNING_FLAGS}
+if(_SAN_OK AND _FLAG_DIRS_USED)
+    foreach(_s IN LISTS _REQ_SAN_LIST)
+        string(STRIP "${_s}" _s)
+        if(_s STREQUAL "")
+            continue()
+        endif()
+        string(TOLOWER "${_s}" _san)
+        set(_file "${_FLAG_DIRS_USED}/${_san}_sanitizer_flags.txt")
+        _p101_read_flags("${_file}" _sanflags)
+        if(_sanflags)
+            list(APPEND _P101_SANITIZER_COMPILE_OPTS ${_sanflags})
+            list(APPEND _P101_SANITIZER_LINK_OPTS    ${_sanflags})
+        endif()
+    endforeach()
+endif()
+
+set(DETECTED_SANITIZERS "${_P101_SANITIZER_COMPILE_OPTS}" CACHE STRING "Effective sanitizer flags")
+message(STATUS "Detected sanitizer flags: ${DETECTED_SANITIZERS}")
+
+# =========================
+# Public include/link dirs (agnostic)
+# =========================
+set(PUBLIC_INC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
+set(_INC_CANDIDATES
+        "${PUBLIC_INC_DIR}"
+        "/usr/local/include"
+        ${P101_PUBLIC_INCLUDE_DIRS_LIST}
 )
-if (P101_SANITIZER_FLAGS)
-    target_compile_options(project_options INTERFACE ${P101_SANITIZER_FLAGS} -fno-omit-frame-pointer)
-    target_link_options(project_options INTERFACE ${P101_SANITIZER_FLAGS})
-endif ()
-if (P101_INSTR_FLAGS)
-    target_link_options(project_options INTERFACE ${P101_INSTR_FLAGS})
-endif ()
+set(_LIB_CANDIDATES
+        "/usr/local/lib" "/usr/local/lib64"
+        ${P101_PUBLIC_LINK_DIRS_LIST}
+)
+if(APPLE)
+    list(APPEND _INC_CANDIDATES /opt/homebrew/include /opt/local/include)
+    list(APPEND _LIB_CANDIDATES /opt/homebrew/lib    /opt/local/lib)
+endif()
+list(REMOVE_DUPLICATES _INC_CANDIDATES)
+list(REMOVE_DUPLICATES _LIB_CANDIDATES)
 
-# =============================  Utility macros  =============================
-macro(MAKE_ABSOLUTE_PATHS VAR_NAME)
-    set(_TMP "")
-    foreach (_f ${${VAR_NAME}})
-        if (IS_ABSOLUTE "${_f}")
-            list(APPEND _TMP "${_f}")
-        else ()
-            list(APPEND _TMP "${CMAKE_SOURCE_DIR}/${_f}")
-        endif ()
-    endforeach ()
-    set(${VAR_NAME} ${_TMP})
-endmacro()
+_p101_filter_existing_dirs(P101_PUBLIC_INCLUDE_DIRS_EXISTING ${_INC_CANDIDATES})
+_p101_filter_existing_dirs(P101_PUBLIC_LINK_DIRS_EXISTING    ${_LIB_CANDIDATES})
 
-# =============================  clang-format helper script  =============================
-set(RUN_CF "${CMAKE_BINARY_DIR}/run-clang-format.cmake")
-file(WRITE "${RUN_CF}" [=[
-if(NOT DEFINED CLANG_FORMAT)
-  message(FATAL_ERROR "CLANG_FORMAT not set")
+if(P101_PUBLIC_LINK_DIRS_EXISTING)
+    set(CMAKE_BUILD_RPATH "${P101_PUBLIC_LINK_DIRS_EXISTING}")
+    set(CMAKE_INSTALL_RPATH "${P101_PUBLIC_LINK_DIRS_EXISTING}")
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
 endif()
 
-if(NOT DEFINED FILES)
-  message(FATAL_ERROR "FILES not set")
-endif()
+message(STATUS "Public include dirs used: ${P101_PUBLIC_INCLUDE_DIRS_EXISTING}")
+message(STATUS "Public link dirs used:    ${P101_PUBLIC_LINK_DIRS_EXISTING}")
 
-string(REPLACE "|" ";" file_list "${FILES}")
-list(LENGTH file_list nfiles)
-message(STATUS "clang-format: formatting ${nfiles} files")
+# =========================
+# Targets from config.cmake
+# =========================
+set(LIBRARY_TARGETS    "${LIBRARY_TARGETS}")
+set(EXECUTABLE_TARGETS "${EXECUTABLE_TARGETS}")
+list(FILTER LIBRARY_TARGETS    EXCLUDE REGEX "^(|\\s+)$")
+list(FILTER EXECUTABLE_TARGETS EXCLUDE REGEX "^(|\\s+)$")
 
-foreach(f IN LISTS file_list)
-  if(EXISTS "${f}")
-    execute_process(COMMAND "${CLANG_FORMAT}" --style=file -i "${f}")
-  else()
-    message(WARNING "clang-format: missing file '${f}'")
-  endif()
+set(_ALL_SOURCES_FOR_FORMAT)
+set(_ALL_HEADERS_FOR_INSTALL)
+set(P101_PRIMARY_TARGETS)
+
+function(_p101_abs_list OUT)
+    set(_o "")
+    foreach(_s IN LISTS ARGN)
+        if(IS_ABSOLUTE "${_s}")
+            list(APPEND _o "${_s}")
+        else()
+            list(APPEND _o "${CMAKE_CURRENT_SOURCE_DIR}/${_s}")
+        endif()
+    endforeach()
+    set(${OUT} "${_o}" PARENT_SCOPE)
+endfunction()
+
+# Libraries
+foreach(_lib IN LISTS LIBRARY_TARGETS)
+    if(NOT ${_lib}_SOURCES)
+        message(FATAL_ERROR "Target ${_lib} has no <name>_SOURCES in config.cmake")
+    endif()
+    _p101_abs_list(_srcs_abs ${${_lib}_SOURCES})
+    list(APPEND _ALL_SOURCES_FOR_FORMAT ${_srcs_abs})
+    add_library(${_lib} SHARED ${_srcs_abs} ${${_lib}_HEADERS})
+    target_include_directories(${_lib} PUBLIC ${P101_PUBLIC_INCLUDE_DIRS_EXISTING})
+    target_compile_options(${_lib} PRIVATE ${STANDARD_FLAGS} ${P101_EXTRA_CFLAGS} ${_P101_SANITIZER_COMPILE_OPTS})
+    target_link_options(${_lib}    PRIVATE ${P101_EXTRA_LDFLAGS} ${_P101_SANITIZER_LINK_OPTS})
+    if(P101_PUBLIC_LINK_DIRS_EXISTING)
+        target_link_directories(${_lib} PRIVATE ${P101_PUBLIC_LINK_DIRS_EXISTING})
+    endif()
+    if(${_lib}_LINK_LIBRARIES)
+        target_link_libraries(${_lib} PRIVATE ${${_lib}_LINK_LIBRARIES})
+    endif()
+    list(APPEND _ALL_HEADERS_FOR_INSTALL ${${_lib}_HEADERS})
+    list(APPEND P101_PRIMARY_TARGETS ${_lib})
 endforeach()
+
+# Executables
+foreach(_exe IN LISTS EXECUTABLE_TARGETS)
+    if(NOT ${_exe}_SOURCES)
+        message(FATAL_ERROR "Target ${_exe} has no <name>_SOURCES in config.cmake")
+    endif()
+    _p101_abs_list(_srcs_abs ${${_exe}_SOURCES})
+    list(APPEND _ALL_SOURCES_FOR_FORMAT ${_srcs_abs})
+    add_executable(${_exe} ${_srcs_abs})
+    target_include_directories(${_exe} PRIVATE ${P101_PUBLIC_INCLUDE_DIRS_EXISTING})
+    target_compile_options(${_exe} PRIVATE ${STANDARD_FLAGS} ${P101_EXTRA_CFLAGS} ${_P101_SANITIZER_COMPILE_OPTS})
+    target_link_options(${_exe}    PRIVATE ${P101_EXTRA_LDFLAGS} ${_P101_SANITIZER_LINK_OPTS})
+    if(P101_PUBLIC_LINK_DIRS_EXISTING)
+        target_link_directories(${_exe} PRIVATE ${P101_PUBLIC_LINK_DIRS_EXISTING})
+    endif()
+    if(${_exe}_LINK_LIBRARIES)
+        target_link_libraries(${_exe} PRIVATE ${${_exe}_LINK_LIBRARIES})
+    endif()
+    list(APPEND P101_PRIMARY_TARGETS ${_exe})
+endforeach()
+
+# =========================
+# clang-format (format-before-compile)
+# =========================
+if(CLANG_FORMAT_NAME AND _ALL_SOURCES_FOR_FORMAT)
+    set(_FORMAT_STAMPS)
+    foreach(_abs IN LISTS _ALL_SOURCES_FOR_FORMAT _ALL_HEADERS_FOR_INSTALL)
+        if(NOT _abs)
+            continue()
+        endif()
+        if(NOT _abs MATCHES "^${CMAKE_CURRENT_SOURCE_DIR}/")
+            continue()
+        endif()
+        file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_abs}")
+        get_filename_component(_rel_dir "${_rel}" DIRECTORY)
+        set(_stamp "${CMAKE_BINARY_DIR}/.format/${_rel}.stamp")
+        add_custom_command(
+                OUTPUT  "${_stamp}"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/.format/${_rel_dir}"
+                COMMAND ${CMAKE_COMMAND} -E echo "${ICON} running: ${CLANG_FORMAT_NAME} -i -style=file ${_abs}"
+                COMMAND "${CLANG_FORMAT_NAME}" -i -style=file "${_abs}"
+                COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
+                DEPENDS "${_abs}"
+                VERBATIM
+        )
+        list(APPEND _FORMAT_STAMPS "${_stamp}")
+    endforeach()
+    if(_FORMAT_STAMPS)
+        add_custom_target(${PROJECT_NAME}_format_all DEPENDS ${_FORMAT_STAMPS})
+        foreach(_tgt IN LISTS LIBRARY_TARGETS EXECUTABLE_TARGETS)
+            add_dependencies(${_tgt} ${PROJECT_NAME}_format_all)
+        endforeach()
+    endif()
+endif()
+
+# =========================
+# clang-tidy database sanitizer (strip GCC-only flags)
+# =========================
+set(SAN_SCRIPT "${CMAKE_BINARY_DIR}/SanitizeCompileCommands.cmake")
+file(WRITE "${SAN_SCRIPT}" [=[
+cmake_minimum_required(VERSION 3.20)
+function(_dequote IN OUT)
+  set(_t "${IN}")
+  string(REGEX REPLACE "^[\"'](.*)[\"']$" "\\1" _t "${_t}")
+  set(${OUT} "${_t}" PARENT_SCOPE)
+endfunction()
+if(NOT DEFINED INPUT OR NOT DEFINED OUTPUT)
+  message(FATAL_ERROR "Need -DINPUT= and -DOUTPUT=")
+endif()
+_dequote("${INPUT}"  _IN)
+_dequote("${OUTPUT}" _OUT)
+file(READ "${_IN}" J)
+# Drop problematic switches from "arguments" arrays
+string(REGEX REPLACE "\"-W[^\"]*\"(,?)" "" J "${J}")
+string(REGEX REPLACE "\"-f[^\"]*\"(,?)" "" J "${J}")
+string(REGEX REPLACE "\"-g[^\"]*\"(,?)" "" J "${J}")
+string(REGEX REPLACE "\"--coverage\"(,?)" "" J "${J}")
+string(REGEX REPLACE "\"-coverage\"(,?)" "" J "${J}")
+string(REGEX REPLACE ",[ \n\r]*,+" "," J "${J}")
+string(REGEX REPLACE "\\[\\s*," "[" J "${J}")
+string(REGEX REPLACE ",\\s*\\]" "]" J "${J}")
+# Drop same switches from "command" strings
+string(REGEX REPLACE " -W[^\" \n\r]+" "" J "${J}")
+string(REGEX REPLACE " -f[^\" \n\r]+" "" J "${J}")
+string(REGEX REPLACE " -g[^\" \n\r]+" "" J "${J}")
+string(REGEX REPLACE " --coverage" "" J "${J}")
+string(REGEX REPLACE " -coverage"  "" J "${J}")
+string(REGEX REPLACE "  +" " " J "${J}")
+get_filename_component(_OUT_DIR "${_OUT}" DIRECTORY)
+file(MAKE_DIRECTORY "${_OUT_DIR}")
+file(WRITE "${_OUT}" "${J}")
 ]=])
 
-# Aggregator placeholder
-if (NOT TARGET format)
-    add_custom_target(format)
-endif()
+set(P101_TIDY_DB_DIR "${CMAKE_BINARY_DIR}/tidy_cc")
+set(P101_TIDY_DB     "${P101_TIDY_DB_DIR}/compile_commands.json")
+add_custom_command(
+        OUTPUT  "${P101_TIDY_DB}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${P101_TIDY_DB_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E echo "${ICON} running: ${CMAKE_COMMAND} -DINPUT=${CMAKE_BINARY_DIR}/compile_commands.json -DOUTPUT=${P101_TIDY_DB} -P ${SAN_SCRIPT}"
+        COMMAND ${CMAKE_COMMAND} -DINPUT=${CMAKE_BINARY_DIR}/compile_commands.json -DOUTPUT=${P101_TIDY_DB} -P "${SAN_SCRIPT}"
+        DEPENDS "${CMAKE_BINARY_DIR}/compile_commands.json" "${SAN_SCRIPT}"
+        VERBATIM
+        COMMENT "Sanitizing compile_commands.json for clang-tidy"
+)
+add_custom_target(${PROJECT_NAME}_tidy_db DEPENDS "${P101_TIDY_DB}")
 
-# =============================  Collect-only attach for target files =============================
-# Records files and target names; real formatting is created after all targets are declared.
-function(attach_clang_format TARGET_NAME)
-    if (NOT TARGET ${TARGET_NAME})
-        message(FATAL_ERROR "attach_clang_format called for non-existent target '${TARGET_NAME}'")
-    endif()
-    set(_FILES ${ARGN})
-    if (_FILES)
-        # remember files
-        set_property(GLOBAL APPEND PROPERTY P101_FORMAT_FILES "${_FILES}")
-    endif()
-    # remember the target
-    set_property(GLOBAL APPEND PROPERTY P101_FORMAT_TARGETS "${TARGET_NAME}")
-endfunction()
+foreach(_tgt IN LISTS LIBRARY_TARGETS EXECUTABLE_TARGETS)
+    add_dependencies(${_tgt} ${PROJECT_NAME}_tidy_db)
+endforeach()
 
-# =============================  Targets: exe/lib  =============================
-set(ALL_SOURCE_FILES "")
-set(ALL_HEADER_FILES "")
-
-if (EXECUTABLE_TARGETS)
-    foreach (EXE ${EXECUTABLE_TARGETS})
-        MAKE_ABSOLUTE_PATHS(${EXE}_SOURCES)
-        MAKE_ABSOLUTE_PATHS(${EXE}_HEADERS)
-        list(APPEND ALL_SOURCE_FILES ${${EXE}_SOURCES})
-        list(APPEND ALL_HEADER_FILES ${${EXE}_HEADERS})
-        message(STATUS "Executable ${EXE}: Sources: ${${EXE}_SOURCES}, Headers: ${${EXE}_HEADERS}")
-
-        add_executable(${EXE})
-        target_sources(${EXE} PRIVATE ${${EXE}_SOURCES})
-        target_include_directories(${EXE} PUBLIC ${BUILD_INCLUDE_IF_EXISTS} $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-
-        set(_EXE_FINAL_LIBS "")
-        foreach (LINK_LIB ${${EXE}_LINK_LIBRARIES})
-            if (TARGET ${LINK_LIB})
-                list(APPEND _EXE_FINAL_LIBS ${LINK_LIB})
-            else ()
-                set(_FIND_VAR "${EXE}_${LINK_LIB}_FOUND")
-                find_library(${_FIND_VAR} NAMES ${LINK_LIB} PATHS /usr/local/lib /usr/local/lib64)
-                if (NOT "${${_FIND_VAR}}" MATCHES "-NOTFOUND$")
-                    message(STATUS "✅ Found system library for ${EXE}: ${LINK_LIB} -> ${${_FIND_VAR}}")
-                elseif ("${LINK_LIB}" STREQUAL "iconv" AND APPLE AND (CMAKE_${_PLANG}_COMPILER_ID MATCHES ".*Clang"))
-                    message(STATUS "🟡 Manually linking -liconv for ${EXE} on macOS with Clang/AppleClang")
-                else ()
-                    message(WARNING "Library '${LINK_LIB}' for '${EXE}' not found; relying on default linker search paths.")
-                endif ()
-                list(APPEND _EXE_FINAL_LIBS ${LINK_LIB})
-            endif ()
-        endforeach ()
-        target_link_libraries(${EXE} PRIVATE project_options sys_paths ${_EXE_FINAL_LIBS})
-
-        # record only target's files for the global formatting step
-        attach_clang_format(${EXE} ${${EXE}_SOURCES} ${${EXE}_HEADERS})
-    endforeach ()
-endif ()
-
-if (LIBRARY_TARGETS)
-    foreach (LIB ${LIBRARY_TARGETS})
-        MAKE_ABSOLUTE_PATHS(${LIB}_SOURCES)
-        MAKE_ABSOLUTE_PATHS(${LIB}_HEADERS)
-        list(APPEND ALL_SOURCE_FILES ${${LIB}_SOURCES})
-        list(APPEND ALL_HEADER_FILES ${${LIB}_HEADERS})
-        message(STATUS "Library ${LIB}: Sources: ${${LIB}_SOURCES}, Headers: ${${LIB}_HEADERS}")
-
-        set(FINAL_LINK_LIBRARIES "")
-        foreach (LINK_LIB ${${LIB}_LINK_LIBRARIES})
-            if (TARGET ${LINK_LIB})
-                message(STATUS "✅ Found project target: ${LINK_LIB}")
-                list(APPEND FINAL_LINK_LIBRARIES ${LINK_LIB})
-            else ()
-                set(_FIND_VAR "${LIB}_${LINK_LIB}_FOUND")
-                find_library(${_FIND_VAR} NAMES ${LINK_LIB} PATHS /usr/local/lib /usr/local/lib64)
-                if (NOT "${${_FIND_VAR}}" MATCHES "-NOTFOUND$")
-                    message(STATUS "✅ Found system library: ${LINK_LIB} -> ${${_FIND_VAR}}")
-                    list(APPEND FINAL_LINK_LIBRARIES ${LINK_LIB})
-                elseif ("${LINK_LIB}" STREQUAL "iconv" AND APPLE AND (CMAKE_${_PLANG}_COMPILER_ID MATCHES ".*Clang"))
-                    message(STATUS "🟡 Manually linking -liconv on macOS with Clang/AppleClang")
-                    list(APPEND FINAL_LINK_LIBRARIES iconv)
-                else ()
-                    message(WARNING "❌ Optional link library '${LINK_LIB}' for '${LIB}' not found. Skipping.")
-                endif ()
-            endif ()
-        endforeach ()
-
-        add_library(${LIB})
-        target_sources(${LIB} PRIVATE ${${LIB}_SOURCES})
-        target_include_directories(${LIB} PUBLIC ${BUILD_INCLUDE_IF_EXISTS} $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-        target_link_libraries(${LIB} PRIVATE project_options sys_paths ${FINAL_LINK_LIBRARIES})
-
-        # record only target's files for the global formatting step
-        attach_clang_format(${LIB} ${${LIB}_SOURCES} ${${LIB}_HEADERS})
-    endforeach ()
-endif ()
-
-# =============================  Real formatting step built from recorded files =============================
-# Union of all files provided by targets
-get_property(_FMT_FILES GLOBAL PROPERTY P101_FORMAT_FILES)
-if (_FMT_FILES)
-    list(REMOVE_DUPLICATES _FMT_FILES)
-    list(JOIN _FMT_FILES "|" _FMT_FILES_JOINED)
-    set(_STAMP "${CMAKE_BINARY_DIR}/format.targets.stamp")
-    add_custom_command(
-            OUTPUT "${_STAMP}"
-            COMMAND ${CMAKE_COMMAND} -DCLANG_FORMAT=${CLANG_FORMAT} -DFILES=${_FMT_FILES_JOINED} -P "${RUN_CF}"
-            COMMAND ${CMAKE_COMMAND} -E touch "${_STAMP}"
-            DEPENDS ${_FMT_FILES}
-            VERBATIM
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMENT "clang-format all files that belong to declared targets")
-    add_custom_target(format_targets DEPENDS "${_STAMP}")
-else()
-    add_custom_target(format_targets) # present but empty
-endif()
-add_dependencies(format format_targets)
-
-# Ensure each build target waits for formatting
-get_property(_FMT_TGTS GLOBAL PROPERTY P101_FORMAT_TARGETS)
-if (_FMT_TGTS)
-    list(REMOVE_DUPLICATES _FMT_TGTS)
-    foreach(_t IN LISTS _FMT_TGTS)
-        if (TARGET ${_t})
-            add_dependencies(${_t} format_targets)
-        endif()
-    endforeach()
-endif()
-
-# =============================  Tool wiring  =============================
-# Extract only -D* from STANDARD_FLAGS for tools
-set(TOOL_DEFINES "")
-foreach (tok IN LISTS STANDARD_FLAGS)
-    if (tok MATCHES "^-D")
-        list(APPEND TOOL_DEFINES "${tok}")
-    endif ()
-endforeach ()
-
-# Common -I for tools
-set(TOOL_I_FLAGS "")
-if (HAVE_LOCAL_INCLUDE_DIR)
-    list(APPEND TOOL_I_FLAGS -I${LOCAL_INCLUDE_DIR})
-endif ()
-foreach (_inc ${EXTERNAL_INCLUDE_DIRS})
-    list(APPEND TOOL_I_FLAGS -I${_inc})
-endforeach ()
-
-# ---------- clang-tidy (DB-less, C-only) ----------
-if(PROJECT_LANGUAGE STREQUAL "C")
-
-    set(_TIDY_LANG c)
-    set(_TIDY_STD -std=c11)
-
-    set(TIDY_HEADER_FILTER "^${CMAKE_SOURCE_DIR}")
-
-    set(_TIDY_I_FLAGS "")
-    if(HAVE_LOCAL_INCLUDE_DIR)
-        list(APPEND _TIDY_I_FLAGS -I${LOCAL_INCLUDE_DIR})
-    endif()
-    foreach(_inc ${EXTERNAL_INCLUDE_DIRS})
-        list(APPEND _TIDY_I_FLAGS -isystem ${_inc})
-    endforeach()
-
-    set(TIDY_CHECKS_LIST
+# =========================
+# clang-tidy (post-build; must run AFTER analyze, BEFORE cppcheck)
+# =========================
+if(P101_TIDY_CHECKS STREQUAL "")
+    set(P101_TIDY_CHECKS_LIST
             "*"
+            "-llvmlibc-*"
             "-clang-diagnostic-unused-macros"
             "-llvmlibc-restrict-system-libc-headers"
             "-altera-struct-pack-align"
@@ -546,131 +482,553 @@ if(PROJECT_LANGUAGE STREQUAL "C")
             "-cert-env33-c"
             "-android-cloexec-accept"
             "-misc-include-cleaner"
-            "-llvm-header-guard")
-    list(JOIN TIDY_CHECKS_LIST "," TIDY_CHECKS_ARG)
+            "-llvm-header-guard"
+    )
+    string(JOIN "," P101_TIDY_CHECKS ${P101_TIDY_CHECKS_LIST})
+endif()
 
-    set(_TIDY_WARN_AS_ERRORS "\\*")
-    set(TIDY_TU_INPUTS ${ALL_SOURCE_FILES})
+# Resolve SDK path on macOS if not already set (used for -isysroot)
+if(APPLE AND NOT CMAKE_OSX_SYSROOT)
+    execute_process(
+            COMMAND xcrun --sdk macosx --show-sdk-path
+            OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+    )
+endif()
 
-    if(TIDY_TU_INPUTS)
-        add_custom_target(${PROJECT_NAME}__clang-tidy
-                COMMAND ${CLANG_TIDY} ${TIDY_EXTRA_BEFORE} ${TIDY_TU_INPUTS}
-                -quiet
-                --header-filter=${TIDY_HEADER_FILTER}
-                --system-headers=false
-                --warnings-as-errors=${_TIDY_WARN_AS_ERRORS}
-                -checks=${TIDY_CHECKS_ARG}
-                -- -x ${_TIDY_LANG} ${_TIDY_STD}
-                -Wno-unknown-warning-option
-                -Wno-unused-command-line-argument
-                ${TOOL_DEFINES}
-                ${_TIDY_I_FLAGS}
-                COMMENT "Running clang-tidy (C only, DB-less, Clang headers forced)"
-                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                COMMAND_EXPAND_LISTS)
-        set_property(TARGET ${PROJECT_NAME}__clang-tidy PROPERTY VERBATIM ON)
-        add_dependencies(${PROJECT_NAME}__clang-tidy format)  # analyze formatted code
+# Build the argument list for run-clang-tidy
+set(_P101_TIDY_ARGS
+        "-header-filter=${P101_HEADER_FILTER}"
+        "-checks=${P101_TIDY_CHECKS}"
+        "-warnings-as-errors=*"
+        "-quiet"
+        "-style=file"
+        "-extra-arg-before=-I${CMAKE_SOURCE_DIR}/include"
+        "-extra-arg-before=-I/usr/local/include"
+)
+if(APPLE)
+    list(APPEND _P101_TIDY_ARGS
+            "-extra-arg-before=-I/opt/homebrew/include"
+            "-extra-arg-before=-I/opt/local/include"
+    )
+endif()
+if(APPLE AND CMAKE_OSX_SYSROOT)
+    list(APPEND _P101_TIDY_ARGS
+            "-extra-arg-before=-isysroot"
+            "-extra-arg-before=${CMAKE_OSX_SYSROOT}"
+    )
+endif()
+if(P101_TIDY_EXTRA_ARGS_LIST)
+    list(APPEND _P101_TIDY_ARGS ${P101_TIDY_EXTRA_ARGS_LIST})
+endif()
+
+add_custom_target(${PROJECT_NAME}_tidy_all
+        ALL
+        COMMAND ${CMAKE_COMMAND} -E echo "🔧 running: ${RUN_CLANG_TIDY_NAME} -p ${P101_TIDY_DB_DIR} [quiet]"
+        COMMAND ${RUN_CLANG_TIDY_NAME} -p "${P101_TIDY_DB_DIR}" ${_P101_TIDY_ARGS}
+        DEPENDS ${PROJECT_NAME}_tidy_db
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        VERBATIM
+)
+
+# =========================
+# Generic "ANALYZE" stage (per-TU, after compile, before tidy)
+# =========================
+set(_AN_STD "")
+if(PROJECT_LANGUAGE STREQUAL "CXX")
+    if(CMAKE_CXX_STANDARD)
+        set(_AN_STD "-std=c++${CMAKE_CXX_STANDARD}")
+    else()
+        set(_AN_STD "-std=c++17")
+    endif()
+else()
+    if(CMAKE_C_STANDARD)
+        if(CMAKE_C_STANDARD GREATER_EQUAL 23)
+            set(_AN_STD "-std=c23")
+        elseif(CMAKE_C_STANDARD GREATER_EQUAL 17)
+            set(_AN_STD "-std=c17")
+        elseif(CMAKE_C_STANDARD GREATER_EQUAL 11)
+            set(_AN_STD "-std=c11")
+        else()
+            set(_AN_STD "-std=c99")
+        endif()
+    else()
+        set(_AN_STD "-std=c17")
+    endif()
+endif()
+
+# Filter flags that aren't useful for a syntax-only pass
+function(_p101_filter_analyze_flags OUT)
+    set(_out "")
+    foreach(_f IN LISTS ARGN)
+        if(_f MATCHES "^-Werror$")                           # don't hard fail
+            continue()
+        elseif(_f MATCHES "^-g")                             # strip debug noise
+            continue()
+        elseif(_f MATCHES "^-pg$")                           # profiling
+            continue()
+        elseif(_f MATCHES "^-f(profile|test-coverage)")      # coverage
+            continue()
+        elseif(_f STREQUAL "--coverage")
+            continue()
+        elseif(_f MATCHES "^-fuse-ld.*")                    # linker path flag
+            continue()
+        else()
+            list(APPEND _out "${_f}")
+        endif()
+    endforeach()
+    set(${OUT} "${_out}" PARENT_SCOPE)
+endfunction()
+
+_p101_filter_analyze_flags(_AN_FLAGS_FILTERED ${P101_ANALYZER_ONLY_CFLAGS})
+string(JOIN " " _AN_FLAGS_CMD  ${_AN_FLAGS_FILTERED})
+string(JOIN " " _AN_FLAGS_ECHO ${_AN_FLAGS_FILTERED})
+
+set(P101_ANALYZE_DIR "${CMAKE_BINARY_DIR}/analyze")
+file(MAKE_DIRECTORY "${P101_ANALYZE_DIR}")
+
+set(_AN_STAMPS)
+foreach(_abs IN LISTS _ALL_SOURCES_FOR_FORMAT)
+    if(NOT _abs MATCHES "^${CMAKE_CURRENT_SOURCE_DIR}/")
+        continue()
+    endif()
+    file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_abs}")
+    string(REPLACE "/" "_" _flat "${_rel}")
+    set(_out   "${P101_ANALYZE_DIR}/${_flat}.txt")
+    set(_stamp "${P101_ANALYZE_DIR}/${_flat}.stamp")
+
+    add_custom_command(
+            OUTPUT "${_stamp}"
+            COMMAND ${CMAKE_COMMAND} -E echo
+            "${ICON} running: ${_COMPILER} -fsyntax-only ${_AN_STD} ${_AN_FLAGS_ECHO} -I${CMAKE_SOURCE_DIR}/include -I/usr/local/include ${_abs}"
+            COMMAND /bin/sh -c
+            "\"${_COMPILER}\" -fsyntax-only ${_AN_STD} ${_AN_FLAGS_CMD} \
+                   -I\"${CMAKE_SOURCE_DIR}/include\" -I\"/usr/local/include\" \
+                   $<$<BOOL:${APPLE}>:-I/opt/homebrew/include> \
+                   $<$<BOOL:${APPLE}>:-I/opt/local/include> \
+                   $<$<AND:$<BOOL:${APPLE}>,$<BOOL:${CMAKE_OSX_SYSROOT}>>:-isysroot> \
+                   $<$<AND:$<BOOL:${APPLE}>,$<BOOL:${CMAKE_OSX_SYSROOT}>>:\"${CMAKE_OSX_SYSROOT}\"> \
+                   \"${_abs}\" > \"${_out}\" 2>&1 || true"
+            COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
+            DEPENDS "${_abs}"
+            VERBATIM
+    )
+    list(APPEND _AN_STAMPS "${_stamp}")
+endforeach()
+
+# Checker script (optional fail)
+set(AN_FAIL_SCRIPT "${CMAKE_BINARY_DIR}/FailIfAnalyzeDiagnostics.cmake")
+file(WRITE "${AN_FAIL_SCRIPT}" [=[
+cmake_minimum_required(VERSION 3.20)
+if(NOT DEFINED DIR)
+  message(FATAL_ERROR "Need -DDIR=<analyze logs dir>")
+endif()
+file(GLOB _FILES "${DIR}/*.txt")
+set(_HAVE 0)
+foreach(F ${_FILES})
+  file(READ "${F}" C)
+  string(STRIP "${C}" C)
+  if(NOT C STREQUAL "")
+    set(_HAVE 1)
+    break()
+  endif()
+endforeach()
+if(_HAVE)
+  message(STATUS "Analyzer (syntax-only) produced diagnostics; showing up to first 200 lines:")
+  set(_i 0)
+  foreach(F ${_FILES})
+    file(READ "${F}" C)
+    string(REPLACE "\r\n" "\n" C "${C}")
+    string(REPLACE "\r"   "\n" C "${C}")
+    string(REPLACE "\n" ";" L "${C}")
+    foreach(line ${L})
+      if(_i GREATER_EQUAL 200)
+        message(STATUS "... (truncated)")
+        break()
+      endif()
+      message(STATUS "${line}")
+      math(EXPR _i "${_i}+1")
+    endforeach()
+    if(_i GREATER_EQUAL 200)
+      break()
+    endif()
+  endforeach()
+  if("$ENV{P101_ANALYZE_FAIL}" STREQUAL "1")
+    message(FATAL_ERROR "Analyze stage found diagnostics. See ${DIR}/*.txt")
+  endif()
+endif()
+]=])
+
+if(_AN_STAMPS)
+    add_custom_target(${PROJECT_NAME}_analyze_all ALL
+            DEPENDS ${_AN_STAMPS}
+            COMMAND ${CMAKE_COMMAND} -E env P101_ANALYZE_FAIL=$<IF:$<BOOL:${P101_ANALYZE_FAIL_ON_DIAGNOSTICS}>,1,0>
+            ${CMAKE_COMMAND} -DDIR=${P101_ANALYZE_DIR} -P "${AN_FAIL_SCRIPT}"
+            COMMENT "Per-TU analyze stage (syntax-only + analyzer flags)")
+else()
+    add_custom_target(${PROJECT_NAME}_analyze_all ALL
+            COMMAND ${CMAKE_COMMAND} -E echo "No sources to analyze"
+            COMMENT "Per-TU analyze stage (no sources)")
+endif()
+
+# Chain: compile -> analyze -> tidy
+add_dependencies(${PROJECT_NAME}_analyze_all ${LIBRARY_TARGETS} ${EXECUTABLE_TARGETS})
+add_dependencies(${PROJECT_NAME}_tidy_all ${PROJECT_NAME}_analyze_all)
+
+# =========================
+# cppcheck (post-tidy) — ALWAYS runs (REQUIRED at configure)
+# =========================
+function(_p101_cppcheck_std OUT_STD OUT_LANG)
+    if(PROJECT_LANGUAGE STREQUAL "CXX")
+        if(DEFINED CMAKE_CXX_STANDARD AND NOT "${CMAKE_CXX_STANDARD}" STREQUAL "")
+            set(_std "c++${CMAKE_CXX_STANDARD}")
+        else()
+            set(_std "c++17")
+        endif()
+        set(_lang "c++")
+    else()
+        if(DEFINED CMAKE_C_STANDARD AND NOT "${CMAKE_C_STANDARD}" STREQUAL "")
+            set(_cstd "${CMAKE_C_STANDARD}")
+        else()
+            set(_cstd 17)
+        endif()
+        if(_cstd GREATER_EQUAL 23)
+            set(_std "c23")
+        elseif(_cstd GREATER_EQUAL 17)
+            set(_std "c17")
+        elseif(_cstd GREATER_EQUAL 11)
+            set(_std "c11")
+        else()
+            set(_std "c99")
+        endif()
+        set(_lang "c")
+    endif()
+    set(${OUT_STD}  "${_std}"  PARENT_SCOPE)
+    set(${OUT_LANG} "${_lang}" PARENT_SCOPE)
+endfunction()
+
+if(P101_CPPCHECK_ARGS STREQUAL "")
+    _p101_cppcheck_std(_CPPCHECK_STD _CPPCHECK_LANG)
+    set(P101_CPPCHECK_ARGS_LIST
+            --enable=all --inconclusive --check-level=exhaustive --library=posix
+            --force --inline-suppr --quiet
+            --language=${_CPPCHECK_LANG} --std=${_CPPCHECK_STD}
+    )
+endif()
+
+set(_CPPCHECK_SUPPRESSIONS)
+foreach(_s IN LISTS CPPCHECK_SUPPRESSIONS_LIST)
+    if(NOT _s STREQUAL "")
+        list(APPEND _CPPCHECK_SUPPRESSIONS "--suppress=${_s}")
+    endif()
+endforeach()
+if(APPLE AND MAC_SYSROOT)
+    list(APPEND _CPPCHECK_SUPPRESSIONS "--suppress=*:${MAC_SYSROOT}/*")
+endif()
+list(APPEND _CPPCHECK_SUPPRESSIONS
+        "--suppress=*:/usr/include/*"
+        "--suppress=*:/usr/local/include/*"
+        "--suppress=*:/opt/homebrew/include/*"
+        "--suppress=*:/opt/homebrew/opt/*/include/*"
+        "--suppress=*:${CMAKE_BINARY_DIR}/*"
+        "--relative-paths=${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+set(CPPCHECK_LOG "${CMAKE_BINARY_DIR}/cppcheck.log")
+set(CPPCHECK_FAIL_SCRIPT "${CMAKE_BINARY_DIR}/FailIfCppcheckDiagnostics.cmake")
+file(WRITE "${CPPCHECK_FAIL_SCRIPT}" [=[
+cmake_minimum_required(VERSION 3.20)
+if(NOT DEFINED LOGFILE)
+  message(FATAL_ERROR "Need -DLOGFILE=<path>")
+endif()
+if(NOT EXISTS "${LOGFILE}")
+  message(FATAL_ERROR "cppcheck log not found: ${LOGFILE}")
+endif()
+file(READ "${LOGFILE}" _LOG)
+string(REGEX MATCHALL ":[ \\t](warning|style|performance|portability|information|error):" _HITS "${_LOG}")
+list(LENGTH _HITS _COUNT)
+if(_COUNT GREATER 0)
+  message(STATUS "cppcheck reported ${_COUNT} diagnostics. Showing first 200 lines:")
+  string(REPLACE "\r\n" "\n" _LOG "${_LOG}")
+  string(REPLACE "\r"   "\n" _LOG "${_LOG}")
+  string(REPLACE "\n" ";" _LINES "${_LOG}")
+  set(_i 0)
+  foreach(_line IN LISTS _LINES)
+    if(_i GREATER_EQUAL 200)
+      message(STATUS "... (truncated)")
+      break()
+    endif()
+    message(STATUS "${_line}")
+    math(EXPR _i "${_i}+1")
+  endforeach()
+  message(FATAL_ERROR "cppcheck found issues. See ${LOGFILE}")
+endif()
+]=])
+
+# Unconditionally create the target; configure will fail earlier if cppcheck missing
+add_custom_target(${PROJECT_NAME}_cppcheck_all ALL
+        COMMAND ${CMAKE_COMMAND} -E echo "${ICON} running: ${CPPCHECK_NAME} [see log]"
+        COMMAND "${CPPCHECK_NAME}" ${P101_CPPCHECK_ARGS_LIST}
+        ${_CPPCHECK_SUPPRESSIONS}
+        --template=gcc
+        --output-file=${CPPCHECK_LOG}
+        --project=${CMAKE_BINARY_DIR}/compile_commands.json
+        -I${PUBLIC_INC_DIR} -I/usr/local/include -I/opt/homebrew/include -I/opt/local/include
+        COMMAND ${CMAKE_COMMAND} -DLOGFILE=${CPPCHECK_LOG} -P "${CPPCHECK_FAIL_SCRIPT}"
+        USES_TERMINAL
+        COMMENT "cppcheck over entire project, fail on any diagnostics")
+add_dependencies(${PROJECT_NAME}_cppcheck_all ${LIBRARY_TARGETS} ${EXECUTABLE_TARGETS})
+add_dependencies(${PROJECT_NAME}_cppcheck_all ${PROJECT_NAME}_tidy_all)
+
+# =========================
+# FINAL: clang static analyzer (--analyze) after cppcheck (Clang only, IN-DEPTH)
+# =========================
+if(_COMPILER_ID MATCHES "Clang")
+    set(P101_CLANG_SA_DIR "${CMAKE_BINARY_DIR}/clang-sa")
+    file(MAKE_DIRECTORY "${P101_CLANG_SA_DIR}")
+
+    # std flag for clang --analyze
+    set(_SA_STD "")
+    if(PROJECT_LANGUAGE STREQUAL "CXX")
+        if(CMAKE_CXX_STANDARD)
+            set(_SA_STD "-std=c++${CMAKE_CXX_STANDARD}")
+        else()
+            set(_SA_STD "-std=c++17")
+        endif()
+    else()
+        if(CMAKE_C_STANDARD)
+            if(CMAKE_C_STANDARD GREATER_EQUAL 23)
+                set(_SA_STD "-std=c23")
+            elseif(CMAKE_C_STANDARD GREATER_EQUAL 17)
+                set(_SA_STD "-std=c17")
+            elseif(CMAKE_C_STANDARD GREATER_EQUAL 11)
+                set(_SA_STD "-std=c11")
+            else()
+                set(_SA_STD "-std=c99")
+            endif()
+        else()
+            set(_SA_STD "-std=c17")
+        endif()
     endif()
 
-    if(ALL_HEADER_FILES)
-        add_custom_target(${PROJECT_NAME}__clang-tidy_headers
-                COMMAND ${CLANG_TIDY} ${TIDY_EXTRA_BEFORE} ${ALL_HEADER_FILES}
-                -quiet
-                --header-filter=${TIDY_HEADER_FILTER}
-                --system-headers=false
-                --warnings-as-errors=${_TIDY_WARN_AS_ERRORS}
-                -checks=${TIDY_CHECKS_ARG}
-                -- -x ${_TIDY_LANG} ${_TIDY_STD}
-                -Wno-unknown-warning-option
-                -Wno-unused-command-line-argument
-                ${TOOL_DEFINES}
-                ${_TIDY_I_FLAGS}
-                COMMENT "Running clang-tidy on headers (C only, DB-less, Clang headers forced)"
-                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                COMMAND_EXPAND_LISTS)
-        set_property(TARGET ${PROJECT_NAME}__clang-tidy_headers PROPERTY VERBATIM ON)
-        add_dependencies(${PROJECT_NAME}__clang-tidy_headers format)
-        add_dependencies(${PROJECT_NAME}__clang-tidy ${PROJECT_NAME}__clang-tidy_headers)
+    # Reuse analyzer-only flags (already filtered above)
+    set(_SA_FLAGS ${_AN_FLAGS_FILTERED})
+
+    # ---- Checker set & arguments (AppleClang-safe, upstream-rich) ----
+    set(_SA_ARGS_COMMON
+            --analyze
+            -Xanalyzer -analyzer-output=text
+    )
+
+    # Always analyze headers
+    set(_SA_ARGS_PROFILE
+            -Xanalyzer -analyzer-config -Xanalyzer analyze-headers=true
+    )
+
+    # Base groups that exist on AppleClang
+    set(_SA_CHECKER_GROUPS core unix security nullability)
+    if(APPLE)
+        list(APPEND _SA_CHECKER_GROUPS osx)
     endif()
 
-endif()  # PROJECT_LANGUAGE STREQUAL "C"
+    # On upstream LLVM Clang, include extra groups
+    if(NOT _COMPILER_ID STREQUAL "AppleClang")
+        list(APPEND _SA_CHECKER_GROUPS deadcode optin apiModeling)
+        if(PROJECT_LANGUAGE STREQUAL "CXX")
+            list(APPEND _SA_CHECKER_GROUPS cplusplus)
+        endif()
+        if(P101_CLANG_SA_PROFILE STREQUAL "deep")
+            list(APPEND _SA_CHECKER_GROUPS alpha.core alpha.security alpha.unix)
+            list(APPEND _SA_ARGS_PROFILE
+                    -Xanalyzer -analyzer-config -Xanalyzer aggressive-binary-operation-simplification=true
+                    -Xanalyzer -analyzer-config -Xanalyzer unroll-loops=true
+            )
+        endif()
+    endif()
 
-# ---------- Clang static analyzer (opt-in, default ON for Clang toolchain) ----------
-option(ENABLE_CLANG_ANALYZER "Run clang static analyzer" OFF)
-if (_PLANG STREQUAL "C")
-    set(TOOL_LANG_ARG -x c)
-else()
-    set(TOOL_LANG_ARG -x c++)
-endif ()
-if (CMAKE_${_PLANG}_COMPILER_ID MATCHES ".*Clang")
-    set(ENABLE_CLANG_ANALYZER_DEFAULT ON)
-else ()
-    set(ENABLE_CLANG_ANALYZER_DEFAULT OFF)
-endif ()
-if (ENABLE_CLANG_ANALYZER_DEFAULT OR ENABLE_CLANG_ANALYZER)
-    if (CLANG_ANALYZER_EXE AND (ALL_SOURCE_FILES OR ALL_HEADER_FILES))
-        add_custom_target(clang-analyze
-                COMMAND ${CLANG_ANALYZER_EXE} --analyze --analyzer-output text
-                ${TOOL_LANG_ARG}
-                -Xclang -analyzer-checker=core
-                -Xclang -analyzer-checker=security
-                -Xclang -analyzer-disable-checker=security.insecureAPI.DeprecatedOrUnsafeBufferHandling
-                ${TOOL_DEFINES} ${TOOL_I_FLAGS} -- ${ALL_SOURCE_FILES}
-                COMMENT "Running Clang Static Analyzer (minimal defines/includes)"
-                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                COMMAND_EXPAND_LISTS)
-        add_dependencies(clang-analyze format)
-    endif ()
-endif ()
+    # Expand each group as its own -analyzer-checker=<group>
+    foreach(_grp IN LISTS _SA_CHECKER_GROUPS)
+        list(APPEND _SA_ARGS_PROFILE -Xanalyzer -analyzer-checker=${_grp})
+    endforeach()
 
-# ---------- cppcheck ----------
-if (_PLANG STREQUAL "C")
-    set(CPPCHECK_STD --std=c11)
-else()
-    set(CPPCHECK_STD --std=c++20)
-endif ()
-if (ALL_SOURCE_FILES OR ALL_HEADER_FILES)
-    add_custom_target(cppcheck-check
-            COMMAND ${CPPCHECK}
-            --error-exitcode=1 --force --quiet --inline-suppr --library=posix
-            --check-level=exhaustive --enable=all
-            --suppress=missingIncludeSystem --suppress=unusedFunction --suppress=staticFunction
-            --suppress=constParameterPointer --suppress=unmatchedSuppression --suppress=checkersReport
-            ${CPPCHECK_STD} ${TOOL_DEFINES} ${TOOL_I_FLAGS} ${ALL_SOURCE_FILES}
-            COMMENT "Running cppcheck (minimal defines/includes)"
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMAND_EXPAND_LISTS)
-    add_dependencies(cppcheck-check format)
-endif ()
+    # ---- Apply user-requested disables (comma-separated list) ----
+    string(REPLACE "," ";" _CSA_DISABLE_LIST "${P101_CLANG_SA_DISABLE_CHECKERS}")
+    foreach(_dis IN LISTS _CSA_DISABLE_LIST)
+        string(STRIP "${_dis}" _dis)
+        if(NOT _dis STREQUAL "")
+            list(APPEND _SA_ARGS_PROFILE -Xanalyzer -analyzer-disable-checker=${_dis})
+        endif()
+    endforeach()
 
-# ---------- aggregate 'check' ----------
-add_custom_target(check ALL)
-if (TARGET ${PROJECT_NAME}__clang-tidy)
-    add_dependencies(check ${PROJECT_NAME}__clang-tidy)
-endif ()
-if (TARGET cppcheck-check)
-    add_dependencies(check cppcheck-check)
-endif ()
-if (TARGET clang-analyze)
-    add_dependencies(check clang-analyze)
-endif ()
-add_dependencies(check format)
+    # Extra args from cache
+    set(_SA_ARGS ${_SA_ARGS_COMMON} ${_SA_ARGS_PROFILE})
+    if(P101_CLANG_SA_EXTRA_ARGS_LIST)
+        list(APPEND _SA_ARGS ${P101_CLANG_SA_EXTRA_ARGS_LIST})
+    endif()
 
-# =============================  Install rules (no CMake exports)  =============================
-if (LIBRARY_TARGETS)
-    install(TARGETS ${LIBRARY_TARGETS}
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-endif ()
+    # Flatten list vars for /bin/sh -c and for the echoed preview
+    string(JOIN " " _SA_ARGS_CMD  ${_SA_ARGS})
+    string(JOIN " " _SA_FLAGS_CMD ${_SA_FLAGS})
 
-if (EXECUTABLE_TARGETS)
-    install(TARGETS ${EXECUTABLE_TARGETS}
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-endif ()
+    # Log fail script (CSA)
+    set(CLANG_SA_FAIL_SCRIPT "${CMAKE_BINARY_DIR}/FailIfClangSADiagnostics.cmake")
+    file(WRITE "${CLANG_SA_FAIL_SCRIPT}" [=[
+cmake_minimum_required(VERSION 3.20)
+if(NOT DEFINED DIR)
+  message(FATAL_ERROR "Need -DDIR=<clang-sa logs dir>")
+endif()
+file(GLOB _FILES "${DIR}/*.txt")
+set(_HAVE 0)
+foreach(F ${_FILES})
+  file(READ "${F}" C)
+  string(STRIP "${C}" C)
+  if(NOT C STREQUAL "")
+    set(_HAVE 1)
+    break()
+  endif()
+endforeach()
+if(_HAVE)
+  message(STATUS "Clang Static Analyzer produced diagnostics; showing up to first 200 lines:")
+  set(_i 0)
+  foreach(F ${_FILES})
+    file(READ "${F}" C)
+    string(REPLACE "\r\n" "\n" C "${C}")
+    string(REPLACE "\r"   "\n" C "${C}")
+    string(REPLACE "\n" ";" L "${C}")
+    foreach(line ${L})
+      if(_i GREATER_EQUAL 200)
+        message(STATUS "... (truncated)")
+        break()
+      endif()
+      message(STATUS "${line}")
+      math(EXPR _i "${_i}+1")
+    endforeach()
+    if(_i GREATER_EQUAL 200)
+      break()
+    endif()
+  endforeach()
+  if("$ENV{P101_CLANG_SA_FAIL}" STREQUAL "1")
+    message(FATAL_ERROR "CSA found diagnostics. See ${DIR}/*.txt")
+  endif()
+endif()
+]=])
 
-if (HAVE_LOCAL_INCLUDE_DIR)
-    install(DIRECTORY ${LOCAL_INCLUDE_DIR}/
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.h")
-endif ()
+    set(_SA_STAMPS)
+    foreach(_abs IN LISTS _ALL_SOURCES_FOR_FORMAT)
+        if(NOT _abs MATCHES "^${CMAKE_CURRENT_SOURCE_DIR}/")
+            continue()
+        endif()
+        file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_abs}")
+        string(REPLACE "/" "_" _flat "${_rel}")
+        set(_out   "${P101_CLANG_SA_DIR}/${_flat}.txt")
+        set(_stamp "${P101_CLANG_SA_DIR}/${_flat}.stamp")
+
+        add_custom_command(
+                OUTPUT "${_stamp}"
+                COMMAND ${CMAKE_COMMAND} -E echo
+                "${ICON} running: ${_COMPILER} ${_SA_STD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} -I${CMAKE_SOURCE_DIR}/include -I/usr/local/include ${_abs}"
+                COMMAND /bin/sh -c
+                "\"${_COMPILER}\" ${_SA_STD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} \
+                   -I\"${CMAKE_SOURCE_DIR}/include\" -I\"/usr/local/include\" \
+                   $<$<BOOL:${APPLE}>:-I/opt/homebrew/include> \
+                   $<$<BOOL:${APPLE}>:-I/opt/local/include> \
+                   $<$<AND:$<BOOL:${APPLE}>,$<BOOL:${CMAKE_OSX_SYSROOT}>>:-isysroot> \
+                   $<$<AND:$<BOOL:${APPLE}>,$<BOOL:${CMAKE_OSX_SYSROOT}>>:\"${CMAKE_OSX_SYSROOT}\"> \
+                   \"${_abs}\" > \"${_out}\" 2>&1 || true"
+                COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
+                DEPENDS "${_abs}"
+                VERBATIM
+        )
+        list(APPEND _SA_STAMPS "${_stamp}")
+    endforeach()
+
+    if(_SA_STAMPS)
+        add_custom_target(${PROJECT_NAME}_clang_sa_all ALL
+                DEPENDS ${_SA_STAMPS}
+                COMMAND ${CMAKE_COMMAND} -E env P101_CLANG_SA_FAIL=$<IF:$<BOOL:${P101_CLANG_SA_FAIL_ON_DIAGNOSTICS}>,1,0>
+                ${CMAKE_COMMAND} -DDIR=${P101_CLANG_SA_DIR} -P "${CLANG_SA_FAIL_SCRIPT}"
+                COMMENT "Clang static analyzer (--analyze) over project sources (in-depth)")
+        add_dependencies(${PROJECT_NAME}_clang_sa_all ${PROJECT_NAME}_cppcheck_all)
+    else()
+        add_custom_target(${PROJECT_NAME}_clang_sa_all ALL
+                COMMAND ${CMAKE_COMMAND} -E echo "No sources for clang --analyze"
+                COMMENT "Clang static analyzer (--analyze)")
+        add_dependencies(${PROJECT_NAME}_clang_sa_all ${PROJECT_NAME}_cppcheck_all)
+    endif()
+endif()
+
+# =========================
+# Optional: legacy scan-build wrapper (available but NOT part of ALL)
+# =========================
+if(_COMPILER_ID MATCHES "Clang" AND SCAN_BUILD_NAME)
+    set(_PRIMARY_TARGETS ${LIBRARY_TARGETS} ${EXECUTABLE_TARGETS})
+    if(NOT DEFINED ENV{IN_SCANBUILD} OR NOT "$ENV{IN_SCANBUILD}" STREQUAL "1")
+        add_custom_target(${PROJECT_NAME}_scan_build_all
+                COMMAND ${CMAKE_COMMAND} -E echo
+                "${ICON} running: ${SCAN_BUILD_NAME} --status-bugs -analyze-headers -o ${CMAKE_BINARY_DIR}/scan-build cmake --build ${CMAKE_BINARY_DIR} --target ${_PRIMARY_TARGETS}"
+                COMMAND ${CMAKE_COMMAND} -E env IN_SCANBUILD=1
+                "${SCAN_BUILD_NAME}" --status-bugs -analyze-headers -o "${CMAKE_BINARY_DIR}/scan-build"
+                ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target ${_PRIMARY_TARGETS}
+                USES_TERMINAL
+                COMMENT "clang static analyzer (scan-build) over primary targets")
+        add_dependencies(${PROJECT_NAME}_scan_build_all ${PROJECT_NAME}_cppcheck_all)
+    endif()
+endif()
+
+# =========================
+# Install
+# =========================
+if(_ALL_HEADERS_FOR_INSTALL)
+    foreach(_h IN LISTS _ALL_HEADERS_FOR_INSTALL)
+        if(NOT IS_ABSOLUTE "${_h}")
+            set(_habspath "${CMAKE_CURRENT_SOURCE_DIR}/${_h}")
+        else()
+            set(_habspath "${_h}")
+        endif()
+        if(_habspath MATCHES "^${PUBLIC_INC_DIR}/")
+            file(RELATIVE_PATH _rel_inside_inc "${PUBLIC_INC_DIR}" "${_habspath}")
+            get_filename_component(_dest_subdir "${_rel_inside_inc}" DIRECTORY)
+        else()
+            get_filename_component(_bn "${_habspath}" NAME)
+            set(_dest_subdir "extra")
+        endif()
+        install(FILES "${_habspath}" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${_dest_subdir}")
+    endforeach()
+endif()
+
+foreach(_lib IN LISTS LIBRARY_TARGETS)
+    install(TARGETS ${_lib}
+            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+endforeach()
+
+foreach(_exe IN LISTS EXECUTABLE_TARGETS)
+    install(TARGETS ${_exe}
+            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+endforeach()
+
+# =========================
+# Summary banner
+# =========================
+message(STATUS "")
+message(STATUS "-- Configuring with:")
+if(DEFINED CMAKE_C_COMPILER)
+    message(STATUS "--   CC               = ${CMAKE_C_COMPILER}")
+endif()
+if(DEFINED CMAKE_CXX_COMPILER)
+    message(STATUS "--   CXX              = ${CMAKE_CXX_COMPILER}")
+endif()
+message(STATUS "--   clang-format     = ${CLANG_FORMAT_NAME}")
+message(STATUS "--   clang-tidy       = ${CLANG_TIDY_NAME} (REQUIRED)")
+message(STATUS "--   run-clang-tidy   = ${RUN_CLANG_TIDY_NAME} (REQUIRED)")
+message(STATUS "--   cppcheck         = ${CPPCHECK_NAME} (REQUIRED)")
+message(STATUS "--   scan-build       = ${SCAN_BUILD_NAME} (optional target)")
+message(STATUS "--   sanitizers       = ${SANITIZER_LIST}")
+message(STATUS "--   analyze fail?    = ${P101_ANALYZE_FAIL_ON_DIAGNOSTICS}")
+message(STATUS "--   CSA profile      = ${P101_CLANG_SA_PROFILE}")
+message(STATUS "--   CSA disabled     = ${P101_CLANG_SA_DISABLE_CHECKERS}")
+message(STATUS "--   CSA fail?        = ${P101_CLANG_SA_FAIL_ON_DIAGNOSTICS}")
+message(STATUS "--   build dir        = ${CMAKE_BINARY_DIR}")
+message(STATUS "")

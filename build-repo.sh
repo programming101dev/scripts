@@ -1,30 +1,35 @@
 #!/usr/bin/env bash
+# build-repo.sh — configure + build (+ optional install) every repo in repos.txt
 
-# Exit the script if any command fails
-set -e
+set -euo pipefail
 
+# ----------------- defaults -----------------
 c_compiler=""
 cxx_compiler=""
 clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
-sanitizers="address,leak,pointer_overflow,undefined"
-skip_ldconfig=false  # Track if -s was passed
+sanitizers=""
+forward_skip_cache=false   # if true, pass -s to install.sh (skip cache refresh)
 
-usage()
-{
-    echo "Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [-s]"
-    echo "  -c c compiler     Specify the C compiler name (e.g., gcc or clang)"
-    echo "  -x cxx compiler   Specify the C++ compiler name (e.g., g++ or clang++)"
-    echo "  -f clang-format   Specify the clang-format name (e.g., clang-tidy or clang-tidy-17)"
-    echo "  -t clang-tidy     Specify the clang-tidy name (e.g., clang-tidy or clang-tidy-17)"
-    echo "  -k cppcheck       Specify the cppcheck name (e.g., cppcheck)"
-    echo "  -s sanitizers     Specify the sanitizers to use (e.g., address,undefined)"
-    echo "  -S                Skip running ldconfig/update_dyld_shared_cache (converted to -S for install.sh)"
-    exit 1
+usage() {
+  cat <<USAGE >&2
+Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [-S]
+  -c  C compiler         (e.g. gcc-15, clang)
+  -x  C++ compiler       (e.g. g++-15, clang++)
+  -f  clang-format       (default: clang-format; path or name)
+  -t  clang-tidy         (default: clang-tidy;  path or name)
+  -k  cppcheck           (default: cppcheck;    path or name)
+  -s  sanitizers list    (e.g. address,undefined) — if omitted, repo may read sanitizers.txt
+  -S  forward 'skip cache update' to install.sh (passes -s to install.sh)
+
+Example:
+  $0 -c clang -x clang++ -f clang-format -t clang-tidy -k cppcheck -s address,undefined -S
+USAGE
+  exit 1
 }
 
-# Parse command-line options using getopt
+# ----------------- args -----------------
 while getopts ":c:x:f:t:k:s:S" opt; do
   case "$opt" in
     c) c_compiler="$OPTARG" ;;
@@ -33,66 +38,100 @@ while getopts ":c:x:f:t:k:s:S" opt; do
     t) clang_tidy_name="$OPTARG" ;;
     k) cppcheck_name="$OPTARG" ;;
     s) sanitizers="$OPTARG" ;;
-    S) skip_ldconfig=true ;;
-    \?) echo "Invalid option: -$OPTARG" >&2; usage ;;
-    :) echo "Option -$OPTARG requires an argument." >&2; usage ;;
+    S) forward_skip_cache=true ;;
+    \?|:) usage ;;
   esac
 done
 
-# Check if the C compiler argument is provided
-if [ -z "$c_compiler" ]; then
-  echo "Error: C compiler argument (-c) is required."
-  usage
-fi
+[[ -n "$c_compiler"   ]] || { echo "Error: -c (C compiler) is required" >&2; usage; }
+[[ -n "$cxx_compiler" ]] || { echo "Error: -x (C++ compiler) is required" >&2; usage; }
 
-# Check if the C++ compiler argument is provided
-if [ -z "$cxx_compiler" ]; then
-  echo "Error: C++ compiler argument (-x) is required."
-  usage
-fi
+# ----------------- helpers -----------------
+say() { printf '%b\n' "$*"; }
+hr()  { printf '%*s\n' "$(tput cols 2>/dev/null || echo 80)" '' | tr ' ' -; }
 
-echo "$sanitizers" > sanitizers.txt
+resolve_any() {
+  local v="$1" p
+  if [[ "$v" = /* ]]; then
+    [[ -x "$v" ]] || { echo "Error: '$v' not executable" >&2; exit 2; }
+    printf '%s' "$v"
+  else
+    p="$(command -v "$v" 2>/dev/null)" || { echo "Error: '$v' not found in PATH" >&2; exit 2; }
+    printf '%s' "$p"
+  fi
+}
 
-# Read directories and types from repos.txt
+CC_PATH="$(resolve_any "$c_compiler")"
+CXX_PATH="$(resolve_any "$cxx_compiler")"
+CLANG_FORMAT_PATH="$(resolve_any "$clang_format_name")"
+CLANG_TIDY_PATH="$(resolve_any "$clang_tidy_name")"
+CPPCHECK_PATH="$(resolve_any "$cppcheck_name")"
+
+# ----------------- iterate repos -----------------
+repos_file="repos.txt"
+[[ -f "$repos_file" ]] || { echo "Error: $repos_file not found" >&2; exit 3; }
+
 while IFS='|' read -r repo_url dir repo_type; do
-    echo "Working on $dir ($repo_type)"
+  [[ -n "${dir:-}" && -n "${repo_type:-}" ]] || continue
 
-    if pushd "$dir" >/dev/null 2>&1; then
-      # Check if it's a C or C++ repository and execute the appropriate command
-      if [ "$repo_type" = "c" ]; then
-          ./change-compiler.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
-      elif [ "$repo_type" = "cxx" ]; then
-          ./change-compiler.sh -c "$cxx_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
+  hr
+  say "Working on ${dir} (${repo_type})"
+
+  if [[ ! -d "$dir" ]]; then
+    say "  -> Skipping (directory not found): $dir"
+    continue
+  fi
+
+  pushd "$dir" >/dev/null
+
+  # Decide which compiler to feed into change-compiler.sh
+  case "$repo_type" in
+    c)
+      say "Configuring with: CC=${CC_PATH}, clang-format=${CLANG_FORMAT_PATH}, clang-tidy=${CLANG_TIDY_PATH}, cppcheck=${CPPCHECK_PATH}, sanitizers=${sanitizers:-<none>}"
+      if [[ -n "$sanitizers" ]]; then
+        ./change-compiler.sh -c "$CC_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH" -s "$sanitizers"
+      else
+        ./change-compiler.sh -c "$CC_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH"
       fi
-
-      if [ -f "uninstall.sh" ]; then
-        ./uninstall.sh
+      ;;
+    cxx)
+      say "Configuring with: CXX=${CXX_PATH}, clang-format=${CLANG_FORMAT_PATH}, clang-tidy=${CLANG_TIDY_PATH}, cppcheck=${CPPCHECK_PATH}, sanitizers=${sanitizers:-<none>}"
+      # Your cxx repos typically have their own change-compiler script taking -c for C++ compiler;
+      # if they expect -x for C++ specifically, adjust here. Most of your templates use -c.
+      if [[ -n "$sanitizers" ]]; then
+        ./change-compiler.sh -c "$CXX_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH" -s "$sanitizers"
+      else
+        ./change-compiler.sh -c "$CXX_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH"
       fi
+      ;;
+    *)
+      say "  -> Unknown repo type '${repo_type}', skipping."
+      popd >/dev/null
+      continue
+      ;;
+  esac
 
-      ./build.sh
+  # Always build right away
+  if [[ -x ./build.sh ]]; then
+    say "Building: ${dir}"
+    ./build.sh
+  else
+    say "  -> No build.sh found, skipping build."
+  fi
 
-      if [ -f "install.sh" ]; then
-        if [ "$skip_ldconfig" = true ]; then
-          ./install.sh -s  # Convert -s to -S for install.sh
-        else
-          ./install.sh
-        fi
-      fi
-
-      # **Skip ldconfig if -s was provided**
-#      if [ "$skip_ldconfig" = false ]; then
-#        if command -v ldconfig >/dev/null; then
-#            sudo ldconfig
-#        elif command -v update_dyld_shared_cache >/dev/null; then
-#            sudo update_dyld_shared_cache -force
-#        fi
-#      fi
-
-      popd >/dev/null 2>&1
+  # If there’s an installer, run it (forward -s to skip cache if -S was given)
+  if [[ -x ./install.sh ]]; then
+    if $forward_skip_cache; then
+      say "Installing (skip cache update): ${dir}"
+      ./install.sh -S
     else
-      echo "Directory $dir not found."
+      say "Installing: ${dir}"
+      ./install.sh
     fi
-    echo ""
-done < repos.txt
+  fi
 
-echo "Completed operations in all directories with C compiler: $c_compiler and C++ compiler: $cxx_compiler"
+  popd >/dev/null
+done < "$repos_file"
+
+hr
+say "All repositories processed."
