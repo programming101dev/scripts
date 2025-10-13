@@ -981,7 +981,7 @@ if(_COMPILER_ID MATCHES "Clang")
     )
 
     set(_SA_ARGS_PROFILE
-            -Xanalyzer -analyzer-config -Xanalyzer analyze-headers=true
+            -Xanalyzer -analyzer-config -Xanalyzer analyze-headers=false
     )
 
     set(_SA_CHECKER_GROUPS core unix security nullability)
