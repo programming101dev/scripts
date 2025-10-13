@@ -462,7 +462,7 @@ if(CLANG_FORMAT_NAME AND _ALL_SOURCES_FOR_FORMAT)
 endif()
 
 # =========================
-# clang-tidy database sanitizer (strip GCC-only flags like -p/-pg, -f*, -g*, -W*, coverage)
+# clang-tidy database sanitizer
 # =========================
 set(SAN_SCRIPT "${CMAKE_BINARY_DIR}/SanitizeCompileCommands.cmake")
 file(WRITE "${SAN_SCRIPT}" [=[
@@ -525,7 +525,7 @@ foreach(_tgt IN LISTS LIBRARY_TARGETS EXECUTABLE_TARGETS)
 endforeach()
 
 # =========================
-# clang-tidy (iterate over sources using sanitized DB) — runs AFTER analyze, BEFORE cppcheck
+# clang-tidy (AFTER analyze)
 # =========================
 if(P101_TIDY_CHECKS STREQUAL "")
     set(P101_TIDY_CHECKS_LIST
@@ -575,6 +575,10 @@ set(_P101_TIDY_ARGS
         "--extra-arg-before=-D_GNU_SOURCE"
         "--extra-arg-before=-D_DARWIN_C_SOURCE"
 )
+# BSD visibility for clang-tidy too (compile_commands already has it, but harmless to add)
+if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD")
+    list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-D__BSD_VISIBLE=1")
+endif()
 # add our own headers only if the dir exists
 if(P101_PROJECT_INC_DIR)
     list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-I${P101_PROJECT_INC_DIR}")
@@ -616,7 +620,6 @@ foreach(_f IN LISTS _TIDY_FILES)
     string(REPLACE "\"" "\\\"" _f_esc "${_f_esc}")
     file(APPEND "${_TIDY_FILES_CMAKE}" "  \"${_f_esc}\"\n")
 endforeach()
-# *** FIXED: properly close the list ***
 file(APPEND "${_TIDY_FILES_CMAKE}" ")\n")
 
 set(RUN_TIDY_SCRIPT "${CMAKE_BINARY_DIR}/RunClangTidyOverList.cmake")
@@ -718,6 +721,10 @@ set(_P101_ANALYZE_DEFS
         -D_GNU_SOURCE
         -D_DARWIN_C_SOURCE
 )
+# Enable BSD visibility for analyzer on the BSDs
+if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD")
+    list(APPEND _P101_ANALYZE_DEFS -D__BSD_VISIBLE=1)
+endif()
 string(JOIN " " _P101_ANALYZE_DEFS_CMD ${_P101_ANALYZE_DEFS})
 
 function(_p101_filter_analyze_flags OUT)
@@ -756,7 +763,6 @@ foreach(_abs IN LISTS _ALL_SOURCES_FOR_FORMAT)
     endif()
     file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_abs}")
     string(REPLACE "/" "_" _flat "${_rel}")
-    # *** FIXED: removed stray '}' ***
     set(_out   "${P101_ANALYZE_DIR}/${_flat}.txt")
     set(_stamp "${P101_ANALYZE_DIR}/${_flat}.stamp")
 
@@ -829,7 +835,10 @@ else()
             COMMENT "Per-TU analyze stage (no sources)")
 endif()
 
-# Chain: compile -> analyze -> tidy
+# ===== ENFORCE ORDER: compile -> analyze -> tidy =====
+# Compile must finish before analyze:
+add_dependencies(${PROJECT_NAME}_analyze_all ${LIBRARY_TARGETS} ${EXECUTABLE_TARGETS})
+# Tidy must run after analyze (and thus after compile & format):
 add_dependencies(${PROJECT_NAME}_tidy_all ${PROJECT_NAME}_analyze_all)
 
 # =========================
@@ -942,11 +951,13 @@ add_custom_target(${PROJECT_NAME}_cppcheck_all ALL
         COMMAND ${CMAKE_COMMAND} -DLOGFILE=${CPPCHECK_LOG} -P "${CPPCHECK_FAIL_SCRIPT}"
         USES_TERMINAL
         COMMENT "cppcheck over entire project, fail on any diagnostics")
+
+# ENFORCE: cppcheck after tidy (and thus after analyze/compile/format)
 add_dependencies(${PROJECT_NAME}_cppcheck_all ${LIBRARY_TARGETS} ${EXECUTABLE_TARGETS})
 add_dependencies(${PROJECT_NAME}_cppcheck_all ${PROJECT_NAME}_tidy_all)
 
 # =========================
-# FINAL: clang static analyzer (--analyze) after cppcheck (Clang only, IN-DEPTH)
+# FINAL: clang static analyzer (--analyze) after cppcheck (Clang only)
 # =========================
 if(_COMPILER_ID MATCHES "Clang")
     set(P101_CLANG_SA_DIR "${CMAKE_BINARY_DIR}/clang-sa")
@@ -1035,6 +1046,10 @@ if(_COMPILER_ID MATCHES "Clang")
             -D_GNU_SOURCE
             -D_DARWIN_C_SOURCE
     )
+    # Enable BSD visibility for clang --analyze on the BSDs
+    if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD")
+        list(APPEND _P101_SA_DEFS -D__BSD_VISIBLE=1)
+    endif()
     string(JOIN " " _P101_SA_DEFS_CMD ${_P101_SA_DEFS})
 
     set(_SA_STAMPS)
@@ -1117,24 +1132,6 @@ endif()
                 COMMAND ${CMAKE_COMMAND} -E echo "No sources for clang --analyze"
                 COMMENT "Clang static analyzer (--analyze)")
         add_dependencies(${PROJECT_NAME}_clang_sa_all ${PROJECT_NAME}_cppcheck_all)
-    endif()
-endif()
-
-# =========================
-# Optional: legacy scan-build wrapper (NOT part of ALL)
-# =========================
-if(_COMPILER_ID MATCHES "Clang" AND SCAN_BUILD_NAME)
-    set(_PRIMARY_TARGETS ${LIBRARY_TARGETS} ${EXECUTABLE_TARGETS})
-    if(NOT DEFINED ENV{IN_SCANBUILD} OR NOT "$ENV{IN_SCANBUILD}" STREQUAL "1")
-        add_custom_target(${PROJECT_NAME}_scan_build_all
-                COMMAND ${CMAKE_COMMAND} -E echo
-                "${ICON} running: ${SCAN_BUILD_NAME} --status-bugs -analyze-headers -o ${CMAKE_BINARY_DIR}/scan-build cmake --build ${CMAKE_BINARY_DIR} --target ${_PRIMARY_TARGETS}"
-                COMMAND ${CMAKE_COMMAND} -E env IN_SCANBUILD=1
-                "${SCAN_BUILD_NAME}" --status-bugs -analyze-headers -o "${CMAKE_BINARY_DIR}/scan-build"
-                COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target ${_PRIMARY_TARGETS}
-                USES_TERMINAL
-                COMMENT "clang static analyzer (scan-build) over primary targets")
-        add_dependencies(${PROJECT_NAME}_scan_build_all ${PROJECT_NAME}_cppcheck_all)
     endif()
 endif()
 
