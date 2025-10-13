@@ -54,18 +54,11 @@ endif()
 set(ICON "🔧" CACHE STRING "Icon prefix")
 
 # Required: clang-tidy
-find_program(CLANG_TIDY_NAME
-        NAMES clang-tidy
-        REQUIRED
-        DOC "clang-tidy executable used by the build")
+find_program(CLANG_TIDY_NAME NAMES clang-tidy REQUIRED DOC "clang-tidy executable used by the build")
 
 # Optional: clang-format and scan-build
-find_program(CLANG_FORMAT_NAME
-        NAMES clang-format
-        DOC "clang-format executable used by the build")
-find_program(SCAN_BUILD_NAME
-        NAMES scan-build
-        DOC "scan-build executable used by the build")
+find_program(CLANG_FORMAT_NAME NAMES clang-format DOC "clang-format executable used by the build")
+find_program(SCAN_BUILD_NAME   NAMES scan-build   DOC "scan-build executable used by the build")
 
 # Enforce: cppcheck must exist and will always run
 find_program(CPPCHECK_NAME NAMES cppcheck REQUIRED DOC "cppcheck executable used by the build")
@@ -305,6 +298,23 @@ endif()
 message(STATUS "Public include dirs used: ${P101_PUBLIC_INCLUDE_DIRS_EXISTING}")
 message(STATUS "Public link dirs used:    ${P101_PUBLIC_LINK_DIRS_EXISTING}")
 
+# --- Classify include dirs into project vs external (system)
+set(P101_PROJECT_INC_DIR "${PUBLIC_INC_DIR}")
+set(_EXT_INC_DIRS "${P101_PUBLIC_INCLUDE_DIRS_EXISTING}")
+list(REMOVE_ITEM _EXT_INC_DIRS "${P101_PROJECT_INC_DIR}")
+list(REMOVE_DUPLICATES _EXT_INC_DIRS)
+
+# Prebuild convenience strings for custom commands
+set(_MAC_SYSROOT_CMD "")
+if(APPLE AND MAC_SYSROOT)
+    set(_MAC_SYSROOT_CMD "-isysroot \"${MAC_SYSROOT}\"")
+endif()
+set(_EXT_ISYSTEM_LIST)
+foreach(_d IN LISTS _EXT_INC_DIRS)
+    list(APPEND _EXT_ISYSTEM_LIST -isystem "\"${_d}\"")
+endforeach()
+string(JOIN " " _EXT_ISYSTEM_CMD ${_EXT_ISYSTEM_LIST})
+
 # =========================
 # Targets from config.cmake
 # =========================
@@ -336,8 +346,19 @@ foreach(_lib IN LISTS LIBRARY_TARGETS)
     endif()
     _p101_abs_list(_srcs_abs ${${_lib}_SOURCES})
     list(APPEND _ALL_SOURCES_FOR_FORMAT ${_srcs_abs})
+
     add_library(${_lib} SHARED ${_srcs_abs} ${${_lib}_HEADERS})
-    target_include_directories(${_lib} PUBLIC ${P101_PUBLIC_INCLUDE_DIRS_EXISTING})
+
+    # Project includes as normal (-I)
+    target_include_directories(${_lib} PUBLIC "${P101_PROJECT_INC_DIR}")
+    # External as SYSTEM (-isystem)
+    if(_EXT_INC_DIRS)
+        target_include_directories(${_lib} SYSTEM PUBLIC ${_EXT_INC_DIRS})
+    endif()
+    if(Iconv_FOUND AND Iconv_INCLUDE_DIRS)
+        target_include_directories(${_lib} SYSTEM PUBLIC ${Iconv_INCLUDE_DIRS})
+    endif()
+
     target_compile_options(${_lib} PRIVATE ${STANDARD_FLAGS} ${P101_EXTRA_CFLAGS} ${_P101_SANITIZER_COMPILE_OPTS})
     target_link_options(${_lib}    PRIVATE ${P101_EXTRA_LDFLAGS} ${_P101_SANITIZER_LINK_OPTS})
     if(P101_PUBLIC_LINK_DIRS_EXISTING)
@@ -349,9 +370,7 @@ foreach(_lib IN LISTS LIBRARY_TARGETS)
             target_link_libraries(${_lib} PRIVATE ${_RESOLVED_LIBS})
         endif()
     endif()
-    if(Iconv_FOUND AND Iconv_INCLUDE_DIRS)
-        target_include_directories(${_lib} PUBLIC ${Iconv_INCLUDE_DIRS})
-    endif()
+
     list(APPEND _ALL_HEADERS_FOR_INSTALL ${${_lib}_HEADERS})
     list(APPEND P101_PRIMARY_TARGETS ${_lib})
 endforeach()
@@ -363,8 +382,19 @@ foreach(_exe IN LISTS EXECUTABLE_TARGETS)
     endif()
     _p101_abs_list(_srcs_abs ${${_exe}_SOURCES})
     list(APPEND _ALL_SOURCES_FOR_FORMAT ${_srcs_abs})
+
     add_executable(${_exe} ${_srcs_abs})
-    target_include_directories(${_exe} PRIVATE ${P101_PUBLIC_INCLUDE_DIRS_EXISTING})
+
+    # Project includes as normal (-I)
+    target_include_directories(${_exe} PRIVATE "${P101_PROJECT_INC_DIR}")
+    # External as SYSTEM (-isystem)
+    if(_EXT_INC_DIRS)
+        target_include_directories(${_exe} SYSTEM PRIVATE ${_EXT_INC_DIRS})
+    endif()
+    if(Iconv_FOUND AND Iconv_INCLUDE_DIRS)
+        target_include_directories(${_exe} SYSTEM PRIVATE ${Iconv_INCLUDE_DIRS})
+    endif()
+
     target_compile_options(${_exe} PRIVATE ${STANDARD_FLAGS} ${P101_EXTRA_CFLAGS} ${_P101_SANITIZER_COMPILE_OPTS})
     target_link_options(${_exe}    PRIVATE ${P101_EXTRA_LDFLAGS} ${_P101_SANITIZER_LINK_OPTS})
     if(P101_PUBLIC_LINK_DIRS_EXISTING)
@@ -376,9 +406,7 @@ foreach(_exe IN LISTS EXECUTABLE_TARGETS)
             target_link_libraries(${_exe} PRIVATE ${_RESOLVED_LIBS})
         endif()
     endif()
-    if(Iconv_FOUND AND Iconv_INCLUDE_DIRS)
-        target_include_directories(${_exe} PRIVATE ${Iconv_INCLUDE_DIRS})
-    endif()
+
     list(APPEND P101_PRIMARY_TARGETS ${_exe})
 endforeach()
 
@@ -507,11 +535,15 @@ if(P101_TIDY_CHECKS STREQUAL "")
             "-android-cloexec-accept"
             "-misc-include-cleaner"
             "-llvm-header-guard"
-            # silence casting nits that were failing your build
             "-google-readability-casting"
             "-readability-redundant-casting"
     )
     string(JOIN "," P101_TIDY_CHECKS ${P101_TIDY_CHECKS_LIST})
+endif()
+
+# Default tidy header filter: only our project (src/ and include/) unless user overrides
+if(P101_HEADER_FILTER STREQUAL "" OR P101_HEADER_FILTER STREQUAL ".*")
+    set(P101_HEADER_FILTER "^(${CMAKE_CURRENT_SOURCE_DIR}/src|${PUBLIC_INC_DIR})/.*")
 endif()
 
 # Build shared args for clang-tidy
@@ -521,34 +553,30 @@ set(_P101_TIDY_ARGS
         "-warnings-as-errors=*"
         "-quiet"
         "--format-style=file"
-        "--extra-arg-before=-I${CMAKE_SOURCE_DIR}/include"
-        "--extra-arg-before=-I/usr/local/include"
         "--extra-arg-before=-D_POSIX_C_SOURCE=200809L"
         "--extra-arg-before=-D_XOPEN_SOURCE=700"
         "--extra-arg-before=-D_GNU_SOURCE"
         "--extra-arg-before=-D_DARWIN_C_SOURCE"
+        "--extra-arg-before=-I${PUBLIC_INC_DIR}"
 )
-if(APPLE)
-    list(APPEND _P101_TIDY_ARGS
-            "--extra-arg-before=-I/opt/homebrew/include"
-            "--extra-arg-before=-I/opt/local/include"
-    )
-    if(MAC_SYSROOT)
-        list(APPEND _P101_TIDY_ARGS
-                "--extra-arg-before=-isysroot"
-                "--extra-arg-before=${MAC_SYSROOT}"
-        )
-    endif()
+
+# Tell tidy that external include roots are system headers (suppresses third-party diagnostics)
+foreach(_d IN LISTS _EXT_INC_DIRS)
+    list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-isystem" "--extra-arg-before=${_d}")
+endforeach()
+# macOS sysroot for SDK headers (when applicable)
+if(APPLE AND MAC_SYSROOT)
+    list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-isysroot" "--extra-arg-before=${MAC_SYSROOT}")
 endif()
+# User extras
 if(P101_TIDY_EXTRA_ARGS_LIST)
     list(APPEND _P101_TIDY_ARGS ${P101_TIDY_EXTRA_ARGS_LIST})
 endif()
 
-# --- Robust arg/file passing for clang-tidy (via .cmake manifests; avoids newline/quoting issues)
+# --- Robust arg/file passing for clang-tidy (via .cmake manifests)
 set(_TIDY_ARGS_CMAKE  "${CMAKE_BINARY_DIR}/tidy_args.cmake")
 set(_TIDY_FILES_CMAKE "${CMAKE_BINARY_DIR}/tidy_files.cmake")
 
-# Write args list
 file(WRITE "${_TIDY_ARGS_CMAKE}" "set(P101_TIDY_ARGS_LIST\n")
 foreach(_a IN LISTS _P101_TIDY_ARGS)
     string(REPLACE "\\" "\\\\" _a_esc "${_a}")
@@ -557,7 +585,6 @@ foreach(_a IN LISTS _P101_TIDY_ARGS)
 endforeach()
 file(APPEND "${_TIDY_ARGS_CMAKE}" ")\n")
 
-# Gather source files under this tree only & write list
 set(_TIDY_FILES)
 foreach(_abs IN LISTS _ALL_SOURCES_FOR_FORMAT)
     if(_abs MATCHES "^${CMAKE_CURRENT_SOURCE_DIR}/")
@@ -572,7 +599,6 @@ foreach(_f IN LISTS _TIDY_FILES)
 endforeach()
 file(APPEND "${_TIDY_FILES_CMAKE}" ")\n")
 
-# Script to iterate over file list with sanitized DB
 set(RUN_TIDY_SCRIPT "${CMAKE_BINARY_DIR}/RunClangTidyOverList.cmake")
 file(WRITE "${RUN_TIDY_SCRIPT}" [=[
 cmake_minimum_required(VERSION 3.20)
@@ -716,14 +742,10 @@ foreach(_abs IN LISTS _ALL_SOURCES_FOR_FORMAT)
     add_custom_command(
             OUTPUT "${_stamp}"
             COMMAND ${CMAKE_COMMAND} -E echo
-            "${ICON} running: ${_COMPILER} -fsyntax-only ${_AN_STD} ${_P101_ANALYZE_DEFS_CMD} ${_AN_FLAGS_ECHO} -I${CMAKE_SOURCE_DIR}/include -I/usr/local/include ${_abs}"
+            "${ICON} running: ${_COMPILER} -fsyntax-only ${_AN_STD} ${_P101_ANALYZE_DEFS_CMD} ${_AN_FLAGS_ECHO} -I${CMAKE_SOURCE_DIR}/include ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} ${_abs}"
             COMMAND /bin/sh -c
             "\"${_COMPILER}\" -fsyntax-only ${_AN_STD} ${_P101_ANALYZE_DEFS_CMD} ${_AN_FLAGS_CMD} \
-                   -I\"${CMAKE_SOURCE_DIR}/include\" -I\"/usr/local/include\" \
-                   $<$<BOOL:${APPLE}>:-I/opt/homebrew/include> \
-                   $<$<BOOL:${APPLE}>:-I/opt/local/include> \
-                   $<$<AND:$<BOOL:${APPLE}>,$<BOOL:${MAC_SYSROOT}>>:-isysroot> \
-                   $<$<AND:$<BOOL:${APPLE}>,$<BOOL:${MAC_SYSROOT}>>:\"${MAC_SYSROOT}\"> \
+                   -I\"${CMAKE_SOURCE_DIR}/include\" ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \
                    \"${_abs}\" > \"${_out}\" 2>&1 || true"
             COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
             DEPENDS "${_abs}"
@@ -886,7 +908,7 @@ add_custom_target(${PROJECT_NAME}_cppcheck_all ALL
         --template=gcc
         --output-file=${CPPCHECK_LOG}
         --project=${CMAKE_BINARY_DIR}/compile_commands.json
-        -I${PUBLIC_INC_DIR} -I/usr/local/include -I/opt/homebrew/include -I/opt/local/include
+        -I${PUBLIC_INC_DIR} $<$<BOOL:${APPLE}>:-I/opt/homebrew/include> $<$<BOOL:${APPLE}>:-I/opt/local/include> -I/usr/local/include
         COMMAND ${CMAKE_COMMAND} -DLOGFILE=${CPPCHECK_LOG} -P "${CPPCHECK_FAIL_SCRIPT}"
         USES_TERMINAL
         COMMENT "cppcheck over entire project, fail on any diagnostics")
@@ -924,7 +946,7 @@ if(_COMPILER_ID MATCHES "Clang")
         endif()
     endif()
 
-    # Reuse analyzer-only flags (already filtered above)
+    # Reuse analyzer-only flags
     set(_SA_FLAGS ${_AN_FLAGS_FILTERED})
 
     set(_SA_ARGS_COMMON
@@ -996,14 +1018,10 @@ if(_COMPILER_ID MATCHES "Clang")
         add_custom_command(
                 OUTPUT "${_stamp}"
                 COMMAND ${CMAKE_COMMAND} -E echo
-                "${ICON} running: ${_COMPILER} ${_SA_STD} ${_P101_SA_DEFS_CMD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} -I${CMAKE_SOURCE_DIR}/include -I/usr/local/include ${_abs}"
+                "${ICON} running: ${_COMPILER} ${_SA_STD} ${_P101_SA_DEFS_CMD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} -I${CMAKE_SOURCE_DIR}/include ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} ${_abs}"
                 COMMAND /bin/sh -c
                 "\"${_COMPILER}\" ${_SA_STD} ${_P101_SA_DEFS_CMD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} \
-                   -I\"${CMAKE_SOURCE_DIR}/include\" -I\"/usr/local/include\" \
-                   $<$<BOOL:${APPLE}>:-I/opt/homebrew/include> \
-                   $<$<BOOL:${APPLE}>:-I/opt/local/include> \
-                   $<$<AND:$<BOOL:${APPLE}>,$<BOOL:${MAC_SYSROOT}>>:-isysroot> \
-                   $<$<AND:$<BOOL:${APPLE}>,$<BOOL:${MAC_SYSROOT}>>:\"${MAC_SYSROOT}\"> \
+                   -I\"${CMAKE_SOURCE_DIR}/include\" ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \
                    \"${_abs}\" > \"${_out}\" 2>&1 || true"
                 COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
                 DEPENDS "${_abs}"
@@ -1081,7 +1099,7 @@ if(_COMPILER_ID MATCHES "Clang" AND SCAN_BUILD_NAME)
                 "${ICON} running: ${SCAN_BUILD_NAME} --status-bugs -analyze-headers -o ${CMAKE_BINARY_DIR}/scan-build cmake --build ${CMAKE_BINARY_DIR} --target ${_PRIMARY_TARGETS}"
                 COMMAND ${CMAKE_COMMAND} -E env IN_SCANBUILD=1
                 "${SCAN_BUILD_NAME}" --status-bugs -analyze-headers -o "${CMAKE_BINARY_DIR}/scan-build"
-                ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target ${_PRIMARY_TARGETS}
+                COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}" --target ${_PRIMARY_TARGETS}
                 USES_TERMINAL
                 COMMENT "clang static analyzer (scan-build) over primary targets")
         add_dependencies(${PROJECT_NAME}_scan_build_all ${PROJECT_NAME}_cppcheck_all)
