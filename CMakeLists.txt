@@ -423,6 +423,9 @@ string(REGEX REPLACE "\"-f[^\"]*\"(,?)" "" J "${J}")
 string(REGEX REPLACE "\"-g[^\"]*\"(,?)" "" J "${J}")
 string(REGEX REPLACE "\"--coverage\"(,?)" "" J "${J}")
 string(REGEX REPLACE "\"-coverage\"(,?)" "" J "${J}")
+# NEW: also drop GCC profiling flags that clang doesn't accept
+string(REGEX REPLACE "\"-p\"(,?)"  "" J "${J}")   # <-- NEW
+string(REGEX REPLACE "\"-pg\"(,?)" "" J "${J}")   # <-- NEW
 string(REGEX REPLACE ",[ \n\r]*,+" "," J "${J}")
 string(REGEX REPLACE "\\[\\s*," "[" J "${J}")
 string(REGEX REPLACE ",\\s*\\]" "]" J "${J}")
@@ -432,6 +435,9 @@ string(REGEX REPLACE " -f[^\" \n\r]+" "" J "${J}")
 string(REGEX REPLACE " -g[^\" \n\r]+" "" J "${J}")
 string(REGEX REPLACE " --coverage" "" J "${J}")
 string(REGEX REPLACE " -coverage"  "" J "${J}")
+# NEW: also drop GCC profiling flags from command strings
+string(REGEX REPLACE " -p( |$)"  " " J "${J}")    # <-- NEW
+string(REGEX REPLACE " -pg( |$)" " " J "${J}")    # <-- NEW
 string(REGEX REPLACE "  +" " " J "${J}")
 get_filename_component(_OUT_DIR "${_OUT}" DIRECTORY)
 file(MAKE_DIRECTORY "${_OUT_DIR}")
