@@ -110,11 +110,10 @@ set_property(CACHE P101_CLANG_SA_PROFILE PROPERTY STRINGS basic deep)
 set(P101_CLANG_SA_FAIL_ON_DIAGNOSTICS ON CACHE BOOL "Fail build on any CSA diagnostic")
 set(P101_CLANG_SA_EXTRA_ARGS "" CACHE STRING "Extra --analyze args for clang (space-separated)")
 
-# NEW: allow disabling specific CSA checkers (comma-separated fully-qualified names)
-# Example default disables the "insecureAPI" false-positive-y fprintf/strcpy family.
+# Allow disabling specific CSA checkers (comma-separated fully-qualified names)
 set(P101_CLANG_SA_DISABLE_CHECKERS
         "security.insecureAPI.DeprecatedOrUnsafeBufferHandling,security.insecureAPI.strcpy"
-        CACHE STRING "Comma-separated Clang Static Analyzer checkers to disable (e.g. security.insecureAPI.DeprecatedOrUnsafeBufferHandling,security.insecureAPI.strcpy)")
+        CACHE STRING "Comma-separated Clang Static Analyzer checkers to disable")
 
 # =========================
 # QoL
@@ -401,7 +400,7 @@ if(CLANG_FORMAT_NAME AND _ALL_SOURCES_FOR_FORMAT)
 endif()
 
 # =========================
-# clang-tidy database sanitizer (strip GCC-only flags)
+# clang-tidy database sanitizer (strip GCC-only flags like -p/-pg)
 # =========================
 set(SAN_SCRIPT "${CMAKE_BINARY_DIR}/SanitizeCompileCommands.cmake")
 file(WRITE "${SAN_SCRIPT}" [=[
@@ -423,9 +422,9 @@ string(REGEX REPLACE "\"-f[^\"]*\"(,?)" "" J "${J}")
 string(REGEX REPLACE "\"-g[^\"]*\"(,?)" "" J "${J}")
 string(REGEX REPLACE "\"--coverage\"(,?)" "" J "${J}")
 string(REGEX REPLACE "\"-coverage\"(,?)" "" J "${J}")
-# NEW: also drop GCC profiling flags that clang doesn't accept
-string(REGEX REPLACE "\"-p\"(,?)"  "" J "${J}")   # <-- NEW
-string(REGEX REPLACE "\"-pg\"(,?)" "" J "${J}")   # <-- NEW
+# Also drop GCC profiling flags clang doesn't accept
+string(REGEX REPLACE "\"-p\"(,?)"  "" J "${J}")
+string(REGEX REPLACE "\"-pg\"(,?)" "" J "${J}")
 string(REGEX REPLACE ",[ \n\r]*,+" "," J "${J}")
 string(REGEX REPLACE "\\[\\s*," "[" J "${J}")
 string(REGEX REPLACE ",\\s*\\]" "]" J "${J}")
@@ -435,9 +434,9 @@ string(REGEX REPLACE " -f[^\" \n\r]+" "" J "${J}")
 string(REGEX REPLACE " -g[^\" \n\r]+" "" J "${J}")
 string(REGEX REPLACE " --coverage" "" J "${J}")
 string(REGEX REPLACE " -coverage"  "" J "${J}")
-# NEW: also drop GCC profiling flags from command strings
-string(REGEX REPLACE " -p( |$)"  " " J "${J}")    # <-- NEW
-string(REGEX REPLACE " -pg( |$)" " " J "${J}")    # <-- NEW
+# Also drop GCC profiling flags from command strings
+string(REGEX REPLACE " -p( |$)"  " " J "${J}")
+string(REGEX REPLACE " -pg( |$)" " " J "${J}")
 string(REGEX REPLACE "  +" " " J "${J}")
 get_filename_component(_OUT_DIR "${_OUT}" DIRECTORY)
 file(MAKE_DIRECTORY "${_OUT_DIR}")
@@ -853,7 +852,6 @@ if(_COMPILER_ID MATCHES "Clang")
         endif()
     endif()
 
-    # Expand each group as its own -analyzer-checker=<group>
     foreach(_grp IN LISTS _SA_CHECKER_GROUPS)
         list(APPEND _SA_ARGS_PROFILE -Xanalyzer -analyzer-checker=${_grp})
     endforeach()
@@ -873,7 +871,6 @@ if(_COMPILER_ID MATCHES "Clang")
         list(APPEND _SA_ARGS ${P101_CLANG_SA_EXTRA_ARGS_LIST})
     endif()
 
-    # Flatten list vars for /bin/sh -c and for the echoed preview
     string(JOIN " " _SA_ARGS_CMD  ${_SA_ARGS})
     string(JOIN " " _SA_FLAGS_CMD ${_SA_FLAGS})
 
