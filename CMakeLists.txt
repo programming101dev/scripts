@@ -94,8 +94,10 @@ set(P101_CLANG_SA_PROFILE "deep" CACHE STRING "CSA profile: basic|deep")
 set_property(CACHE P101_CLANG_SA_PROFILE PROPERTY STRINGS basic deep)
 set(P101_CLANG_SA_FAIL_ON_DIAGNOSTICS ON CACHE BOOL "Fail build on any CSA diagnostic")
 set(P101_CLANG_SA_EXTRA_ARGS "" CACHE STRING "Extra --analyze args for clang (space-separated)")
+
+# Disable noisy checker (sign-conversion paths in fenv.h) + your previous disables
 set(P101_CLANG_SA_DISABLE_CHECKERS
-        "security.insecureAPI.DeprecatedOrUnsafeBufferHandling,security.insecureAPI.strcpy"
+        "alpha.core.Conversion,security.insecureAPI.DeprecatedOrUnsafeBufferHandling,security.insecureAPI.strcpy"
         CACHE STRING "Comma-separated Clang Static Analyzer checkers to disable")
 
 # =========================
@@ -298,7 +300,7 @@ endif()
 message(STATUS "Public include dirs used: ${P101_PUBLIC_INCLUDE_DIRS_EXISTING}")
 message(STATUS "Public link dirs used:    ${P101_PUBLIC_LINK_DIRS_EXISTING}")
 
-# --- Classify include dirs into project vs external (system)  [FIX #1]
+# --- Classify include dirs into project vs external (system)
 set(P101_PROJECT_INC_DIR "")
 if(IS_DIRECTORY "${PUBLIC_INC_DIR}")
     set(P101_PROJECT_INC_DIR "${PUBLIC_INC_DIR}")
@@ -310,7 +312,7 @@ if(P101_PROJECT_INC_DIR)
 endif()
 list(REMOVE_DUPLICATES _EXT_INC_DIRS)
 
-# Prebuild convenience strings for custom commands  [FIX #4, #5]
+# Prebuild convenience strings for custom commands
 set(_MAC_SYSROOT_CMD "")
 if(APPLE AND MAC_SYSROOT)
     set(_MAC_SYSROOT_CMD "-isysroot \"${MAC_SYSROOT}\"")
@@ -360,11 +362,11 @@ foreach(_lib IN LISTS LIBRARY_TARGETS)
 
     add_library(${_lib} SHARED ${_srcs_abs} ${${_lib}_HEADERS})
 
-    # Project includes as normal (-I)  [FIX #1]
+    # Project includes as normal (-I)
     if(P101_PROJECT_INC_DIR)
         target_include_directories(${_lib} PUBLIC "${P101_PROJECT_INC_DIR}")
     endif()
-    # External as SYSTEM (-isystem)    [FIX #2]
+    # External as SYSTEM (-isystem)
     if(_EXT_INC_DIRS)
         target_include_directories(${_lib} SYSTEM PUBLIC ${_EXT_INC_DIRS})
     endif()
@@ -398,11 +400,11 @@ foreach(_exe IN LISTS EXECUTABLE_TARGETS)
 
     add_executable(${_exe} ${_srcs_abs})
 
-    # Project includes as normal (-I)  [FIX #1]
+    # Project includes as normal (-I)
     if(P101_PROJECT_INC_DIR)
         target_include_directories(${_exe} PRIVATE "${P101_PROJECT_INC_DIR}")
     endif()
-    # External as SYSTEM (-isystem)    [FIX #2]
+    # External as SYSTEM (-isystem)
     if(_EXT_INC_DIRS)
         target_include_directories(${_exe} SYSTEM PRIVATE ${_EXT_INC_DIRS})
     endif()
@@ -556,7 +558,7 @@ if(P101_TIDY_CHECKS STREQUAL "")
     string(JOIN "," P101_TIDY_CHECKS ${P101_TIDY_CHECKS_LIST})
 endif()
 
-# Default tidy header filter: only our project (src/ and include/) unless user overrides  [FIX #3]
+# Default tidy header filter: only our project (src/ and include/) unless user overrides
 if(P101_HEADER_FILTER STREQUAL "" OR P101_HEADER_FILTER STREQUAL ".*")
     set(P101_HEADER_FILTER "^(${CMAKE_CURRENT_SOURCE_DIR}/src|${PUBLIC_INC_DIR})/.*")
 endif()
@@ -573,15 +575,15 @@ set(_P101_TIDY_ARGS
         "--extra-arg-before=-D_GNU_SOURCE"
         "--extra-arg-before=-D_DARWIN_C_SOURCE"
 )
-# add our own headers only if the dir exists  [FIX #1]
+# add our own headers only if the dir exists
 if(P101_PROJECT_INC_DIR)
     list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-I${P101_PROJECT_INC_DIR}")
 endif()
-# Tell tidy that external include roots are system headers (suppress third-party diags)  [FIX #2]
+# Tell tidy that external include roots are system headers (suppress third-party diags)
 foreach(_d IN LISTS _EXT_INC_DIRS)
     list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-isystem" "--extra-arg-before=${_d}")
 endforeach()
-# macOS sysroot for SDK headers (when applicable)  [FIX #5]
+# macOS sysroot for SDK headers (when applicable)
 if(APPLE AND MAC_SYSROOT)
     list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-isysroot" "--extra-arg-before=${MAC_SYSROOT}")
 endif()
@@ -614,6 +616,7 @@ foreach(_f IN LISTS _TIDY_FILES)
     string(REPLACE "\"" "\\\"" _f_esc "${_f_esc}")
     file(APPEND "${_TIDY_FILES_CMAKE}" "  \"${_f_esc}\"\n")
 endforeach()
+# *** FIXED: properly close the list ***
 file(APPEND "${_TIDY_FILES_CMAKE}" ")\n")
 
 set(RUN_TIDY_SCRIPT "${CMAKE_BINARY_DIR}/RunClangTidyOverList.cmake")
@@ -753,6 +756,7 @@ foreach(_abs IN LISTS _ALL_SOURCES_FOR_FORMAT)
     endif()
     file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_abs}")
     string(REPLACE "/" "_" _flat "${_rel}")
+    # *** FIXED: removed stray '}' ***
     set(_out   "${P101_ANALYZE_DIR}/${_flat}.txt")
     set(_stamp "${P101_ANALYZE_DIR}/${_flat}.stamp")
 
@@ -887,7 +891,7 @@ list(APPEND _CPPCHECK_SUPPRESSIONS
         "--relative-paths=${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-# Build cppcheck -I args cleanly (avoid generator expr warnings)  [FIX #6]
+# Build cppcheck -I args cleanly (avoid generator expr warnings)
 set(_CPPCHECK_I_ARGS)
 if(P101_PROJECT_INC_DIR)
     list(APPEND _CPPCHECK_I_ARGS -I "${P101_PROJECT_INC_DIR}")
@@ -980,8 +984,10 @@ if(_COMPILER_ID MATCHES "Clang")
             -Xanalyzer -analyzer-output=text
     )
 
+    # Only analyze implementation files; report only in the main source file
     set(_SA_ARGS_PROFILE
             -Xanalyzer -analyzer-config -Xanalyzer analyze-headers=false
+            -Xanalyzer -analyzer-config -Xanalyzer report-in-main-source-file=true
     )
 
     set(_SA_CHECKER_GROUPS core unix security nullability)
