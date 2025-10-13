@@ -298,13 +298,19 @@ endif()
 message(STATUS "Public include dirs used: ${P101_PUBLIC_INCLUDE_DIRS_EXISTING}")
 message(STATUS "Public link dirs used:    ${P101_PUBLIC_LINK_DIRS_EXISTING}")
 
-# --- Classify include dirs into project vs external (system)
-set(P101_PROJECT_INC_DIR "${PUBLIC_INC_DIR}")
+# --- Classify include dirs into project vs external (system)  [FIX #1]
+set(P101_PROJECT_INC_DIR "")
+if(IS_DIRECTORY "${PUBLIC_INC_DIR}")
+    set(P101_PROJECT_INC_DIR "${PUBLIC_INC_DIR}")
+endif()
+
 set(_EXT_INC_DIRS "${P101_PUBLIC_INCLUDE_DIRS_EXISTING}")
-list(REMOVE_ITEM _EXT_INC_DIRS "${P101_PROJECT_INC_DIR}")
+if(P101_PROJECT_INC_DIR)
+    list(REMOVE_ITEM _EXT_INC_DIRS "${P101_PROJECT_INC_DIR}")
+endif()
 list(REMOVE_DUPLICATES _EXT_INC_DIRS)
 
-# Prebuild convenience strings for custom commands
+# Prebuild convenience strings for custom commands  [FIX #4, #5]
 set(_MAC_SYSROOT_CMD "")
 if(APPLE AND MAC_SYSROOT)
     set(_MAC_SYSROOT_CMD "-isysroot \"${MAC_SYSROOT}\"")
@@ -314,6 +320,11 @@ foreach(_d IN LISTS _EXT_INC_DIRS)
     list(APPEND _EXT_ISYSTEM_LIST -isystem "\"${_d}\"")
 endforeach()
 string(JOIN " " _EXT_ISYSTEM_CMD ${_EXT_ISYSTEM_LIST})
+
+set(_PROJ_I_CMD "")
+if(P101_PROJECT_INC_DIR)
+    set(_PROJ_I_CMD "-I\"${P101_PROJECT_INC_DIR}\"")
+endif()
 
 # =========================
 # Targets from config.cmake
@@ -349,9 +360,11 @@ foreach(_lib IN LISTS LIBRARY_TARGETS)
 
     add_library(${_lib} SHARED ${_srcs_abs} ${${_lib}_HEADERS})
 
-    # Project includes as normal (-I)
-    target_include_directories(${_lib} PUBLIC "${P101_PROJECT_INC_DIR}")
-    # External as SYSTEM (-isystem)
+    # Project includes as normal (-I)  [FIX #1]
+    if(P101_PROJECT_INC_DIR)
+        target_include_directories(${_lib} PUBLIC "${P101_PROJECT_INC_DIR}")
+    endif()
+    # External as SYSTEM (-isystem)    [FIX #2]
     if(_EXT_INC_DIRS)
         target_include_directories(${_lib} SYSTEM PUBLIC ${_EXT_INC_DIRS})
     endif()
@@ -385,9 +398,11 @@ foreach(_exe IN LISTS EXECUTABLE_TARGETS)
 
     add_executable(${_exe} ${_srcs_abs})
 
-    # Project includes as normal (-I)
-    target_include_directories(${_exe} PRIVATE "${P101_PROJECT_INC_DIR}")
-    # External as SYSTEM (-isystem)
+    # Project includes as normal (-I)  [FIX #1]
+    if(P101_PROJECT_INC_DIR)
+        target_include_directories(${_exe} PRIVATE "${P101_PROJECT_INC_DIR}")
+    endif()
+    # External as SYSTEM (-isystem)    [FIX #2]
     if(_EXT_INC_DIRS)
         target_include_directories(${_exe} SYSTEM PRIVATE ${_EXT_INC_DIRS})
     endif()
@@ -541,7 +556,7 @@ if(P101_TIDY_CHECKS STREQUAL "")
     string(JOIN "," P101_TIDY_CHECKS ${P101_TIDY_CHECKS_LIST})
 endif()
 
-# Default tidy header filter: only our project (src/ and include/) unless user overrides
+# Default tidy header filter: only our project (src/ and include/) unless user overrides  [FIX #3]
 if(P101_HEADER_FILTER STREQUAL "" OR P101_HEADER_FILTER STREQUAL ".*")
     set(P101_HEADER_FILTER "^(${CMAKE_CURRENT_SOURCE_DIR}/src|${PUBLIC_INC_DIR})/.*")
 endif()
@@ -557,14 +572,16 @@ set(_P101_TIDY_ARGS
         "--extra-arg-before=-D_XOPEN_SOURCE=700"
         "--extra-arg-before=-D_GNU_SOURCE"
         "--extra-arg-before=-D_DARWIN_C_SOURCE"
-        "--extra-arg-before=-I${PUBLIC_INC_DIR}"
 )
-
-# Tell tidy that external include roots are system headers (suppresses third-party diagnostics)
+# add our own headers only if the dir exists  [FIX #1]
+if(P101_PROJECT_INC_DIR)
+    list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-I${P101_PROJECT_INC_DIR}")
+endif()
+# Tell tidy that external include roots are system headers (suppress third-party diags)  [FIX #2]
 foreach(_d IN LISTS _EXT_INC_DIRS)
     list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-isystem" "--extra-arg-before=${_d}")
 endforeach()
-# macOS sysroot for SDK headers (when applicable)
+# macOS sysroot for SDK headers (when applicable)  [FIX #5]
 if(APPLE AND MAC_SYSROOT)
     list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-isysroot" "--extra-arg-before=${MAC_SYSROOT}")
 endif()
@@ -742,10 +759,10 @@ foreach(_abs IN LISTS _ALL_SOURCES_FOR_FORMAT)
     add_custom_command(
             OUTPUT "${_stamp}"
             COMMAND ${CMAKE_COMMAND} -E echo
-            "${ICON} running: ${_COMPILER} -fsyntax-only ${_AN_STD} ${_P101_ANALYZE_DEFS_CMD} ${_AN_FLAGS_ECHO} -I${CMAKE_SOURCE_DIR}/include ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} ${_abs}"
+            "${ICON} running: ${_COMPILER} -fsyntax-only ${_AN_STD} ${_P101_ANALYZE_DEFS_CMD} ${_AN_FLAGS_ECHO} ${_PROJ_I_CMD} ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \"${_abs}\""
             COMMAND /bin/sh -c
             "\"${_COMPILER}\" -fsyntax-only ${_AN_STD} ${_P101_ANALYZE_DEFS_CMD} ${_AN_FLAGS_CMD} \
-                   -I\"${CMAKE_SOURCE_DIR}/include\" ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \
+                   ${_PROJ_I_CMD} ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \
                    \"${_abs}\" > \"${_out}\" 2>&1 || true"
             COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
             DEPENDS "${_abs}"
@@ -870,6 +887,15 @@ list(APPEND _CPPCHECK_SUPPRESSIONS
         "--relative-paths=${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
+# Build cppcheck -I args cleanly (avoid generator expr warnings)  [FIX #6]
+set(_CPPCHECK_I_ARGS)
+if(P101_PROJECT_INC_DIR)
+    list(APPEND _CPPCHECK_I_ARGS -I "${P101_PROJECT_INC_DIR}")
+endif()
+foreach(_d IN LISTS P101_PUBLIC_INCLUDE_DIRS_EXISTING)
+    list(APPEND _CPPCHECK_I_ARGS -I "${_d}")
+endforeach()
+
 set(CPPCHECK_LOG "${CMAKE_BINARY_DIR}/cppcheck.log")
 set(CPPCHECK_FAIL_SCRIPT "${CMAKE_BINARY_DIR}/FailIfCppcheckDiagnostics.cmake")
 file(WRITE "${CPPCHECK_FAIL_SCRIPT}" [=[
@@ -908,7 +934,7 @@ add_custom_target(${PROJECT_NAME}_cppcheck_all ALL
         --template=gcc
         --output-file=${CPPCHECK_LOG}
         --project=${CMAKE_BINARY_DIR}/compile_commands.json
-        -I${PUBLIC_INC_DIR} $<$<BOOL:${APPLE}>:-I/opt/homebrew/include> $<$<BOOL:${APPLE}>:-I/opt/local/include> -I/usr/local/include
+        ${_CPPCHECK_I_ARGS}
         COMMAND ${CMAKE_COMMAND} -DLOGFILE=${CPPCHECK_LOG} -P "${CPPCHECK_FAIL_SCRIPT}"
         USES_TERMINAL
         COMMENT "cppcheck over entire project, fail on any diagnostics")
@@ -1018,10 +1044,10 @@ if(_COMPILER_ID MATCHES "Clang")
         add_custom_command(
                 OUTPUT "${_stamp}"
                 COMMAND ${CMAKE_COMMAND} -E echo
-                "${ICON} running: ${_COMPILER} ${_SA_STD} ${_P101_SA_DEFS_CMD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} -I${CMAKE_SOURCE_DIR}/include ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} ${_abs}"
+                "${ICON} running: ${_COMPILER} ${_SA_STD} ${_P101_SA_DEFS_CMD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} ${_PROJ_I_CMD} ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \"${_abs}\""
                 COMMAND /bin/sh -c
                 "\"${_COMPILER}\" ${_SA_STD} ${_P101_SA_DEFS_CMD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} \
-                   -I\"${CMAKE_SOURCE_DIR}/include\" ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \
+                   ${_PROJ_I_CMD} ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \
                    \"${_abs}\" > \"${_out}\" 2>&1 || true"
                 COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
                 DEPENDS "${_abs}"
