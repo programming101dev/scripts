@@ -540,6 +540,11 @@ set(_P101_TIDY_ARGS
         "-style=file"
         "-extra-arg-before=-I${CMAKE_SOURCE_DIR}/include"
         "-extra-arg-before=-I/usr/local/include"
+        # Ensure feature-test macros for *_l and locale_t during tidy
+        "-extra-arg-before=-D_POSIX_C_SOURCE=200809L"
+        "-extra-arg-before=-D_XOPEN_SOURCE=700"
+        "-extra-arg-before=-D_GNU_SOURCE"
+        "-extra-arg-before=-D_DARWIN_C_SOURCE"
 )
 if(APPLE)
     list(APPEND _P101_TIDY_ARGS
@@ -592,6 +597,16 @@ else()
     endif()
 endif()
 
+# Add the same feature-test macros during syntax-only analyze
+set(_P101_ANALYZE_DEFS
+        -D_POSIX_C_SOURCE=200809L
+        -D_XOPEN_SOURCE=700
+        -D_GNU_SOURCE
+        -D_DARWIN_C_SOURCE
+)
+# JOIN to avoid semicolons in /bin/sh -c
+string(JOIN " " _P101_ANALYZE_DEFS_CMD ${_P101_ANALYZE_DEFS})
+
 # Filter flags that aren't useful for a syntax-only pass
 function(_p101_filter_analyze_flags OUT)
     set(_out "")
@@ -635,9 +650,9 @@ foreach(_abs IN LISTS _ALL_SOURCES_FOR_FORMAT)
     add_custom_command(
             OUTPUT "${_stamp}"
             COMMAND ${CMAKE_COMMAND} -E echo
-            "${ICON} running: ${_COMPILER} -fsyntax-only ${_AN_STD} ${_AN_FLAGS_ECHO} -I${CMAKE_SOURCE_DIR}/include -I/usr/local/include ${_abs}"
+            "${ICON} running: ${_COMPILER} -fsyntax-only ${_AN_STD} ${_P101_ANALYZE_DEFS_CMD} ${_AN_FLAGS_ECHO} -I${CMAKE_SOURCE_DIR}/include -I/usr/local/include ${_abs}"
             COMMAND /bin/sh -c
-            "\"${_COMPILER}\" -fsyntax-only ${_AN_STD} ${_AN_FLAGS_CMD} \
+            "\"${_COMPILER}\" -fsyntax-only ${_AN_STD} ${_P101_ANALYZE_DEFS_CMD} ${_AN_FLAGS_CMD} \
                    -I\"${CMAKE_SOURCE_DIR}/include\" -I\"/usr/local/include\" \
                    $<$<BOOL:${APPLE}>:-I/opt/homebrew/include> \
                    $<$<BOOL:${APPLE}>:-I/opt/local/include> \
@@ -903,6 +918,15 @@ if(_COMPILER_ID MATCHES "Clang")
     string(JOIN " " _SA_ARGS_CMD  ${_SA_ARGS})
     string(JOIN " " _SA_FLAGS_CMD ${_SA_FLAGS})
 
+    set(_P101_SA_DEFS
+            -D_POSIX_C_SOURCE=200809L
+            -D_XOPEN_SOURCE=700
+            -D_GNU_SOURCE
+            -D_DARWIN_C_SOURCE
+    )
+    # JOIN to avoid semicolons in /bin/sh -c
+    string(JOIN " " _P101_SA_DEFS_CMD ${_P101_SA_DEFS})
+
     # Log fail script (CSA)
     set(CLANG_SA_FAIL_SCRIPT "${CMAKE_BINARY_DIR}/FailIfClangSADiagnostics.cmake")
     file(WRITE "${CLANG_SA_FAIL_SCRIPT}" [=[
@@ -959,9 +983,9 @@ endif()
         add_custom_command(
                 OUTPUT "${_stamp}"
                 COMMAND ${CMAKE_COMMAND} -E echo
-                "${ICON} running: ${_COMPILER} ${_SA_STD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} -I${CMAKE_SOURCE_DIR}/include -I/usr/local/include ${_abs}"
+                "${ICON} running: ${_COMPILER} ${_SA_STD} ${_P101_SA_DEFS_CMD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} -I${CMAKE_SOURCE_DIR}/include -I/usr/local/include ${_abs}"
                 COMMAND /bin/sh -c
-                "\"${_COMPILER}\" ${_SA_STD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} \
+                "\"${_COMPILER}\" ${_SA_STD} ${_P101_SA_DEFS_CMD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} \
                    -I\"${CMAKE_SOURCE_DIR}/include\" -I\"/usr/local/include\" \
                    $<$<BOOL:${APPLE}>:-I/opt/homebrew/include> \
                    $<$<BOOL:${APPLE}>:-I/opt/local/include> \
