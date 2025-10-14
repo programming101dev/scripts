@@ -95,7 +95,7 @@ set_property(CACHE P101_CLANG_SA_PROFILE PROPERTY STRINGS basic deep)
 set(P101_CLANG_SA_FAIL_ON_DIAGNOSTICS ON CACHE BOOL "Fail build on any CSA diagnostic")
 set(P101_CLANG_SA_EXTRA_ARGS "" CACHE STRING "Extra --analyze args for clang (space-separated)")
 
-# Disable noisy checker (sign-conversion paths in fenv.h) + your previous disables
+# Disable noisy checker
 set(P101_CLANG_SA_DISABLE_CHECKERS
         "alpha.core.Conversion,security.insecureAPI.DeprecatedOrUnsafeBufferHandling,security.insecureAPI.strcpy"
         CACHE STRING "Comma-separated Clang Static Analyzer checkers to disable")
@@ -312,43 +312,44 @@ if (P101_PROJECT_INC_DIR)
 endif ()
 
 # =========================
-# Iconv (portable handling)
+# Iconv (portable, **opt-in via "iconv" token in config.cmake**)
 # =========================
-# Detect Iconv and ensure a stable imported target exists
-find_package(Iconv)
-if (Iconv_FOUND AND NOT TARGET Iconv::Iconv)
-    add_library(Iconv::Iconv UNKNOWN IMPORTED)
-    if (Iconv_LIBRARIES)
-        list(GET Iconv_LIBRARIES 0 _ICONV_LIB_FIRST)
-        set_target_properties(Iconv::Iconv PROPERTIES IMPORTED_LOCATION "${_ICONV_LIB_FIRST}")
-    endif ()
-    if (Iconv_INCLUDE_DIRS)
-        set_target_properties(Iconv::Iconv PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${Iconv_INCLUDE_DIRS}")
-    endif ()
-endif ()
+# Always provide an interface target; it will add a real lib only where needed.
+if(NOT TARGET p101::iconv)
+    add_library(p101::iconv INTERFACE IMPORTED)
+endif()
 
-# Helper to resolve convenience tokens to actual libraries/targets.
+# Try to locate a concrete libiconv first (BSD/macOS/Homebrew/MacPorts, etc.)
+find_library(P101_ICONV_LIB
+        NAMES iconv libiconv
+        HINTS ${P101_PUBLIC_LINK_DIRS_EXISTING}
+        /usr/local/lib /usr/lib /opt/homebrew/lib /opt/local/lib
+)
+
+if(P101_ICONV_LIB)
+    # Use the found absolute path
+    set_property(TARGET p101::iconv PROPERTY INTERFACE_LINK_LIBRARIES "${P101_ICONV_LIB}")
+    message(STATUS "[iconv] using concrete library: ${P101_ICONV_LIB}")
+elseif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD|Darwin")
+    # Force a bare -liconv and make sure --as-needed can't drop it (lld supports push/pop-state)
+    set_property(TARGET p101::iconv PROPERTY
+            INTERFACE_LINK_LIBRARIES "SHELL:-Wl,--push-state,--no-as-needed" "iconv" "SHELL:-Wl,--pop-state")
+    message(STATUS "[iconv] forcing -liconv via linker push/pop state on ${CMAKE_SYSTEM_NAME}")
+else()
+    # glibc typically provides iconv in libc; nothing to link
+    message(STATUS "[iconv] no separate lib needed on this platform")
+endif()
+
+# Map the convenience token "iconv" -> interface target (always)
 function(_p101_resolve_libs OUT)
     set(_accum "")
-    foreach (_L IN LISTS ARGN)
-        if (_L STREQUAL "iconv")
-            if (TARGET Iconv::Iconv)
-                list(APPEND _accum Iconv::Iconv)
-            elseif (Iconv_FOUND AND Iconv_LIBRARIES)
-                list(APPEND _accum ${Iconv_LIBRARIES})
-            else ()
-                find_library(_LIBICONV iconv)
-                if (NOT _LIBICONV)
-                    find_library(_LIBICONV libiconv)
-                endif ()
-                if (_LIBICONV)
-                    list(APPEND _accum "${_LIBICONV}")
-                endif ()
-            endif ()
-        else ()
+    foreach(_L IN LISTS ARGN)
+        if(_L STREQUAL "iconv")
+            list(APPEND _accum p101::iconv)
+        else()
             list(APPEND _accum "${_L}")
-        endif ()
-    endforeach ()
+        endif()
+    endforeach()
     list(REMOVE_DUPLICATES _accum)
     set(${OUT} "${_accum}" PARENT_SCOPE)
 endfunction()
@@ -395,9 +396,6 @@ foreach (_lib IN LISTS LIBRARY_TARGETS)
     if (_EXT_INC_DIRS)
         target_include_directories(${_lib} SYSTEM PUBLIC ${_EXT_INC_DIRS})
     endif ()
-    if (Iconv_FOUND AND Iconv_INCLUDE_DIRS)
-        target_include_directories(${_lib} SYSTEM PUBLIC ${Iconv_INCLUDE_DIRS})
-    endif ()
 
     target_compile_options(${_lib} PRIVATE ${STANDARD_FLAGS} ${P101_EXTRA_CFLAGS} ${_P101_SANITIZER_COMPILE_OPTS})
     target_link_options(${_lib} PRIVATE ${P101_EXTRA_LDFLAGS} ${_P101_SANITIZER_LINK_OPTS})
@@ -405,8 +403,10 @@ foreach (_lib IN LISTS LIBRARY_TARGETS)
         target_link_directories(${_lib} PRIVATE ${P101_PUBLIC_LINK_DIRS_EXISTING})
     endif ()
     if (${_lib}_LINK_LIBRARIES)
+        message(STATUS "[link] ${_lib} tokens from config.cmake: ${${_lib}_LINK_LIBRARIES}")
         _p101_resolve_libs(_RESOLVED_LIBS ${${_lib}_LINK_LIBRARIES})
         if (_RESOLVED_LIBS)
+            message(STATUS "[link] ${_lib} resolved libs: ${_RESOLVED_LIBS}")
             target_link_libraries(${_lib} PRIVATE ${_RESOLVED_LIBS})
         endif ()
     endif ()
@@ -433,9 +433,6 @@ foreach (_exe IN LISTS EXECUTABLE_TARGETS)
     if (_EXT_INC_DIRS)
         target_include_directories(${_exe} SYSTEM PRIVATE ${_EXT_INC_DIRS})
     endif ()
-    if (Iconv_FOUND AND Iconv_INCLUDE_DIRS)
-        target_include_directories(${_exe} SYSTEM PRIVATE ${Iconv_INCLUDE_DIRS})
-    endif ()
 
     target_compile_options(${_exe} PRIVATE ${STANDARD_FLAGS} ${P101_EXTRA_CFLAGS} ${_P101_SANITIZER_COMPILE_OPTS})
     target_link_options(${_exe} PRIVATE ${P101_EXTRA_LDFLAGS} ${_P101_SANITIZER_LINK_OPTS})
@@ -443,8 +440,10 @@ foreach (_exe IN LISTS EXECUTABLE_TARGETS)
         target_link_directories(${_exe} PRIVATE ${P101_PUBLIC_LINK_DIRS_EXISTING})
     endif ()
     if (${_exe}_LINK_LIBRARIES)
+        message(STATUS "[link] ${_exe} tokens from config.cmake: ${${_exe}_LINK_LIBRARIES}")
         _p101_resolve_libs(_RESOLVED_LIBS ${${_exe}_LINK_LIBRARIES})
         if (_RESOLVED_LIBS)
+            message(STATUS "[link] ${_exe} resolved libs: ${_RESOLVED_LIBS}")
             target_link_libraries(${_exe} PRIVATE ${_RESOLVED_LIBS})
         endif ()
     endif ()
@@ -600,23 +599,20 @@ set(_P101_TIDY_ARGS
         "--extra-arg-before=-D_GNU_SOURCE"
         "--extra-arg-before=-D_DARWIN_C_SOURCE"
 )
-# BSD visibility for clang-tidy too (compile_commands already has it, but harmless to add)
+# BSD visibility for clang-tidy too
 if (CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD")
     list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-D__BSD_VISIBLE=1")
 endif ()
-# add our own headers only if the dir exists
+# our includes
 if (P101_PROJECT_INC_DIR)
     list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-I${P101_PROJECT_INC_DIR}")
 endif ()
-# Tell tidy that external include roots are system headers (suppress third-party diags)
 foreach (_d IN LISTS _EXT_INC_DIRS)
     list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-isystem" "--extra-arg-before=${_d}")
 endforeach ()
-# macOS sysroot for SDK headers (when applicable)
 if (APPLE AND MAC_SYSROOT)
     list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-isysroot" "--extra-arg-before=${MAC_SYSROOT}")
 endif ()
-# User extras
 if (P101_TIDY_EXTRA_ARGS_LIST)
     list(APPEND _P101_TIDY_ARGS ${P101_TIDY_EXTRA_ARGS_LIST})
 endif ()
@@ -746,7 +742,6 @@ set(_P101_ANALYZE_DEFS
         -D_GNU_SOURCE
         -D_DARWIN_C_SOURCE
 )
-# Enable BSD visibility for analyzer on the BSDs
 if (CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD")
     list(APPEND _P101_ANALYZE_DEFS -D__BSD_VISIBLE=1)
 endif ()
@@ -861,9 +856,7 @@ else ()
 endif ()
 
 # ===== ENFORCE ORDER: compile -> analyze -> tidy =====
-# Compile must finish before analyze:
 add_dependencies(${PROJECT_NAME}_analyze_all ${LIBRARY_TARGETS} ${EXECUTABLE_TARGETS})
-# Tidy must run after analyze (and thus after compile & format):
 add_dependencies(${PROJECT_NAME}_tidy_all ${PROJECT_NAME}_analyze_all)
 
 # =========================
@@ -1071,7 +1064,6 @@ if (_COMPILER_ID MATCHES "Clang")
             -D_GNU_SOURCE
             -D_DARWIN_C_SOURCE
     )
-    # Enable BSD visibility for clang --analyze on the BSDs
     if (CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD")
         list(APPEND _P101_SA_DEFS -D__BSD_VISIBLE=1)
     endif ()
@@ -1102,7 +1094,6 @@ if (_COMPILER_ID MATCHES "Clang")
         list(APPEND _SA_STAMPS "${_stamp}")
     endforeach ()
 
-    # Fail script
     set(CLANG_SA_FAIL_SCRIPT "${CMAKE_BINARY_DIR}/FailIfClangSADiagnostics.cmake")
     file(WRITE "${CLANG_SA_FAIL_SCRIPT}" [=[
 cmake_minimum_required(VERSION 3.20)
