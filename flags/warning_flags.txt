@@ -296,7 +296,7 @@
       "-Wbackslash-newline-escape"
       "-Wbinary-literal"
       "-Wbind-to-temporary-copy"
-      "-Wbinding-in-condition"
+#      "-Wbinding-in-condition"
       "-Wbit-int-extension"
       "-Wbitfield-constant-conversion"
       "-Wbitfield-enum-conversion"
