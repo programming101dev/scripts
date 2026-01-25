@@ -898,6 +898,11 @@ if (P101_CPPCHECK_ARGS STREQUAL "")
             --force --inline-suppr --quiet
             --language=${_CPPCHECK_LANG} --std=${_CPPCHECK_STD}
     )
+
+    # Raspberry Pi: cppcheck is typically older and doesn't support --check-level
+    if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm|armv7l)$")
+        list(REMOVE_ITEM P101_CPPCHECK_ARGS_LIST --check-level=exhaustive)
+    endif ()
 endif ()
 
 set(_CPPCHECK_SUPPRESSIONS)
