@@ -596,9 +596,20 @@ set(_P101_TIDY_ARGS
         "--format-style=file"
         "--extra-arg-before=-D_POSIX_C_SOURCE=200809L"
         "--extra-arg-before=-D_XOPEN_SOURCE=700"
-        "--extra-arg-before=-D_GNU_SOURCE"
-        "--extra-arg-before=-D_DARWIN_C_SOURCE"
 )
+
+if (UNIX AND NOT APPLE)
+    list(APPEND _P101_TIDY_ARGS
+            "--extra-arg-before=-D_GNU_SOURCE"
+    )
+endif()
+
+if (APPLE)
+    list(APPEND _P101_TIDY_ARGS
+            "--extra-arg-before=-D_DARWIN_C_SOURCE"
+    )
+endif()
+
 # BSD visibility for clang-tidy too
 if (CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD")
     list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-D__BSD_VISIBLE=1")
@@ -739,12 +750,22 @@ endif ()
 set(_P101_ANALYZE_DEFS
         -D_POSIX_C_SOURCE=200809L
         -D_XOPEN_SOURCE=700
-        -D_GNU_SOURCE
-        -D_DARWIN_C_SOURCE
 )
+
+if (APPLE)
+    list(APPEND _P101_ANALYZE_DEFS
+            -D_DARWIN_C_SOURCE
+    )
+elseif (UNIX)
+    list(APPEND _P101_ANALYZE_DEFS
+            -D_GNU_SOURCE
+    )
+endif()
+
 if (CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD")
     list(APPEND _P101_ANALYZE_DEFS -D__BSD_VISIBLE=1)
 endif ()
+
 string(JOIN " " _P101_ANALYZE_DEFS_CMD ${_P101_ANALYZE_DEFS})
 
 function(_p101_filter_analyze_flags OUT)
@@ -1066,12 +1087,22 @@ if (_COMPILER_ID MATCHES "Clang")
     set(_P101_SA_DEFS
             -D_POSIX_C_SOURCE=200809L
             -D_XOPEN_SOURCE=700
-            -D_GNU_SOURCE
-            -D_DARWIN_C_SOURCE
     )
+
+    if (APPLE)
+        list(APPEND _P101_SA_DEFS
+                -D_DARWIN_C_SOURCE
+        )
+    elseif (UNIX)
+        list(APPEND _P101_SA_DEFS
+                -D_GNU_SOURCE
+        )
+    endif()
+
     if (CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD")
         list(APPEND _P101_SA_DEFS -D__BSD_VISIBLE=1)
     endif ()
+
     string(JOIN " " _P101_SA_DEFS_CMD ${_P101_SA_DEFS})
 
     set(_SA_STAMPS)
