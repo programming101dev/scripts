@@ -5,8 +5,8 @@ set -euo pipefail
 OS="$(uname)"
 
 # Candidate compiler names (most specific first)
-c_compilers=(gcc13 gcc-13 gcc-14 gcc-15 clang clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15 clang21 clang20 clang19 clang18 clang17 clang16 clang15 clang-devel)
-cxx_compilers=(g++13 g++-13 g++-14 g++-15 clang++ clang++-21 clang++-20 clang++-19 clang++-18 clang++-17 clang++-16 clang++-15 clang++21 clang++20 clang++19 clang++18 clang++17 clang++16 clang++15 clang++-devel)
+c_compilers=(gcc13 gcc-13 gcc-14 gcc-15 clang clang-21 clang clang-22 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15 clang21 clang20 clang19 clang18 clang17 clang16 clang15 clang-devel)
+cxx_compilers=(g++13 g++-13 g++-14 g++-15 clang++ clang++-22 clang++-21 clang++-20 clang++-19 clang++-18 clang++-17 clang++-16 clang++-15 clang++21 clang++20 clang++19 clang++18 clang++17 clang++16 clang++15 clang++-devel)
 
 # Append generic GCC only if not macOS
 if [[ "$OS" != "Darwin" ]]; then
