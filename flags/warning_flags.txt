@@ -402,7 +402,7 @@
       "-Wdeprecated-volatile"
       "-Wdeprecated-writable-strings"
       "-Wdirect-ivar-access"
-      "-Wdisabled-macro-expansion"
+      # "-Wdisabled-macro-expansion"
       "-Wdiscard-qual"
       "-Wdistributed-object-modifiers"
       "-Wdivision-by-zero"
