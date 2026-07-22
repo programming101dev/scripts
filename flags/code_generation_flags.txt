@@ -2,7 +2,6 @@
 #        "-ftrapv"
 #        "-fwrapv"
 #        "-fwrapv-pointer"
-# TODO add back in        "-fstrict-overflow"
 #        "-fexceptions"
 #        "-fnon-call-exceptions"
         "-fdelete-dead-exceptions"
@@ -22,8 +21,8 @@
         "-frecord-gcc-switches"
         "-fpic"
         "-fPIC"
-#        "-fpie"
-#        "-fPIE"
+        "-fpie"    # PIE/ASLR hardening for executables (companion to -fPIC for libraries); verified to compile+link cleanly alongside -fPIC
+        "-fPIE"    # PIE/ASLR hardening for executables (companion to -fPIC for libraries); verified to compile+link cleanly alongside -fPIC
         "-fno-plt"
 #        "-fno-jump-tables"
 #        "-fno-bit-tests"
@@ -39,27 +38,66 @@
 #        "-fstrict-volatile-bitfields"
 #        "-fsync-libcalls"
 #        "-fno-sync-libcalls"
-#         "-ffast-math"
-         "-fno-fast-math"
-#         "-fdenormal-fp-math=<value>"
-         "-fstrict-float-cast-overflow"
-         "-fmath-errno"
-         "-ftrapping-math"
-#         "-ffp-contract=<value>"
-#         "-fhonor-infinities"
-#         "-fhonor-nans"
-#         "-fapprox-func"
-#         "-fsigned-zeros"
-#         "-fassociative-math"
-#         "-freciprocal-math"
-#         "-funsafe-math-optimizations"
-         "-fno-unsafe-math-optimizations"
-#         "-ffinite-math-only"
-#         "-frounding-math"
-#         "-ffp-model=<value>"
-#         "-ffp-exception-behavior=<value>"
-#         "-ffp-eval-method=<value>"
-#         "-fprotect-parens"
-#         "-fexcess-precision"
-#         "-fcx-limited-range"
-#         "-fcx-fortran-rules"
+#        "-ffast-math"
+        "-fno-fast-math"
+#        "-fdenormal-fp-math=<value>"
+        "-fstrict-float-cast-overflow"
+        "-fmath-errno"
+        "-ftrapping-math"
+#        "-ffp-contract=<value>"
+#        "-fhonor-infinities"
+#        "-fhonor-nans"
+#        "-fapprox-func"
+#        "-fsigned-zeros"
+#        "-fassociative-math"
+#        "-freciprocal-math"
+#        "-funsafe-math-optimizations"
+        "-fno-unsafe-math-optimizations"
+#        "-ffinite-math-only"
+#        "-frounding-math"
+#        "-ffp-model=<value>"
+#        "-ffp-exception-behavior=<value>"
+#        "-ffp-eval-method=<value>"
+#        "-fprotect-parens"
+#        "-fexcess-precision"
+#        "-fcx-limited-range"
+#        "-fcx-fortran-rules"    # ==== harvested 2026-07-20 (Apple clang 21 + GCC 16) ====
+        "-fstrict-flex-arrays=3"
+#        "-ftrivial-auto-var-init=pattern"    # masks uninitialized reads from MSan/analyzer — we WANT those caught
+#        "-fzero-call-used-regs=used-gpr"    # hardening, not correctness detection; register-wipe cost
+#        "-fhardened"    # umbrella flag; would fight our explicit FORTIFY/PIE choices
+#        "-fsanitize-trap=undefined"    # traps instead of diagnostics; we want messages
+#        "-fsanitize-minimal-runtime"    # drops the descriptive UBSan runtime
+#        "-ffold-mem-offsets"    # GCC 14 optimization pass, not correctness
+#        "-finline-stringops"    # codegen size/speed knob
+#        "-fmin-function-alignment="    # layout tuning
+#        "-ftrampoline-impl="    # nested-function ABI knob
+#        "-fdiagnostics-json-formatting"    # diagnostics transport format
+#        "-fdiagnostics-text-art-charset="    # diagnostics cosmetics
+#        "-fpointer-tbaa"    # clang 20: stricter aliasing OPTIMIZATION — widens UB exploitation, against our -fno-fast-math philosophy
+#        "-fassumptions"    # default-on [[assume]] gate
+#        "-finit-global-zero"    # default behavior restated
+#        "-fheinous-gnu-extensions"    # the name says it all
+#        "-fraw-string-literals"    # dialect gate
+#        "-fc++-static-destructors="    # behavior knob
+#        "-fcomplex-arithmetic="    # numerics behavior knob, default is correct
+#        "-fbasic-block-address-map"    # profiling machinery
+#        "-fseparate-named-sections"    # layout machinery
+#        "-fdisable-block-signature-string"    # blocks runtime internals
+#        "-fclangir"    # experimental IR pipeline
+#        "-foffload-via-llvm"    # offload machinery
+#        "-frtlib-defaultlib"    # link driver knob
+#        "-ftemporal-profile"    # PGO variant machinery
+#        "-ftime-trace-verbose"    # build tooling
+#        "-fuse-lipo="    # PGO tooling path
+        "-funreachable-traps"    # GCC >= 13: __builtin_unreachable becomes a trap, not UB
+        "-fcheck-new"    # C++: check operator new result
+#        "-fstrict-aliasing"    # TBAA OPTIMIZATION — widens UB exploitation, same call as -fpointer-tbaa
+#        "-fstrict-enums"    # same: UB-exploiting optimization
+#        "-ffinite-loops"    # assumes loop termination — UB-exploiting
+#        "-fdelete-null-pointer-checks"    # UB-exploiting optimization (default anyway)
+#        "-fno-knr-functions"    # covered by -Wstrict-prototypes/-Wold-style-definition + -Werror
+        "-fsignaling-nans"    # GCC: honor signaling NaN semantics (pairs with -ftrapping-math)
+        "-ffloat-store"    # GCC: no excess precision surprises
+        "-fno-fp-int-builtin-inexact"    # GCC: C2x-strict FP->int builtins
+        "-fkeep-static-consts"    # keep static consts inspectable

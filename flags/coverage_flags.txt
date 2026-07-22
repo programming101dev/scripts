@@ -1,0 +1,25 @@
+# Code-coverage instrumentation (gcov). OPT-IN: applied only when
+# coverage is selected (--coverage flag / P101_COVERAGE / coverage.txt).
+# Probed per compiler; gcc-only refinements drop on clang automatically.
+
+#        "-fprofile-arcs"
+        "--coverage"    # gcov coverage; compile+link (= -fprofile-arcs -ftest-coverage, +gcov runtime at link)
+#        "-ftest-coverage"
+        "-fprofile-abs-path"    # GCC: absolute paths in .gcno so gcov finds sources from any cwd
+#        "-fprofile-dir=path"
+#        "-fprofile-generate=path"
+#        "-fprofile-info-section"    # clang only
+#        "-fprofile-info-section=name"    # clang only
+#        "-fprofile-note=path"
+#        "-fprofile-prefix-path=path"
+#        "-fprofile-prefix-map=old=new"
+#        "-fprofile-update=single"
+        "-fprofile-update=atomic"    # GCC: atomic counters (safe under threads / a sanitized run)
+#        "-fprofile-update=prefer-atomic"
+#        "-fprofile-filter-files=regex"    # clang only
+#        "-fprofile-exclude-files=regex"    # clang only
+#        "-fprofile-reproducible=multithreaded"
+#        "-fprofile-reproducible=parallel-runs"    # clang only
+#        "-fprofile-reproducible=serial"    # clang only
+#        "-fcs-profile-generate"    # clang only
+        "-fcondition-coverage"    # GCC 14+: MC/DC condition coverage

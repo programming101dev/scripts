@@ -1,0 +1,3 @@
+# TySan (clang >= 20): detects type-based aliasing violations at runtime.
+
+        "-fsanitize=type"

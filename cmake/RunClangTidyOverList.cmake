@@ -1,0 +1,50 @@
+cmake_minimum_required(VERSION 3.20)
+if(NOT DEFINED CLANG_TIDY_EXEC OR NOT DEFINED DB OR NOT DEFINED FILES_CMAKE)
+  message(FATAL_ERROR "Need -DCLANG_TIDY_EXEC=, -DDB=, and -DFILES_CMAKE=")
+endif()
+if(NOT EXISTS "${FILES_CMAKE}")
+  message(FATAL_ERROR "FILES_CMAKE not found: ${FILES_CMAKE}")
+endif()
+include("${FILES_CMAKE}")
+
+set(_args)
+if(DEFINED ARGS_CMAKE AND NOT ARGS_CMAKE STREQUAL "")
+  if(NOT EXISTS "${ARGS_CMAKE}")
+    message(FATAL_ERROR "ARGS_CMAKE not found: ${ARGS_CMAKE}")
+  endif()
+  include("${ARGS_CMAKE}")
+  if(DEFINED P101_TIDY_ARGS_LIST)
+    set(_args ${P101_TIDY_ARGS_LIST})
+  endif()
+endif()
+
+if(NOT DEFINED P101_TIDY_FILES_LIST)
+  message(FATAL_ERROR "FILES_CMAKE did not define P101_TIDY_FILES_LIST")
+endif()
+
+set(_fail 0)
+foreach(F IN LISTS P101_TIDY_FILES_LIST)
+  if(F STREQUAL "")
+    continue()
+  endif()
+  execute_process(
+    COMMAND "${CLANG_TIDY_EXEC}" -p "${DB}" ${_args} "${F}"
+    RESULT_VARIABLE _rv
+    OUTPUT_VARIABLE _out
+    ERROR_VARIABLE  _err
+  )
+  if(NOT _rv EQUAL 0)
+    message(STATUS "clang-tidy failed for: ${F}")
+    if(NOT _out STREQUAL "")
+      message(STATUS "${_out}")
+    endif()
+    if(NOT _err STREQUAL "")
+      message(STATUS "${_err}")
+    endif()
+    set(_fail 1)
+  endif()
+endforeach()
+
+if(_fail)
+  message(FATAL_ERROR "clang-tidy reported failures")
+endif()

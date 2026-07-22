@@ -1,0 +1,4 @@
+# RTSan (clang >= 20): flags blocking calls inside [[clang::nonblocking]]
+# functions. A no-op until code is annotated, but costs nothing to enable.
+
+        "-fsanitize=realtime"

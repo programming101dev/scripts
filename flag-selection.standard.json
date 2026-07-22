@@ -1,0 +1,59 @@
+{
+  "_doc": "STANDARD tier — a reasonable safe build: high-signal warnings, cheap hardening, -O2, -g, linker hardening. A subset of the maximal flag-selection.json, authored (not bootstrapped). Rendered by 'render-flags.py --selection flag-selection.standard.json --out flags-standard', probed into .flags-standard/<cc>/, selected by update.sh --standard. No sanitizers (a safe BUILD, not a test run) and none of the analyzer/exhaustive machinery. Every flag is probed per compiler, so unsupported ones (e.g. -Wl,-z,* on macOS ld64, -fstack-clash-protection on unsupported targets) are dropped automatically.",
+  "files": {
+    "warning_flags.txt": {
+      "header": ["Standard warnings: the widely-agreed baseline plus the few extras that catch real bugs at low noise. Portable across gcc and clang."],
+      "entries": [
+        {"flags": "-Wall", "enabled": true},
+        {"flags": "-Wextra", "enabled": true},
+        {"flags": "-Wpedantic", "enabled": true},
+        {"flags": "-Wshadow", "enabled": true},
+        {"flags": "-Wformat=2", "enabled": true},
+        {"flags": "-Wcast-qual", "enabled": true},
+        {"flags": "-Wpointer-arith", "enabled": true},
+        {"flags": "-Wwrite-strings", "enabled": true},
+        {"flags": "-Wnull-dereference", "enabled": true},
+        {"flags": "-Wdouble-promotion", "enabled": true},
+        {"flags": "-Wredundant-decls", "enabled": true},
+        {"flags": "-Wswitch-enum", "enabled": true},
+        {"flags": "-Wundef", "enabled": true},
+        {"flags": "-Wstrict-prototypes", "enabled": true, "comment": "C hygiene (C only; probe drops it for C++)"},
+        {"flags": "-Wmissing-prototypes", "enabled": true, "comment": "C hygiene"},
+        {"flags": "-Wold-style-definition", "enabled": true, "comment": "C hygiene"}
+      ]
+    },
+    "optimization_flags.txt": {
+      "header": ["Standard build is optimized: -O2 powers uninitialized/stringop warnings that -O0 cannot, and is what a reasonable safe build ships."],
+      "entries": [
+        {"flags": "-O2", "enabled": true}
+      ]
+    },
+    "debug_flags.txt": {
+      "header": ["Keep debuggable."],
+      "entries": [
+        {"flags": "-g", "enabled": true}
+      ]
+    },
+    "instrumentation_compiler.txt": {
+      "header": ["Cheap runtime hardening that does not change program semantics."],
+      "entries": [
+        {"flags": "-fstack-protector-strong", "enabled": true},
+        {"flags": "-fstack-clash-protection", "enabled": true, "comment": "probe drops it where unsupported (e.g. some clang targets)"}
+      ]
+    },
+    "code_generation_flags.txt": {
+      "header": ["Position-independent code."],
+      "entries": [
+        {"flags": "-fPIC", "enabled": true}
+      ]
+    },
+    "instrumentation_link_flags.txt": {
+      "header": ["Linker hardening. ELF only (Linux/FreeBSD); macOS ld64 rejects the -z family and the probe drops them there."],
+      "entries": [
+        {"flags": "-Wl,-z,relro", "enabled": true},
+        {"flags": "-Wl,-z,now", "enabled": true},
+        {"flags": "-Wl,-z,noexecstack", "enabled": true}
+      ]
+    }
+  }
+}

@@ -7,8 +7,8 @@ Welcome to the `scripts` repository. This guide will help you set up and run the
 1. [Cloning the Repository](#cloning-the-repository)
 2. [Prerequisites](#Prerequisites)
 3. [Running the `setup.sh` Script](#running-the-setupsh-script)
-3. [Running the `update.sh` Script](#running-the-updatesh-script)
-3. [Running the `update-all.sh` Script](#running-the-update-allsh-script)
+4. [Running the `update.sh` Script](#running-the-updatesh-script)
+5. [Running the `update-all.sh` Script](#running-the-update-allsh-script)
 
 ## **Cloning the Repository**
 
@@ -68,8 +68,43 @@ After the system has been setup you will want to periodically update from github
 
 ## **Running the update-all.sh Script**
 
-If you want to verify that the compiles with all of the compilers, run:
+If you want to verify that everything compiles with all of the supported compilers, run:
 
 ```bash
 ./update-all.sh
 ```
+
+## **Testing the shared CMakeLists.txt**
+
+Before committing changes to `CMakeLists.txt`, run:
+
+```bash
+./test-cmake.sh
+```
+
+It configures and builds a matrix of tiny sample projects (library+executable
+with a shared source, relative headers, whitespace/zero target lists, missing
+config, code that must be rejected by clang-tidy, and a C++ variant) against
+the `CMakeLists.txt` in this directory, so regressions are caught here instead
+of in a student's build. Use `-k` to keep the sandbox with all logs.
+
+## **Discovering new flags**
+
+To see every flag your installed compilers support that `flags/*.txt` has no
+decision on yet, run:
+
+```bash
+./harvest-flags.py gcc clang
+```
+
+It queries the installed binaries themselves (`gcc --help=<section>`,
+`clang --autocomplete=...`) — no network, no compiler sources needed, works
+with Apple clang — and writes two files per compiler under `flag_report/`:
+`<cc>-canonical.txt`, the full flag universe marked `[+]` included / `[-]`
+excluded / `[?]` undecided, and `<cc>-new-flags.txt`, just the undecided
+flags bucketed by which `flags/` file they belong in. An active line in
+`flags/*.txt` means *include*; a commented line means *considered and
+rejected* — to make a decision, move the flag into the right file in one of
+those two forms, bump `version.txt`, and `generate-flags.sh` will probe
+whether each choice actually works on each machine. Run it again after a
+compiler upgrade to see what new checks became available.

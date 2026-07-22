@@ -1,13 +1,24 @@
-        "-fsanitize=cfi"
-        "-fsanitize-cfi-cross-dso"
-        "-fsanitize-cfi-icall-generalize-pointers"
-        "-fsanitize-cfi-icall-experimental-normalize-integers"
-        "-fsanitize-cfi-canonical-jump-tables"
-        "-fsanitize=cfi-icall"
+# Clang CFI requires -flto and a visibility setting IN THE SAME invocation —
+# probed alone, -fsanitize=cfi always fails ("only allowed with -flto") and
+# every entry here was silently filtered out. Each line below is one probe
+# unit (generate-flags.sh probes a whole line together and emits it together).
+#
+# Note: on Linux this also needs an LTO-capable linker (lld or the LLVM gold
+# plugin); macOS ld64 and FreeBSD lld handle LTO natively. Where the linker
+# can't do LTO, these probes fail and CFI is skipped for that machine —
+# which is exactly the cache doing its job.
+
+        "-fsanitize=cfi -flto -fvisibility=hidden"
+        "-fsanitize=cfi-icall -flto -fvisibility=hidden"
+        "-fsanitize=cfi-cast-strict -flto -fvisibility=hidden"
+        "-fsanitize=cfi-derived-cast -flto -fvisibility=hidden"
+        "-fsanitize=cfi-unrelated-cast -flto -fvisibility=hidden"
+        "-fsanitize=cfi-nvcall -flto -fvisibility=hidden"
+        "-fsanitize=cfi-mfcall -flto -fvisibility=hidden"
+        "-fsanitize=cfi -flto -fvisibility=hidden -fsanitize-cfi-cross-dso"
+        "-fsanitize=cfi -flto -fvisibility=hidden -fsanitize-cfi-icall-generalize-pointers"
+        "-fsanitize=cfi -flto -fvisibility=hidden -fsanitize-cfi-icall-experimental-normalize-integers"
+        "-fsanitize=cfi -flto -fvisibility=hidden -fsanitize-cfi-canonical-jump-tables"
         "-fsanitize=function"
 #        "-fsanitize=kcfi"
-        "-fsanitize=cfi-cast-strict"
-        "-fsanitize=cfi-derived-cast"
-        "-fsanitize=cfi-unrelated-cast"
-        "-fsanitize=cfi-nvcall"
-        "-fsanitize=cfi-mfcall"
+        "-fsanitize=cfi-vcall -flto -fvisibility=hidden"

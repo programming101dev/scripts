@@ -1,14 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# --help / -h -> description, exit 0 (P101 uniform CLI help)
+case " $* " in
+  *" --help "*|*" -h "*)
+    cat <<'P101_USAGE'
+link-compilers.sh — takes no command-line options; run with no arguments.
+P101_USAGE
+    exit 0 ;;
+esac
+
 create_symlinks() {
+  # Anchor to the directory this script lives in, not the caller's cwd.
   local root
-  root="$(pwd -P)"
+  root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 
   # Absolute inputs
   local c_compilers_file="${root}/supported_c_compilers.txt"
   local cxx_compilers_file="${root}/supported_cxx_compilers.txt"
   local sanitizers_file="${root}/sanitizers.txt"
+  local compiler_map_file="${root}/compiler_paths.txt"
   local repos_file="${root}/repos.txt"
 
   # Sanity checks (don’t hard-fail on sanitizers; some repos may not use them)
@@ -66,7 +77,7 @@ EOF
       continue
     fi
 
-    # Resolve to absolute path
+    # Resolve to absolute path (relative dests are relative to the scripts dir)
     case "${dir}" in
       /*) : ;;
       *) dir="${root}/${dir}" ;;
@@ -99,6 +110,12 @@ EOF
     # Sanitizers link (optional)
     if [[ -f "${sanitizers_file}" ]]; then
       ensure_link "${sanitizers_file}" "${dir}/sanitizers.txt"
+    fi
+
+    # Name->path map link (optional), so repos resolve compiler names to the
+    # same pinned binaries the scripts do
+    if [[ -f "${compiler_map_file}" ]]; then
+      ensure_link "${compiler_map_file}" "${dir}/compiler_paths.txt"
     fi
   done < "${repos_file}"
 }

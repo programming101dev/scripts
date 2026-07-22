@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# --help / -h -> description, exit 0 (P101 uniform CLI help)
+case " $* " in
+  *" --help "*|*" -h "*)
+    cat <<'P101_USAGE'
+pull.sh — takes no command-line options; run with no arguments.
+P101_USAGE
+    exit 0 ;;
+esac
+
+# Always operate on the repo this script lives in, regardless of cwd.
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+
 dir_name=${PWD##*/}
 
 # Ensure we're in a git repo

@@ -1,0 +1,3 @@
+# Position-independent code.
+
+        "-fPIC"

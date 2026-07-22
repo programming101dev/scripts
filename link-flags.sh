@@ -1,17 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# --help / -h -> description, exit 0 (P101 uniform CLI help)
+case " $* " in
+  *" --help "*|*" -h "*)
+    cat <<'P101_USAGE'
+link-flags.sh — takes no command-line options; run with no arguments.
+P101_USAGE
+    exit 0 ;;
+esac
+
 create_symlinks() {
   # Resolve script and repo root so links are absolute & stable
-  local script_dir repo_root flags_dir
+  local script_dir repo_root flags_dir link_name
   script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
   repo_root="$(cd -- "${script_dir}/.." && pwd -P)"
-  flags_dir="${repo_root}/.flags"
+  # Profile-aware (P101_FLAGS_PROFILE=standard -> .flags-standard), so each
+  # repo links the cache the current build actually reads.
+  if [[ "${P101_FLAGS_PROFILE:-}" == "standard" ]]; then
+    link_name=".flags-standard"
+  else
+    link_name=".flags"
+  fi
+  flags_dir="${repo_root}/${link_name}"
 
-  # repos.txt: kept as "where you run the script" by default. Fallback to alongside the script.
-  local repos_file="${PWD}/repos.txt"
-  [[ -f "${repos_file}" ]] || repos_file="${script_dir}/repos.txt"
-  [[ -f "${repos_file}" ]] || { echo "ERROR: repos.txt not found." >&2; exit 1; }
+  # repos.txt lives alongside this script (consistent with the other scripts).
+  local repos_file="${script_dir}/repos.txt"
+  [[ -f "${repos_file}" ]] || { echo "ERROR: repos.txt not found: ${repos_file}" >&2; exit 1; }
 
   # Don’t create broken links
   if [[ ! -d "${flags_dir}" ]]; then
@@ -60,10 +75,10 @@ create_symlinks() {
       continue
     fi
 
-    # Resolve dest to absolute
+    # Resolve dest to absolute (relative dests are relative to the scripts dir)
     case "${dir}" in
       /*) : ;;
-      *) dir="$(cd -- "${dir}" 2>/dev/null && pwd -P)" || { echo "SKIP: cannot resolve ${dir}"; continue; }
+      *) dir="$(cd -- "${script_dir}/${dir}" 2>/dev/null && pwd -P)" || { echo "SKIP: cannot resolve ${dir}"; continue; }
     esac
 
     if [[ ! -d "${dir}" ]]; then
@@ -71,7 +86,7 @@ create_symlinks() {
       continue
     fi
 
-    ensure_link "${flags_dir}" "${dir}/.flags"
+    ensure_link "${flags_dir}" "${dir}/${link_name}"
   done < "${repos_file}"
 }
 

@@ -3,6 +3,10 @@
 
 set -euo pipefail
 
+# Always operate from the directory this script lives in (repos.txt lives
+# here, and the relative dest paths in it are relative to this directory).
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+
 # ----------------- defaults -----------------
 c_compiler=""
 cxx_compiler=""
@@ -10,7 +14,7 @@ clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
 sanitizers=""
-forward_skip_cache=false   # if true, pass -s to install.sh (skip cache refresh)
+forward_skip_cache=false   # if true, pass -S to install.sh (skip cache refresh)
 
 usage() {
   cat <<USAGE >&2
@@ -21,13 +25,16 @@ Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>
   -t  clang-tidy         (default: clang-tidy;  path or name)
   -k  cppcheck           (default: cppcheck;    path or name)
   -s  sanitizers list    (e.g. address,undefined) — if omitted, repo may read sanitizers.txt
-  -S  forward 'skip cache update' to install.sh (passes -s to install.sh)
+  -S  forward 'skip cache update' to install.sh (passes -S to install.sh)
 
 Example:
   $0 -c clang -x clang++ -f clang-format -t clang-tidy -k cppcheck -s address,undefined -S
 USAGE
   exit 1
 }
+
+# --help / -h -> usage, exit 0 (P101 uniform CLI help)
+case " $* " in *" --help "*|*" -h "*) ( usage ) || true; exit 0 ;; esac
 
 # ----------------- args -----------------
 while getopts ":c:x:f:t:k:s:S" opt; do
@@ -50,13 +57,27 @@ done
 say() { printf '%b\n' "$*"; }
 hr()  { printf '%*s\n' "$(tput cols 2>/dev/null || echo 80)" '' | tr ' ' -; }
 
+# compiler names resolve through the pinned map first (compiler_paths.txt,
+# written by check-compilers.sh), then PATH; absolute paths pass through
+MAP_FILE="compiler_paths.txt"
+map_lookup() {
+  local name="$1" line
+  [[ -f "$MAP_FILE" ]] || return 1
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in "$name="*) printf '%s' "${line#*=}"; return 0 ;; esac
+  done < "$MAP_FILE"
+  return 1
+}
+
 resolve_any() {
   local v="$1" p
   if [[ "$v" = /* ]]; then
     [[ -x "$v" ]] || { echo "Error: '$v' not executable" >&2; exit 2; }
     printf '%s' "$v"
+  elif p="$(map_lookup "$v")" && [[ -x "$p" ]]; then
+    printf '%s' "$p"
   else
-    p="$(command -v "$v" 2>/dev/null)" || { echo "Error: '$v' not found in PATH" >&2; exit 2; }
+    p="$(command -v "$v" 2>/dev/null)" || { echo "Error: '$v' not found in $MAP_FILE or PATH" >&2; exit 2; }
     printf '%s' "$p"
   fi
 }
@@ -71,8 +92,32 @@ CPPCHECK_PATH="$(resolve_any "$cppcheck_name")"
 repos_file="repos.txt"
 [[ -f "$repos_file" ]] || { echo "Error: $repos_file not found" >&2; exit 3; }
 
-while IFS='|' read -r repo_url dir repo_type; do
-  [[ -n "${dir:-}" && -n "${repo_type:-}" ]] || continue
+trim() {
+  local s="${1-}"
+  s="${s#"${s%%[![:space:]]*}"}"
+  printf '%s' "${s%"${s##*[![:space:]]}"}"
+}
+
+# Read repos.txt on fd 3 so the children (change-compiler.sh, build.sh,
+# install.sh — which may legitimately read stdin, e.g. a sudo password
+# prompt in install.sh) keep the real stdin.
+while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
+  # Strip CR (CRLF files), comments, and surrounding whitespace — same
+  # semantics as clone-repos.sh / link-*.sh / copy-cmake.sh.
+  raw="${raw%$'\r'}"
+  raw="${raw%%#*}"
+  line="$(trim "${raw}")"
+  [[ -z "$line" ]] && continue
+
+  IFS='|' read -r repo_url dir repo_type <<< "$line"
+  repo_url="$(trim "${repo_url:-}")"
+  dir="$(trim "${dir:-}")"
+  repo_type="$(trim "${repo_type:-}")"
+
+  if [[ -z "$dir" || -z "$repo_type" ]]; then
+    say "  -> Skipping malformed line: $raw"
+    continue
+  fi
 
   hr
   say "Working on ${dir} (${repo_type})"
@@ -83,6 +128,14 @@ while IFS='|' read -r repo_url dir repo_type; do
   fi
 
   pushd "$dir" >/dev/null
+
+  # A repo without change-compiler.sh should be skipped with a message,
+  # not kill the whole multi-repo run via set -e.
+  if [[ ! -x ./change-compiler.sh ]]; then
+    say "  -> No executable change-compiler.sh in ${dir}; skipping repo."
+    popd >/dev/null
+    continue
+  fi
 
   # Decide which compiler to feed into change-compiler.sh
   case "$repo_type" in
@@ -131,7 +184,7 @@ while IFS='|' read -r repo_url dir repo_type; do
   fi
 
   popd >/dev/null
-done < "$repos_file"
+done 3< "$repos_file"
 
 hr
 say "All repositories processed."

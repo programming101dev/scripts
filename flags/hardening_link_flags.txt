@@ -1,0 +1,14 @@
+# Linker hardening + diagnostics. Probe mode is LINK, so each platform keeps
+# what its linker accepts: ELF linkers (Linux/FreeBSD) take the -z family,
+# macOS ld64 rejects it and simply drops off that machine's cache.
+
+        "-Wl,-z,relro"    # read-only relocations after startup
+        "-Wl,-z,now"    # resolve all symbols at load (full RELRO with relro)
+        "-Wl,-z,noexecstack"    # non-executable stack, explicitly
+        "-Wl,-z,separate-code"    # code pages never share with data
+        "-Wl,--as-needed"    # only link libraries actually used
+        "-Wl,--fatal-warnings"    # linker warnings are errors, like -Werror
+        "-rdynamic"    # export symbols so backtraces have names
+#        "-Wl,-z,defs"    # forbid undefined symbols — BREAKS sanitizer runtimes (resolved at load)
+#        "-Wl,--no-undefined"    # same as -z defs
+#        "-Wl,--gc-sections"    # needs -ffunction-sections/-fdata-sections (excluded optimization)

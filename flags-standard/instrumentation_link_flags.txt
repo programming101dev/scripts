@@ -1,0 +1,5 @@
+# Linker hardening. ELF only (Linux/FreeBSD); macOS ld64 rejects the -z family and the probe drops them there.
+
+        "-Wl,-z,relro"
+        "-Wl,-z,now"
+        "-Wl,-z,noexecstack"

@@ -1,0 +1,18 @@
+# Standard warnings: the widely-agreed baseline plus the few extras that catch real bugs at low noise. Portable across gcc and clang.
+
+        "-Wall"
+        "-Wextra"
+        "-Wpedantic"
+        "-Wshadow"
+        "-Wformat=2"
+        "-Wcast-qual"
+        "-Wpointer-arith"
+        "-Wwrite-strings"
+        "-Wnull-dereference"
+        "-Wdouble-promotion"
+        "-Wredundant-decls"
+        "-Wswitch-enum"
+        "-Wundef"
+        "-Wstrict-prototypes"    # C hygiene (C only; probe drops it for C++)
+        "-Wmissing-prototypes"    # C hygiene
+        "-Wold-style-definition"    # C hygiene

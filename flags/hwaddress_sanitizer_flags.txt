@@ -1,1 +1,5 @@
         "-fsanitize=hwaddress"
+#        "-fsanitize=memtag"    # ARM MTE hardware only — no current platform has it
+#        "-fsanitize=memtag-stack"    # ARM MTE hardware only
+#        "-fsanitize=memtag-heap"    # ARM MTE hardware only
+#        "-fsanitize=memtag-globals"    # ARM MTE hardware only

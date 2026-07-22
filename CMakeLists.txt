@@ -39,6 +39,17 @@ else ()
     set(_COMPILER "${CMAKE_C_COMPILER}")
 endif ()
 
+# Single source of truth for the language standard: the -std= entry in
+# STANDARD_FLAGS. cppcheck and the Clang Static Analyzer derive from this
+# too, so they can never analyze under a different standard than the one
+# the compiler builds with.
+set(P101_STD_FLAG "")
+foreach (_sf IN LISTS STANDARD_FLAGS)
+    if (_sf MATCHES "^-std=")
+        set(P101_STD_FLAG "${_sf}")
+    endif ()
+endforeach ()
+
 # =========================
 # Tool paths (required/optional)
 # =========================
@@ -100,6 +111,21 @@ set(P101_CLANG_SA_DISABLE_CHECKERS
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Export compile_commands.json" FORCE)
 include(GNUInstallDirs)
 
+# -------------------------------------------------------------------------
+# Shared CMake/Python helper scripts live in cmake/ (extracted from this
+# file so they can be read, linted, and tested on their own). In the
+# workspace each repo's cmake/ is a symlink to scripts/cmake/ created by
+# link-cmake.sh, so editing a helper once updates every repo at once.
+# -------------------------------------------------------------------------
+set(P101_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE PATH
+        "Directory of the shared p101 CMake/Python helper scripts")
+if (NOT EXISTS "${P101_CMAKE_DIR}/FailIfCppcheckDiagnostics.cmake")
+    message(FATAL_ERROR
+            "p101 helper scripts not found in ${P101_CMAKE_DIR}. In the "
+            "workspace run scripts/link-cmake.sh to symlink them; for a "
+            "standalone checkout run scripts/recreate-cmake-helpers.sh.")
+endif ()
+
 # Do not use CMake’s built-in tidy/cppcheck launchers
 set(CMAKE_C_CLANG_TIDY "" CACHE STRING "" FORCE)
 set(CMAKE_CXX_CLANG_TIDY "" CACHE STRING "" FORCE)
@@ -107,7 +133,7 @@ set(CMAKE_C_CPPCHECK "" CACHE STRING "" FORCE)
 set(CMAKE_CXX_CPPCHECK "" CACHE STRING "" FORCE)
 
 # Echo compile/link commands
-set(_LAUNCH_CMD "echo \"${ICON} compiling/linking: $*\" && exec \"$@\"")
+set(_LAUNCH_CMD "test -n \"$P101_QUIET\" || echo \"${ICON} compiling/linking: $*\" && exec \"$@\"")
 if (PROJECT_LANGUAGE STREQUAL "CXX")
     set(CMAKE_CXX_COMPILER_LAUNCHER "/bin/sh" "-c" "${_LAUNCH_CMD}" "cmake-launch")
 else ()
@@ -154,13 +180,35 @@ endif ()
 # Flags folder selection
 # =========================
 get_filename_component(_CC_BASE "${_COMPILER}" NAME) # e.g. gcc-15 or clang
-set(_FLAGS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.flags")
+# Profile-aware cache root: the 'standard' tier (P101_FLAGS_PROFILE=standard
+# in the environment, set by update.sh --standard) reads .flags-standard/;
+# the default/maximal tier reads .flags/. P101_NO_FLAGS below overrides both.
+if ("$ENV{P101_FLAGS_PROFILE}" STREQUAL "standard")
+    set(_FLAGS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.flags-standard")
+else ()
+    set(_FLAGS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.flags")
+endif ()
 
 set(_FLAG_DIRS_USED "")
 if (EXISTS "${_FLAGS_ROOT}/${_CC_BASE}")
     set(_FLAG_DIRS_USED "${_FLAGS_ROOT}/${_CC_BASE}")
 else ()
     message(STATUS "No flags dir for ${_CC_BASE}; no compiler flags will be loaded.")
+endif ()
+
+# One-off flagless build: P101_NO_FLAGS in the ENVIRONMENT (set by
+# update.sh / update-all.sh --no-flags) suppresses every probed compiler
+# flag AND every sanitizer for this configure, WITHOUT touching the .flags
+# caches or flag-selection.json. The env var propagates down the whole
+# build chain, so no per-repo edit is needed. Unset (or 0/empty) -> normal.
+# A plain set() here shadows the SANITIZER_LIST cache entry for the rest of
+# this configure only; it does not persist into CMakeCache.txt.
+if (DEFINED ENV{P101_NO_FLAGS}
+        AND NOT "$ENV{P101_NO_FLAGS}" STREQUAL "0"
+        AND NOT "$ENV{P101_NO_FLAGS}" STREQUAL "")
+    set(_FLAG_DIRS_USED "")
+    set(SANITIZER_LIST "")
+    message(STATUS "P101_NO_FLAGS set: NO probed compiler flags or sanitizers this build.")
 endif ()
 message(STATUS "Flag dirs used:    ${_FLAG_DIRS_USED}")
 
@@ -182,14 +230,18 @@ set(P101_EXTRA_LDFLAGS "")
 set(P101_ANALYZER_ONLY_CFLAGS "")
 
 if (_FLAG_DIRS_USED)
+    # NOTE: coverage_flags.txt / profile_flags.txt are NOT read here — they are
+    # instrumentation, applied ONLY when the user selects coverage/profiling
+    # (see the opt-in block below). This loop is the always-on compiler set:
+    # warnings, analysis, codegen/debug/opt, and hardening (compile + link).
     foreach (_ff IN ITEMS
             analyzer_flags.txt
             code_generation_flags.txt
             debug_flags.txt
             optimization_flags.txt
             warning_flags.txt
-            instrumentation_flags.txt
-            instrumentation_compiler.txt
+            hardening_link_flags.txt
+            hardening_compiler_flags.txt
     )
         set(_p "${_FLAG_DIRS_USED}/${_ff}")
         _p101_read_flags("${_p}" _f)
@@ -198,10 +250,16 @@ if (_FLAG_DIRS_USED)
         endif ()
 
         if (_ff STREQUAL "analyzer_flags.txt")
+            # These are GCC's -fanalyzer/-Wanalyzer-* flags (clang rejects
+            # them at probe time, so its file is empty). They MUST also go
+            # into the real compile flags — the analyzer runs during
+            # compilation; keeping them "analyzer-only" meant GCC's static
+            # analyzer never ran at all. Kept separately too for CSA.
             list(APPEND P101_ANALYZER_ONLY_CFLAGS ${_f})
-        elseif (_ff MATCHES "instrumentation_compiler")
             list(APPEND P101_EXTRA_CFLAGS ${_f})
-        elseif (_ff MATCHES "instrumentation_flags")
+        elseif (_ff MATCHES "hardening_compiler")
+            list(APPEND P101_EXTRA_CFLAGS ${_f})
+        elseif (_ff MATCHES "hardening_link")
             list(APPEND P101_EXTRA_LDFLAGS ${_f})
         elseif (_ff MATCHES "code_generation|debug|optimization|warning")
             list(APPEND P101_EXTRA_CFLAGS ${_f})
@@ -212,6 +270,143 @@ endif ()
 message(STATUS "Extra CFLAGS: ${P101_EXTRA_CFLAGS}")
 message(STATUS "Analyzer-only CFLAGS: ${P101_ANALYZER_ONLY_CFLAGS}")
 message(STATUS "Extra LDFLAGS: ${P101_EXTRA_LDFLAGS}")
+
+# =========================
+# Per-file flag opt-outs
+# =========================
+# A flag can probe as supported on trivial code yet be *rejected* on a specific
+# construct a particular file uses — e.g. -fharden-control-flow-redundancy hard-
+# errors on any function that calls setjmp, which the setjmp wrappers do. Keep
+# the flag ON for the whole project and disable it for ONLY the named files by
+# appending its negation there; source COMPILE_OPTIONS are emitted after the
+# target's, so the -fno-/-Wno- form wins (last-one-wins) for just that file.
+#
+# config.cmake format — one entry per file, whitespace-separated:
+#     set(P101_FILE_FLAG_OPTOUTS "src/setjmp.c -fharden-control-flow-redundancy")
+#
+# The negation is added ONLY when the positive flag is actually in THIS
+# compiler's applied set, so a compiler that never had the flag (clang, or a
+# gcc too old for it) is never handed an unknown -fno-/-Wno- option.
+if (DEFINED P101_FILE_FLAG_OPTOUTS AND P101_FILE_FLAG_OPTOUTS)
+    foreach (_optentry IN LISTS P101_FILE_FLAG_OPTOUTS)
+        string(STRIP "${_optentry}" _optentry)
+        if (_optentry STREQUAL "")
+            continue ()
+        endif ()
+        separate_arguments(_optparts NATIVE_COMMAND "${_optentry}")
+        list(POP_FRONT _optparts _optfile)
+        set(_neg_opts "")
+        foreach (_flag IN LISTS _optparts)
+            if (NOT "${_flag}" IN_LIST P101_EXTRA_CFLAGS)
+                continue ()   # this compiler never got the flag; nothing to negate
+            endif ()
+            set(_neg "")
+            if (_flag MATCHES "^-f" AND NOT _flag MATCHES "^-fno-")
+                string(REGEX REPLACE "^-f" "-fno-" _neg "${_flag}")
+            elseif (_flag MATCHES "^-W" AND NOT _flag MATCHES "^-Wno-")
+                string(REGEX REPLACE "^-W" "-Wno-" _neg "${_flag}")
+            endif ()
+            string(REGEX REPLACE "=.*$" "" _neg "${_neg}")   # -fstrub=all -> -fno-strub
+            if (_neg STREQUAL "")
+                message(WARNING "P101_FILE_FLAG_OPTOUTS: no negation known for '${_flag}' "
+                        "(file '${_optfile}'); leaving it applied.")
+            else ()
+                list(APPEND _neg_opts "${_neg}")
+            endif ()
+        endforeach ()
+        if (_neg_opts)
+            set_property(SOURCE "${_optfile}" APPEND PROPERTY COMPILE_OPTIONS ${_neg_opts})
+            message(STATUS "Per-file opt-out: ${_optfile} -> ${_neg_opts}")
+        endif ()
+    endforeach ()
+endif ()
+
+# =========================
+# Opt-in coverage / profiling (instrumentation)
+# =========================
+# OFF by default. Two independent, symmetric ways for the user to select it
+# (either one turns it on), mirroring how sanitizers are chosen:
+#   * the --coverage / --profile flags on setup / update / update-all /
+#     change-compiler / build-all, which export P101_COVERAGE / P101_PROFILE; or
+#   * a coverage.txt / profile.txt file in the project root holding a truthy
+#     value (like sanitizers.txt).
+# The flag SET is probed per compiler and lives in coverage_flags.txt /
+# profile_flags.txt under .flags/<cc>/ — there is NO hardcoded --coverage/-pg
+# here, so each compiler gets exactly the switches it accepts (e.g. gcc's
+# -fprofile-abs-path is dropped on clang by the probe). Applied to every target
+# (libraries and binaries) at compile AND link.
+
+# TRUE when an env var holds a truthy value ("" / 0 / off / false / no => off)
+macro(_p101_env_on _name _out)
+    set(${_out} FALSE)
+    if (DEFINED ENV{${_name}})
+        set(_p101_val "$ENV{${_name}}")
+        string(TOLOWER "${_p101_val}" _p101_val)
+        if (NOT _p101_val STREQUAL "" AND NOT _p101_val STREQUAL "0"
+                AND NOT _p101_val STREQUAL "off"
+                AND NOT _p101_val STREQUAL "false"
+                AND NOT _p101_val STREQUAL "no")
+            set(${_out} TRUE)
+        endif ()
+    endif ()
+endmacro()
+
+# TRUE when a sentinel file exists and holds a truthy value (comments after #
+# and all whitespace are stripped first)
+macro(_p101_file_on _path _out)
+    set(${_out} FALSE)
+    if (EXISTS "${_path}")
+        file(READ "${_path}" _p101_raw)
+        string(REGEX REPLACE "#[^\n]*" "" _p101_raw "${_p101_raw}")
+        string(REGEX REPLACE "[ \t\r\n]" "" _p101_raw "${_p101_raw}")
+        string(TOLOWER "${_p101_raw}" _p101_raw)
+        if (NOT _p101_raw STREQUAL "" AND NOT _p101_raw STREQUAL "0"
+                AND NOT _p101_raw STREQUAL "off"
+                AND NOT _p101_raw STREQUAL "false"
+                AND NOT _p101_raw STREQUAL "no")
+            set(${_out} TRUE)
+        endif ()
+    endif ()
+endmacro()
+
+_p101_env_on(P101_COVERAGE _p101_cov_env)
+_p101_file_on("${CMAKE_CURRENT_SOURCE_DIR}/coverage.txt" _p101_cov_file)
+if (_p101_cov_env OR _p101_cov_file)
+    set(_p101_covflags "")
+    if (_FLAG_DIRS_USED)
+        _p101_read_flags("${_FLAG_DIRS_USED}/coverage_flags.txt" _p101_covflags)
+    endif ()
+    if (_p101_covflags)
+        list(APPEND P101_EXTRA_CFLAGS  ${_p101_covflags})
+        list(APPEND P101_EXTRA_LDFLAGS ${_p101_covflags})
+        message(STATUS "Coverage selected (gcov): ${_p101_covflags}")
+    else ()
+        message(WARNING "Coverage selected, but no usable coverage flags for this "
+                "compiler/target. Either .flags has not been (re)probed yet — run "
+                "./update.sh or ./update-all.sh — or coverage is unsupported here. "
+                "No coverage instrumentation applied.")
+    endif ()
+endif ()
+
+_p101_env_on(P101_PROFILE _p101_prof_env)
+_p101_file_on("${CMAKE_CURRENT_SOURCE_DIR}/profile.txt" _p101_prof_file)
+if (_p101_prof_env OR _p101_prof_file)
+    set(_p101_profflags "")
+    if (_FLAG_DIRS_USED)
+        _p101_read_flags("${_FLAG_DIRS_USED}/profile_flags.txt" _p101_profflags)
+    endif ()
+    if (_p101_profflags)
+        list(APPEND P101_EXTRA_CFLAGS  ${_p101_profflags})
+        list(APPEND P101_EXTRA_LDFLAGS ${_p101_profflags})
+        message(STATUS "Profiling selected (gprof): ${_p101_profflags}")
+    else ()
+        message(WARNING "Profiling selected, but no usable profiling flags for this "
+                "compiler/target. Either .flags has not been (re)probed yet — run "
+                "./update.sh or ./update-all.sh — or profiling is unsupported here "
+                "(e.g. gprof/-pg is unavailable on macOS; use a sampling profiler "
+                "such as ./profile-report.sh). No profiling instrumentation applied.")
+    endif ()
+endif ()
 
 # =========================
 # Sanitizers from files
@@ -241,7 +436,12 @@ if (_SAN_OK AND _FLAG_DIRS_USED)
     endforeach ()
 endif ()
 
-set(DETECTED_SANITIZERS "${_P101_SANITIZER_COMPILE_OPTS}" CACHE STRING "Effective sanitizer flags")
+# The same -fsanitize= flag can legitimately appear in two sanitizer files
+# (e.g. pointer-overflow is also part of undefined) — pass it once.
+list(REMOVE_DUPLICATES _P101_SANITIZER_COMPILE_OPTS)
+list(REMOVE_DUPLICATES _P101_SANITIZER_LINK_OPTS)
+
+set(DETECTED_SANITIZERS "${_P101_SANITIZER_COMPILE_OPTS}" CACHE STRING "Effective sanitizer flags" FORCE)
 message(STATUS "Detected sanitizer flags: ${DETECTED_SANITIZERS}")
 
 # =========================
@@ -391,8 +591,21 @@ endfunction()
 # =========================
 set(LIBRARY_TARGETS "${LIBRARY_TARGETS}")
 set(EXECUTABLE_TARGETS "${EXECUTABLE_TARGETS}")
-list(FILTER LIBRARY_TARGETS EXCLUDE REGEX "^(|\\s+)$")
-list(FILTER EXECUTABLE_TARGETS EXCLUDE REGEX "^(|\\s+)$")
+# Drop blank / whitespace-only target entries. CMake's regex engine has no
+# \t or \s atom (inside a class, "\t" is the literal chars '\' and 't'), so a
+# "^[ \t]*$" filter would silently miss tab-only entries. string(STRIP)
+# removes surrounding whitespace INCLUDING tabs, so stripping each entry and
+# dropping the empties is both correct and trims stray whitespace off names.
+foreach (_lst LIBRARY_TARGETS EXECUTABLE_TARGETS)
+    set(_kept "")
+    foreach (_e IN LISTS ${_lst})
+        string(STRIP "${_e}" _e)
+        if (NOT _e STREQUAL "")
+            list(APPEND _kept "${_e}")
+        endif ()
+    endforeach ()
+    set(${_lst} "${_kept}")
+endforeach ()
 
 set(_ALL_SOURCES_FOR_FORMAT)
 set(_ALL_HEADERS_FOR_INSTALL)
@@ -441,7 +654,10 @@ foreach (_lib IN LISTS LIBRARY_TARGETS)
         endif ()
     endif ()
 
-    list(APPEND _ALL_HEADERS_FOR_INSTALL ${${_lib}_HEADERS})
+    # Absolutize headers so the clang-format loop's source-dir prefix check
+    # doesn't silently drop headers listed with relative paths.
+    _p101_abs_list(_hdrs_abs ${${_lib}_HEADERS})
+    list(APPEND _ALL_HEADERS_FOR_INSTALL ${_hdrs_abs})
     list(APPEND P101_PRIMARY_TARGETS ${_lib})
 endforeach ()
 
@@ -479,6 +695,12 @@ foreach (_exe IN LISTS EXECUTABLE_TARGETS)
     list(APPEND P101_PRIMARY_TARGETS ${_exe})
 endforeach ()
 
+# A source (or header) listed by more than one target must not create two
+# custom commands with the same stamp OUTPUT — that is a fatal configure
+# error in the clang-format and CSA loops below.
+list(REMOVE_DUPLICATES _ALL_SOURCES_FOR_FORMAT)
+list(REMOVE_DUPLICATES _ALL_HEADERS_FOR_INSTALL)
+
 if(APPLE AND _COMPILER_ID MATCHES "Clang")
     execute_process(
             COMMAND ${_COMPILER} --print-resource-dir
@@ -490,8 +712,11 @@ if(APPLE AND _COMPILER_ID MATCHES "Clang")
 
     if(IS_DIRECTORY "${_ASAN_RPATH}")
         foreach(_tgt IN LISTS LIBRARY_TARGETS EXECUTABLE_TARGETS)
-            set_property(TARGET ${_tgt} PROPERTY BUILD_RPATH "${_ASAN_RPATH}")
-            set_property(TARGET ${_tgt} PROPERTY INSTALL_RPATH "${_ASAN_RPATH}")
+            # APPEND: the targets already inherited /usr/local/lib etc. from
+            # CMAKE_BUILD_RPATH/CMAKE_INSTALL_RPATH — replacing those would
+            # break @rpath resolution of the installed p101 dylibs on macOS.
+            set_property(TARGET ${_tgt} APPEND PROPERTY BUILD_RPATH "${_ASAN_RPATH}")
+            set_property(TARGET ${_tgt} APPEND PROPERTY INSTALL_RPATH "${_ASAN_RPATH}")
         endforeach()
         message(STATUS "ASan rpath added: ${_ASAN_RPATH}")
     else()
@@ -508,12 +733,20 @@ if (CLANG_FORMAT_NAME AND _ALL_SOURCES_FOR_FORMAT)
         if (NOT _abs)
             continue()
         endif ()
-        if (NOT _abs MATCHES "^${CMAKE_CURRENT_SOURCE_DIR}/")
-            continue()
+        # string(FIND), not MATCHES: the source dir path is not a regex, and
+        # metacharacters in it (e.g. a parent folder named "C++") must not
+        # change the result.
+        string(FIND "${_abs}" "${CMAKE_CURRENT_SOURCE_DIR}/" _pfx)
+        if (NOT _pfx EQUAL 0)
+            message(FATAL_ERROR "Source '${_abs}' is outside the project directory "
+                    "(${CMAKE_CURRENT_SOURCE_DIR}). All sources must be in-tree; an "
+                    "out-of-tree path almost always indicates a config.cmake error.")
         endif ()
         file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_abs}")
         get_filename_component(_rel_dir "${_rel}" DIRECTORY)
         set(_stamp "${CMAKE_BINARY_DIR}/.format/${_rel}.stamp")
+        # Intentional: -i REWRITES the source in place (auto-format on every
+        # build), not a --dry-run check. Requires a writable source tree.
         add_custom_command(
                 OUTPUT "${_stamp}"
                 COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/.format/${_rel_dir}"
@@ -539,70 +772,7 @@ endif ()
 set(P101_TIDY_DB_DIR "${CMAKE_BINARY_DIR}/tidy_cc")
 set(P101_TIDY_DB "${P101_TIDY_DB_DIR}/compile_commands.json")
 
-set(SAN_PY "${CMAKE_BINARY_DIR}/SanitizeCompileCommands.py")
-file(WRITE "${SAN_PY}" [=[
-#!/usr/bin/env python3
-import json, os, shlex, sys
-
-DROP_EXACT = {"--coverage", "-coverage", "-pg"}
-DROP_PAIR_FLAGS = {"-p"}  # drop -p <arg> if present
-
-def should_drop(tok: str) -> bool:
-    if tok in DROP_EXACT:
-        return True
-    if tok.startswith("-W"):
-        return True
-    if tok.startswith("-f"):
-        return True
-    if tok.startswith("-g"):
-        return True
-    return False
-
-def sanitize_args(argv):
-    out = []
-    skip_next = False
-    for a in argv:
-        if skip_next:
-            skip_next = False
-            continue
-        if a in DROP_PAIR_FLAGS:
-            skip_next = True
-            continue
-        if should_drop(a):
-            continue
-        out.append(a)
-    return out
-
-def main():
-    if len(sys.argv) != 3:
-        print("Usage: SanitizeCompileCommands.py <in.json> <out.json>", file=sys.stderr)
-        return 2
-
-    in_path, out_path = sys.argv[1], sys.argv[2]
-    with open(in_path, "r", encoding="utf-8") as f:
-        db = json.load(f)
-
-    for e in db:
-        if "arguments" in e and isinstance(e["arguments"], list):
-            argv = e["arguments"]
-        else:
-            cmd = e.get("command", "")
-            argv = shlex.split(cmd)
-
-        argv = sanitize_args(argv)
-        e["arguments"] = argv
-        if "command" in e:
-            del e["command"]
-
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(db, f, indent=2)
-        f.write("\n")
-    return 0
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-]=])
+set(SAN_PY "${P101_CMAKE_DIR}/SanitizeCompileCommands.py")
 if (UNIX)
     execute_process(COMMAND chmod +x "${SAN_PY}" ERROR_QUIET)
 endif ()
@@ -653,13 +823,27 @@ if (P101_TIDY_CHECKS STREQUAL "")
             "-llvm-header-guard"
             "-google-readability-casting"
             "-readability-redundant-casting"
+            # fuchsia-trailing-return directly contradicts
+            # modernize-use-trailing-return-type under checks=* — with
+            # -warnings-as-errors=* NO C++ function could pass the gate.
+            # Keep the modernize (trailing-return) style; drop the fuchsia ban.
+            "-fuchsia-trailing-return"
     )
     string(JOIN "," P101_TIDY_CHECKS ${P101_TIDY_CHECKS_LIST})
 endif ()
 
-# Default tidy header filter: only our project (src/ and include/) unless user overrides
+# Default tidy header filter: only our project (src/ and include/) unless user overrides.
+# -header-filter is a regex, and CMAKE_CURRENT_SOURCE_DIR / PUBLIC_INC_DIR are
+# filesystem paths that can contain regex metacharacters (a folder named "C++",
+# a version like "lib.1", a path with "(x86)"). Interpolating them raw makes '.'
+# a wildcard and '+', '(' change the match. Escape ERE metacharacters so the
+# paths are matched literally. The class lists ] first (literal in a class);
+# \\0 back-references the whole match, prefixing each metachar with a backslash.
 if (P101_HEADER_FILTER STREQUAL "" OR P101_HEADER_FILTER STREQUAL ".*")
-    set(P101_HEADER_FILTER "^(${CMAKE_CURRENT_SOURCE_DIR}/src|${PUBLIC_INC_DIR})/.*")
+    set(_p101_ere_meta "[][.^$|()\\\\{}*+?]")
+    string(REGEX REPLACE "${_p101_ere_meta}" "\\\\\\0" _p101_src_re "${CMAKE_CURRENT_SOURCE_DIR}")
+    string(REGEX REPLACE "${_p101_ere_meta}" "\\\\\\0" _p101_pub_re "${PUBLIC_INC_DIR}")
+    set(P101_HEADER_FILTER "^(${_p101_src_re}/src|${_p101_pub_re})/.*")
 endif ()
 
 # Build shared args for clang-tidy
@@ -673,7 +857,10 @@ set(_P101_TIDY_ARGS
         "--extra-arg-before=-D_XOPEN_SOURCE=700"
 )
 
-if (UNIX AND NOT APPLE)
+# _GNU_SOURCE is a glibc feature-test macro. "UNIX AND NOT APPLE" also matches
+# the BSDs, where it is not meaningful and can perturb declaration visibility;
+# BSD gets __BSD_VISIBLE below instead. Gate on Linux specifically.
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-D_GNU_SOURCE")
 endif()
 
@@ -714,8 +901,13 @@ file(APPEND "${_TIDY_ARGS_CMAKE}" ")\n")
 
 set(_TIDY_FILES)
 foreach (_abs IN LISTS _ALL_SOURCES_FOR_FORMAT)
-    if (_abs MATCHES "^${CMAKE_CURRENT_SOURCE_DIR}/")
+    string(FIND "${_abs}" "${CMAKE_CURRENT_SOURCE_DIR}/" _pfx)
+    if (_pfx EQUAL 0)
         list(APPEND _TIDY_FILES "${_abs}")
+    else ()
+        message(FATAL_ERROR "Source '${_abs}' is outside the project directory "
+                "(${CMAKE_CURRENT_SOURCE_DIR}). All sources must be in-tree; an "
+                "out-of-tree path almost always indicates a config.cmake error.")
     endif ()
 endforeach ()
 file(WRITE "${_TIDY_FILES_CMAKE}" "set(P101_TIDY_FILES_LIST\n")
@@ -726,59 +918,7 @@ foreach (_f IN LISTS _TIDY_FILES)
 endforeach ()
 file(APPEND "${_TIDY_FILES_CMAKE}" ")\n")
 
-set(RUN_TIDY_SCRIPT "${CMAKE_BINARY_DIR}/RunClangTidyOverList.cmake")
-file(WRITE "${RUN_TIDY_SCRIPT}" [=[
-cmake_minimum_required(VERSION 3.20)
-if(NOT DEFINED CLANG_TIDY_EXEC OR NOT DEFINED DB OR NOT DEFINED FILES_CMAKE)
-  message(FATAL_ERROR "Need -DCLANG_TIDY_EXEC=, -DDB=, and -DFILES_CMAKE=")
-endif()
-if(NOT EXISTS "${FILES_CMAKE}")
-  message(FATAL_ERROR "FILES_CMAKE not found: ${FILES_CMAKE}")
-endif()
-include("${FILES_CMAKE}")
-
-set(_args)
-if(DEFINED ARGS_CMAKE AND NOT ARGS_CMAKE STREQUAL "")
-  if(NOT EXISTS "${ARGS_CMAKE}")
-    message(FATAL_ERROR "ARGS_CMAKE not found: ${ARGS_CMAKE}")
-  endif()
-  include("${ARGS_CMAKE}")
-  if(DEFINED P101_TIDY_ARGS_LIST)
-    set(_args ${P101_TIDY_ARGS_LIST})
-  endif()
-endif()
-
-if(NOT DEFINED P101_TIDY_FILES_LIST)
-  message(FATAL_ERROR "FILES_CMAKE did not define P101_TIDY_FILES_LIST")
-endif()
-
-set(_fail 0)
-foreach(F IN LISTS P101_TIDY_FILES_LIST)
-  if(F STREQUAL "")
-    continue()
-  endif()
-  execute_process(
-    COMMAND "${CLANG_TIDY_EXEC}" -p "${DB}" ${_args} "${F}"
-    RESULT_VARIABLE _rv
-    OUTPUT_VARIABLE _out
-    ERROR_VARIABLE  _err
-  )
-  if(NOT _rv EQUAL 0)
-    message(STATUS "clang-tidy failed for: ${F}")
-    if(NOT _out STREQUAL "")
-      message(STATUS "${_out}")
-    endif()
-    if(NOT _err STREQUAL "")
-      message(STATUS "${_err}")
-    endif()
-    set(_fail 1)
-  endif()
-endforeach()
-
-if(_fail)
-  message(FATAL_ERROR "clang-tidy reported failures")
-endif()
-]=])
+set(RUN_TIDY_SCRIPT "${P101_CMAKE_DIR}/RunClangTidyOverList.cmake")
 
 add_custom_target(${PROJECT_NAME}_tidy_all
         ALL
@@ -799,101 +939,7 @@ add_custom_target(${PROJECT_NAME}_tidy_all
 set(P101_ANALYZE_DIR "${CMAKE_BINARY_DIR}/analyze")
 file(MAKE_DIRECTORY "${P101_ANALYZE_DIR}")
 
-set(P101_ANALYZE_DB_SCRIPT "${CMAKE_BINARY_DIR}/RunAnalyzeFromCompileDB.py")
-file(WRITE "${P101_ANALYZE_DB_SCRIPT}" [=[
-#!/usr/bin/env python3
-import json, os, shlex, subprocess, sys
-
-def is_source_file(p: str) -> bool:
-    ext = os.path.splitext(p)[1].lower()
-    return ext in [".c", ".cc", ".cpp", ".cxx", ".m", ".mm"]
-
-def strip_output_flags(argv):
-    out = []
-    it = iter(range(len(argv)))
-    skip_next = False
-    for i in it:
-        if skip_next:
-            skip_next = False
-            continue
-        a = argv[i]
-        if a == "-c":
-            continue
-        if a == "-o":
-            skip_next = True
-            continue
-        if a.startswith("-o") and len(a) > 2:
-            continue
-        out.append(a)
-    return out
-
-def main():
-    if len(sys.argv) != 4:
-        print("Usage: RunAnalyzeFromCompileDB.py <compile_commands.json> <out_dir> <fail_on_diag 0|1>", file=sys.stderr)
-        return 2
-
-    db_path, out_dir, fail_flag = sys.argv[1], sys.argv[2], sys.argv[3]
-    fail_on_diag = (fail_flag == "1")
-    os.makedirs(out_dir, exist_ok=True)
-
-    with open(db_path, "r", encoding="utf-8") as f:
-        db = json.load(f)
-
-    have_diag = False
-
-    for entry in db:
-        directory = entry.get("directory", "") or None
-        file_ = entry.get("file", "")
-        if not file_ or not is_source_file(file_):
-            continue
-
-        # Determine argv
-        if "arguments" in entry and isinstance(entry["arguments"], list):
-            argv = entry["arguments"]
-        else:
-            cmd = entry.get("command", "")
-            argv = shlex.split(cmd)
-
-        if not argv:
-            continue
-
-        # Convert to syntax-only while preserving TU flags/defs/includes
-        argv = strip_output_flags(argv)
-        if not argv:
-            continue
-        cmd = argv[:1] + ["-fsyntax-only"] + argv[1:]
-
-        # Stable log filename
-        relkey = file_.replace("/", "_").replace("\\", "_")
-        out_txt = os.path.join(out_dir, f"{relkey}.txt")
-
-        try:
-            p = subprocess.run(
-                cmd,
-                cwd=directory,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True
-            )
-            out = (p.stdout or "").strip()
-        except Exception as e:
-            out = f"Exception running analyze: {e}"
-
-        with open(out_txt, "w", encoding="utf-8") as fo:
-            fo.write(out + ("\n" if out else ""))
-
-        if out:
-            have_diag = True
-
-    if have_diag:
-        print("Analyzer (syntax-only) produced diagnostics. See:", out_dir)
-        if fail_on_diag:
-            return 1
-    return 0
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-]=])
+set(P101_ANALYZE_DB_SCRIPT "${P101_CMAKE_DIR}/RunAnalyzeFromCompileDB.py")
 if (UNIX)
     execute_process(COMMAND chmod +x "${P101_ANALYZE_DB_SCRIPT}" ERROR_QUIET)
 endif()
@@ -911,13 +957,33 @@ add_custom_target(${PROJECT_NAME}_analyze_all ALL
 )
 
 # ===== ENFORCE ORDER: compile -> analyze -> tidy =====
-add_dependencies(${PROJECT_NAME}_analyze_all ${LIBRARY_TARGETS} ${EXECUTABLE_TARGETS})
+# (guarded: add_dependencies() with no dependency arguments is a hard
+# configure error when a config.cmake defines no targets)
+if (P101_PRIMARY_TARGETS)
+    add_dependencies(${PROJECT_NAME}_analyze_all ${LIBRARY_TARGETS} ${EXECUTABLE_TARGETS})
+endif ()
 add_dependencies(${PROJECT_NAME}_tidy_all ${PROJECT_NAME}_analyze_all)
 
 # =========================
 # cppcheck — ALWAYS runs (REQUIRED at configure)
 # =========================
 function(_p101_cppcheck_std OUT_STD OUT_LANG)
+    # Prefer the std from STANDARD_FLAGS (what the compiler actually uses);
+    # normalize gnu dialects to the base standard for cppcheck.
+    if (NOT P101_STD_FLAG STREQUAL "")
+        string(REPLACE "-std=" "" _cfg_std "${P101_STD_FLAG}")
+        string(REPLACE "gnu++" "c++" _cfg_std "${_cfg_std}")
+        string(REGEX REPLACE "^gnu" "c" _cfg_std "${_cfg_std}")
+        if (_cfg_std MATCHES "^(c[0-9]+|c\\+\\+[0-9]+)$")
+            if (PROJECT_LANGUAGE STREQUAL "CXX")
+                set(${OUT_LANG} "c++" PARENT_SCOPE)
+            else ()
+                set(${OUT_LANG} "c" PARENT_SCOPE)
+            endif ()
+            set(${OUT_STD} "${_cfg_std}" PARENT_SCOPE)
+            return()
+        endif ()
+    endif ()
     if (PROJECT_LANGUAGE STREQUAL "CXX")
         if (DEFINED CMAKE_CXX_STANDARD AND NOT "${CMAKE_CXX_STANDARD}" STREQUAL "")
             set(_std "c++${CMAKE_CXX_STANDARD}")
@@ -954,8 +1020,28 @@ if (P101_CPPCHECK_ARGS STREQUAL "")
             --language=${_CPPCHECK_LANG} --std=${_CPPCHECK_STD}
     )
 
-    # Raspberry Pi / ARM: cppcheck is typically older and doesn't support --check-level
-    if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm|armv7l)$")
+    # --check-level=exhaustive only exists in cppcheck >= 2.11. On an older
+    # cppcheck the option is rejected; passing it (or, worse, silently getting
+    # the "normalCheckLevelMaxBranches" advisory when it IS absent) breaks the
+    # build. CPU is a poor proxy for the cppcheck version — an old Raspberry Pi
+    # ships an old cppcheck, but Apple Silicon (also ARM) ships a modern one —
+    # so probe the actual binary: keep the flag only when --help advertises it.
+    # Cached so the probe runs once per build tree, not on every reconfigure.
+    if (NOT DEFINED P101_CPPCHECK_HAS_CHECK_LEVEL)
+        execute_process(
+                COMMAND "${CPPCHECK_NAME}" --help
+                OUTPUT_VARIABLE _p101_cppcheck_help
+                ERROR_VARIABLE _p101_cppcheck_help
+                RESULT_VARIABLE _p101_cppcheck_help_rc
+        )
+        string(FIND "${_p101_cppcheck_help}" "--check-level" _p101_cl_pos)
+        if (_p101_cppcheck_help_rc EQUAL 0 AND NOT _p101_cl_pos EQUAL -1)
+            set(P101_CPPCHECK_HAS_CHECK_LEVEL ON CACHE INTERNAL "cppcheck supports --check-level")
+        else ()
+            set(P101_CPPCHECK_HAS_CHECK_LEVEL OFF CACHE INTERNAL "cppcheck supports --check-level")
+        endif ()
+    endif ()
+    if (NOT P101_CPPCHECK_HAS_CHECK_LEVEL)
         list(REMOVE_ITEM P101_CPPCHECK_ARGS_LIST --check-level=exhaustive)
     endif ()
 endif ()
@@ -988,35 +1074,7 @@ foreach (_d IN LISTS P101_PUBLIC_INCLUDE_DIRS_EXISTING)
 endforeach ()
 
 set(CPPCHECK_LOG "${CMAKE_BINARY_DIR}/cppcheck.log")
-set(CPPCHECK_FAIL_SCRIPT "${CMAKE_BINARY_DIR}/FailIfCppcheckDiagnostics.cmake")
-file(WRITE "${CPPCHECK_FAIL_SCRIPT}" [=[
-cmake_minimum_required(VERSION 3.20)
-if(NOT DEFINED LOGFILE)
-  message(FATAL_ERROR "Need -DLOGFILE=<path>")
-endif()
-if(NOT EXISTS "${LOGFILE}")
-  message(FATAL_ERROR "cppcheck log not found: ${LOGFILE}")
-endif()
-file(READ "${LOGFILE}" _LOG)
-string(REGEX MATCHALL ":[ \\t](warning|style|performance|portability|information|error):" _HITS "${_LOG}")
-list(LENGTH _HITS _COUNT)
-if(_COUNT GREATER 0)
-  message(STATUS "cppcheck reported ${_COUNT} diagnostics. Showing first 200 lines:")
-  string(REPLACE "\r\n" "\n" _LOG "${_LOG}")
-  string(REPLACE "\r"   "\n" _LOG "${_LOG}")
-  string(REPLACE "\n" ";" _LINES "${_LOG}")
-  set(_i 0)
-  foreach(_line IN LISTS _LINES)
-    if(_i GREATER_EQUAL 200)
-      message(STATUS "... (truncated)")
-      break()
-    endif()
-    message(STATUS "${_line}")
-    math(EXPR _i "${_i}+1")
-  endforeach()
-  message(FATAL_ERROR "cppcheck found issues. See ${LOGFILE}")
-endif()
-]=])
+set(CPPCHECK_FAIL_SCRIPT "${P101_CMAKE_DIR}/FailIfCppcheckDiagnostics.cmake")
 
 add_custom_target(${PROJECT_NAME}_cppcheck_all ALL
         COMMAND ${CMAKE_COMMAND} -E echo "${ICON} running: ${CPPCHECK_NAME} [see log]"
@@ -1031,7 +1089,9 @@ add_custom_target(${PROJECT_NAME}_cppcheck_all ALL
         COMMENT "cppcheck over entire project, fail on any diagnostics")
 
 # ENFORCE: cppcheck after tidy (and thus after analyze/compile/format)
-add_dependencies(${PROJECT_NAME}_cppcheck_all ${LIBRARY_TARGETS} ${EXECUTABLE_TARGETS})
+if (P101_PRIMARY_TARGETS)
+    add_dependencies(${PROJECT_NAME}_cppcheck_all ${LIBRARY_TARGETS} ${EXECUTABLE_TARGETS})
+endif ()
 add_dependencies(${PROJECT_NAME}_cppcheck_all ${PROJECT_NAME}_tidy_all)
 
 # =========================
@@ -1070,9 +1130,11 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
     set(P101_CLANG_SA_DIR "${CMAKE_BINARY_DIR}/clang-sa")
     file(MAKE_DIRECTORY "${P101_CLANG_SA_DIR}")
 
-    # std flag for clang --analyze
+    # std flag for clang --analyze — same source of truth as the compiler
     set(_SA_STD "")
-    if (PROJECT_LANGUAGE STREQUAL "CXX")
+    if (NOT P101_STD_FLAG STREQUAL "")
+        set(_SA_STD "${P101_STD_FLAG}")
+    elseif (PROJECT_LANGUAGE STREQUAL "CXX")
         if (CMAKE_CXX_STANDARD)
             set(_SA_STD "-std=c++${CMAKE_CXX_STANDARD}")
         else ()
@@ -1154,7 +1216,8 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
 
     if (APPLE)
         list(APPEND _P101_SA_DEFS -D_DARWIN_C_SOURCE)
-    elseif (UNIX)
+    elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        # _GNU_SOURCE is glibc-specific; BSD (also UNIX) gets __BSD_VISIBLE below.
         list(APPEND _P101_SA_DEFS -D_GNU_SOURCE)
     endif()
 
@@ -1166,8 +1229,11 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
 
     set(_SA_STAMPS)
     foreach (_abs IN LISTS _ALL_SOURCES_FOR_FORMAT)
-        if (NOT _abs MATCHES "^${CMAKE_CURRENT_SOURCE_DIR}/")
-            continue()
+        string(FIND "${_abs}" "${CMAKE_CURRENT_SOURCE_DIR}/" _pfx)
+        if (NOT _pfx EQUAL 0)
+            message(FATAL_ERROR "Source '${_abs}' is outside the project directory "
+                    "(${CMAKE_CURRENT_SOURCE_DIR}). All sources must be in-tree; an "
+                    "out-of-tree path almost always indicates a config.cmake error.")
         endif ()
         file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_abs}")
         string(REPLACE "/" "_" _flat "${_rel}")
@@ -1189,47 +1255,7 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
         list(APPEND _SA_STAMPS "${_stamp}")
     endforeach ()
 
-    set(CLANG_SA_FAIL_SCRIPT "${CMAKE_BINARY_DIR}/FailIfClangSADiagnostics.cmake")
-    file(WRITE "${CLANG_SA_FAIL_SCRIPT}" [=[
-cmake_minimum_required(VERSION 3.20)
-if(NOT DEFINED DIR)
-  message(FATAL_ERROR "Need -DDIR=<clang-sa logs dir>")
-endif()
-file(GLOB _FILES "${DIR}/*.txt")
-set(_HAVE 0)
-foreach(F ${_FILES})
-  file(READ "${F}" C)
-  string(STRIP "${C}" C)
-  if(NOT C STREQUAL "")
-    set(_HAVE 1)
-    break()
-  endif()
-endforeach()
-if(_HAVE)
-  message(STATUS "Clang Static Analyzer produced diagnostics; showing up to first 200 lines:")
-  set(_i 0)
-  foreach(F ${_FILES})
-    file(READ "${F}" C)
-    string(REPLACE "\r\n" "\n" C "${C}")
-    string(REPLACE "\r"   "\n" C "${C}")
-    string(REPLACE "\n" ";" L "${C}")
-    foreach(line ${L})
-      if(_i GREATER_EQUAL 200)
-        message(STATUS "... (truncated)")
-        break()
-      endif()
-      message(STATUS "${line}")
-      math(EXPR _i "${_i}+1")
-    endforeach()
-    if(_i GREATER_EQUAL 200)
-      break()
-    endif()
-  endforeach()
-  if("$ENV{P101_CLANG_SA_FAIL}" STREQUAL "1")
-    message(FATAL_ERROR "CSA found diagnostics. See ${DIR}/*.txt")
-  endif()
-endif()
-]=])
+    set(CLANG_SA_FAIL_SCRIPT "${P101_CMAKE_DIR}/FailIfClangSADiagnostics.cmake")
 
     if (_SA_STAMPS)
         add_custom_target(${PROJECT_NAME}_clang_sa_all ALL
@@ -1243,6 +1269,65 @@ endif()
                 COMMAND ${CMAKE_COMMAND} -E echo "No sources for clang --analyze"
                 COMMENT "Clang static analyzer (--analyze)")
         add_dependencies(${PROJECT_NAME}_clang_sa_all ${PROJECT_NAME}_cppcheck_all)
+    endif ()
+
+    # ---- OPTIONAL: cross-translation-unit (CTU) analysis ----
+    # Per-file --analyze can't see a bug that only appears across a call
+    # boundary (e.g. one TU passing 0 into a divide defined in another). CTU
+    # can, but it needs clang's `clang-extdef-mapping` companion, which ships
+    # next to a mainline/Homebrew LLVM clang but NOT Apple's stock clang.
+    # Strictly best-effort: engage ONLY when the build compiler has a matching
+    # clang-extdef-mapping sibling (AST format + flags stay consistent — never
+    # mix compilers). If it isn't there, we skip silently and the per-file CSA
+    # above is the analysis — "do the best with the tools this machine has".
+    set(P101_CLANG_SA_CTU ON CACHE BOOL "Run cross-TU analysis when clang-extdef-mapping is available")
+    if (P101_CLANG_SA_CTU AND _SA_STAMPS)
+        get_filename_component(_CC_REAL "${_COMPILER}" REALPATH)
+        get_filename_component(_CC_REAL_DIR "${_CC_REAL}" DIRECTORY)
+        get_filename_component(_CC_LINK_DIR "${_COMPILER}" DIRECTORY)
+        set(_CC_MAJOR "")
+        if (PROJECT_LANGUAGE STREQUAL "CXX" AND CMAKE_CXX_COMPILER_VERSION)
+            string(REGEX MATCH "^[0-9]+" _CC_MAJOR "${CMAKE_CXX_COMPILER_VERSION}")
+        elseif (CMAKE_C_COMPILER_VERSION)
+            string(REGEX MATCH "^[0-9]+" _CC_MAJOR "${CMAKE_C_COMPILER_VERSION}")
+        endif ()
+        # resolved bin dir carries the unversioned tool (llvm-NN/bin, Homebrew);
+        # the symlink dir may carry a versioned one (/usr/bin/...-18 on Debian)
+        set(P101_EXTDEF_MAPPING "")
+        foreach (_c
+                "${_CC_REAL_DIR}/clang-extdef-mapping"
+                "${_CC_LINK_DIR}/clang-extdef-mapping"
+                "${_CC_LINK_DIR}/clang-extdef-mapping-${_CC_MAJOR}"
+                "${_CC_REAL_DIR}/clang-extdef-mapping-${_CC_MAJOR}")
+            if (EXISTS "${_c}")
+                set(P101_EXTDEF_MAPPING "${_c}")
+                break ()
+            endif ()
+        endforeach ()
+
+        if (P101_EXTDEF_MAPPING)
+            # same checker/config profile as the per-file pass, minus the bare
+            # --analyze (the helper adds it); it also adds the CTU config
+            set(_CTU_ARGS -Xanalyzer -analyzer-output=text ${_SA_ARGS_PROFILE})
+            if (P101_CLANG_SA_EXTRA_ARGS_LIST)
+                list(APPEND _CTU_ARGS ${P101_CLANG_SA_EXTRA_ARGS_LIST})
+            endif ()
+            add_custom_target(${PROJECT_NAME}_clang_sa_ctu_all ALL
+                    COMMAND ${CMAKE_COMMAND} -E echo "${ICON} clang SA cross-TU (CTU) analysis (extdef-mapping: ${P101_EXTDEF_MAPPING})"
+                    COMMAND "${PYTHON3_EXECUTABLE}" "${P101_CMAKE_DIR}/RunClangSaCtu.py"
+                            "${_COMPILER}" "${P101_EXTDEF_MAPPING}"
+                            "${CMAKE_BINARY_DIR}/compile_commands.json"
+                            "${CMAKE_BINARY_DIR}/clang-sa-ctu"
+                            "$<IF:$<BOOL:${P101_CLANG_SA_FAIL_ON_DIAGNOSTICS}>,1,0>"
+                            "${CMAKE_CURRENT_SOURCE_DIR}"
+                            -- ${_CTU_ARGS}
+                    USES_TERMINAL
+                    VERBATIM
+                    COMMENT "Clang static analyzer, cross-translation-unit (interprocedural across files)")
+            add_dependencies(${PROJECT_NAME}_clang_sa_ctu_all ${PROJECT_NAME}_clang_sa_all)
+        else ()
+            message(STATUS "clang-extdef-mapping not found for ${_COMPILER}; skipping optional cross-TU (CTU) analysis.")
+        endif ()
     endif ()
 elseif (_COMPILER_ID MATCHES "Clang" AND P101_IS_RASPBERRY_PI)
     message(STATUS "Skipping Clang Static Analyzer (--analyze) on Raspberry Pi")
@@ -1259,7 +1344,8 @@ if (_ALL_HEADERS_FOR_INSTALL)
         else ()
             set(_habspath "${_h}")
         endif ()
-        if (_habspath MATCHES "^${PUBLIC_INC_DIR}/")
+        string(FIND "${_habspath}" "${PUBLIC_INC_DIR}/" _pfx)
+        if (_pfx EQUAL 0)
             file(RELATIVE_PATH _rel_inside_inc "${PUBLIC_INC_DIR}" "${_habspath}")
             get_filename_component(_dest_subdir "${_rel_inside_inc}" DIRECTORY)
         else ()

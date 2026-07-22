@@ -21,9 +21,7 @@
         "-fsanitize=vptr"
         "-fsanitize=pointer-overflow"
         "-fsanitize=builtin"
-# https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
         "-fsanitize=array-bounds"
-        "-fsanitize=local-bounds"
         "-fsanitize=local-bounds"
         "-fsanitize=function"
         "-fsanitize=implicit-unsigned-integer-truncation"
@@ -36,3 +34,16 @@
         "-fsanitize=unsigned-shift-base"
         "-fsanitize=implicit-conversion"
         "-fsanitize=unsigned-integer-overflow"
+#        "-fsanitize-merge"    # trap-mode dedup knob; we don't use trap mode
+#        "-fsanitize-skip-hot-cutoff="    # PGO-driven sanitizer SKIPPING — reduces coverage
+#        "-fsanitize-undefined-ignore-overflow-pattern="    # carves holes in UBSan coverage
+        "-fsanitize=implicit-bitfield-conversion"
+        "-fsanitize=objc-cast"
+#        "-fsanitize=integer"    # umbrella — members listed individually
+#        "-fsanitize=nullability"    # umbrella — members listed individually
+#        "-fsanitize=implicit-integer-conversion"    # umbrella — members listed individually
+#        "-fsanitize=implicit-integer-truncation"    # umbrella — members listed individually
+#        "-fsanitize=implicit-integer-arithmetic-value-change"    # umbrella — members listed individually
+#        "-fsanitize=kernel-address"    # kernel-code sanitizer, wrong for userland
+#        "-fsanitize=kernel-hwaddress"    # kernel-code sanitizer
+#        "-fsanitize=kernel-memory"    # kernel-code sanitizer

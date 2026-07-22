@@ -1,0 +1,6438 @@
+{
+  "_doc": "Selection source of truth. Edit here, then run render-flags.py. Order is significant (last-one-wins on the final command line). Per-family override: add \"gcc\": false or \"clang\": false to an entry.",
+  "files": {
+    "address_sanitizer_flags.txt": {
+      "entries": [
+        {
+          "flags": "-fsanitize=address",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize-address-use-after-scope",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=pointer-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=pointer-subtract",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize-address-use-after-return=always",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize-address-use-after-return=never",
+          "enabled": false
+        },
+        {
+          "flags": "-fsanitize-address-use-after-return=runtime",
+          "enabled": false
+        },
+        {
+          "flags": "-fsanitize-address-use-odr-indicator",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize-address-globals-dead-stripping",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize-address-outline-instrumentation",
+          "enabled": false,
+          "comment": "smaller/slower codegen tradeoff"
+        },
+        {
+          "flags": "-fsanitize-address-field-padding=1",
+          "enabled": false,
+          "comment": "intra-object overflow; ABI-affecting"
+        },
+        {
+          "flags": "-fsanitize-address-poison-custom-array-cookie",
+          "enabled": true
+        }
+      ]
+    },
+    "analyzer_flags.txt": {
+      "entries": [
+        {
+          "flags": "-fanalyzer",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-allocation-size",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-deref-before-check",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-double-fclose",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-double-free",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-exposure-through-output-file",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-exposure-through-uninit-copy",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-fd-access-mode-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-fd-double-close",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-fd-phase-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-fd-type-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-fd-use-after-close",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-fd-use-without-check",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-file-leak",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-free-of-non-heap",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-imprecise-fp-arithmetic",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-infinite-recursion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-jump-through-null",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-malloc-leak",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-mismatching-deallocation",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-null-argument",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-null-dereference",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-out-of-bounds",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-possible-null-argument",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-possible-null-dereference",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-putenv-of-auto-var",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-shift-count-negative",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-shift-count-overflow",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-stale-setjmp-buffer",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-unsafe-call-within-signal-handler",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-use-after-free",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-use-of-pointer-in-stale-stack-frame",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-use-of-uninitialized-value",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-va-arg-type-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-va-list-exhausted",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-va-list-leak",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-va-list-use-after-va-end",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-write-to-const",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-write-to-string-literal",
+          "enabled": true
+        },
+        {
+          "flags": "-Wno-analyzer-allocation-size",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-deref-before-check",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-double-fclose",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-double-free",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-exposure-through-output-file",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-exposure-through-uninit-copy",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-fd-access-mode-mismatch",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-fd-double-close",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-fd-leak",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-fd-phase-mismatch",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-fd-type-mismatch",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-fd-use-after-close",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-fd-use-without-check",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-file-leak",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-free-of-non-heap",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-imprecise-fp-arithmetic",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-infinite-recursion",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-jump-through-null",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-malloc-leak",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-mismatching-deallocation",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-out-of-bounds",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-possible-null-argument",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-possible-null-dereference",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-null-argument",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-null-dereference",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-putenv-of-auto-var",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-shift-count-negative",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-shift-count-overflow",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-stale-setjmp-buffer",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-tainted-allocation-size",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-tainted-assertion",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-tainted-array-index",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-tainted-divisor",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-tainted-offset",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-tainted-size",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-unsafe-call-within-signal-handler",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-use-after-free",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-use-of-pointer-in-stale-stack-frame",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-va-arg-type-mismatch",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-va-list-exhausted",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-va-list-leak",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-va-list-use-after-va-end",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-write-to-const",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-write-to-string-literal",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-analyzer-use-of-uninitialized-value",
+          "enabled": false
+        },
+        {
+          "flags": "-Wanalyzer-infinite-loop",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-overlapping-buffers",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-throw-of-unexpected-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-undefined-behavior-ptrdiff",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-undefined-behavior-strtok",
+          "enabled": true
+        },
+        {
+          "flags": "-fanalyzer-checker=taint",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-tainted-allocation-size",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-tainted-array-index",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-tainted-assertion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-tainted-divisor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-tainted-offset",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-tainted-size",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-symbol-too-complex",
+          "enabled": false,
+          "comment": "meta-warning about analysis limits, not code"
+        },
+        {
+          "flags": "-fanalyzer-debug-text-art",
+          "enabled": false,
+          "comment": "GCC 14 analyzer self-debug output, not diagnostics"
+        },
+        {
+          "flags": "-fanalyzer-show-events-in-system-headers",
+          "enabled": false,
+          "comment": "verbosity knob, noise in teaching output"
+        },
+        {
+          "flags": "-fdump-analyzer-infinite-loop",
+          "enabled": false,
+          "comment": "analyzer dump file, not diagnostics"
+        },
+        {
+          "flags": "-fanalyzer-transitivity",
+          "enabled": true,
+          "comment": "more precise constraint reasoning"
+        },
+        {
+          "flags": "-fanalyzer-fine-grained",
+          "enabled": true,
+          "comment": "finer-grained analysis edges"
+        }
+      ]
+    },
+    "cfi_sanitizer_flags.txt": {
+      "header": [
+        "Clang CFI requires -flto and a visibility setting IN THE SAME invocation \u2014",
+        "probed alone, -fsanitize=cfi always fails (\"only allowed with -flto\") and",
+        "every entry here was silently filtered out. Each line below is one probe",
+        "unit (generate-flags.sh probes a whole line together and emits it together).",
+        "",
+        "Note: on Linux this also needs an LTO-capable linker (lld or the LLVM gold",
+        "plugin); macOS ld64 and FreeBSD lld handle LTO natively. Where the linker",
+        "can't do LTO, these probes fail and CFI is skipped for that machine \u2014",
+        "which is exactly the cache doing its job."
+      ],
+      "entries": [
+        {
+          "flags": "-fsanitize=cfi -flto -fvisibility=hidden",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=cfi-icall -flto -fvisibility=hidden",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=cfi-cast-strict -flto -fvisibility=hidden",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=cfi-derived-cast -flto -fvisibility=hidden",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=cfi-unrelated-cast -flto -fvisibility=hidden",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=cfi-nvcall -flto -fvisibility=hidden",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=cfi-mfcall -flto -fvisibility=hidden",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=cfi -flto -fvisibility=hidden -fsanitize-cfi-cross-dso",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=cfi -flto -fvisibility=hidden -fsanitize-cfi-icall-generalize-pointers",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=cfi -flto -fvisibility=hidden -fsanitize-cfi-icall-experimental-normalize-integers",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=cfi -flto -fvisibility=hidden -fsanitize-cfi-canonical-jump-tables",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=function",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=kcfi",
+          "enabled": false
+        },
+        {
+          "flags": "-fsanitize=cfi-vcall -flto -fvisibility=hidden",
+          "enabled": true
+        }
+      ]
+    },
+    "code_generation_flags.txt": {
+      "entries": [
+        {
+          "flags": "-fstack-reuse=reuse-level",
+          "enabled": false
+        },
+        {
+          "flags": "-ftrapv",
+          "enabled": false
+        },
+        {
+          "flags": "-fwrapv",
+          "enabled": false
+        },
+        {
+          "flags": "-fwrapv-pointer",
+          "enabled": false
+        },
+        {
+          "flags": "-fexceptions",
+          "enabled": false
+        },
+        {
+          "flags": "-fnon-call-exceptions",
+          "enabled": false
+        },
+        {
+          "flags": "-fdelete-dead-exceptions",
+          "enabled": true
+        },
+        {
+          "flags": "-funwind-tables",
+          "enabled": false
+        },
+        {
+          "flags": "-fasynchronous-unwind-tables",
+          "enabled": false
+        },
+        {
+          "flags": "-fno-gnu-unique",
+          "enabled": false
+        },
+        {
+          "flags": "-fpcc-struct-return",
+          "enabled": false
+        },
+        {
+          "flags": "-freg-struct-return",
+          "enabled": false
+        },
+        {
+          "flags": "-fshort-enums",
+          "enabled": false
+        },
+        {
+          "flags": "-fshort-wchar",
+          "enabled": false
+        },
+        {
+          "flags": "-fcommon",
+          "enabled": false
+        },
+        {
+          "flags": "-fno-common",
+          "enabled": true
+        },
+        {
+          "flags": "-fno-ident",
+          "enabled": false
+        },
+        {
+          "flags": "-finhibit-size-directive",
+          "enabled": false
+        },
+        {
+          "flags": "-fverbose-asm",
+          "enabled": false
+        },
+        {
+          "flags": "-fno-verbose-asm",
+          "enabled": true
+        },
+        {
+          "flags": "-frecord-gcc-switches",
+          "enabled": true
+        },
+        {
+          "flags": "-fpic",
+          "enabled": true
+        },
+        {
+          "flags": "-fPIC",
+          "enabled": true
+        },
+        {
+          "flags": "-fpie",
+          "enabled": true,
+          "comment": "PIE/ASLR hardening for executables (companion to -fPIC for libraries); verified to compile+link cleanly alongside -fPIC"
+        },
+        {
+          "flags": "-fPIE",
+          "enabled": true,
+          "comment": "PIE/ASLR hardening for executables (companion to -fPIC for libraries); verified to compile+link cleanly alongside -fPIC"
+        },
+        {
+          "flags": "-fno-plt",
+          "enabled": true
+        },
+        {
+          "flags": "-fno-jump-tables",
+          "enabled": false
+        },
+        {
+          "flags": "-fno-bit-tests",
+          "enabled": false
+        },
+        {
+          "flags": "-ffixed-reg",
+          "enabled": false
+        },
+        {
+          "flags": "-fcall-used-reg",
+          "enabled": false
+        },
+        {
+          "flags": "-fcall-saved-reg",
+          "enabled": false
+        },
+        {
+          "flags": "-fpack-struct[=n]",
+          "enabled": false
+        },
+        {
+          "flags": "-fleading-underscore",
+          "enabled": false
+        },
+        {
+          "flags": "-fno-leading-underscore",
+          "enabled": false
+        },
+        {
+          "flags": "-ftls-model=model",
+          "enabled": false
+        },
+        {
+          "flags": "-ftrampolines",
+          "enabled": false
+        },
+        {
+          "flags": "-fvisibility=[default|internal|hidden|protected]",
+          "enabled": false
+        },
+        {
+          "flags": "-fstrict-volatile-bitfields",
+          "enabled": false
+        },
+        {
+          "flags": "-fsync-libcalls",
+          "enabled": false
+        },
+        {
+          "flags": "-fno-sync-libcalls",
+          "enabled": false
+        },
+        {
+          "flags": "-ffast-math",
+          "enabled": false
+        },
+        {
+          "flags": "-fno-fast-math",
+          "enabled": true
+        },
+        {
+          "flags": "-fdenormal-fp-math=<value>",
+          "enabled": false
+        },
+        {
+          "flags": "-fstrict-float-cast-overflow",
+          "enabled": true
+        },
+        {
+          "flags": "-fmath-errno",
+          "enabled": true
+        },
+        {
+          "flags": "-ftrapping-math",
+          "enabled": true
+        },
+        {
+          "flags": "-ffp-contract=<value>",
+          "enabled": false
+        },
+        {
+          "flags": "-fhonor-infinities",
+          "enabled": false
+        },
+        {
+          "flags": "-fhonor-nans",
+          "enabled": false
+        },
+        {
+          "flags": "-fapprox-func",
+          "enabled": false
+        },
+        {
+          "flags": "-fsigned-zeros",
+          "enabled": false
+        },
+        {
+          "flags": "-fassociative-math",
+          "enabled": false
+        },
+        {
+          "flags": "-freciprocal-math",
+          "enabled": false
+        },
+        {
+          "flags": "-funsafe-math-optimizations",
+          "enabled": false
+        },
+        {
+          "flags": "-fno-unsafe-math-optimizations",
+          "enabled": true
+        },
+        {
+          "flags": "-ffinite-math-only",
+          "enabled": false
+        },
+        {
+          "flags": "-frounding-math",
+          "enabled": false
+        },
+        {
+          "flags": "-ffp-model=<value>",
+          "enabled": false
+        },
+        {
+          "flags": "-ffp-exception-behavior=<value>",
+          "enabled": false
+        },
+        {
+          "flags": "-ffp-eval-method=<value>",
+          "enabled": false
+        },
+        {
+          "flags": "-fprotect-parens",
+          "enabled": false
+        },
+        {
+          "flags": "-fexcess-precision",
+          "enabled": false
+        },
+        {
+          "flags": "-fcx-limited-range",
+          "enabled": false
+        },
+        {
+          "flags": "-fcx-fortran-rules",
+          "enabled": false,
+          "comment": "==== harvested 2026-07-20 (Apple clang 21 + GCC 16) ===="
+        },
+        {
+          "flags": "-fstrict-flex-arrays=3",
+          "enabled": true
+        },
+        {
+          "flags": "-ftrivial-auto-var-init=pattern",
+          "enabled": false,
+          "comment": "masks uninitialized reads from MSan/analyzer \u2014 we WANT those caught"
+        },
+        {
+          "flags": "-fzero-call-used-regs=used-gpr",
+          "enabled": false,
+          "comment": "hardening, not correctness detection; register-wipe cost"
+        },
+        {
+          "flags": "-fhardened",
+          "enabled": false,
+          "comment": "umbrella flag; would fight our explicit FORTIFY/PIE choices"
+        },
+        {
+          "flags": "-fsanitize-trap=undefined",
+          "enabled": false,
+          "comment": "traps instead of diagnostics; we want messages"
+        },
+        {
+          "flags": "-fsanitize-minimal-runtime",
+          "enabled": false,
+          "comment": "drops the descriptive UBSan runtime"
+        },
+        {
+          "flags": "-ffold-mem-offsets",
+          "enabled": false,
+          "comment": "GCC 14 optimization pass, not correctness"
+        },
+        {
+          "flags": "-finline-stringops",
+          "enabled": false,
+          "comment": "codegen size/speed knob"
+        },
+        {
+          "flags": "-fmin-function-alignment=",
+          "enabled": false,
+          "comment": "layout tuning"
+        },
+        {
+          "flags": "-ftrampoline-impl=",
+          "enabled": false,
+          "comment": "nested-function ABI knob"
+        },
+        {
+          "flags": "-fdiagnostics-json-formatting",
+          "enabled": false,
+          "comment": "diagnostics transport format"
+        },
+        {
+          "flags": "-fdiagnostics-text-art-charset=",
+          "enabled": false,
+          "comment": "diagnostics cosmetics"
+        },
+        {
+          "flags": "-fpointer-tbaa",
+          "enabled": false,
+          "comment": "clang 20: stricter aliasing OPTIMIZATION \u2014 widens UB exploitation, against our -fno-fast-math philosophy"
+        },
+        {
+          "flags": "-fassumptions",
+          "enabled": false,
+          "comment": "default-on [[assume]] gate"
+        },
+        {
+          "flags": "-finit-global-zero",
+          "enabled": false,
+          "comment": "default behavior restated"
+        },
+        {
+          "flags": "-fheinous-gnu-extensions",
+          "enabled": false,
+          "comment": "the name says it all"
+        },
+        {
+          "flags": "-fraw-string-literals",
+          "enabled": false,
+          "comment": "dialect gate"
+        },
+        {
+          "flags": "-fc++-static-destructors=",
+          "enabled": false,
+          "comment": "behavior knob"
+        },
+        {
+          "flags": "-fcomplex-arithmetic=",
+          "enabled": false,
+          "comment": "numerics behavior knob, default is correct"
+        },
+        {
+          "flags": "-fbasic-block-address-map",
+          "enabled": false,
+          "comment": "profiling machinery"
+        },
+        {
+          "flags": "-fseparate-named-sections",
+          "enabled": false,
+          "comment": "layout machinery"
+        },
+        {
+          "flags": "-fdisable-block-signature-string",
+          "enabled": false,
+          "comment": "blocks runtime internals"
+        },
+        {
+          "flags": "-fclangir",
+          "enabled": false,
+          "comment": "experimental IR pipeline"
+        },
+        {
+          "flags": "-foffload-via-llvm",
+          "enabled": false,
+          "comment": "offload machinery"
+        },
+        {
+          "flags": "-frtlib-defaultlib",
+          "enabled": false,
+          "comment": "link driver knob"
+        },
+        {
+          "flags": "-ftemporal-profile",
+          "enabled": false,
+          "comment": "PGO variant machinery"
+        },
+        {
+          "flags": "-ftime-trace-verbose",
+          "enabled": false,
+          "comment": "build tooling"
+        },
+        {
+          "flags": "-fuse-lipo=",
+          "enabled": false,
+          "comment": "PGO tooling path"
+        },
+        {
+          "flags": "-funreachable-traps",
+          "enabled": true,
+          "comment": "GCC >= 13: __builtin_unreachable becomes a trap, not UB"
+        },
+        {
+          "flags": "-fcheck-new",
+          "enabled": true,
+          "comment": "C++: check operator new result"
+        },
+        {
+          "flags": "-fstrict-aliasing",
+          "enabled": false,
+          "comment": "TBAA OPTIMIZATION \u2014 widens UB exploitation, same call as -fpointer-tbaa"
+        },
+        {
+          "flags": "-fstrict-enums",
+          "enabled": false,
+          "comment": "same: UB-exploiting optimization"
+        },
+        {
+          "flags": "-ffinite-loops",
+          "enabled": false,
+          "comment": "assumes loop termination \u2014 UB-exploiting"
+        },
+        {
+          "flags": "-fdelete-null-pointer-checks",
+          "enabled": false,
+          "comment": "UB-exploiting optimization (default anyway)"
+        },
+        {
+          "flags": "-fno-knr-functions",
+          "enabled": false,
+          "comment": "covered by -Wstrict-prototypes/-Wold-style-definition + -Werror"
+        },
+        {
+          "flags": "-fsignaling-nans",
+          "enabled": true,
+          "comment": "GCC: honor signaling NaN semantics (pairs with -ftrapping-math)"
+        },
+        {
+          "flags": "-ffloat-store",
+          "enabled": true,
+          "comment": "GCC: no excess precision surprises"
+        },
+        {
+          "flags": "-fno-fp-int-builtin-inexact",
+          "enabled": true,
+          "comment": "GCC: C2x-strict FP->int builtins"
+        },
+        {
+          "flags": "-fkeep-static-consts",
+          "enabled": true,
+          "comment": "keep static consts inspectable"
+        }
+      ]
+    },
+    "dataflow_sanitizer_flags.txt": {
+      "header": [
+        "DataFlowSanitizer (clang-only, x86-64 Linux). The -dfsan-* switches are",
+        "LLVM-internal options: as bare driver flags they are \"unused arguments\"",
+        "and every one was silently filtered out. They must be passed via -mllvm,",
+        "together with the sanitizer itself \u2014 each line is one probe unit."
+      ],
+      "entries": [
+        {
+          "flags": "-fsanitize=dataflow",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=dataflow -mllvm -dfsan-combine-offset-labels-on-gep",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=dataflow -mllvm -dfsan-conditional-callbacks",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=dataflow -mllvm -dfsan-track-origins=2",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=dataflow -mllvm -dfsan-combine-pointer-labels-on-store",
+          "enabled": false
+        },
+        {
+          "flags": "-fsanitize=dataflow -mllvm -dfsan-event-callbacks",
+          "enabled": false
+        },
+        {
+          "flags": "-fsanitize=dataflow -mllvm -dfsan-instrument-with-call-threshold=<n>",
+          "enabled": false
+        }
+      ]
+    },
+    "debug_flags.txt": {
+      "header": [
+        "Exactly ONE debug-level flag: they override each other (last one wins),",
+        "and the old set even included -ggdb0, which turns debug info OFF."
+      ],
+      "entries": [
+        {
+          "flags": "-ggdb3 = richest info (includes macro definitions) targeted at gdb.",
+          "enabled": false
+        },
+        {
+          "flags": "-ggdb3",
+          "enabled": true
+        },
+        {
+          "flags": "-g",
+          "enabled": false
+        },
+        {
+          "flags": "-g1",
+          "enabled": false
+        },
+        {
+          "flags": "-g2",
+          "enabled": false
+        },
+        {
+          "flags": "-g3",
+          "enabled": false
+        },
+        {
+          "flags": "-ggdb",
+          "enabled": false
+        },
+        {
+          "flags": "-ggdb0",
+          "enabled": false
+        },
+        {
+          "flags": "-ggdb1",
+          "enabled": false
+        },
+        {
+          "flags": "-ggdb2",
+          "enabled": false
+        },
+        {
+          "flags": "-gdwarf",
+          "enabled": false
+        },
+        {
+          "flags": "-gdwarf2",
+          "enabled": false
+        },
+        {
+          "flags": "-gdwarf3",
+          "enabled": false
+        },
+        {
+          "flags": "-gdwarf4",
+          "enabled": false
+        },
+        {
+          "flags": "-gdwarf5",
+          "enabled": false
+        },
+        {
+          "flags": "-gbtf",
+          "enabled": false
+        },
+        {
+          "flags": "-gctf",
+          "enabled": false
+        },
+        {
+          "flags": "-gctf0",
+          "enabled": false
+        },
+        {
+          "flags": "-gctf1",
+          "enabled": false
+        },
+        {
+          "flags": "-gctf2",
+          "enabled": false
+        },
+        {
+          "flags": "-gvms",
+          "enabled": false
+        },
+        {
+          "flags": "-gvms0",
+          "enabled": false
+        },
+        {
+          "flags": "-gvms1",
+          "enabled": false
+        },
+        {
+          "flags": "-gvms2",
+          "enabled": false
+        },
+        {
+          "flags": "-fno-eliminate-unused-debug-symbols",
+          "enabled": true
+        },
+        {
+          "flags": "-femit-class-debug-always",
+          "enabled": true
+        },
+        {
+          "flags": "-fno-merge-debug-strings",
+          "enabled": true
+        },
+        {
+          "flags": "-fdebug-prefix-map=old=new",
+          "enabled": false
+        },
+        {
+          "flags": "-fvar-tracking",
+          "enabled": true
+        },
+        {
+          "flags": "-fvar-tracking-assignments",
+          "enabled": true
+        },
+        {
+          "flags": "-gsplit-dwarf",
+          "enabled": false
+        },
+        {
+          "flags": "-gdwarf32",
+          "enabled": false
+        },
+        {
+          "flags": "-gdwarf64",
+          "enabled": false
+        },
+        {
+          "flags": "-gdescribe-dies",
+          "enabled": true
+        },
+        {
+          "flags": "-gpubnames",
+          "enabled": true
+        },
+        {
+          "flags": "-ggnu-pubnames",
+          "enabled": true
+        },
+        {
+          "flags": "-fdebug-types-section",
+          "enabled": false
+        },
+        {
+          "flags": "-grecord-gcc-switches",
+          "enabled": true
+        },
+        {
+          "flags": "-gno-record-gcc-switches",
+          "enabled": false
+        },
+        {
+          "flags": "-gstrict-dwarf",
+          "enabled": false
+        },
+        {
+          "flags": "-gno-strict-dwarf",
+          "enabled": true
+        },
+        {
+          "flags": "-gas-loc-support",
+          "enabled": false
+        },
+        {
+          "flags": "-gno-as-loc-support",
+          "enabled": false
+        },
+        {
+          "flags": "-gas-locview-support",
+          "enabled": false
+        },
+        {
+          "flags": "-gno-as-locview-support",
+          "enabled": false
+        },
+        {
+          "flags": "-gcolumn-info",
+          "enabled": true
+        },
+        {
+          "flags": "-gno-column-info",
+          "enabled": false
+        },
+        {
+          "flags": "-gstatement-frontiers",
+          "enabled": true
+        },
+        {
+          "flags": "-gno-statement-frontiers",
+          "enabled": false
+        },
+        {
+          "flags": "-gvariable-location-views",
+          "enabled": true
+        },
+        {
+          "flags": "-gvariable-location-views=incompat5",
+          "enabled": false
+        },
+        {
+          "flags": "-gno-variable-location-views",
+          "enabled": false
+        },
+        {
+          "flags": "-ginternal-reset-location-views",
+          "enabled": false
+        },
+        {
+          "flags": "-gno-internal-reset-location-views",
+          "enabled": true
+        },
+        {
+          "flags": "-ginline-points",
+          "enabled": true
+        },
+        {
+          "flags": "-gno-inline-points",
+          "enabled": false
+        },
+        {
+          "flags": "-gz[=type]",
+          "enabled": false
+        },
+        {
+          "flags": "-femit-struct-debug-baseonly",
+          "enabled": false
+        },
+        {
+          "flags": "-femit-struct-debug-reduced",
+          "enabled": false
+        },
+        {
+          "flags": "-femit-struct-debug-detailed[=spec-list]",
+          "enabled": false
+        },
+        {
+          "flags": "-fno-dwarf2-cfi-asm",
+          "enabled": false
+        },
+        {
+          "flags": "-fno-eliminate-unused-debug-types",
+          "enabled": true
+        },
+        {
+          "flags": "-gno-omit-unreferenced-methods",
+          "enabled": true,
+          "comment": "clang >= 20: complete C++ class debug info"
+        },
+        {
+          "flags": "-gtemplate-alias",
+          "enabled": true,
+          "comment": "clang >= 20: DWARF for template aliases"
+        },
+        {
+          "flags": "-fextend-variable-liveness",
+          "enabled": true,
+          "comment": "clang >= 20: variables stay inspectable in debugger"
+        },
+        {
+          "flags": "-gomit-unreferenced-methods",
+          "enabled": false,
+          "comment": "inverse of above \u2014 REDUCES debug info"
+        },
+        {
+          "flags": "-gcodeview",
+          "enabled": false,
+          "comment": "Windows PDB format, not our platforms"
+        },
+        {
+          "flags": "-fvar-tracking-uninit",
+          "enabled": true,
+          "comment": "GCC: track uninitialized vars in debug info"
+        },
+        {
+          "flags": "-fstack-usage",
+          "enabled": true,
+          "comment": "GCC: emit per-function stack usage (.su files in build dir)"
+        },
+        {
+          "flags": "-fkeep-inline-functions",
+          "enabled": true,
+          "comment": "keep every function inspectable in the debugger"
+        },
+        {
+          "flags": "-fkeep-static-functions",
+          "enabled": true
+        },
+        {
+          "flags": "-fdebug-macro",
+          "enabled": true,
+          "comment": "clang: macro definitions in debug info"
+        },
+        {
+          "flags": "-fdiagnostics-show-template-tree",
+          "enabled": true,
+          "comment": "clang: structured C++ template-mismatch errors"
+        },
+        {
+          "flags": "-fstandalone-debug",
+          "enabled": true,
+          "comment": "clang: complete type info, no vendor elision"
+        },
+        {
+          "flags": "-fstack-size-section",
+          "enabled": true,
+          "comment": "clang: per-function stack sizes (like GCC -fstack-usage)"
+        },
+        {
+          "flags": "-fcallgraph-info=su,da",
+          "enabled": true,
+          "comment": "GCC: callgraph with stack usage + dynamic allocation"
+        },
+        {
+          "flags": "-fparse-all-comments",
+          "enabled": false,
+          "comment": "makes clang treat EVERY comment (incl. plain /* license/email headers) as a doc comment, so -Wdocumentation-unknown-command fires on the @ in emails across 200+ files. Marginal value, high false-positive cost -> excluded."
+        },
+        {
+          "flags": "-gdwarf-5 -gembed-source",
+          "enabled": true,
+          "comment": "clang: embed source in DWARF5 \u2014 debugger always has it"
+        }
+      ]
+    },
+    "hwaddress_sanitizer_flags.txt": {
+      "entries": [
+        {
+          "flags": "-fsanitize=hwaddress",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=memtag",
+          "enabled": false,
+          "comment": "ARM MTE hardware only \u2014 no current platform has it"
+        },
+        {
+          "flags": "-fsanitize=memtag-stack",
+          "enabled": false,
+          "comment": "ARM MTE hardware only"
+        },
+        {
+          "flags": "-fsanitize=memtag-heap",
+          "enabled": false,
+          "comment": "ARM MTE hardware only"
+        },
+        {
+          "flags": "-fsanitize=memtag-globals",
+          "enabled": false,
+          "comment": "ARM MTE hardware only"
+        }
+      ]
+    },
+    "hardening_compiler_flags.txt": {
+      "header": [
+        "Compiler-accepted hardening flags (always on; no link-only switches here)"
+      ],
+      "entries": [
+        {
+          "flags": "-fharden-compares",
+          "enabled": true,
+          "comment": "clang >= 17"
+        },
+        {
+          "flags": "-fharden-conditional-branches",
+          "enabled": true,
+          "comment": "clang >= 17"
+        },
+        {
+          "flags": "-fstack-protector",
+          "enabled": false
+        },
+        {
+          "flags": "-fstack-protector-all",
+          "enabled": true
+        },
+        {
+          "flags": "-fstack-protector-strong",
+          "enabled": false
+        },
+        {
+          "flags": "-fstack-protector-explicit",
+          "enabled": false
+        },
+        {
+          "flags": "-fstack-check",
+          "enabled": true,
+          "comment": "GCC only"
+        },
+        {
+          "flags": "-fstack-clash-protection",
+          "enabled": true,
+          "comment": "stronger stack-probing than -fstack-check on Linux x86/ARM; per-compiler probe drops it where unsupported (e.g. macOS)"
+        },
+        {
+          "flags": "-fstack-limit-register=reg",
+          "enabled": false,
+          "comment": "GCC only"
+        },
+        {
+          "flags": "-fstack-limit-symbol=sym",
+          "enabled": false,
+          "comment": "GCC only"
+        },
+        {
+          "flags": "-fno-stack-limit",
+          "enabled": false,
+          "comment": "GCC only"
+        },
+        {
+          "flags": "-fsplit-stack",
+          "enabled": false,
+          "comment": "GCC on some targets; clang usually no"
+        },
+        {
+          "flags": "-fvtable-verify=std",
+          "enabled": true,
+          "comment": "GCC C++ only"
+        },
+        {
+          "flags": "-fvtable-verify=preinit",
+          "enabled": false,
+          "comment": "GCC C++ only"
+        },
+        {
+          "flags": "-fvtable-verify=none",
+          "enabled": false,
+          "comment": "GCC C++ only"
+        },
+        {
+          "flags": "-fvtv-debug",
+          "enabled": false,
+          "comment": "GCC C++ only"
+        },
+        {
+          "flags": "-fvtv-counts",
+          "enabled": false,
+          "comment": "GCC C++ only"
+        },
+        {
+          "flags": "-finstrument-functions",
+          "enabled": true
+        },
+        {
+          "flags": "-finstrument-functions-once",
+          "enabled": true
+        },
+        {
+          "flags": "-finstrument-functions-exclude-file-list=f",
+          "enabled": false
+        },
+        {
+          "flags": "-finstrument-functions-exclude-function-list=",
+          "enabled": false
+        },
+        {
+          "flags": "-fpatchable-function-entry=",
+          "enabled": false,
+          "comment": "needs a value"
+        },
+        {
+          "flags": "-fharden-control-flow-redundancy",
+          "enabled": true,
+          "comment": "GCC >= 14: runtime control-flow checking"
+        },
+        {
+          "flags": "-fstrub=all",
+          "enabled": true,
+          "comment": "GCC >= 14: scrub stack frames on exit"
+        },
+        {
+          "flags": "-faarch64-jump-table-hardening",
+          "enabled": true,
+          "comment": "clang >= 20, aarch64 only (probe rejects elsewhere)"
+        },
+        {
+          "flags": "-fhardcfr-check-exceptions",
+          "enabled": false,
+          "comment": "tuning knob; base -fharden-control-flow-redundancy default is sane"
+        },
+        {
+          "flags": "-fhardcfr-check-noreturn-calls=",
+          "enabled": false,
+          "comment": "tuning knob"
+        },
+        {
+          "flags": "-fhardcfr-check-returning-calls",
+          "enabled": false,
+          "comment": "tuning knob"
+        },
+        {
+          "flags": "-fhardcfr-skip-leaf",
+          "enabled": false,
+          "comment": "WEAKENS hardcfr coverage"
+        },
+        {
+          "flags": "-fcf-protection=full",
+          "enabled": true,
+          "comment": "x86 CET shadow-stack+IBT (probe rejects elsewhere)"
+        },
+        {
+          "flags": "-mbranch-protection=standard",
+          "enabled": true,
+          "comment": "aarch64 PAC+BTI (probe rejects on x86)"
+        },
+        {
+          "flags": "-mspeculative-load-hardening",
+          "enabled": false,
+          "comment": "Spectre-v1 (bounds-check bypass) mitigation, clang. Runtime-perf cost; deployment hardening, not a correctness/diagnostic win \u2014 off for the teaching build, flip on per policy."
+        },
+        {
+          "flags": "-mretpoline",
+          "enabled": false,
+          "comment": "Spectre-v2 (branch-target injection) mitigation, clang/x86. Perf cost; off by default (deployment hardening)."
+        },
+        {
+          "flags": "-mindirect-branch=thunk",
+          "enabled": false,
+          "comment": "Spectre-v2 mitigation, gcc/x86 (retpoline thunks). Perf cost; off by default."
+        },
+        {
+          "flags": "-mfunction-return=thunk",
+          "enabled": false,
+          "comment": "Retbleed mitigation, gcc/x86. Perf cost; off by default."
+        },
+        {
+          "flags": "-mharden-sls=all",
+          "enabled": false,
+          "comment": "Straight-line-speculation hardening, gcc+clang (x86/arm). Off by default (deployment hardening)."
+        },
+        {
+          "flags": "-mshstk",
+          "enabled": false,
+          "comment": "Enables the CET shadow-stack ISA, x86; complements -fcf-protection=full (already on). Off by default; enable per deployment policy."
+        }
+      ]
+    },
+    "hardening_link_flags.txt": {
+      "header": [
+        "Linker hardening + diagnostics. Probe mode is LINK, so each platform keeps",
+        "what its linker accepts: ELF linkers (Linux/FreeBSD) take the -z family,",
+        "macOS ld64 rejects it and simply drops off that machine's cache."
+      ],
+      "entries": [
+        {
+          "flags": "-Wl,-z,relro",
+          "enabled": true,
+          "comment": "read-only relocations after startup"
+        },
+        {
+          "flags": "-Wl,-z,now",
+          "enabled": true,
+          "comment": "resolve all symbols at load (full RELRO with relro)"
+        },
+        {
+          "flags": "-Wl,-z,noexecstack",
+          "enabled": true,
+          "comment": "non-executable stack, explicitly"
+        },
+        {
+          "flags": "-Wl,-z,separate-code",
+          "enabled": true,
+          "comment": "code pages never share with data"
+        },
+        {
+          "flags": "-Wl,--as-needed",
+          "enabled": true,
+          "comment": "only link libraries actually used"
+        },
+        {
+          "flags": "-Wl,--fatal-warnings",
+          "enabled": true,
+          "comment": "linker warnings are errors, like -Werror"
+        },
+        {
+          "flags": "-rdynamic",
+          "enabled": true,
+          "comment": "export symbols so backtraces have names"
+        },
+        {
+          "flags": "-Wl,-z,defs",
+          "enabled": false,
+          "comment": "forbid undefined symbols \u2014 BREAKS sanitizer runtimes (resolved at load)"
+        },
+        {
+          "flags": "-Wl,--no-undefined",
+          "enabled": false,
+          "comment": "same as -z defs"
+        },
+        {
+          "flags": "-Wl,--gc-sections",
+          "enabled": false,
+          "comment": "needs -ffunction-sections/-fdata-sections (excluded optimization)"
+        }
+      ]
+    },
+    "leak_sanitizer_flags.txt": {
+      "entries": [
+        {
+          "flags": "-fsanitize=leak",
+          "enabled": true
+        }
+      ]
+    },
+    "memory_sanitizer_flags.txt": {
+      "entries": [
+        {
+          "flags": "-fsanitize=memory",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize-memory-track-origins",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize-memory-param-retval",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize-memory-use-after-dtor",
+          "enabled": true
+        }
+      ]
+    },
+    "numerical_sanitizer_flags.txt": {
+      "header": [
+        "NSan (clang >= 20): detects floating-point precision loss numerically."
+      ],
+      "entries": [
+        {
+          "flags": "-fsanitize=numerical",
+          "enabled": true
+        }
+      ]
+    },
+    "optimization_flags.txt": {
+      "entries": [
+        {
+          "flags": "-O0",
+          "enabled": true
+        }
+      ]
+    },
+    "pointer_overflow_sanitizer_flags.txt": {
+      "entries": [
+        {
+          "flags": "-fsanitize=pointer-overflow",
+          "enabled": true
+        }
+      ]
+    },
+    "realtime_sanitizer_flags.txt": {
+      "header": [
+        "RTSan (clang >= 20): flags blocking calls inside [[clang::nonblocking]]",
+        "functions. A no-op until code is annotated, but costs nothing to enable."
+      ],
+      "entries": [
+        {
+          "flags": "-fsanitize=realtime",
+          "enabled": true
+        }
+      ]
+    },
+    "safe_stack_sanitizer_flags.txt": {
+      "entries": [
+        {
+          "flags": "-fsanitize=safe-stack",
+          "enabled": true
+        }
+      ]
+    },
+    "shadow_call_stack_sanitizer_flags.txt": {
+      "entries": [
+        {
+          "flags": "-fsanitize=shadow-call-stack",
+          "enabled": true
+        }
+      ]
+    },
+    "thread_sanitizer_flags.txt": {
+      "entries": [
+        {
+          "flags": "-fsanitize=thread",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize-thread-atomics",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize-thread-func-entry-exit",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize-thread-memory-access",
+          "enabled": true
+        }
+      ]
+    },
+    "type_sanitizer_flags.txt": {
+      "header": [
+        "TySan (clang >= 20): detects type-based aliasing violations at runtime."
+      ],
+      "entries": [
+        {
+          "flags": "-fsanitize=type",
+          "enabled": true
+        }
+      ]
+    },
+    "undefined_sanitizer_flags.txt": {
+      "entries": [
+        {
+          "flags": "-fsanitize=undefined",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=shift",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=shift-exponent",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=shift-base",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=integer-divide-by-zero",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=unreachable",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=vla-bound",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=null",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=return",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=signed-integer-overflow",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=bounds",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=bounds-strict",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=alignment",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=object-size",
+          "enabled": false
+        },
+        {
+          "flags": "-fsanitize=float-divide-by-zero",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=float-cast-overflow",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=nonnull-attribute",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=returns-nonnull-attribute",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=bool",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=enum",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=vptr",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=pointer-overflow",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=builtin",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=array-bounds",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=local-bounds",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=function",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=implicit-unsigned-integer-truncation",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=implicit-signed-integer-truncation",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=implicit-integer-sign-change",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=nullability-arg",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=nullability-assign",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=nullability-return",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=objc-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=unsigned-shift-base",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=implicit-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=unsigned-integer-overflow",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize-merge",
+          "enabled": false,
+          "comment": "trap-mode dedup knob; we don't use trap mode"
+        },
+        {
+          "flags": "-fsanitize-skip-hot-cutoff=",
+          "enabled": false,
+          "comment": "PGO-driven sanitizer SKIPPING \u2014 reduces coverage"
+        },
+        {
+          "flags": "-fsanitize-undefined-ignore-overflow-pattern=",
+          "enabled": false,
+          "comment": "carves holes in UBSan coverage"
+        },
+        {
+          "flags": "-fsanitize=implicit-bitfield-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=objc-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-fsanitize=integer",
+          "enabled": false,
+          "comment": "umbrella \u2014 members listed individually"
+        },
+        {
+          "flags": "-fsanitize=nullability",
+          "enabled": false,
+          "comment": "umbrella \u2014 members listed individually"
+        },
+        {
+          "flags": "-fsanitize=implicit-integer-conversion",
+          "enabled": false,
+          "comment": "umbrella \u2014 members listed individually"
+        },
+        {
+          "flags": "-fsanitize=implicit-integer-truncation",
+          "enabled": false,
+          "comment": "umbrella \u2014 members listed individually"
+        },
+        {
+          "flags": "-fsanitize=implicit-integer-arithmetic-value-change",
+          "enabled": false,
+          "comment": "umbrella \u2014 members listed individually"
+        },
+        {
+          "flags": "-fsanitize=kernel-address",
+          "enabled": false,
+          "comment": "kernel-code sanitizer, wrong for userland"
+        },
+        {
+          "flags": "-fsanitize=kernel-hwaddress",
+          "enabled": false,
+          "comment": "kernel-code sanitizer"
+        },
+        {
+          "flags": "-fsanitize=kernel-memory",
+          "enabled": false,
+          "comment": "kernel-code sanitizer"
+        }
+      ]
+    },
+    "warning_flags.txt": {
+      "header": [
+        "https://gcc.gnu.org/onlinedocs/gcc-13.2.0/gcc/Warning-Options.html"
+      ],
+      "entries": [
+        {
+          "flags": "-fsyntax-only",
+          "enabled": false
+        },
+        {
+          "flags": "-fmax-errors=n",
+          "enabled": false
+        },
+        {
+          "flags": "-w",
+          "enabled": false
+        },
+        {
+          "flags": "-Werror",
+          "enabled": true
+        },
+        {
+          "flags": "-Werror=",
+          "enabled": false
+        },
+        {
+          "flags": "-Wfatal-errors",
+          "enabled": false
+        },
+        {
+          "flags": "-Wpedantic",
+          "enabled": true
+        },
+        {
+          "flags": "-pedantic-errors",
+          "enabled": false
+        },
+        {
+          "flags": "-Wall",
+          "enabled": true
+        },
+        {
+          "flags": "-Wextra",
+          "enabled": true
+        },
+        {
+          "flags": "-Wabi",
+          "enabled": true
+        },
+        {
+          "flags": "-Wchar-subscripts",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdouble-promotion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wduplicate-decl-specifier",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat",
+          "enabled": false
+        },
+        {
+          "flags": "-Wformat=1",
+          "enabled": false
+        },
+        {
+          "flags": "-Wformat=2",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-overflow",
+          "enabled": false
+        },
+        {
+          "flags": "-Wformat-overflow=1",
+          "enabled": false
+        },
+        {
+          "flags": "-Wformat-overflow=2",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-nonliteral",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-security",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-signedness",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-truncation",
+          "enabled": false
+        },
+        {
+          "flags": "-Wformat-truncation=1",
+          "enabled": false
+        },
+        {
+          "flags": "-Wformat-truncation=2",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-y2k",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnonnull",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnonnull-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnull-dereference",
+          "enabled": true
+        },
+        {
+          "flags": "-Winfinite-recursion",
+          "enabled": true
+        },
+        {
+          "flags": "-Winit-self",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-fallthrough",
+          "enabled": false
+        },
+        {
+          "flags": "-Wimplicit-fallthrough=1",
+          "enabled": false
+        },
+        {
+          "flags": "-Wimplicit-fallthrough=2",
+          "enabled": false
+        },
+        {
+          "flags": "-Wimplicit-fallthrough=3",
+          "enabled": false
+        },
+        {
+          "flags": "-Wimplicit-fallthrough=4",
+          "enabled": false
+        },
+        {
+          "flags": "-Wimplicit-fallthrough=5",
+          "enabled": true
+        },
+        {
+          "flags": "-Wignored-qualifiers",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmain",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmisleading-indentation",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-attributes",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-braces",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-include-dirs",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmismatched-dealloc",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmultistatement-macros",
+          "enabled": true
+        },
+        {
+          "flags": "-Wparentheses",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsequence-point",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreturn-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshift-negative-value",
+          "enabled": true
+        },
+        {
+          "flags": "-Wno-shift-overflow",
+          "enabled": false
+        },
+        {
+          "flags": "-Wshift-overflow=1",
+          "enabled": false
+        },
+        {
+          "flags": "-Wshift-overflow",
+          "enabled": true,
+          "comment": "plain first (clang only has this)..."
+        },
+        {
+          "flags": "-Wshift-overflow=2",
+          "enabled": true,
+          "comment": "...then =2 so GCC ends on the stronger level"
+        },
+        {
+          "flags": "-Wswitch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wswitch-default",
+          "enabled": true
+        },
+        {
+          "flags": "-Wswitch-enum",
+          "enabled": true
+        },
+        {
+          "flags": "-Wno-switch-bool",
+          "enabled": false
+        },
+        {
+          "flags": "-Wsync-nand",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtrivial-auto-var-init",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-but-set-parameter",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-but-set-variable",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-function",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-label",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-local-typedefs",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-parameter",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-variable",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-const-variable",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-const-variable=1",
+          "enabled": false
+        },
+        {
+          "flags": "-Wunused-const-variable=2",
+          "enabled": false
+        },
+        {
+          "flags": "-Wunused-value",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused",
+          "enabled": true
+        },
+        {
+          "flags": "-Wuninitialized",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmaybe-uninitialized",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunknown-pragmas",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstrict-aliasing",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstrict-aliasing=1",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstrict-aliasing=2",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstrict-aliasing=3",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstrict-overflow",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstrict-overflow=1",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstrict-overflow=2",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstrict-overflow=3",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstrict-overflow=4",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstrict-overflow=5",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstring-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstringop-overflow",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstringop-overflow=1",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstringop-overflow=2",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstringop-overflow=3",
+          "enabled": false
+        },
+        {
+          "flags": "-Wstringop-overflow=4",
+          "enabled": true
+        },
+        {
+          "flags": "-fstrict-flex-arrays=3 -Wstrict-flex-arrays",
+          "enabled": true,
+          "comment": "gcc-only: -Wstrict-flex-arrays is ignored unless -fstrict-flex-arrays is present, so the two are probed+emitted as one group (=3 = only [] is a flexible array member). clang lacks the warning, so the whole group is dropped on clang."
+        },
+        {
+          "flags": "-fstrict-flex-arrays=1",
+          "enabled": false
+        },
+        {
+          "flags": "-fstrict-flex-arrays=2",
+          "enabled": false
+        },
+        {
+          "flags": "-fstrict-flex-arrays=3",
+          "enabled": false
+        },
+        {
+          "flags": "-Wsuggest-attribute=pure",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsuggest-attribute=const",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsuggest-attribute=noreturn",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-noreturn",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsuggest-attribute=malloc",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsuggest-attribute=format",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-format-attribute",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsuggest-attribute=cold",
+          "enabled": true
+        },
+        {
+          "flags": "-Walloc-zero",
+          "enabled": true
+        },
+        {
+          "flags": "-Walloc-size-larger-than=\u2018PTRDIFF_MAX\u2019",
+          "enabled": false
+        },
+        {
+          "flags": "-Walloca",
+          "enabled": true
+        },
+        {
+          "flags": "-Walloca-larger-than",
+          "enabled": true
+        },
+        {
+          "flags": "-Warith-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Warray-bounds",
+          "enabled": false
+        },
+        {
+          "flags": "-Warray-bounds=1",
+          "enabled": false
+        },
+        {
+          "flags": "-Warray-bounds=2",
+          "enabled": true
+        },
+        {
+          "flags": "-Warray-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Warray-parameter",
+          "enabled": false
+        },
+        {
+          "flags": "-Warray-parameter=1",
+          "enabled": false
+        },
+        {
+          "flags": "-Warray-parameter=2",
+          "enabled": true
+        },
+        {
+          "flags": "-Wattribute-alias=1",
+          "enabled": true
+        },
+        {
+          "flags": "-Wattribute-alias=2",
+          "enabled": true
+        },
+        {
+          "flags": "-Wno-attribute-alias",
+          "enabled": false,
+          "comment": "CONFLICT: would cancel -Wattribute-alias=2 (last flag wins)"
+        },
+        {
+          "flags": "-Wbidi-chars=unpaired",
+          "enabled": false
+        },
+        {
+          "flags": "-Wbidi-chars=any",
+          "enabled": false
+        },
+        {
+          "flags": "-Wbidi-chars=ucn",
+          "enabled": false
+        },
+        {
+          "flags": "-Wbidi-chars=unpaired,any",
+          "enabled": false
+        },
+        {
+          "flags": "-Wbidi-chars=unpaired,ucn",
+          "enabled": false
+        },
+        {
+          "flags": "-Wbidi-chars=any,ucn",
+          "enabled": false
+        },
+        {
+          "flags": "-Wbidi-chars=unpaired,any,ucn",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbool-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbool-operation",
+          "enabled": true
+        },
+        {
+          "flags": "-Wduplicated-branches",
+          "enabled": true
+        },
+        {
+          "flags": "-Wduplicated-cond",
+          "enabled": true
+        },
+        {
+          "flags": "-Wframe-address",
+          "enabled": true
+        },
+        {
+          "flags": "-Wzero-length-bounds",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsystem-headers",
+          "enabled": false
+        },
+        {
+          "flags": "-Wtautological-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtrampolines",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfloat-equal",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtraditional",
+          "enabled": false
+        },
+        {
+          "flags": "-Wdeclaration-after-statement",
+          "enabled": true,
+          "comment": "Style: force all declarations to the top of a block, before any statements (variables-before-code). Deliberate house style, not an old-C requirement \u2014 works the same in C17/18."
+        },
+        {
+          "flags": "-Wshadow=compatible-local",
+          "enabled": true,
+          "comment": "weakest first..."
+        },
+        {
+          "flags": "-Wshadow=local",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshadow=global",
+          "enabled": true,
+          "comment": "...strongest last (GCC-only value forms)"
+        },
+        {
+          "flags": "-Wshadow",
+          "enabled": true,
+          "comment": "LAST on purpose: value forms above are GCC-only; last-wins must end widest (plain = =global)"
+        },
+        {
+          "flags": "-Wlarger-than=\u2018PTRDIFF_MAX\u2019",
+          "enabled": false
+        },
+        {
+          "flags": "-Wframe-larger-than=\u2018PTRDIFF_MAX\u2019",
+          "enabled": false
+        },
+        {
+          "flags": "-Wfree-nonheap-object",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstack-usage=\u2018PTRDIFF_MAX\u2019",
+          "enabled": false
+        },
+        {
+          "flags": "-Wunsafe-loop-optimizations",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpointer-arith",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtsan",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtype-limits",
+          "enabled": true
+        },
+        {
+          "flags": "-Wabsolute-value",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcomment",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtrigraphs",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundef",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexpansion-to-defined",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-macros",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbad-function-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc++-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc++11-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc++14-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc++17-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc++20-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcast-qual",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcast-align",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcast-align=strict",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcast-function-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wwrite-strings",
+          "enabled": true
+        },
+        {
+          "flags": "-Wclobbered",
+          "enabled": true
+        },
+        {
+          "flags": "-Wconversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdangling-else",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdangling-pointer",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdangling-pointer=1",
+          "enabled": false
+        },
+        {
+          "flags": "-Wdangling-pointer=2",
+          "enabled": false
+        },
+        {
+          "flags": "-Wdate-time",
+          "enabled": true
+        },
+        {
+          "flags": "-Wempty-body",
+          "enabled": true
+        },
+        {
+          "flags": "-Wenum-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wenum-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wenum-int-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wjump-misses-init",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsign-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsign-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfloat-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsizeof-array-div",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsizeof-pointer-div",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsizeof-pointer-memaccess",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmemset-elt-size",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmemset-transposed-args",
+          "enabled": true
+        },
+        {
+          "flags": "-Waddress",
+          "enabled": true
+        },
+        {
+          "flags": "-Wlogical-op",
+          "enabled": true
+        },
+        {
+          "flags": "-Wlogical-not-parentheses",
+          "enabled": true
+        },
+        {
+          "flags": "-Waggregate-return",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstrict-prototypes",
+          "enabled": true
+        },
+        {
+          "flags": "-Wold-style-declaration",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-parameter-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-prototypes",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-declarations",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-field-initializers",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnormalized=none",
+          "enabled": false
+        },
+        {
+          "flags": "-Wnormalized=id",
+          "enabled": false
+        },
+        {
+          "flags": "-Wnormalized=nfc",
+          "enabled": false
+        },
+        {
+          "flags": "-Wnormalized=nfkc",
+          "enabled": true
+        },
+        {
+          "flags": "-Wopenacc-parallelism",
+          "enabled": true
+        },
+        {
+          "flags": "-Wopenmp-simd",
+          "enabled": true
+        },
+        {
+          "flags": "-Woverride-init",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpacked",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpacked-not-aligned",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpadded",
+          "enabled": false
+        },
+        {
+          "flags": "-Wredundant-decls",
+          "enabled": true
+        },
+        {
+          "flags": "-Wrestrict",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnested-externs",
+          "enabled": true
+        },
+        {
+          "flags": "-Winline",
+          "enabled": true
+        },
+        {
+          "flags": "-Winterference-size",
+          "enabled": true
+        },
+        {
+          "flags": "-Wint-in-bool-context",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-pch",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-utf8",
+          "enabled": true
+        },
+        {
+          "flags": "-Wlong-long",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-long-long",
+          "enabled": false
+        },
+        {
+          "flags": "-Wvariadic-macros",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvector-operation-performance",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvla",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvla-larger-than=\u2018PTRDIFF_MAX\u2019",
+          "enabled": false
+        },
+        {
+          "flags": "-Wvla-parameter",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvolatile-register-var",
+          "enabled": true
+        },
+        {
+          "flags": "-Wxor-used-as-pow",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdisabled-optimization",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpointer-sign",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstack-protector",
+          "enabled": false
+        },
+        {
+          "flags": "-Wno-poison-system-directories",
+          "enabled": true
+        },
+        {
+          "flags": "-Wno-invalid-command-line-argument",
+          "enabled": true
+        },
+        {
+          "flags": "-Wno-unused-command-line-argument",
+          "enabled": true
+        },
+        {
+          "flags": "-W",
+          "enabled": true,
+          "comment": "pragma-messages\""
+        },
+        {
+          "flags": "-WCFString-literal",
+          "enabled": true
+        },
+        {
+          "flags": "-WCL4",
+          "enabled": true
+        },
+        {
+          "flags": "-WIndependentClass-attribute",
+          "enabled": true
+        },
+        {
+          "flags": "-WNSObject-attribute",
+          "enabled": true
+        },
+        {
+          "flags": "-Wabstract-final-class",
+          "enabled": true
+        },
+        {
+          "flags": "-Wabstract-vbase-init",
+          "enabled": true
+        },
+        {
+          "flags": "-Waddress-of-packed-member",
+          "enabled": true
+        },
+        {
+          "flags": "-Waddress-of-temporary",
+          "enabled": true
+        },
+        {
+          "flags": "-Waix-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Walign-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Walloca-with-align-alignof",
+          "enabled": true
+        },
+        {
+          "flags": "-Walways-inline-coroutine",
+          "enabled": true
+        },
+        {
+          "flags": "-Wambiguous-delete",
+          "enabled": true
+        },
+        {
+          "flags": "-Wambiguous-ellipsis",
+          "enabled": true
+        },
+        {
+          "flags": "-Wambiguous-macro",
+          "enabled": true
+        },
+        {
+          "flags": "-Wambiguous-member-template",
+          "enabled": true
+        },
+        {
+          "flags": "-Wambiguous-reversed-operator",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanalyzer-incompatible-plugin",
+          "enabled": true
+        },
+        {
+          "flags": "-Wandroid-unversioned-fallback",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanon-enum-enum-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wanonymous-pack-parens",
+          "enabled": true
+        },
+        {
+          "flags": "-Wapinotes",
+          "enabled": true
+        },
+        {
+          "flags": "-Warc",
+          "enabled": true
+        },
+        {
+          "flags": "-Warc-bridge-casts-disallowed-in-nonarc",
+          "enabled": true
+        },
+        {
+          "flags": "-Warc-maybe-repeated-use-of-weak",
+          "enabled": true
+        },
+        {
+          "flags": "-Warc-non-pod-memaccess",
+          "enabled": true
+        },
+        {
+          "flags": "-Warc-performSelector-leaks",
+          "enabled": true
+        },
+        {
+          "flags": "-Warc-repeated-use-of-weak",
+          "enabled": true
+        },
+        {
+          "flags": "-Warc-retain-cycles",
+          "enabled": true
+        },
+        {
+          "flags": "-Warc-unsafe-retained-assign",
+          "enabled": true
+        },
+        {
+          "flags": "-Wargument-outside-range",
+          "enabled": true
+        },
+        {
+          "flags": "-Wargument-undefined-behaviour",
+          "enabled": true
+        },
+        {
+          "flags": "-Warray-bounds-pointer-arithmetic",
+          "enabled": true
+        },
+        {
+          "flags": "-Wasm",
+          "enabled": true
+        },
+        {
+          "flags": "-Wasm-operand-widths",
+          "enabled": true
+        },
+        {
+          "flags": "-Wassign-enum",
+          "enabled": true
+        },
+        {
+          "flags": "-Wassume",
+          "enabled": true
+        },
+        {
+          "flags": "-Wat-protocol",
+          "enabled": true
+        },
+        {
+          "flags": "-Watimport-in-framework-header",
+          "enabled": true
+        },
+        {
+          "flags": "-Watomic-access",
+          "enabled": true
+        },
+        {
+          "flags": "-Watomic-alignment",
+          "enabled": true
+        },
+        {
+          "flags": "-Watomic-implicit-seq-cst",
+          "enabled": true
+        },
+        {
+          "flags": "-Watomic-memory-ordering",
+          "enabled": true
+        },
+        {
+          "flags": "-Watomic-properties",
+          "enabled": true
+        },
+        {
+          "flags": "-Watomic-property-with-user-defined-accessor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wattribute-packed-for-bitfield",
+          "enabled": true
+        },
+        {
+          "flags": "-Wattribute-warning",
+          "enabled": true
+        },
+        {
+          "flags": "-Wattributes",
+          "enabled": true
+        },
+        {
+          "flags": "-Wauto-decl-extensions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wauto-disable-vptr-sanitizer",
+          "enabled": true
+        },
+        {
+          "flags": "-Wauto-import",
+          "enabled": true
+        },
+        {
+          "flags": "-Wauto-storage-class",
+          "enabled": true
+        },
+        {
+          "flags": "-Wauto-var-id",
+          "enabled": true
+        },
+        {
+          "flags": "-Wavailability",
+          "enabled": true
+        },
+        {
+          "flags": "-Wavr-rtlib-linking-quirks",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbackend-plugin",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbackslash-newline-escape",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbinary-literal",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbind-to-temporary-copy",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbinding-in-condition",
+          "enabled": false
+        },
+        {
+          "flags": "-Wbit-int-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbitfield-constant-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbitfield-enum-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbitfield-width",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbitwise-conditional-parentheses",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbitwise-instead-of-logical",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbitwise-op-parentheses",
+          "enabled": true
+        },
+        {
+          "flags": "-Wblock-capture-autoreleasing",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbool-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbraced-scalar-init",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbranch-protection",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbridge-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbuiltin-assume-aligned-alignment",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbuiltin-macro-redefined",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbuiltin-memcpy-chk-size",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbuiltin-requires-header",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc++23-extensions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc++23-lambda-attributes",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcall-to-pure-virtual-from-ctor-dtor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcalled-once-parameter",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcast-calling-convention",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcast-function-type-strict",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcast-of-sel-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcast-qual-unrelated",
+          "enabled": true
+        },
+        {
+          "flags": "-Wchar-align",
+          "enabled": true
+        },
+        {
+          "flags": "-Wclang-cl-pch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wclass-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wclass-varargs",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcmse-union-leak",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcomma",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcompare-distinct-pointer-types",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcompletion-handler",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcomplex-component-init",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcompound-token-split",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcompound-token-split-by-macro",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcompound-token-split-by-space",
+          "enabled": true
+        },
+        {
+          "flags": "-Wconditional-type-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wconditional-uninitialized",
+          "enabled": true
+        },
+        {
+          "flags": "-Wconfig-macros",
+          "enabled": true
+        },
+        {
+          "flags": "-Wconstant-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wconstant-evaluated",
+          "enabled": true
+        },
+        {
+          "flags": "-Wconstant-logical-operand",
+          "enabled": true
+        },
+        {
+          "flags": "-Wconstexpr-not-const",
+          "enabled": true
+        },
+        {
+          "flags": "-Wconsumed",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcoro-non-aligned-allocation-function",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcoroutine",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcoroutine-missing-unhandled-exception",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcovered-switch-default",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcstring-format-directive",
+          "enabled": true
+        },
+        {
+          "flags": "-Wctad-maybe-unsupported",
+          "enabled": true
+        },
+        {
+          "flags": "-Wctor-dtor-privacy",
+          "enabled": true
+        },
+        {
+          "flags": "-Wctu",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcuda-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcustom-atomic-properties",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcxx-attribute-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdangling",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdangling-field",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdangling-gsl",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdangling-initializer-list",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdarwin-sdk-settings",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdealloc-in-category",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdebug-compression-unavailable",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdefaulted-function-deleted",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdelegating-ctor-cycles",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdelete-abstract-non-virtual-dtor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdelete-incomplete",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdelete-non-abstract-non-virtual-dtor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdelete-non-virtual-dtor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdelimited-escape-sequence-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecate-lax-vec-conv-all",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-altivec-src-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-anon-enum-enum-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-array-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-attributes",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-builtins",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-comma-subscript",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-copy",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-copy-dtor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-copy-with-dtor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-copy-with-user-provided-copy",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-copy-with-user-provided-dtor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-coroutine",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-declarations",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-dynamic-exception-spec",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-enum-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-enum-compare-conditional",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-enum-enum-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-enum-float-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-implementations",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-increment-bool",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-literal-operator",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-module-dot-map",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-non-prototype",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-objc-isa-usage",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-objc-pointer-introspection",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-objc-pointer-introspection-performSelector",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-pragma",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-redundant-constexpr-static-def",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-static-analyzer-flag",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-this-capture",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-volatile",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-writable-strings",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdirect-ivar-access",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdisabled-macro-expansion",
+          "enabled": false
+        },
+        {
+          "flags": "-Wdiscard-qual",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdistributed-object-modifiers",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdivision-by-zero",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdll-attribute-on-redeclaration",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdllexport-explicit-instantiation-decl",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdllimport-static-field-def",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdocumentation",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdocumentation-deprecated-sync",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdocumentation-html",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdocumentation-pedantic",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdocumentation-unknown-command",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdollar-in-identifier-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdtor-name",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdtor-typedef",
+          "enabled": true
+        },
+        {
+          "flags": "-Wduplicate-enum",
+          "enabled": true
+        },
+        {
+          "flags": "-Wduplicate-method-arg",
+          "enabled": true
+        },
+        {
+          "flags": "-Wduplicate-method-match",
+          "enabled": true
+        },
+        {
+          "flags": "-Wduplicate-protocol",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdxil-validation",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdynamic-class-memaccess",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdynamic-exception-spec",
+          "enabled": true
+        },
+        {
+          "flags": "-Weager-load-cxx-named-modules",
+          "enabled": true
+        },
+        {
+          "flags": "-Welaborated-enum-base",
+          "enabled": true
+        },
+        {
+          "flags": "-Welaborated-enum-class",
+          "enabled": true
+        },
+        {
+          "flags": "-Wembedded-directive",
+          "enabled": true
+        },
+        {
+          "flags": "-Wempty-decomposition",
+          "enabled": true
+        },
+        {
+          "flags": "-Wempty-init-stmt",
+          "enabled": true
+        },
+        {
+          "flags": "-Wempty-translation-unit",
+          "enabled": true
+        },
+        {
+          "flags": "-Wencode-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wendif-labels",
+          "enabled": true
+        },
+        {
+          "flags": "-Wenum-compare-conditional",
+          "enabled": true
+        },
+        {
+          "flags": "-Wenum-compare-switch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wenum-constexpr-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wenum-float-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wenum-too-large",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexceptions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexcess-initializers",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexcessive-regsave",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexit-time-destructors",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexperimental-header-units",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexplicit-initialize-call",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexplicit-ownership-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexport-unnamed",
+          "enabled": true
+        },
+        {
+          "flags": "-Wextern-c-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wextern-initializer",
+          "enabled": true
+        },
+        {
+          "flags": "-Wextra-qualification",
+          "enabled": true
+        },
+        {
+          "flags": "-Wextra-semi",
+          "enabled": true
+        },
+        {
+          "flags": "-Wextra-semi-stmt",
+          "enabled": true
+        },
+        {
+          "flags": "-Wextra-tokens",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfinal-dtor-non-final-class",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfinal-macro",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfixed-enum-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfixed-point-overflow",
+          "enabled": true
+        },
+        {
+          "flags": "-Wflag-enum",
+          "enabled": true
+        },
+        {
+          "flags": "-Wflexible-array-extensions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfloat-overflow-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfloat-zero-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfor-loop-analysis",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-extra-args",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-insufficient-args",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-invalid-specifier",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-non-iso",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-overflow-non-kprintf",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-pedantic",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-truncation-non-kprintf",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-type-confusion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-zero-length",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfortify-source",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfour-char-constants",
+          "enabled": true
+        },
+        {
+          "flags": "-Wframe-larger-than",
+          "enabled": true
+        },
+        {
+          "flags": "-Wframework-include-private-from-public",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfriend-enum",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfunction-def-in-objc-container",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfunction-multiversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfuse-ld-path",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfuture-attribute-extensions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfuture-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wgeneric-type-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wglobal-constructors",
+          "enabled": true
+        },
+        {
+          "flags": "-Wglobal-isel",
+          "enabled": true
+        },
+        {
+          "flags": "-Wheader-guard",
+          "enabled": true
+        },
+        {
+          "flags": "-Wheader-hygiene",
+          "enabled": true
+        },
+        {
+          "flags": "-Whip-omp-target-directives",
+          "enabled": true
+        },
+        {
+          "flags": "-Whip-only",
+          "enabled": true
+        },
+        {
+          "flags": "-Whlsl-extensions",
+          "enabled": true
+        },
+        {
+          "flags": "-Widiomatic-parentheses",
+          "enabled": true
+        },
+        {
+          "flags": "-Wignored-attributes",
+          "enabled": true
+        },
+        {
+          "flags": "-Wignored-availability-without-sdk-settings",
+          "enabled": true
+        },
+        {
+          "flags": "-Wignored-gch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wignored-optimization-argument",
+          "enabled": true
+        },
+        {
+          "flags": "-Wignored-pragma-intrinsic",
+          "enabled": true
+        },
+        {
+          "flags": "-Wignored-pragma-optimize",
+          "enabled": true
+        },
+        {
+          "flags": "-Wignored-pragmas",
+          "enabled": true
+        },
+        {
+          "flags": "-Wignored-reference-qualifiers",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-atomic-properties",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-const-int-float-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-conversion-floating-point-to-bool",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-exception-spec-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-fallthrough-per-function",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-fixed-point-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-float-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-function-declaration",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-int",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-int-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-int-float-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-retain-self",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicitly-unsigned-literal",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimport",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimport-preprocessor-directive-pedantic",
+          "enabled": true
+        },
+        {
+          "flags": "-Winaccessible-base",
+          "enabled": true
+        },
+        {
+          "flags": "-Winclude-angled-in-module-purview",
+          "enabled": true
+        },
+        {
+          "flags": "-Winclude-next-absolute-path",
+          "enabled": true
+        },
+        {
+          "flags": "-Winclude-next-outside-header",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincompatible-exception-spec",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincompatible-function-pointer-types",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincompatible-function-pointer-types-strict",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincompatible-library-redeclaration",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincompatible-ms-pragma-section",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincompatible-ms-struct",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincompatible-pointer-types",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincompatible-pointer-types-discards-qualifiers",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincompatible-property-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincompatible-sysroot",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincomplete-framework-module-declaration",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincomplete-implementation",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincomplete-module",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincomplete-setjmp-declaration",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincomplete-umbrella",
+          "enabled": true
+        },
+        {
+          "flags": "-Winconsistent-dllimport",
+          "enabled": true
+        },
+        {
+          "flags": "-Winconsistent-missing-destructor-override",
+          "enabled": true
+        },
+        {
+          "flags": "-Winconsistent-missing-override",
+          "enabled": true
+        },
+        {
+          "flags": "-Wincrement-bool",
+          "enabled": true
+        },
+        {
+          "flags": "-Winitializer-overrides",
+          "enabled": true
+        },
+        {
+          "flags": "-Winjected-class-name",
+          "enabled": true
+        },
+        {
+          "flags": "-Winline-asm",
+          "enabled": true
+        },
+        {
+          "flags": "-Winline-namespace-reopened-noninline",
+          "enabled": true
+        },
+        {
+          "flags": "-Winline-new-delete",
+          "enabled": true
+        },
+        {
+          "flags": "-Winstantiation-after-specialization",
+          "enabled": true
+        },
+        {
+          "flags": "-Wint-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wint-conversions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wint-to-pointer-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wint-to-void-pointer-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Winteger-overflow",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-command-line-argument",
+          "enabled": false,
+          "comment": "contradicts the deliberate -Wno- form above (driver-noise suppression)"
+        },
+        {
+          "flags": "-Winvalid-constexpr",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-feature-combination",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-iboutlet",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-initializer-from-system-header",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-ios-deployment-target",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-no-builtin-names",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-noreturn",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-offsetof",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-or-nonexistent-directory",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-partial-specialization",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-pp-token",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-source-encoding",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-static-assert-message",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-token-paste",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-unevaluated-string",
+          "enabled": true
+        },
+        {
+          "flags": "-Wjump-seh-finally",
+          "enabled": true
+        },
+        {
+          "flags": "-Wkeyword-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wkeyword-macro",
+          "enabled": true
+        },
+        {
+          "flags": "-Wknl-knm-isa-support-removed",
+          "enabled": true
+        },
+        {
+          "flags": "-Wknr-promoted-parameter",
+          "enabled": true
+        },
+        {
+          "flags": "-Wlanguage-extension-token",
+          "enabled": true
+        },
+        {
+          "flags": "-Wlarge-by-value-copy",
+          "enabled": true
+        },
+        {
+          "flags": "-Wliblto",
+          "enabled": true
+        },
+        {
+          "flags": "-Wlinker-warnings",
+          "enabled": true
+        },
+        {
+          "flags": "-Wliteral-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wliteral-range",
+          "enabled": true
+        },
+        {
+          "flags": "-Wlocal-type-template-args",
+          "enabled": true
+        },
+        {
+          "flags": "-Wlogical-op-parentheses",
+          "enabled": true
+        },
+        {
+          "flags": "-Wloop-analysis",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmacro-redefined",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmain-return-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmalformed-warning-check",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmany-braces-around-scalar-init",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmathematical-notation-identifier-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmax-tokens",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmax-unsigned-zero",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmemsize-comparison",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmethod-signatures",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmisexpect",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmismatched-new-delete",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmismatched-parameter-types",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmismatched-return-types",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmismatched-tags",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-constinit",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-exception-spec",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-method-return-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-multilib",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-noescape",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-prototype-for-cc",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-selector-name",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-sysroot",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-variable-declarations",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmisspelled-assumption",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmodule-conflict",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmodule-file-config-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmodule-file-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmodule-import-in-extern-c",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmodules-ambiguous-internal-linkage",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmodules-import-nested-redundant",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmost",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmove",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmsvc-include",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmsvc-not-found",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmulti-gpu",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmultichar",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmultiple-move-vbase",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnan-infinity-disabled",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnarrowing",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnested-anon-types",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnew-returns-null",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnewline-eof",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnoderef",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnoexcept-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnon-c-typedef-for-linkage",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnon-literal-null-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnon-modular-include-in-framework-module",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnon-modular-include-in-module",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnon-pod-varargs",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnon-power-of-two-alignment",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnon-virtual-dtor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnonportable-cfstrings",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnonportable-include-path",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnonportable-private-apinotes-path",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnonportable-private-system-apinotes-path",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnonportable-system-include-path",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnonportable-vector-initialization",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnontrivial-memaccess",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnsconsumed-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnsreturns-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnull-arithmetic",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnull-character",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnull-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnull-pointer-arithmetic",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnull-pointer-subtraction",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnullability",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnullability-completeness",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnullability-completeness-on-arrays",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnullability-declspec",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnullability-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnullability-inferred-on-nested-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnullable-to-nonnull-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wodr",
+          "enabled": true
+        },
+        {
+          "flags": "-Wold-style-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wold-style-definition",
+          "enabled": true
+        },
+        {
+          "flags": "-Wopenacc",
+          "enabled": true
+        },
+        {
+          "flags": "-Wopencl-unsupported-rgba",
+          "enabled": true
+        },
+        {
+          "flags": "-Wopenmp",
+          "enabled": true
+        },
+        {
+          "flags": "-Wopenmp-51-extensions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wopenmp-clauses",
+          "enabled": true
+        },
+        {
+          "flags": "-Wopenmp-extensions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wopenmp-loop-form",
+          "enabled": true
+        },
+        {
+          "flags": "-Wopenmp-mapping",
+          "enabled": true
+        },
+        {
+          "flags": "-Wopenmp-target",
+          "enabled": true
+        },
+        {
+          "flags": "-Wopenmp-target-exception",
+          "enabled": true
+        },
+        {
+          "flags": "-Woption-ignored",
+          "enabled": true
+        },
+        {
+          "flags": "-Wordered-compare-function-pointers",
+          "enabled": true
+        },
+        {
+          "flags": "-Wout-of-line-declaration",
+          "enabled": true
+        },
+        {
+          "flags": "-Wout-of-scope-function",
+          "enabled": true
+        },
+        {
+          "flags": "-Wover-aligned",
+          "enabled": true
+        },
+        {
+          "flags": "-Woverflow",
+          "enabled": true
+        },
+        {
+          "flags": "-Woverlength-strings",
+          "enabled": true
+        },
+        {
+          "flags": "-Woverloaded-shift-op-parentheses",
+          "enabled": true
+        },
+        {
+          "flags": "-Woverloaded-virtual",
+          "enabled": true
+        },
+        {
+          "flags": "-Woverride-module",
+          "enabled": true
+        },
+        {
+          "flags": "-Woverriding-method-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Woverriding-option",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpacked-non-pod",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpadded-bitfield",
+          "enabled": true
+        },
+        {
+          "flags": "-Wparentheses-equality",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpartial-availability",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpch-date-time",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpedantic-core-features",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpedantic-macros",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpessimizing-move",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpointer-bool-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpointer-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpointer-integer-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpointer-to-enum-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpointer-to-int-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpointer-type-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpotentially-direct-selector",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpotentially-evaluated-expression",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpragma-clang-attribute",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpragma-once-outside-header",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpragma-pack",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpragma-pack-suspicious-include",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpragma-system-header-outside-header",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpragmas",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpre-openmp-51-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpredefined-identifier-outside-function",
+          "enabled": true
+        },
+        {
+          "flags": "-Wprivate-extern",
+          "enabled": true
+        },
+        {
+          "flags": "-Wprivate-header",
+          "enabled": true
+        },
+        {
+          "flags": "-Wprivate-module",
+          "enabled": true
+        },
+        {
+          "flags": "-Wprofile-instr-missing",
+          "enabled": true
+        },
+        {
+          "flags": "-Wprofile-instr-out-of-date",
+          "enabled": true
+        },
+        {
+          "flags": "-Wprofile-instr-unprofiled",
+          "enabled": true
+        },
+        {
+          "flags": "-Wproperty-access-dot-syntax",
+          "enabled": true
+        },
+        {
+          "flags": "-Wproperty-attribute-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wprotocol",
+          "enabled": true
+        },
+        {
+          "flags": "-Wprotocol-property-synthesis-ambiguity",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpsabi",
+          "enabled": true
+        },
+        {
+          "flags": "-Wqualified-void-return-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wquoted-include-in-framework-header",
+          "enabled": true
+        },
+        {
+          "flags": "-Wrange-loop-analysis",
+          "enabled": true
+        },
+        {
+          "flags": "-Wrange-loop-bind-reference",
+          "enabled": true
+        },
+        {
+          "flags": "-Wrange-loop-construct",
+          "enabled": true
+        },
+        {
+          "flags": "-Wread-only-types",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreadonly-iboutlet-property",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreceiver-expr",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreceiver-forward-class",
+          "enabled": true
+        },
+        {
+          "flags": "-Wredeclared-class-member",
+          "enabled": true
+        },
+        {
+          "flags": "-Wredundant-consteval-if",
+          "enabled": true
+        },
+        {
+          "flags": "-Wredundant-move",
+          "enabled": true
+        },
+        {
+          "flags": "-Wredundant-parens",
+          "enabled": true
+        },
+        {
+          "flags": "-Wregister",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreinterpret-base-class",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreorder",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreorder-ctor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreorder-init-list",
+          "enabled": true
+        },
+        {
+          "flags": "-Wrequires-super-attribute",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreserved-id-macro",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreserved-identifier",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreserved-macro-identifier",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreserved-module-identifier",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreserved-user-defined-literal",
+          "enabled": true
+        },
+        {
+          "flags": "-Wrestrict-expansion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wretained-language-linkage",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreturn-local-addr",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreturn-stack-address",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreturn-std-move",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreturn-type-c-linkage",
+          "enabled": true
+        },
+        {
+          "flags": "-Wrewrite-not-bool",
+          "enabled": true
+        },
+        {
+          "flags": "-Wrtti",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsarif-format-unstable",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsection",
+          "enabled": true
+        },
+        {
+          "flags": "-Wselector",
+          "enabled": true
+        },
+        {
+          "flags": "-Wselector-type-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wself-assign",
+          "enabled": true
+        },
+        {
+          "flags": "-Wself-assign-field",
+          "enabled": true
+        },
+        {
+          "flags": "-Wself-assign-overloaded",
+          "enabled": true
+        },
+        {
+          "flags": "-Wself-move",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsemicolon-before-method-body",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsentinel",
+          "enabled": true
+        },
+        {
+          "flags": "-Wserialized-diagnostics",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshadow-all",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshadow-field",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshadow-field-in-constructor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshadow-field-in-constructor-modified",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshadow-ivar",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshadow-uncaptured-local",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshift-count-negative",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshift-count-overflow",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshift-op-parentheses",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshift-overflow",
+          "enabled": false,
+          "comment": "ORDER: plain form after =2 would downgrade GCC to level 1; clang gets it below"
+        },
+        {
+          "flags": "-Wshift-sign-overflow",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshorten-64-to-32",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsign-promo",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsigned-enum-bitfield",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsigned-unsigned-wchar",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsingle-bit-bitfield-constant-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsizeof-array-argument",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsizeof-array-decay",
+          "enabled": true
+        },
+        {
+          "flags": "-Wslash-u-filename",
+          "enabled": true
+        },
+        {
+          "flags": "-Wslh-asm-goto",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsometimes-uninitialized",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsource-mgr",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsource-uses-openacc",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsource-uses-openmp",
+          "enabled": true
+        },
+        {
+          "flags": "-Wspir-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wspirv-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstack-exhausted",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstack-protector",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstatic-float-init",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstatic-in-inline",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstatic-inline-explicit-instantiation",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstatic-local-in-inline",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstatic-self-init",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstdlibcxx-not-found",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstrict-aliasing=0",
+          "enabled": false,
+          "comment": "CONFLICT: 0 DISABLES; -Wstrict-aliasing=3 is the live setting"
+        },
+        {
+          "flags": "-Wstrict-potentially-direct-selector",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstrict-selector-match",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstring-concatenation",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstring-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstring-plus-char",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstring-plus-int",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstrlcpy-strlcat-size",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstrncat-size",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsuggest-destructor-override",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsuggest-override",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsuper-class-method-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsuspicious-bzero",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsuspicious-memaccess",
+          "enabled": true
+        },
+        {
+          "flags": "-Wswift-name-attribute",
+          "enabled": true
+        },
+        {
+          "flags": "-Wswitch-bool",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsync-alignment",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsync-fetch-and-nand-semantics-changed",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsynth",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtarget-clones-mixed-specifiers",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-bitwise-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-constant-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-constant-in-range-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-constant-out-of-range-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-negation-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-objc-bool-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-overlap-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-pointer-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-type-limit-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-undefined-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-unsigned-char-zero-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-unsigned-enum-zero-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-unsigned-zero-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtautological-value-range-compare",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtcb-enforcement",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtemplate-in-declaration-name",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtentative-definition-incomplete-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtype-safety",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtypedef-redefinition",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtypename-missing",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunable-to-open-stats-file",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunaligned-access",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunaligned-qualifier-implicit-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunavailable-declarations",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundeclared-selector",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundef-prefix",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundefined-arm-streaming",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundefined-arm-za",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundefined-arm-zt0",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundefined-bool-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundefined-func-template",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundefined-inline",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundefined-internal",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundefined-internal-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundefined-reinterpret-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundefined-var-template",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunderaligned-exception-object",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunevaluated-expression",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunguarded-availability",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunguarded-availability-new",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunicode",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunicode-homoglyph",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunicode-whitespace",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunicode-zero-width",
+          "enabled": true
+        },
+        {
+          "flags": "-Wuninitialized-const-reference",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunknown-argument",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunknown-assumption",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunknown-attributes",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunknown-cuda-version",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunknown-directives",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunknown-escape-sequence",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunknown-sanitizers",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunknown-warning-option",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunnamed-type-template-args",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunneeded-internal-declaration",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunneeded-member-function",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunqualified-std-cast-call",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunreachable-code",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunreachable-code-aggressive",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunreachable-code-break",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunreachable-code-fallthrough",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunreachable-code-generic-assoc",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunreachable-code-loop-increment",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunreachable-code-return",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsafe-buffer-usage",
+          "enabled": true,
+          "comment": "clang C++ safe-buffers hardening (pointer-arithmetic-on-buffer). Kept for C++ (real fix: std::span/std::array); denied for C via overrides-c.txt because in C it fires on every ptr[i] with no hardened-container alternative. gcc lacks it, so g++ drops it at probe time.",
+          "c": false
+        },
+        {
+          "flags": "-Wunsafe-buffer-usage-in-container",
+          "enabled": true,
+          "comment": "companion to -Wunsafe-buffer-usage; same C++-only scoping via c:false.",
+          "c": false
+        },
+        {
+          "flags": "-Wunsequenced",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsupported-abi",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsupported-abs",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsupported-availability-guard",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsupported-cb",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsupported-dll-base-class-template",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsupported-floating-point-opt",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsupported-friend",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsupported-gpopt",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsupported-nan",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsupported-target-opt",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsupported-visibility",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunusable-partial-specialization",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-argument",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-command-line-argument",
+          "enabled": false,
+          "comment": "contradicts the deliberate -Wno- form (e.g. clang warns  -pg unused  at compile)"
+        },
+        {
+          "flags": "-Wunused-comparison",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-exception-parameter",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-getter-return-value",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-lambda-capture",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-local-typedef",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-member-function",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-private-field",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-property-ivar",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-result",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-template",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunused-volatile-lvalue",
+          "enabled": true
+        },
+        {
+          "flags": "-Wused-but-marked-unused",
+          "enabled": true
+        },
+        {
+          "flags": "-Wuser-defined-literals",
+          "enabled": true
+        },
+        {
+          "flags": "-Wuser-defined-warnings",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvarargs",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvec-elem-size",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvector-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvector-conversions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvexing-parse",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvisibility",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvla-cxx-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvla-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvla-extension-static-assert",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvoid-pointer-to-enum-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvoid-pointer-to-int-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvoid-ptr-dereference",
+          "enabled": true
+        },
+        {
+          "flags": "-Wwasm-exception-spec",
+          "enabled": true
+        },
+        {
+          "flags": "-Wweak-template-vtables",
+          "enabled": true
+        },
+        {
+          "flags": "-Wweak-vtables",
+          "enabled": true
+        },
+        {
+          "flags": "-Wwritable-strings",
+          "enabled": true
+        },
+        {
+          "flags": "-Wzero-as-null-pointer-constant",
+          "enabled": true
+        },
+        {
+          "flags": "-Wzero-length-array",
+          "enabled": true
+        },
+        {
+          "flags": "-Wuninitialized-const-pointer",
+          "enabled": true
+        },
+        {
+          "flags": "-Wuninitialized-explicit-init",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdefault-const-init",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdefault-const-init-unsafe",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdangling-assignment",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdangling-assignment-gsl",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdangling-capture",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdangling-reference",
+          "enabled": true
+        },
+        {
+          "flags": "-Winit-list-lifetime",
+          "enabled": true
+        },
+        {
+          "flags": "-Wuse-after-free=3",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmusttail-local-addr",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmaybe-musttail-local-addr",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunterminated-string-initialization",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc++-unterminated-string-initialization",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstringop-overread",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstringop-truncation",
+          "enabled": true
+        },
+        {
+          "flags": "-Wformat-contains-nul",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcalloc-transposed-args",
+          "enabled": true
+        },
+        {
+          "flags": "-Walloc-size",
+          "enabled": true
+        },
+        {
+          "flags": "-Wflex-array-member-not-at-end",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnontrivial-memcall",
+          "enabled": true
+        },
+        {
+          "flags": "-Wclass-memaccess",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsanitize-address",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunsafe-buffer-usage-in-libc-call",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtentative-definition-array",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcast-function-type-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcharacter-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-void-ptr-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-int-enum-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-enum-enum-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wenum-enum-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wimplicit-int-conversion-on-negation",
+          "enabled": true
+        },
+        {
+          "flags": "-Wconversion-null",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshift-bool",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdiv-by-zero",
+          "enabled": true
+        },
+        {
+          "flags": "-Whigher-precision-for-complex-division",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdiscarded-qualifiers",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdiscarded-array-qualifiers",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunderlying-atomic-qualifier-ignored",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunderlying-cv-qualifier-ignored",
+          "enabled": true
+        },
+        {
+          "flags": "-Wuseless-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-gnu-asm-cast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc++-keyword",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc23-extensions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc2x-extensions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc2y-extensions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wgnu",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-parameter-name",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeclaration-missing-parameter-type",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbuiltin-declaration-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreturn-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdesignated-init",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-designated-field-initializers",
+          "enabled": true
+        },
+        {
+          "flags": "-Woverride-init-side-effects",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-octal-literals",
+          "enabled": true
+        },
+        {
+          "flags": "-Woctal-prefix-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvariadic-macro-arguments-omitted",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-missing-comma-variadic-parameter",
+          "enabled": true
+        },
+        {
+          "flags": "-Wundef-true",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcomments",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcpp",
+          "enabled": true
+        },
+        {
+          "flags": "-Wbad-line-directive",
+          "enabled": true
+        },
+        {
+          "flags": "-Wliteral-concat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtrailing-whitespace=blanks",
+          "enabled": true
+        },
+        {
+          "flags": "-Wleading-whitespace=blanks",
+          "enabled": false,
+          "comment": "gcc-16 style warning: flags runs of >=8 consecutive leading spaces, i.e. it wants tab-based indentation. This codebase indents with 4 spaces (clang-format-enforced), so it fires on every 2nd-level line. Off \u2014 conflicts with the house style; -Wtrailing-whitespace=blanks stays (it agrees with the style and never fires here)."
+        },
+        {
+          "flags": "-Wcatch-value=3",
+          "enabled": true
+        },
+        {
+          "flags": "-Wplacement-new=2",
+          "enabled": true
+        },
+        {
+          "flags": "-Waligned-new=all",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcomma-subscript",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvolatile",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnoexcept",
+          "enabled": true
+        },
+        {
+          "flags": "-Wterminate",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsized-deallocation",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstrict-null-sentinel",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsubobject-linkage",
+          "enabled": true
+        },
+        {
+          "flags": "-Wredundant-tags",
+          "enabled": true
+        },
+        {
+          "flags": "-Wliteral-suffix",
+          "enabled": true
+        },
+        {
+          "flags": "-Wvirtual-move-assign",
+          "enabled": true
+        },
+        {
+          "flags": "-Wnon-template-friend",
+          "enabled": true
+        },
+        {
+          "flags": "-Wchanges-meaning",
+          "enabled": true
+        },
+        {
+          "flags": "-Wconditionally-supported",
+          "enabled": true
+        },
+        {
+          "flags": "-Wsfinae-incomplete",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtemplate-body",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtemplate-id-cdtor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-template-keyword",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-template-arg-list-after-template-kw",
+          "enabled": true
+        },
+        {
+          "flags": "-Wextraneous-template-head",
+          "enabled": true
+        },
+        {
+          "flags": "-Wstrict-primary-template-shadow",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-specialization",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexplicit-specialization-storage-class",
+          "enabled": true
+        },
+        {
+          "flags": "-Wignored-base-class-qualifiers",
+          "enabled": true
+        },
+        {
+          "flags": "-Walias-template-in-declaration-name",
+          "enabled": true
+        },
+        {
+          "flags": "-Wabbreviated-auto-in-template-arg",
+          "enabled": true
+        },
+        {
+          "flags": "-Wallocator-wrappers",
+          "enabled": true
+        },
+        {
+          "flags": "-Warray-compare-cxx26",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunnecessary-virtual-specifier",
+          "enabled": true
+        },
+        {
+          "flags": "-Wunique-object-duplication",
+          "enabled": true
+        },
+        {
+          "flags": "-Wprio-ctor-dtor",
+          "enabled": true
+        },
+        {
+          "flags": "-Winit-priority-reserved",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpmf-conversions",
+          "enabled": true
+        },
+        {
+          "flags": "-Winherited-variadic-ctor",
+          "enabled": true
+        },
+        {
+          "flags": "-Wattribute-statement",
+          "enabled": true
+        },
+        {
+          "flags": "-Wredundant-attribute",
+          "enabled": true
+        },
+        {
+          "flags": "-Wreserved-attribute-identifier",
+          "enabled": true
+        },
+        {
+          "flags": "-Wif-not-aligned",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-memory-model",
+          "enabled": true
+        },
+        {
+          "flags": "-Wscalar-storage-order",
+          "enabled": true
+        },
+        {
+          "flags": "-Waggressive-loop-optimizations",
+          "enabled": true
+        },
+        {
+          "flags": "-Wswitch-outside-range",
+          "enabled": true
+        },
+        {
+          "flags": "-Wswitch-unreachable",
+          "enabled": true
+        },
+        {
+          "flags": "-Wlto-type-mismatch",
+          "enabled": true
+        },
+        {
+          "flags": "-Wfunction-effects",
+          "enabled": true
+        },
+        {
+          "flags": "-Wperf-constraint-implies-noexcept",
+          "enabled": true
+        },
+        {
+          "flags": "-Wthread-safety-pointer",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexperimental-lifetime-safety",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcfi-unchecked-callee",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-declarations-switch-case",
+          "enabled": true
+        },
+        {
+          "flags": "-Weffc++",
+          "enabled": false,
+          "comment": "superseded by clang-tidy cppcoreguidelines/modernize"
+        },
+        {
+          "flags": "-Wnrvo",
+          "enabled": false,
+          "comment": "missed-optimization advisory, not correctness"
+        },
+        {
+          "flags": "-Wtemplates",
+          "enabled": false,
+          "comment": "policy warning: fires on ANY template use"
+        },
+        {
+          "flags": "-Wnamespaces",
+          "enabled": false,
+          "comment": "policy warning: fires on ANY namespace use"
+        },
+        {
+          "flags": "-Wmultiple-inheritance",
+          "enabled": false,
+          "comment": "policy warning: fires on ANY MI use"
+        },
+        {
+          "flags": "-Wvirtual-inheritance",
+          "enabled": false,
+          "comment": "policy warning: fires on ANY VI use"
+        },
+        {
+          "flags": "-Wsuggest-final-methods",
+          "enabled": false,
+          "comment": "advisory, meaningful only with LTO"
+        },
+        {
+          "flags": "-Wsuggest-final-types",
+          "enabled": false,
+          "comment": "advisory, meaningful only with LTO"
+        },
+        {
+          "flags": "-Wabi-tag",
+          "enabled": false,
+          "comment": "ABI-annotation advisory, not correctness"
+        },
+        {
+          "flags": "-Whardened",
+          "enabled": false,
+          "comment": "only meaningful together with -fhardened"
+        },
+        {
+          "flags": "-W",
+          "enabled": true,
+          "comment": "warnings\""
+        },
+        {
+          "flags": "-Wbool-conversions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc++-hidden-decl",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc-attribute-extension",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc11-extensions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc99-extensions",
+          "enabled": true
+        },
+        {
+          "flags": "-Wc99-designator",
+          "enabled": true
+        },
+        {
+          "flags": "-Wcoro-type-aware-allocation-function",
+          "enabled": true
+        },
+        {
+          "flags": "-Wext-cxx-type-aware-allocators",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdefault-const-init-field",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdefault-const-init-field-unsafe",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdefault-const-init-var",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdefault-const-init-var-unsafe",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-ofast",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-register",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmath-errno-enabled-with-veclib",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpreferred-type-bitfield-enum-conversion",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpreferred-type-bitfield-width",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpacked-bitfield-compat",
+          "enabled": true
+        },
+        {
+          "flags": "-Wdeprecated-variadic-comma-omission",
+          "enabled": true
+        },
+        {
+          "flags": "-Wshadow-local",
+          "enabled": false,
+          "comment": "deprecated ALIAS of -Wshadow=local \u2014 would override the ordered =global block above"
+        },
+        {
+          "flags": "-Wshadow-compatible-local",
+          "enabled": false,
+          "comment": "deprecated ALIAS of -Wshadow=compatible-local \u2014 same"
+        },
+        {
+          "flags": "-Wglobal-module",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexpose-global-module-tu-local",
+          "enabled": true
+        },
+        {
+          "flags": "-Wexternal-tu-local",
+          "enabled": true
+        },
+        {
+          "flags": "-Wtemplate-names-tu-local",
+          "enabled": true
+        },
+        {
+          "flags": "-Winvalid-imported-macros",
+          "enabled": true
+        },
+        {
+          "flags": "-Wmissing-requires",
+          "enabled": true
+        },
+        {
+          "flags": "-Wpoison-system-directories",
+          "enabled": false,
+          "comment": "we deliberately pass the -Wno- form"
+        },
+        {
+          "flags": "-Wdelayed-template-parsing-in-cxx20",
+          "enabled": false,
+          "comment": "MSVC-compat machinery"
+        },
+        {
+          "flags": "-Werror-implicit-function-declaration",
+          "enabled": false,
+          "comment": "global -Werror already covers it"
+        },
+        {
+          "flags": "-Wextensions",
+          "enabled": false,
+          "comment": "vague umbrella; -Wpedantic covers standard extensions"
+        },
+        {
+          "flags": "-Wdeprecated-no-relaxed-template-template-args",
+          "enabled": true,
+          "comment": "clang >= 20"
+        },
+        {
+          "flags": "-fcomplete-member-pointers",
+          "enabled": true,
+          "comment": "clang: enforce complete member-pointer types"
+        },
+        {
+          "flags": "-fsafe-buffer-usage-suggestions",
+          "enabled": true,
+          "comment": "clang: fixit suggestions for -Wunsafe-buffer-usage"
+        }
+      ]
+    },
+    "coverage_flags.txt": {
+      "header": [
+        "Code-coverage instrumentation (gcov). OPT-IN: applied only when",
+        "coverage is selected (--coverage flag / P101_COVERAGE / coverage.txt).",
+        "Probed per compiler; gcc-only refinements drop on clang automatically."
+      ],
+      "entries": [
+        {
+          "flags": "-fprofile-arcs",
+          "enabled": false
+        },
+        {
+          "flags": "--coverage",
+          "enabled": true,
+          "comment": "gcov coverage; compile+link (= -fprofile-arcs -ftest-coverage, +gcov runtime at link)"
+        },
+        {
+          "flags": "-ftest-coverage",
+          "enabled": false
+        },
+        {
+          "flags": "-fprofile-abs-path",
+          "enabled": true,
+          "comment": "GCC: absolute paths in .gcno so gcov finds sources from any cwd"
+        },
+        {
+          "flags": "-fprofile-dir=path",
+          "enabled": false
+        },
+        {
+          "flags": "-fprofile-generate=path",
+          "enabled": false
+        },
+        {
+          "flags": "-fprofile-info-section",
+          "enabled": false,
+          "comment": "clang only"
+        },
+        {
+          "flags": "-fprofile-info-section=name",
+          "enabled": false,
+          "comment": "clang only"
+        },
+        {
+          "flags": "-fprofile-note=path",
+          "enabled": false
+        },
+        {
+          "flags": "-fprofile-prefix-path=path",
+          "enabled": false
+        },
+        {
+          "flags": "-fprofile-prefix-map=old=new",
+          "enabled": false
+        },
+        {
+          "flags": "-fprofile-update=single",
+          "enabled": false
+        },
+        {
+          "flags": "-fprofile-update=atomic",
+          "enabled": true,
+          "comment": "GCC: atomic counters (safe under threads / a sanitized run)"
+        },
+        {
+          "flags": "-fprofile-update=prefer-atomic",
+          "enabled": false
+        },
+        {
+          "flags": "-fprofile-filter-files=regex",
+          "enabled": false,
+          "comment": "clang only"
+        },
+        {
+          "flags": "-fprofile-exclude-files=regex",
+          "enabled": false,
+          "comment": "clang only"
+        },
+        {
+          "flags": "-fprofile-reproducible=multithreaded",
+          "enabled": false
+        },
+        {
+          "flags": "-fprofile-reproducible=parallel-runs",
+          "enabled": false,
+          "comment": "clang only"
+        },
+        {
+          "flags": "-fprofile-reproducible=serial",
+          "enabled": false,
+          "comment": "clang only"
+        },
+        {
+          "flags": "-fcs-profile-generate",
+          "enabled": false,
+          "comment": "clang only"
+        },
+        {
+          "flags": "-fcondition-coverage",
+          "enabled": true,
+          "comment": "GCC 14+: MC/DC condition coverage"
+        }
+      ]
+    },
+    "profile_flags.txt": {
+      "header": [
+        "Profiling instrumentation (gprof). OPT-IN: applied only when",
+        "profiling is selected (--profile flag / P101_PROFILE / profile.txt).",
+        "compile + link."
+      ],
+      "entries": [
+        {
+          "flags": "-p",
+          "enabled": false,
+          "comment": "older prof(1) profiling; -pg preferred"
+        },
+        {
+          "flags": "-pg",
+          "enabled": true,
+          "comment": "gprof profiling; compile+link"
+        }
+      ]
+    }
+  }
+}

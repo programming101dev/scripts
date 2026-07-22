@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# --help / -h -> description, exit 0 (P101 uniform CLI help)
+case " $* " in
+  *" --help "*|*" -h "*)
+    cat <<'P101_USAGE'
+clone-repos.sh — takes no command-line options; run with no arguments.
+P101_USAGE
+    exit 0 ;;
+esac
+
+# Always operate from the directory this script lives in (repos.txt lives
+# here, and the relative dest paths in it are relative to this directory).
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+
 REPOS_FILE="repos.txt"
 GIT_RETRY_ATTEMPTS=5
 GIT_RETRY_DELAY_SECONDS=5
@@ -50,7 +63,10 @@ if ! command -v git >/dev/null 2>&1; then
     exit 1
 fi
 
-while IFS= read -r raw || [[ -n "${raw:-}" ]]; do
+# Read repos.txt on fd 3 so children (git credential prompts, ssh host-key
+# confirmations, submodule hooks) keep the real stdin instead of silently
+# consuming the remaining lines of the list.
+while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     local_line="${raw%%#*}"
     line="$(trim_whitespace "${local_line}")"
 
@@ -100,9 +116,14 @@ while IFS= read -r raw || [[ -n "${raw:-}" ]]; do
         fi
 
         if git -C "${target_dir}" rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
-            echo "  -> Rebase onto upstream..."
-            if ! retry_git git -C "${target_dir}" pull --rebase --autostash; then
-                echo "  ! Pull failed — skipping repository."
+            echo "  -> Fast-forwarding to upstream..."
+            # We already fetched (with retries) above, so this is a purely
+            # local operation: merge --ff-only, no network, NO retry loop —
+            # a divergence failure is not transient and retrying it just
+            # wastes 25 seconds per repo.
+            if ! git -C "${target_dir}" merge --ff-only --quiet '@{u}'; then
+                echo "  ! Cannot fast-forward (local commits/changes diverge from upstream)."
+                echo "  ! Resolve manually in ${target_dir} — skipping repository."
                 echo
                 continue
             fi
@@ -128,6 +149,6 @@ while IFS= read -r raw || [[ -n "${raw:-}" ]]; do
     fi
 
     echo
-done < "${REPOS_FILE}"
+done 3< "${REPOS_FILE}"
 
 echo "All repositories processed."

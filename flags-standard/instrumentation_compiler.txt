@@ -1,0 +1,4 @@
+# Cheap runtime hardening that does not change program semantics.
+
+        "-fstack-protector-strong"
+        "-fstack-clash-protection"    # probe drops it where unsupported (e.g. some clang targets)

@@ -1,0 +1,6 @@
+# Profiling instrumentation (gprof). OPT-IN: applied only when
+# profiling is selected (--profile flag / P101_PROFILE / profile.txt).
+# compile + link.
+
+#        "-p"    # older prof(1) profiling; -pg preferred
+        "-pg"    # gprof profiling; compile+link

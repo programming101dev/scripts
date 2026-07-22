@@ -1,1 +1,4 @@
         "-fsanitize=thread"
+        "-fsanitize-thread-atomics"
+        "-fsanitize-thread-func-entry-exit"
+        "-fsanitize-thread-memory-access"

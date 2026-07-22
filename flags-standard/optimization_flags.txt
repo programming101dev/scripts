@@ -1,0 +1,3 @@
+# Standard build is optimized: -O2 powers uninitialized/stringop warnings that -O0 cannot, and is what a reasonable safe build ships.
+
+        "-O2"

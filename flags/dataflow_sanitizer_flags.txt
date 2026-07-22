@@ -1,7 +1,12 @@
+# DataFlowSanitizer (clang-only, x86-64 Linux). The -dfsan-* switches are
+# LLVM-internal options: as bare driver flags they are "unused arguments"
+# and every one was silently filtered out. They must be passed via -mllvm,
+# together with the sanitizer itself — each line is one probe unit.
+
         "-fsanitize=dataflow"
-#        "-dfsan-combine-pointer-labels-on-store"
-        "-dfsan-combine-offset-labels-on-gep"
-#        "-dfsan-event-callbacks"
-        "-dfsan-conditional-callbacks"
-        "-dfsan-track-origins=2"
-#        "-dfsan-instrument-with-call-threshold"
+        "-fsanitize=dataflow -mllvm -dfsan-combine-offset-labels-on-gep"
+        "-fsanitize=dataflow -mllvm -dfsan-conditional-callbacks"
+        "-fsanitize=dataflow -mllvm -dfsan-track-origins=2"
+#        "-fsanitize=dataflow -mllvm -dfsan-combine-pointer-labels-on-store"
+#        "-fsanitize=dataflow -mllvm -dfsan-event-callbacks"
+#        "-fsanitize=dataflow -mllvm -dfsan-instrument-with-call-threshold=<n>"

@@ -5,11 +5,15 @@
 set -eu
 
 usage() {
+  # $1 = exit status (0 for -h, non-zero for bad options)
   printf '%s\n' "Usage: $0 [-n] [-v]
   -n  dry run (show what would change, no writes)
   -v  verbose (also report up-to-date or skipped targets)"
-  exit 0
+  exit "${1:-0}"
 }
+
+# --help / -h -> usage, exit 0 (P101 uniform CLI help)
+case " $* " in *" --help "*|*" -h "*) ( usage ) || true; exit 0 ;; esac
 
 DRYRUN=0
 VERBOSE=0
@@ -17,8 +21,8 @@ while getopts "nvh" opt; do
   case "$opt" in
     n) DRYRUN=1 ;;
     v) VERBOSE=1 ;;
-    h) usage ;;
-    *) usage ;;
+    h) usage 0 ;;
+    *) usage 2 ;;
   esac
 done
 
@@ -47,9 +51,14 @@ copy_if_needed() {
       printf '[dry-run] create: %s\n' "$dest_dir"
     fi
   else
+    # Record existence BEFORE the cp — checking after always says "Updated"
+    existed=0
+    if [ -f "$dest" ]; then
+      existed=1
+    fi
     mkdir -p "$dest_dir"
     cp "$SRC_CMAKE" "$dest"
-    if [ -f "$dest" ]; then
+    if [ "$existed" -eq 1 ]; then
       printf 'Updated: %s\n' "$dest_dir"
     else
       printf 'Created: %s\n' "$dest_dir"
@@ -57,11 +66,12 @@ copy_if_needed() {
   fi
 }
 
-# Process repos.txt in current directory
+# Process repos.txt (which lives alongside this script)
 while IFS= read -r line || [ -n "$line" ]; do
-  # Strip CR if CRLF file, trim whitespace
-  line=${line%$'\r'}
-  line=$(printf '%s' "$line" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  # Strip CR if CRLF file, trim whitespace.
+  # NOTE: use tr, not ${line%$'\r'} — $'...' is not POSIX sh and this script
+  # runs under /bin/sh on Linux, macOS, and FreeBSD.
+  line=$(printf '%s' "$line" | tr -d '\r' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
   [ -z "$line" ] && continue
   case "$line" in \#*) continue ;; esac
 
@@ -72,8 +82,13 @@ while IFS= read -r line || [ -n "$line" ]; do
     continue
   fi
 
-  # Resolve to absolute path (in case of relative like ../libraries/lib_c)
-  dest_dir=$(CDPATH= cd -- "$dest_field" 2>/dev/null && pwd) || {
+  # Resolve to absolute path; relative dests (../libraries/lib_c) are
+  # relative to the scripts directory, not the caller's cwd.
+  case "$dest_field" in
+    /*) dest_probe=$dest_field ;;
+    *)  dest_probe="$SCRIPT_DIR/$dest_field" ;;
+  esac
+  dest_dir=$(CDPATH= cd -- "$dest_probe" 2>/dev/null && pwd) || {
     [ "$VERBOSE" -eq 1 ] && printf 'Skip: cannot resolve %s\n' "$dest_field"
     continue
   }
@@ -90,5 +105,11 @@ while IFS= read -r line || [ -n "$line" ]; do
 
   copy_if_needed "$dest_dir"
 done < "$REPOS_FILE"
+
+# The slimmed CMakeLists sources its helpers from cmake/; make sure every
+# repo has that symlink so the freshly-copied CMakeLists can find them.
+if [ -x "$SCRIPT_DIR/link-cmake.sh" ]; then
+  "$SCRIPT_DIR/link-cmake.sh" || true
+fi
 
 exit 0

@@ -5,3 +5,8 @@
         "-fsanitize-address-use-after-return=always"
 #        "-fsanitize-address-use-after-return=never"
 #        "-fsanitize-address-use-after-return=runtime"
+        "-fsanitize-address-use-odr-indicator"
+        "-fsanitize-address-globals-dead-stripping"
+#        "-fsanitize-address-outline-instrumentation"    # smaller/slower codegen tradeoff
+#        "-fsanitize-address-field-padding=1"    # intra-object overflow; ABI-affecting
+        "-fsanitize-address-poison-custom-array-cookie"

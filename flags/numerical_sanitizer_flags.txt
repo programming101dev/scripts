@@ -1,0 +1,3 @@
+# NSan (clang >= 20): detects floating-point precision loss numerically.
+
+        "-fsanitize=numerical"

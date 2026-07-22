@@ -1,12 +1,16 @@
-        "-g"
-        "-g1"
-        "-g2"
+# Exactly ONE debug-level flag: they override each other (last one wins),
+# and the old set even included -ggdb0, which turns debug info OFF.
+
+#        "-ggdb3 = richest info (includes macro definitions) targeted at gdb."
+        "-ggdb3"
+#        "-g"
+#        "-g1"
+#        "-g2"
 #        "-g3"
-        "-ggdb"
-        "-ggdb0"
-        "-ggdb1"
-        "-ggdb2"
-#        "-ggdb3"
+#        "-ggdb"
+#        "-ggdb0"
+#        "-ggdb1"
+#        "-ggdb2"
 #        "-gdwarf"
 #        "-gdwarf2"
 #        "-gdwarf3"
@@ -22,7 +26,7 @@
 #        "-gvms1"
 #        "-gvms2"
         "-fno-eliminate-unused-debug-symbols"
-        "-femit-class-debug-always "
+        "-femit-class-debug-always"
         "-fno-merge-debug-strings"
 #        "-fdebug-prefix-map=old=new"
         "-fvar-tracking"
@@ -32,7 +36,7 @@
 #        "-gdwarf64"
         "-gdescribe-dies"
         "-gpubnames"
-        "-ggnu-pubname"
+        "-ggnu-pubnames"
 #        "-fdebug-types-section"
         "-grecord-gcc-switches"
 #        "-gno-record-gcc-switches"
@@ -57,5 +61,21 @@
 #        "-femit-struct-debug-baseonly"
 #        "-femit-struct-debug-reduced"
 #        "-femit-struct-debug-detailed[=spec-list]"
-#        "-fno-dwarf2-cfi-asm "
+#        "-fno-dwarf2-cfi-asm"
         "-fno-eliminate-unused-debug-types"
+        "-gno-omit-unreferenced-methods"    # clang >= 20: complete C++ class debug info
+        "-gtemplate-alias"    # clang >= 20: DWARF for template aliases
+        "-fextend-variable-liveness"    # clang >= 20: variables stay inspectable in debugger
+#        "-gomit-unreferenced-methods"    # inverse of above — REDUCES debug info
+#        "-gcodeview"    # Windows PDB format, not our platforms
+        "-fvar-tracking-uninit"    # GCC: track uninitialized vars in debug info
+        "-fstack-usage"    # GCC: emit per-function stack usage (.su files in build dir)
+        "-fkeep-inline-functions"    # keep every function inspectable in the debugger
+        "-fkeep-static-functions"
+        "-fdebug-macro"    # clang: macro definitions in debug info
+        "-fdiagnostics-show-template-tree"    # clang: structured C++ template-mismatch errors
+        "-fstandalone-debug"    # clang: complete type info, no vendor elision
+        "-fstack-size-section"    # clang: per-function stack sizes (like GCC -fstack-usage)
+        "-fcallgraph-info=su,da"    # GCC: callgraph with stack usage + dynamic allocation
+#        "-fparse-all-comments"    # makes clang treat EVERY comment (incl. plain /* license/email headers) as a doc comment, so -Wdocumentation-unknown-command fires on the @ in emails across 200+ files. Marginal value, high false-positive cost -> excluded.
+        "-gdwarf-5 -gembed-source"    # clang: embed source in DWARF5 — debugger always has it

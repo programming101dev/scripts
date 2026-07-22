@@ -1,0 +1,39 @@
+# Compiler-accepted hardening flags (always on; no link-only switches here)
+
+        "-fharden-compares"    # clang >= 17
+        "-fharden-conditional-branches"    # clang >= 17
+#        "-fstack-protector"
+        "-fstack-protector-all"
+#        "-fstack-protector-strong"
+#        "-fstack-protector-explicit"
+        "-fstack-check"    # GCC only
+        "-fstack-clash-protection"    # stronger stack-probing than -fstack-check on Linux x86/ARM; per-compiler probe drops it where unsupported (e.g. macOS)
+#        "-fstack-limit-register=reg"    # GCC only
+#        "-fstack-limit-symbol=sym"    # GCC only
+#        "-fno-stack-limit"    # GCC only
+#        "-fsplit-stack"    # GCC on some targets; clang usually no
+        "-fvtable-verify=std"    # GCC C++ only
+#        "-fvtable-verify=preinit"    # GCC C++ only
+#        "-fvtable-verify=none"    # GCC C++ only
+#        "-fvtv-debug"    # GCC C++ only
+#        "-fvtv-counts"    # GCC C++ only
+        "-finstrument-functions"
+        "-finstrument-functions-once"
+#        "-finstrument-functions-exclude-file-list=f"
+#        "-finstrument-functions-exclude-function-list="
+#        "-fpatchable-function-entry="    # needs a value
+        "-fharden-control-flow-redundancy"    # GCC >= 14: runtime control-flow checking
+        "-fstrub=all"    # GCC >= 14: scrub stack frames on exit
+        "-faarch64-jump-table-hardening"    # clang >= 20, aarch64 only (probe rejects elsewhere)
+#        "-fhardcfr-check-exceptions"    # tuning knob; base -fharden-control-flow-redundancy default is sane
+#        "-fhardcfr-check-noreturn-calls="    # tuning knob
+#        "-fhardcfr-check-returning-calls"    # tuning knob
+#        "-fhardcfr-skip-leaf"    # WEAKENS hardcfr coverage
+        "-fcf-protection=full"    # x86 CET shadow-stack+IBT (probe rejects elsewhere)
+        "-mbranch-protection=standard"    # aarch64 PAC+BTI (probe rejects on x86)
+#        "-mspeculative-load-hardening"    # Spectre-v1 (bounds-check bypass) mitigation, clang. Runtime-perf cost; deployment hardening, not a correctness/diagnostic win — off for the teaching build, flip on per policy.
+#        "-mretpoline"    # Spectre-v2 (branch-target injection) mitigation, clang/x86. Perf cost; off by default (deployment hardening).
+#        "-mindirect-branch=thunk"    # Spectre-v2 mitigation, gcc/x86 (retpoline thunks). Perf cost; off by default.
+#        "-mfunction-return=thunk"    # Retbleed mitigation, gcc/x86. Perf cost; off by default.
+#        "-mharden-sls=all"    # Straight-line-speculation hardening, gcc+clang (x86/arm). Off by default (deployment hardening).
+#        "-mshstk"    # Enables the CET shadow-stack ISA, x86; complements -fcf-protection=full (already on). Off by default; enable per deployment policy.
