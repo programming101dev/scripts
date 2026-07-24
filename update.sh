@@ -53,8 +53,8 @@ usage() {
   cat <<'USAGE'
 Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [--dry-run]
 
-  -c  C compiler       (e.g. gcc, clang, gcc-15, /opt/llvm/bin/clang)
-  -x  C++ compiler     (e.g. g++, clang++, g++-15, /opt/llvm/bin/clang++)
+  -c  C compiler       (e.g. gcc, clang, gcc-16, /opt/llvm/bin/clang)
+  -x  C++ compiler     (e.g. g++, clang++, g++-16, /opt/llvm/bin/clang++)
   -f  clang-format     (default: clang-format; accepts absolute path or name)
   -t  clang-tidy       (default: clang-tidy;  accepts absolute path or name)
   -k  cppcheck         (default: cppcheck;    accepts absolute path or name)
@@ -79,7 +79,7 @@ Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clan
 
 Examples:
   ./update.sh -c clang -x clang++
-  ./update.sh -c gcc-15 -x g++-15 -f clang-format-18 -t clang-tidy-18
+  ./update.sh -c gcc-16 -x g++-16 -f clang-format-20 -t clang-tidy-20
 USAGE
   _cc="$(_p101_names supported_c_compilers.txt)"; _cxx="$(_p101_names supported_cxx_compilers.txt)"
   if [ -n "$_cc" ] || [ -n "$_cxx" ]; then

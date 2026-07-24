@@ -18,6 +18,13 @@ if(DEFINED ARGS_CMAKE AND NOT ARGS_CMAKE STREQUAL "")
   endif()
 endif()
 
+# Optional: apply fixes in place. -DFIX=ON turns the check pass into a fix pass
+# using the SAME full check set / args / DB. --fix-errors also applies fixes when
+# a TU still has errors, so a student's in-progress code still gets cleaned up.
+if(DEFINED FIX AND FIX)
+  list(APPEND _args --fix --fix-errors)
+endif()
+
 if(NOT DEFINED P101_TIDY_FILES_LIST)
   message(FATAL_ERROR "FILES_CMAKE did not define P101_TIDY_FILES_LIST")
 endif()
@@ -41,7 +48,11 @@ foreach(F IN LISTS P101_TIDY_FILES_LIST)
     if(NOT _err STREQUAL "")
       message(STATUS "${_err}")
     endif()
-    set(_fail 1)
+    # In fix mode, a non-zero exit just means diagnostics remained after fixing
+    # what it could — that is not a failure of the format action.
+    if(NOT (DEFINED FIX AND FIX))
+      set(_fail 1)
+    endif()
   endif()
 endforeach()
 
