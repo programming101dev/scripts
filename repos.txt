@@ -1,6 +1,7 @@
 https://github.com/programming101dev/lib_error.git|../libraries/lib_error|c
 https://github.com/programming101dev/lib_env.git|../libraries/lib_env|c
 https://github.com/programming101dev/lib_c.git|../libraries/lib_c|c
+https://github.com/programming101dev/lib_c_facts.git|../libraries/lib_c_facts|c
 https://github.com/programming101dev/lib_posix.git|../libraries/lib_posix|c
 https://github.com/programming101dev/lib_posix_xsi.git|../libraries/lib_posix_xsi|c
 https://github.com/programming101dev/lib_posix_optional.git|../libraries/lib_posix_optional|c

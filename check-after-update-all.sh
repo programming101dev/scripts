@@ -6,8 +6,9 @@
 # that catch integration/template/tool regressions after the heavy build pass:
 #
 #   1. shared CMakeLists regression harness;
-#   2. copied-template standalone copy/build/test;
-#   3. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor.
+#   2. p101 tool contract documentation checks;
+#   3. copied-template standalone copy/build/test;
+#   4. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor.
 
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
@@ -16,6 +17,7 @@ cc=""
 cxx=""
 out_dir=""
 skip_cmake=0
+skip_tool_contracts=0
 skip_stack=0
 skip_regression=0
 template_no_tests=0
@@ -40,6 +42,8 @@ Options:
   --fuzz-secs <s>  Fuzz smoke budget if playground fuzz is enabled. Default: 5.
 
   --skip-cmake        Skip the shared CMakeLists regression harness.
+  --skip-tool-contracts
+                      Skip p101 tool README contract checks.
   --skip-stack        Skip template/playground stack checks.
   --skip-regression   Skip the p101 regression corpus.
   --template-no-tests Build copied templates but skip copied template tests.
@@ -60,6 +64,7 @@ while [ "$#" -gt 0 ]; do
     -n) fault_count="${2:?}"; shift 2 ;;
     --fuzz-secs) fuzz_secs="${2:?}"; shift 2 ;;
     --skip-cmake) skip_cmake=1; shift ;;
+    --skip-tool-contracts) skip_tool_contracts=1; shift ;;
     --skip-stack) skip_stack=1; shift ;;
     --skip-regression) skip_regression=1; shift ;;
     --template-no-tests) template_no_tests=1; shift ;;
@@ -185,6 +190,14 @@ else
   say "==> shared CMakeLists regression harness"
   say "    SKIP"
   printf '| SKIP | shared CMakeLists regression harness | --skip-cmake |\n' >> "$summary"
+fi
+
+if [ "$skip_tool_contracts" -eq 0 ]; then
+  run_logged "p101 tool design contract checks" "$log_dir/check-p101-tool-contracts.log" ./check-p101-tool-contracts.sh
+else
+  say "==> p101 tool design contract checks"
+  say "    SKIP"
+  printf '| SKIP | p101 tool design contract checks | --skip-tool-contracts |\n' >> "$summary"
 fi
 
 if [ "$skip_stack" -eq 0 ]; then

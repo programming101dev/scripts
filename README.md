@@ -99,6 +99,26 @@ For student/instructor tooling around observed runs:
 ./p101 cohort submission-*/correlated-report.json
 ```
 
+The p101 tools follow a lightweight design contract: bounded inputs, explicit
+blind spots, deterministic receipts, shared mechanisms, and small public APIs.
+See [docs/p101-tool-design-contract.md](docs/p101-tool-design-contract.md).
+To check that each `p101-*` README exposes the minimum contract surface, run:
+
+```bash
+./check-p101-tool-contracts.sh
+```
+
+To replay the broader p101 tool audit — README contract checks, strict
+wrapper-audit checks over the C tools, and module-map design reports — run:
+
+```bash
+./check-p101-tool-audit.sh
+```
+
+By default, module-map design notes are reported but do not fail the audit. Use
+`--fail-module-notes` when intentionally ratcheting the p101 tools toward the
+current module-splitting rules.
+
 `github-actions/p101-stack.yml` is a starter CI workflow for macOS, Linux, and
 FreeBSD. Copy it to `.github/workflows/` in the repo that should own the
 multi-platform gate.

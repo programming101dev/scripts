@@ -41,6 +41,7 @@ create_symlinks() {
 ${raw}
 EOF
     [[ -n "${dir:-}" ]] || continue
+    [[ "${_type:-}" == "c" || "${_type:-}" == "cxx" ]] || continue
 
     case "${dir}" in
       /*) : ;;

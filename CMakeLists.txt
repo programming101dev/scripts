@@ -475,13 +475,50 @@ message(STATUS "Detected sanitizer flags: ${DETECTED_SANITIZERS}")
 # Public include/link dirs
 # =========================
 set(PUBLIC_INC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set(_P101_WORKSPACE_ROOT_CANDIDATES
+        "${CMAKE_CURRENT_SOURCE_DIR}/../.."
+        "${CMAKE_CURRENT_SOURCE_DIR}/.."
+)
+set(_P101_LOCAL_INCLUDE_DIRS "")
+set(_P101_LOCAL_LINK_DIRS "")
+foreach (_p101_root IN LISTS _P101_WORKSPACE_ROOT_CANDIDATES)
+    get_filename_component(_p101_root_abs "${_p101_root}" ABSOLUTE)
+    if (IS_DIRECTORY "${_p101_root_abs}/libraries")
+        file(GLOB _p101_library_repos LIST_DIRECTORIES true "${_p101_root_abs}/libraries/lib_*")
+        list(SORT _p101_library_repos)
+        foreach (_p101_library_repo IN LISTS _p101_library_repos)
+            if (IS_DIRECTORY "${_p101_library_repo}/include")
+                list(APPEND _P101_LOCAL_INCLUDE_DIRS "${_p101_library_repo}/include")
+            endif ()
+            if (EXISTS "${_p101_library_repo}/.last-build-dir")
+                file(READ "${_p101_library_repo}/.last-build-dir" _p101_last_build_dir)
+                string(STRIP "${_p101_last_build_dir}" _p101_last_build_dir)
+                if (IS_DIRECTORY "${_p101_library_repo}/${_p101_last_build_dir}")
+                    list(APPEND _P101_LOCAL_LINK_DIRS "${_p101_library_repo}/${_p101_last_build_dir}")
+                endif ()
+            endif ()
+            file(GLOB _p101_library_build_dirs LIST_DIRECTORIES true "${_p101_library_repo}/build*")
+            list(SORT _p101_library_build_dirs)
+            foreach (_p101_library_build_dir IN LISTS _p101_library_build_dirs)
+                if (IS_DIRECTORY "${_p101_library_build_dir}")
+                    list(APPEND _P101_LOCAL_LINK_DIRS "${_p101_library_build_dir}")
+                endif ()
+            endforeach ()
+        endforeach ()
+        break()
+    endif ()
+endforeach ()
+list(REMOVE_DUPLICATES _P101_LOCAL_INCLUDE_DIRS)
+list(REMOVE_DUPLICATES _P101_LOCAL_LINK_DIRS)
 
 set(_INC_CANDIDATES
         "${PUBLIC_INC_DIR}"
+        ${_P101_LOCAL_INCLUDE_DIRS}
         ${P101_PUBLIC_INCLUDE_DIRS_LIST}
         "/usr/local/include"
 )
 set(_LIB_CANDIDATES
+        ${_P101_LOCAL_LINK_DIRS}
         ${P101_PUBLIC_LINK_DIRS_LIST}
         "/usr/local/lib" "/usr/local/lib64"
 )
