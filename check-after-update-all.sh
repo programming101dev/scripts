@@ -17,6 +17,7 @@ cxx=""
 out_dir=""
 skip_cmake=0
 skip_stack=0
+skip_regression=0
 template_no_tests=0
 playground_quality=0
 playground_coverage=0
@@ -40,6 +41,7 @@ Options:
 
   --skip-cmake        Skip the shared CMakeLists regression harness.
   --skip-stack        Skip template/playground stack checks.
+  --skip-regression   Skip the p101 regression corpus.
   --template-no-tests Build copied templates but skip copied template tests.
 
   --playground-quality  Let tour.sh run build/test/fuzz/coverage quality steps.
@@ -59,6 +61,7 @@ while [ "$#" -gt 0 ]; do
     --fuzz-secs) fuzz_secs="${2:?}"; shift 2 ;;
     --skip-cmake) skip_cmake=1; shift ;;
     --skip-stack) skip_stack=1; shift ;;
+    --skip-regression) skip_regression=1; shift ;;
     --template-no-tests) template_no_tests=1; shift ;;
     --playground-quality) playground_quality=1; shift ;;
     --playground-coverage) playground_coverage=1; shift ;;
@@ -205,11 +208,20 @@ else
   printf '| SKIP | template/playground stack checks | --skip-stack |\n' >> "$summary"
 fi
 
+if [ "$skip_regression" -eq 0 ]; then
+  run_logged "p101 behavior regression corpus" "$log_dir/check-p101-regression-corpus.log" ./check-p101-regression-corpus.sh -o "$out_dir/regression-corpus"
+else
+  say "==> p101 behavior regression corpus"
+  say "    SKIP"
+  printf '| SKIP | p101 behavior regression corpus | --skip-regression |\n' >> "$summary"
+fi
+
 cat >> "$summary" <<EOF
 
 ## Details
 
 - Stack output: [stack](./stack/)
+- Regression corpus: [regression-corpus](./regression-corpus/)
 EOF
 
 say "p101 post-update-all checks passed: $out_dir"

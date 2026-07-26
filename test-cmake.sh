@@ -374,8 +374,9 @@ set(app_SOURCES src/main.c src/lib.c)
 EOF
   # numerator 1 (not a magic number, so earlier tidy stage passes); the bug is
   # the cross-TU division by the 0 that main() passes in.
-  printf 'int compute(int d);\nint main(void)\n{\n    return compute(0);\n}\n' > "$PROJ/src/main.c"
-  printf 'int compute(int d)\n{\n    return 1 / d;\n}\n' > "$PROJ/src/lib.c"
+  printf '#ifndef CTU_LIB_H\n#define CTU_LIB_H\nint compute(int d);\n#endif\n' > "$PROJ/src/lib.h"
+  printf '#include "lib.h"\nint main(void)\n{\n    return compute(0);\n}\n' > "$PROJ/src/main.c"
+  printf '#include "lib.h"\nint compute(int d)\n{\n    return 1 / d;\n}\n' > "$PROJ/src/lib.c"
   configure "$PROJ"
   if (( RC == 0 )); then
     build "$PROJ"

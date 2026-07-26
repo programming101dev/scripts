@@ -82,7 +82,26 @@ After `update-all.sh` succeeds, run the post-build acceptance checks:
 
 This does not rebuild every repository again. It runs the shared CMake
 regression harness, copied-template standalone checks, and the
-`p101-tool-playground` tour.
+`p101-tool-playground` tour, then runs the small p101 behavior regression
+corpus.
+
+For a shorter behavior-only gate, run:
+
+```bash
+./check-p101-regression-corpus.sh
+```
+
+For student/instructor tooling around observed runs:
+
+```bash
+./p101 html-report /path/to/p101-observe-output
+./p101 bug-bundle /path/to/p101-observe-output
+./p101 cohort submission-*/correlated-report.json
+```
+
+`github-actions/p101-stack.yml` is a starter CI workflow for macOS, Linux, and
+FreeBSD. Copy it to `.github/workflows/` in the repo that should own the
+multi-platform gate.
 
 ## **Testing the shared CMakeLists.txt**
 

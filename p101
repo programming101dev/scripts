@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# p101 — small dispatcher for the p101 teaching tools.
+
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+
+usage() {
+  cat <<'USAGE'
+Usage: p101 <command> [args...]
+
+Commands:
+  observe       Run p101-observe
+  report        Run p101-report
+  trace         Run p101-trace
+  resource      Run p101-resource-tracker
+  walk          Run p101-error-path-walk
+  audit         Run p101-wrapper-audit
+  module-map    Run p101-module-map
+  doctor        Run p101-doctor
+  playground    Run p101-tool-playground
+  html-report   Run p101-html-report.py
+  cohort        Run p101-cohort-summary.py
+  bug-bundle    Run p101-bug-bundle.sh
+
+Tool locations may be overridden with the usual P101_* environment variables.
+USAGE
+}
+
+find_tool() {
+  env_name="$1"
+  shift
+
+  eval "configured=\${$env_name:-}"
+  if [ -n "$configured" ]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+
+  for candidate in "$@"; do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    if command -v "$candidate" >/dev/null 2>&1; then
+      command -v "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+if [ "$#" -eq 0 ]; then
+  usage
+  exit 2
+fi
+
+command_name="$1"
+shift
+
+case "$command_name" in
+  -h|--help|help)
+    usage
+    ;;
+  observe)
+    exec "$(find_tool P101_OBSERVE ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe)" "$@"
+    ;;
+  report)
+    exec "$(find_tool P101_REPORT ../programs/p101-report/build-clang-22/p101-report ../programs/p101-report/build-clang/p101-report p101-report)" "$@"
+    ;;
+  trace)
+    exec "$(find_tool P101_TRACE ../programs/p101-trace/build-clang-22/p101-trace ../programs/p101-trace/build-clang/p101-trace p101-trace)" "$@"
+    ;;
+  resource|resource-tracker)
+    exec "$(find_tool P101_RESOURCE_TRACKER ../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker ../programs/p101-resource-tracker/build-clang/p101-resource-tracker p101-resource-tracker)" "$@"
+    ;;
+  walk|error-path-walk)
+    exec "$(find_tool P101_ERROR_PATH_WALK ../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk ../programs/p101-error-path-walk/build-clang/p101-error-path-walk p101-error-path-walk)" "$@"
+    ;;
+  audit|wrapper-audit)
+    exec "$(find_tool P101_WRAPPER_AUDIT ../programs/p101-wrapper-audit/p101-wrapper-audit p101-wrapper-audit)" "$@"
+    ;;
+  module-map)
+    exec "$(find_tool P101_MODULE_MAP ../programs/p101-module-map/build-clang-22/p101-module-map ../programs/p101-module-map/build-clang/p101-module-map p101-module-map)" "$@"
+    ;;
+  doctor)
+    exec "$(find_tool P101_DOCTOR ../programs/p101-doctor/build-clang-22/p101-doctor ../programs/p101-doctor/build-clang/p101-doctor p101-doctor)" "$@"
+    ;;
+  playground)
+    exec "$(find_tool P101_TOOL_PLAYGROUND ../programs/p101-tool-playground/build-clang-22/p101-tool-playground ../programs/p101-tool-playground/build-clang/p101-tool-playground p101-tool-playground)" "$@"
+    ;;
+  html-report)
+    exec ./p101-html-report.py "$@"
+    ;;
+  cohort)
+    exec ./p101-cohort-summary.py "$@"
+    ;;
+  bug-bundle)
+    exec ./p101-bug-bundle.sh "$@"
+    ;;
+  *)
+    echo "Unknown p101 command: $command_name" >&2
+    usage
+    exit 2
+    ;;
+esac
