@@ -7,7 +7,7 @@
 #
 #   1. shared CMakeLists regression harness;
 #   2. copied-template standalone copy/build/test;
-#   3. p101-tool-playground tour over observe/resource/trace/report/fault-walk.
+#   3. p101-tool-playground tour over observe/resource/trace/report/fault-walk/audit.
 
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"

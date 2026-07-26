@@ -5,7 +5,7 @@
 #   1. strict-build wrapper libraries and tools/templates from repos.txt;
 #   2. prove copied templates are self-contained;
 #   3. run the tool playground tour, including observe/resource/trace/report and
-#      error-path walking.
+#      error-path walking through p101-audit.
 
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
@@ -32,7 +32,7 @@ usage() {
 Usage: ./check-p101-stack.sh [options]
 
 Runs the p101 acceptance stack: repo builds, standalone template copy/build,
-and p101-tool-playground tour.
+and the p101-tool-playground tour including p101-audit.
 
 Options:
   -c <cc>          C compiler. Default: clang.
