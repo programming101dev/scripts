@@ -22,6 +22,7 @@ Commands:
   playground    Run p101-tool-playground
   check         Run the full p101 check workflow
   corpus        Run the p101-tool-playground lesson corpus
+  lab           Build the p101-tool-playground lab book
   html-report   Run p101-html-report.py
   cohort        Run p101-cohort-summary.py
   bug-bundle    Run p101-bug-bundle.sh
@@ -98,6 +99,9 @@ case "$command_name" in
     ;;
   corpus)
     exec ../programs/p101-tool-playground/corpus.sh "$@"
+    ;;
+  lab|playground-lab)
+    exec ../programs/p101-tool-playground/lab.sh "$@"
     ;;
   html-report)
     exec ./p101-html-report.py "$@"

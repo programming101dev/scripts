@@ -109,6 +109,17 @@ To run the checked playground lesson corpus:
 ./p101 corpus
 ```
 
+To turn that corpus into a student-facing lab book:
+
+```bash
+./p101 lab --quick
+./p101 lab
+```
+
+`p101 lab` writes a self-contained `index.html`, a Markdown lab outline, the
+checked corpus reports, and the command logs. It is the best single artifact
+for showing the full p101 toolchain in class.
+
 For lower-level student/instructor tooling around observed runs:
 
 ```bash
@@ -176,7 +187,7 @@ To run the broader p101 stack ratchet, use:
 
 That script builds repos from `repos.txt`, runs the standalone template check,
 then runs the `p101-tool-playground` tour, a `p101 check` golden-path smoke, and
-the quick playground corpus. During development, you can use
+the quick playground corpus and lab-book smoke. During development, you can use
 `--skip-repo-build` for a quicker smoke of the template and playground pieces.
 Use `--skip-install` when you want a non-interactive build-only stack check
 that does not run each repo's `install.sh`.

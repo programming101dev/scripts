@@ -23,6 +23,7 @@ skip_templates=0
 skip_playground=0
 skip_p101_check=0
 skip_corpus=0
+skip_lab=0
 template_no_tests=0
 playground_skip_quality=1
 playground_skip_coverage=1
@@ -54,6 +55,7 @@ Options:
   --skip-playground     Do not run p101-tool-playground/tour.sh.
   --skip-p101-check     Do not run the p101 check golden-path smoke.
   --skip-corpus         Do not run the p101-tool-playground corpus smoke.
+  --skip-lab            Do not run the p101-tool-playground lab-book smoke.
   --template-no-tests   Build copied templates but skip copied template tests.
 
   --playground-quality  Let tour.sh run build/test/fuzz/coverage quality steps.
@@ -81,6 +83,7 @@ while [ "$#" -gt 0 ]; do
     --skip-playground) skip_playground=1; shift ;;
     --skip-p101-check) skip_p101_check=1; shift ;;
     --skip-corpus) skip_corpus=1; shift ;;
+    --skip-lab) skip_lab=1; shift ;;
     --template-no-tests) template_no_tests=1; shift ;;
     --playground-quality) playground_skip_quality=0; shift ;;
     --playground-coverage) playground_skip_coverage=0; shift ;;
@@ -194,6 +197,15 @@ if [ "$skip_corpus" -eq 0 ]; then
   run_logged "p101-tool-playground corpus smoke" "$log_dir/p101-corpus.log" ./p101 corpus --quick -o "$corpus_out"
 else
   say "==> p101-tool-playground corpus smoke"
+  say "    SKIP"
+fi
+
+if [ "$skip_lab" -eq 0 ]; then
+  lab_out="$out_dir/p101-lab"
+  reset_child_dir "$lab_out"
+  run_logged "p101-tool-playground lab-book smoke" "$log_dir/p101-lab.log" ./p101 lab --quick -o "$lab_out"
+else
+  say "==> p101-tool-playground lab-book smoke"
   say "    SKIP"
 fi
 
