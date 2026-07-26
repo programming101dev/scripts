@@ -8,7 +8,7 @@ Generated from active `libraries/lib_*` directories. `_to_delete` is excluded.
 - Edges: `1318`
 - Wrapper-to-wrapper edges: `126`
 - Wrapper-to-native wrapped-call edges: `958`
-- Domains: `42`
+- Domains: `46`
 
 ## Playground-level graph
 
@@ -41,14 +41,18 @@ flowchart LR
   c_wctype_extensions["c/wctype-extensions"] --> p101_c_playground
   p101_systems_playground["p101-systems-playground\n361 wrappers"]
   systems_async_io["systems/async-io"] --> p101_systems_playground
+  systems_dynamic_loading["systems/dynamic-loading"] --> p101_systems_playground
   systems_file_io["systems/file-io"] --> p101_systems_playground
   systems_io_multiplexing["systems/io-multiplexing"] --> p101_systems_playground
   systems_ipc["systems/ipc"] --> p101_systems_playground
+  systems_legacy_database["systems/legacy-database"] --> p101_systems_playground
+  systems_localization_conversion["systems/localization-conversion"] --> p101_systems_playground
   systems_logging_diagnostics["systems/logging-diagnostics"] --> p101_systems_playground
-  systems_misc_runtime["systems/misc-runtime"] --> p101_systems_playground
   systems_platform_admin["systems/platform-admin"] --> p101_systems_playground
   systems_process_signal["systems/process-signal"] --> p101_systems_playground
   systems_resource_time_memory["systems/resource-time-memory"] --> p101_systems_playground
+  systems_search_structures["systems/search-structures"] --> p101_systems_playground
+  systems_text_patterns["systems/text-patterns"] --> p101_systems_playground
   systems_threading["systems/threading"] --> p101_systems_playground
   systems_users_terminals["systems/users-terminals"] --> p101_systems_playground
   p101_network_playground["p101-network-playground\n89 wrappers"]
@@ -67,7 +71,7 @@ flowchart LR
 | Playground | Function count | Domains | Purpose |
 | --- | ---: | --- | --- |
 | `p101-c-playground` | 608 | `c/atomics`, `c/cli-parsing`, `c/control-flow`, `c/control-flow-extensions`, `c/conversion`, `c/ctype`, `c/ctype-extensions`, `c/inttypes`, `c/locale`, `c/locale-extensions`, `c/math`, `c/math-extensions`, `c/stdio`, `c/stdio-extensions`, `c/stdlib`, `c/stdlib-extensions`, `c/string`, `c/string-extensions`, `c/time`, `c/time-extensions`, `c/wchar`, `c/wchar-extensions`, `c/wctype`, `c/wctype-extensions` | C language, memory, strings, integers, parsing, atomics, and portable diagnostics. |
-| `p101-systems-playground` | 361 | `systems/async-io`, `systems/file-io`, `systems/io-multiplexing`, `systems/ipc`, `systems/logging-diagnostics`, `systems/misc-runtime`, `systems/platform-admin`, `systems/process-signal`, `systems/resource-time-memory`, `systems/threading`, `systems/users-terminals` | POSIX files, processes, signals, resources, terminals, pthreads, IPC, and I/O multiplexing. |
+| `p101-systems-playground` | 361 | `systems/async-io`, `systems/dynamic-loading`, `systems/file-io`, `systems/io-multiplexing`, `systems/ipc`, `systems/legacy-database`, `systems/localization-conversion`, `systems/logging-diagnostics`, `systems/platform-admin`, `systems/process-signal`, `systems/resource-time-memory`, `systems/search-structures`, `systems/text-patterns`, `systems/threading`, `systems/users-terminals` | POSIX files, processes, signals, resources, terminals, pthreads, IPC, and I/O multiplexing. |
 | `p101-network-playground` | 89 | `network` | Sockets, address resolution, interfaces, resolver/name helpers, and byte-order/network conversions. |
 | `p101-tooling-playground` | 127 | `support/environment`, `support/error`, `support/fsm`, `support/instrumentation`, `support/util`, `tooling/c-facts` | p101 support libraries: env/error/fsm/facts/instrumentation and how the tools observe programs. |
 
@@ -80,6 +84,7 @@ flowchart LR
 | `p101-observability-playground` | 126 | `support/environment`, `support/error`, `support/fsm`, `support/instrumentation`, `tooling/c-facts` | env/error/fsm/facts, call traces, resource logs, fault injection, and writing small analyses over event streams. |
 | `p101-network-playground` | 89 | `network` | TCP/UDP sockets, address resolution, interfaces, resolver helpers, protocol databases, and byte ordering. |
 | `p101-threading-playground` | 85 | `systems/threading`, `c/atomics` | Threads, mutexes, condition variables, cancellation, cleanup, atomics, and race-oriented resource handling. |
+| `p101-runtime-services-playground` | 36 | `systems/dynamic-loading`, `systems/text-patterns`, `systems/localization-conversion`, `systems/legacy-database`, `systems/search-structures` | Dynamic loading, regex, iconv, locale/message catalogs, legacy DBM, and libc search structures. |
 | `p101-ipc-playground` | 21 | `systems/ipc`, `systems/io-multiplexing` | POSIX and XSI IPC: message queues, semaphores, shared memory, keys, cleanup, and permission mistakes. |
 
 ## Curriculum reading
@@ -87,6 +92,7 @@ flowchart LR
 - The existing wrapper examples can collapse into playground tracks once each cluster has a working "good path" plus focused defect labs.
 - `systems/ipc` is big enough to justify an IPC unit, especially when paired with `systems/io-multiplexing` so students see blocking, readiness, cleanup, and ownership together.
 - `systems/file-io`, `systems/threading`, and `network` are the three largest non-C clusters; they should not be squeezed into one general systems lab.
+- Dynamic loading, regex, iconv/catalogs, DBM, and XSI search are now split out of the old misc bucket; they belong in a runtime-services playground, not in file/process/thread labs.
 - `support/instrumentation` plus `tooling/c-facts` should become a meta/tooling playground: students learn that the wrappers are observable APIs, not just safer spelling.
 
 ## Counts by library
@@ -140,14 +146,18 @@ flowchart LR
 | `support/instrumentation` | 41 | `lib_env`:41 | tooling/meta playground |
 | `support/util` | 1 | `lib_util`:1 | tooling/meta playground |
 | `systems/async-io` | 8 | `lib_posix`:7, `lib_posix_optional`:1 | systems playground |
+| `systems/dynamic-loading` | 4 | `lib_posix`:4 | runtime services playground |
 | `systems/file-io` | 118 | `lib_posix`:96, `lib_posix_xsi`:16, `lib_unix`:6 | systems playground |
 | `systems/io-multiplexing` | 3 | `lib_posix`:3 | systems reference/advanced cluster |
 | `systems/ipc` | 18 | `lib_posix`:6, `lib_posix_xsi`:12 | strong IPC playground cluster |
+| `systems/legacy-database` | 9 | `lib_posix_xsi`:9 | runtime services playground |
+| `systems/localization-conversion` | 8 | `lib_posix`:8 | runtime services playground |
 | `systems/logging-diagnostics` | 12 | `lib_posix_xsi`:4, `lib_unix`:8 | systems playground |
-| `systems/misc-runtime` | 36 | `lib_posix`:16, `lib_posix_xsi`:20 | systems playground |
 | `systems/platform-admin` | 8 | `lib_posix`:1, `lib_unix`:7 | systems playground |
 | `systems/process-signal` | 35 | `lib_posix`:16, `lib_posix_optional`:17, `lib_posix_xsi`:2 | systems playground |
 | `systems/resource-time-memory` | 19 | `lib_posix`:4, `lib_posix_optional`:7, `lib_posix_xsi`:6, `lib_unix`:2 | systems playground |
+| `systems/search-structures` | 11 | `lib_posix_xsi`:11 | runtime services playground |
+| `systems/text-patterns` | 4 | `lib_posix`:4 | runtime services playground |
 | `systems/threading` | 77 | `lib_posix`:51, `lib_posix_optional`:26 | systems playground |
 | `systems/users-terminals` | 27 | `lib_posix`:15, `lib_posix_xsi`:6, `lib_unix`:6 | systems playground |
 | `tooling/c-facts` | 3 | `lib_c_facts`:3 | tooling/meta playground |
@@ -185,10 +195,6 @@ flowchart LR
 ### `c/stdio` (40)
 
 `p101_clearerr`, `p101_fclose`, `p101_feof`, `p101_ferror`, `p101_fflush`, `p101_fgetc`, `p101_fgetpos`, `p101_fgets`, `p101_fopen`, `p101_fprintf`, `p101_fputc`, `p101_fputs`, `p101_fread`, `p101_freopen`, `p101_fscanf`, `p101_fseek`, `p101_fsetpos`, `p101_ftell`, `p101_fwrite`, `p101_getc`, `p101_getchar`, `p101_perror`, `p101_printf`, `p101_putc`, `p101_putchar`, `p101_puts`, `p101_remove`, `p101_rename`, `p101_scanf`, `p101_setvbuf`, `p101_snprintf`, `p101_sscanf`, `p101_tmpfile`, `p101_ungetc`, `p101_vfprintf` … +5 more
-
-### `systems/misc-runtime` (36)
-
-`p101_catclose`, `p101_catgets`, `p101_catopen`, `p101_dbm_clearerr`, `p101_dbm_close`, `p101_dbm_delete`, `p101_dbm_error`, `p101_dbm_fetch`, `p101_dbm_firstkey`, `p101_dbm_nextkey`, `p101_dbm_open`, `p101_dbm_store`, `p101_dlclose`, `p101_dlerror`, `p101_dlopen`, `p101_dlsym`, `p101_hcreate`, `p101_hdestroy`, `p101_hsearch`, `p101_iconv`, `p101_iconv_close`, `p101_iconv_open`, `p101_insque`, `p101_lfind`, `p101_lsearch`, `p101_nl_langinfo`, `p101_nl_langinfo_l`, `p101_regcomp`, `p101_regerror`, `p101_regexec`, `p101_regfree`, `p101_remque`, `p101_tdelete`, `p101_tfind`, `p101_tsearch` … +1 more
 
 ### `systems/process-signal` (35)
 
@@ -262,9 +268,17 @@ flowchart LR
 
 `p101_closelog`, `p101_err`, `p101_errx`, `p101_fmtmsg`, `p101_openlog`, `p101_setlogmask`, `p101_verr`, `p101_verrx`, `p101_vwarn`, `p101_vwarnx`, `p101_warn`, `p101_warnx`
 
+### `systems/search-structures` (11)
+
+`p101_hcreate`, `p101_hdestroy`, `p101_hsearch`, `p101_insque`, `p101_lfind`, `p101_lsearch`, `p101_remque`, `p101_tdelete`, `p101_tfind`, `p101_tsearch`, `p101_twalk`
+
 ### `c/time-extensions` (9)
 
 `p101_clock_getres`, `p101_clock_gettime`, `p101_clock_settime`, `p101_gmtime_r`, `p101_localtime_r`, `p101_nanosleep`, `p101_strftime_l`, `p101_strptime`, `p101_tzset`
+
+### `systems/legacy-database` (9)
+
+`p101_dbm_clearerr`, `p101_dbm_close`, `p101_dbm_delete`, `p101_dbm_error`, `p101_dbm_fetch`, `p101_dbm_firstkey`, `p101_dbm_nextkey`, `p101_dbm_open`, `p101_dbm_store`
 
 ### `c/atomics` (8)
 
@@ -273,6 +287,10 @@ flowchart LR
 ### `systems/async-io` (8)
 
 `p101_aio_cancel`, `p101_aio_error`, `p101_aio_fsync`, `p101_aio_read`, `p101_aio_return`, `p101_aio_suspend`, `p101_aio_write`, `p101_lio_listio`
+
+### `systems/localization-conversion` (8)
+
+`p101_catclose`, `p101_catgets`, `p101_catopen`, `p101_iconv`, `p101_iconv_close`, `p101_iconv_open`, `p101_nl_langinfo`, `p101_nl_langinfo_l`
 
 ### `systems/platform-admin` (8)
 
@@ -297,6 +315,14 @@ flowchart LR
 ### `c/locale-extensions` (4)
 
 `p101_duplocale`, `p101_freelocale`, `p101_newlocale`, `p101_uselocale`
+
+### `systems/dynamic-loading` (4)
+
+`p101_dlclose`, `p101_dlerror`, `p101_dlopen`, `p101_dlsym`
+
+### `systems/text-patterns` (4)
+
+`p101_regcomp`, `p101_regerror`, `p101_regexec`, `p101_regfree`
 
 ### `systems/io-multiplexing` (3)
 

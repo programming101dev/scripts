@@ -2,7 +2,7 @@
   "summary": {
     "function_count": 1185,
     "edge_count": 1318,
-    "domain_count": 42
+    "domain_count": 46
   },
   "nodes": [
     {
@@ -664,7 +664,7 @@
     {
       "name": "p101_catclose",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/localization-conversion",
       "header": "libraries/lib_posix/include/p101_posix/p101_nl_types.h",
       "source": "libraries/lib_posix/src/nl_types.c",
       "native_guess": "catclose"
@@ -672,7 +672,7 @@
     {
       "name": "p101_catgets",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/localization-conversion",
       "header": "libraries/lib_posix/include/p101_posix/p101_nl_types.h",
       "source": "libraries/lib_posix/src/nl_types.c",
       "native_guess": "catgets"
@@ -680,7 +680,7 @@
     {
       "name": "p101_catopen",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/localization-conversion",
       "header": "libraries/lib_posix/include/p101_posix/p101_nl_types.h",
       "source": "libraries/lib_posix/src/nl_types.c",
       "native_guess": "catopen"
@@ -1440,7 +1440,7 @@
     {
       "name": "p101_dbm_clearerr",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/legacy-database",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_ndbm.h",
       "source": "libraries/lib_posix_xsi/src/ndbm.c",
       "native_guess": "dbm_clearerr"
@@ -1448,7 +1448,7 @@
     {
       "name": "p101_dbm_close",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/legacy-database",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_ndbm.h",
       "source": "libraries/lib_posix_xsi/src/ndbm.c",
       "native_guess": "dbm_close"
@@ -1456,7 +1456,7 @@
     {
       "name": "p101_dbm_delete",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/legacy-database",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_ndbm.h",
       "source": "libraries/lib_posix_xsi/src/ndbm.c",
       "native_guess": "dbm_delete"
@@ -1464,7 +1464,7 @@
     {
       "name": "p101_dbm_error",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/legacy-database",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_ndbm.h",
       "source": "libraries/lib_posix_xsi/src/ndbm.c",
       "native_guess": "dbm_error"
@@ -1472,7 +1472,7 @@
     {
       "name": "p101_dbm_fetch",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/legacy-database",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_ndbm.h",
       "source": "libraries/lib_posix_xsi/src/ndbm.c",
       "native_guess": "dbm_fetch"
@@ -1480,7 +1480,7 @@
     {
       "name": "p101_dbm_firstkey",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/legacy-database",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_ndbm.h",
       "source": "libraries/lib_posix_xsi/src/ndbm.c",
       "native_guess": "dbm_firstkey"
@@ -1488,7 +1488,7 @@
     {
       "name": "p101_dbm_nextkey",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/legacy-database",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_ndbm.h",
       "source": "libraries/lib_posix_xsi/src/ndbm.c",
       "native_guess": "dbm_nextkey"
@@ -1496,7 +1496,7 @@
     {
       "name": "p101_dbm_open",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/legacy-database",
       "header": null,
       "source": "libraries/lib_posix_xsi/src/ndbm.c",
       "native_guess": "dbm_open"
@@ -1504,7 +1504,7 @@
     {
       "name": "p101_dbm_store",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/legacy-database",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_ndbm.h",
       "source": "libraries/lib_posix_xsi/src/ndbm.c",
       "native_guess": "dbm_store"
@@ -1544,7 +1544,7 @@
     {
       "name": "p101_dlclose",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/dynamic-loading",
       "header": "libraries/lib_posix/include/p101_posix/p101_dlfcn.h",
       "source": "libraries/lib_posix/src/dlfcn.c",
       "native_guess": "dlclose"
@@ -1552,7 +1552,7 @@
     {
       "name": "p101_dlerror",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/dynamic-loading",
       "header": "libraries/lib_posix/include/p101_posix/p101_dlfcn.h",
       "source": "libraries/lib_posix/src/dlfcn.c",
       "native_guess": "dlerror"
@@ -1560,7 +1560,7 @@
     {
       "name": "p101_dlopen",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/dynamic-loading",
       "header": null,
       "source": "libraries/lib_posix/src/dlfcn.c",
       "native_guess": "dlopen"
@@ -1568,7 +1568,7 @@
     {
       "name": "p101_dlsym",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/dynamic-loading",
       "header": null,
       "source": "libraries/lib_posix/src/dlfcn.c",
       "native_guess": "dlsym"
@@ -3888,7 +3888,7 @@
     {
       "name": "p101_hcreate",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/search-structures",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_search.h",
       "source": "libraries/lib_posix_xsi/src/search.c",
       "native_guess": "hcreate"
@@ -3896,7 +3896,7 @@
     {
       "name": "p101_hdestroy",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/search-structures",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_search.h",
       "source": "libraries/lib_posix_xsi/src/search.c",
       "native_guess": "hdestroy"
@@ -3904,7 +3904,7 @@
     {
       "name": "p101_hsearch",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/search-structures",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_search.h",
       "source": "libraries/lib_posix_xsi/src/search.c",
       "native_guess": "hsearch"
@@ -3952,7 +3952,7 @@
     {
       "name": "p101_iconv",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/localization-conversion",
       "header": "libraries/lib_posix/include/p101_posix/p101_iconv.h",
       "source": "libraries/lib_posix/src/iconv.c",
       "native_guess": "iconv"
@@ -3960,7 +3960,7 @@
     {
       "name": "p101_iconv_close",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/localization-conversion",
       "header": "libraries/lib_posix/include/p101_posix/p101_iconv.h",
       "source": "libraries/lib_posix/src/iconv.c",
       "native_guess": "iconv_close"
@@ -3968,7 +3968,7 @@
     {
       "name": "p101_iconv_open",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/localization-conversion",
       "header": "libraries/lib_posix/include/p101_posix/p101_iconv.h",
       "source": "libraries/lib_posix/src/iconv.c",
       "native_guess": "iconv_open"
@@ -4144,7 +4144,7 @@
     {
       "name": "p101_insque",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/search-structures",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_search.h",
       "source": "libraries/lib_posix_xsi/src/search.c",
       "native_guess": "insque"
@@ -4664,7 +4664,7 @@
     {
       "name": "p101_lfind",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/search-structures",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_search.h",
       "source": "libraries/lib_posix_xsi/src/search.c",
       "native_guess": "lfind"
@@ -4992,7 +4992,7 @@
     {
       "name": "p101_lsearch",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/search-structures",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_search.h",
       "source": "libraries/lib_posix_xsi/src/search.c",
       "native_guess": "lsearch"
@@ -5440,7 +5440,7 @@
     {
       "name": "p101_nl_langinfo",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/localization-conversion",
       "header": "libraries/lib_posix/include/p101_posix/p101_langinfo.h",
       "source": "libraries/lib_posix/src/langinfo.c",
       "native_guess": "nl_langinfo"
@@ -5448,7 +5448,7 @@
     {
       "name": "p101_nl_langinfo_l",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/localization-conversion",
       "header": "libraries/lib_posix/include/p101_posix/p101_langinfo.h",
       "source": "libraries/lib_posix/src/langinfo.c",
       "native_guess": "nl_langinfo_l"
@@ -6992,7 +6992,7 @@
     {
       "name": "p101_regcomp",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/text-patterns",
       "header": "libraries/lib_posix/include/p101_posix/p101_regex.h",
       "source": "libraries/lib_posix/src/regex.c",
       "native_guess": "regcomp"
@@ -7000,7 +7000,7 @@
     {
       "name": "p101_regerror",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/text-patterns",
       "header": "libraries/lib_posix/include/p101_posix/p101_regex.h",
       "source": "libraries/lib_posix/src/regex.c",
       "native_guess": "regerror"
@@ -7008,7 +7008,7 @@
     {
       "name": "p101_regexec",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/text-patterns",
       "header": "libraries/lib_posix/include/p101_posix/p101_regex.h",
       "source": "libraries/lib_posix/src/regex.c",
       "native_guess": "regexec"
@@ -7016,7 +7016,7 @@
     {
       "name": "p101_regfree",
       "library": "lib_posix",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/text-patterns",
       "header": "libraries/lib_posix/include/p101_posix/p101_regex.h",
       "source": "libraries/lib_posix/src/regex.c",
       "native_guess": "regfree"
@@ -7056,7 +7056,7 @@
     {
       "name": "p101_remque",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/search-structures",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_search.h",
       "source": "libraries/lib_posix_xsi/src/search.c",
       "native_guess": "remque"
@@ -8536,7 +8536,7 @@
     {
       "name": "p101_tdelete",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/search-structures",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_search.h",
       "source": "libraries/lib_posix_xsi/src/search.c",
       "native_guess": "tdelete"
@@ -8552,7 +8552,7 @@
     {
       "name": "p101_tfind",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/search-structures",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_search.h",
       "source": "libraries/lib_posix_xsi/src/search.c",
       "native_guess": "tfind"
@@ -8720,7 +8720,7 @@
     {
       "name": "p101_tsearch",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/search-structures",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_search.h",
       "source": "libraries/lib_posix_xsi/src/search.c",
       "native_guess": "tsearch"
@@ -8736,7 +8736,7 @@
     {
       "name": "p101_twalk",
       "library": "lib_posix_xsi",
-      "domain": "systems/misc-runtime",
+      "domain": "systems/search-structures",
       "header": "libraries/lib_posix_xsi/include/p101_posix_xsi/p101_search.h",
       "source": "libraries/lib_posix_xsi/src/search.c",
       "native_guess": "twalk"
@@ -17166,6 +17166,18 @@
         "p101_lio_listio"
       ]
     },
+    "systems/dynamic-loading": {
+      "count": 4,
+      "libraries": {
+        "lib_posix": 4
+      },
+      "functions": [
+        "p101_dlclose",
+        "p101_dlerror",
+        "p101_dlopen",
+        "p101_dlsym"
+      ]
+    },
     "systems/file-io": {
       "count": 118,
       "libraries": {
@@ -17332,6 +17344,39 @@
         "p101_shmget"
       ]
     },
+    "systems/legacy-database": {
+      "count": 9,
+      "libraries": {
+        "lib_posix_xsi": 9
+      },
+      "functions": [
+        "p101_dbm_clearerr",
+        "p101_dbm_close",
+        "p101_dbm_delete",
+        "p101_dbm_error",
+        "p101_dbm_fetch",
+        "p101_dbm_firstkey",
+        "p101_dbm_nextkey",
+        "p101_dbm_open",
+        "p101_dbm_store"
+      ]
+    },
+    "systems/localization-conversion": {
+      "count": 8,
+      "libraries": {
+        "lib_posix": 8
+      },
+      "functions": [
+        "p101_catclose",
+        "p101_catgets",
+        "p101_catopen",
+        "p101_iconv",
+        "p101_iconv_close",
+        "p101_iconv_open",
+        "p101_nl_langinfo",
+        "p101_nl_langinfo_l"
+      ]
+    },
     "systems/logging-diagnostics": {
       "count": 12,
       "libraries": {
@@ -17351,51 +17396,6 @@
         "p101_vwarnx",
         "p101_warn",
         "p101_warnx"
-      ]
-    },
-    "systems/misc-runtime": {
-      "count": 36,
-      "libraries": {
-        "lib_posix": 16,
-        "lib_posix_xsi": 20
-      },
-      "functions": [
-        "p101_catclose",
-        "p101_catgets",
-        "p101_catopen",
-        "p101_dbm_clearerr",
-        "p101_dbm_close",
-        "p101_dbm_delete",
-        "p101_dbm_error",
-        "p101_dbm_fetch",
-        "p101_dbm_firstkey",
-        "p101_dbm_nextkey",
-        "p101_dbm_open",
-        "p101_dbm_store",
-        "p101_dlclose",
-        "p101_dlerror",
-        "p101_dlopen",
-        "p101_dlsym",
-        "p101_hcreate",
-        "p101_hdestroy",
-        "p101_hsearch",
-        "p101_iconv",
-        "p101_iconv_close",
-        "p101_iconv_open",
-        "p101_insque",
-        "p101_lfind",
-        "p101_lsearch",
-        "p101_nl_langinfo",
-        "p101_nl_langinfo_l",
-        "p101_regcomp",
-        "p101_regerror",
-        "p101_regexec",
-        "p101_regfree",
-        "p101_remque",
-        "p101_tdelete",
-        "p101_tfind",
-        "p101_tsearch",
-        "p101_twalk"
       ]
     },
     "systems/platform-admin": {
@@ -17488,6 +17488,37 @@
         "p101_shm_open",
         "p101_shm_unlink",
         "p101_times"
+      ]
+    },
+    "systems/search-structures": {
+      "count": 11,
+      "libraries": {
+        "lib_posix_xsi": 11
+      },
+      "functions": [
+        "p101_hcreate",
+        "p101_hdestroy",
+        "p101_hsearch",
+        "p101_insque",
+        "p101_lfind",
+        "p101_lsearch",
+        "p101_remque",
+        "p101_tdelete",
+        "p101_tfind",
+        "p101_tsearch",
+        "p101_twalk"
+      ]
+    },
+    "systems/text-patterns": {
+      "count": 4,
+      "libraries": {
+        "lib_posix": 4
+      },
+      "functions": [
+        "p101_regcomp",
+        "p101_regerror",
+        "p101_regexec",
+        "p101_regfree"
       ]
     },
     "systems/threading": {
@@ -17663,14 +17694,18 @@
       "function_count": 361,
       "domains": [
         "systems/async-io",
+        "systems/dynamic-loading",
         "systems/file-io",
         "systems/io-multiplexing",
         "systems/ipc",
+        "systems/legacy-database",
+        "systems/localization-conversion",
         "systems/logging-diagnostics",
-        "systems/misc-runtime",
         "systems/platform-admin",
         "systems/process-signal",
         "systems/resource-time-memory",
+        "systems/search-structures",
+        "systems/text-patterns",
         "systems/threading",
         "systems/users-terminals"
       ]
@@ -17743,6 +17778,18 @@
       "domains": [
         "systems/threading",
         "c/atomics"
+      ]
+    },
+    {
+      "playground": "p101-runtime-services-playground",
+      "purpose": "Dynamic loading, regex, iconv, locale/message catalogs, legacy DBM, and libc search structures.",
+      "function_count": 36,
+      "domains": [
+        "systems/dynamic-loading",
+        "systems/text-patterns",
+        "systems/localization-conversion",
+        "systems/legacy-database",
+        "systems/search-structures"
       ]
     },
     {

@@ -236,8 +236,16 @@ def classify(library: str, header: str | None, source: str | None, name: str) ->
             return "systems/users-terminals"
         if topic_lower in {"err", "fmtmsg", "syslog"}:
             return "systems/logging-diagnostics"
-        if topic_lower in {"dlfcn", "iconv", "langinfo", "ndbm", "nl_types", "regex", "search"}:
-            return "systems/misc-runtime"
+        if topic_lower == "dlfcn":
+            return "systems/dynamic-loading"
+        if topic_lower == "regex":
+            return "systems/text-patterns"
+        if topic_lower in {"iconv", "langinfo", "nl_types"}:
+            return "systems/localization-conversion"
+        if topic_lower == "ndbm":
+            return "systems/legacy-database"
+        if topic_lower == "search":
+            return "systems/search-structures"
         if topic_lower in {"fstab", "mount", "sysctl", "utsname"}:
             return "systems/platform-admin"
         if topic_lower == "getopt":
@@ -261,8 +269,16 @@ def classify(library: str, header: str | None, source: str | None, name: str) ->
         return "systems/users-terminals"
     if any(token in path for token in ("p101_syslog", "p101_err", "p101_fmtmsg")):
         return "systems/logging-diagnostics"
-    if any(token in path for token in ("p101_dlfcn", "p101_iconv", "p101_locale", "p101_langinfo", "p101_nl_types", "p101_regex", "p101_search", "p101_ndbm")):
-        return "systems/misc-runtime"
+    if "p101_dlfcn" in path:
+        return "systems/dynamic-loading"
+    if "p101_regex" in path:
+        return "systems/text-patterns"
+    if any(token in path for token in ("p101_iconv", "p101_langinfo", "p101_nl_types")):
+        return "systems/localization-conversion"
+    if "p101_ndbm" in path:
+        return "systems/legacy-database"
+    if "p101_search" in path:
+        return "systems/search-structures"
     return f"{library}/{topic}"
 
 
@@ -410,6 +426,17 @@ def specialized_recommendations(domain_counts: Counter[str]) -> list[dict[str, A
             ("network",),
         ),
         (
+            "p101-runtime-services-playground",
+            "Dynamic loading, regex, iconv, locale/message catalogs, legacy DBM, and libc search structures.",
+            (
+                "systems/dynamic-loading",
+                "systems/text-patterns",
+                "systems/localization-conversion",
+                "systems/legacy-database",
+                "systems/search-structures",
+            ),
+        ),
+        (
             "p101-observability-playground",
             "env/error/fsm/facts, call traces, resource logs, fault injection, and writing small analyses over event streams.",
             ("support/environment", "support/error", "support/fsm", "support/instrumentation", "tooling/c-facts"),
@@ -528,6 +555,7 @@ def write_markdown(
             "- The existing wrapper examples can collapse into playground tracks once each cluster has a working \"good path\" plus focused defect labs.",
             "- `systems/ipc` is big enough to justify an IPC unit, especially when paired with `systems/io-multiplexing` so students see blocking, readiness, cleanup, and ownership together.",
             "- `systems/file-io`, `systems/threading`, and `network` are the three largest non-C clusters; they should not be squeezed into one general systems lab.",
+            "- Dynamic loading, regex, iconv/catalogs, DBM, and XSI search are now split out of the old misc bucket; they belong in a runtime-services playground, not in file/process/thread labs.",
             "- `support/instrumentation` plus `tooling/c-facts` should become a meta/tooling playground: students learn that the wrappers are observable APIs, not just safer spelling.",
         ]
     )
@@ -546,6 +574,14 @@ def write_markdown(
             signal = "systems reference/advanced cluster"
         elif domain == "network":
             signal = "network playground cluster"
+        elif domain in {
+            "systems/dynamic-loading",
+            "systems/text-patterns",
+            "systems/localization-conversion",
+            "systems/legacy-database",
+            "systems/search-structures",
+        }:
+            signal = "runtime services playground"
         elif domain.startswith("c/"):
             signal = "C playground"
         elif domain.startswith("systems/"):
