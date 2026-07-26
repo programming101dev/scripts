@@ -115,6 +115,19 @@ require_cmake_helpers() {
   fi
 }
 
+reset_destination() {
+  dest="$1"
+
+  case "$dest" in
+    "$out_dir"/*)
+      rm -rf "$dest"
+      ;;
+    *)
+      fail "refusing to remove destination outside output directory: $dest"
+      ;;
+  esac
+}
+
 check_allowed_symlinks() {
   dir="$1"
   template="$2"
@@ -169,6 +182,7 @@ copy_and_check() {
   dest="$out_dir/$template"
   copy_log="$log_dir/${template}-copy.log"
 
+  reset_destination "$dest"
   run_logged "copy $template" "$copy_log" "$src/copy-template.sh" -q "$dest"
   check_copy_shape "$dest" "$template"
 
