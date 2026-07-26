@@ -63,6 +63,9 @@ find_tool() {
   fi
 
   for candidate in "$@"; do
+    if [ -z "$candidate" ]; then
+      continue
+    fi
     if [ -x "$candidate" ]; then
       printf '%s\n' "$candidate"
       return 0
@@ -74,6 +77,19 @@ find_tool() {
   done
 
   return 1
+}
+
+last_build_tool() {
+  repo="$1"
+  tool="$2"
+  last_build_file="$repo/.last-build-dir"
+
+  if [ -f "$last_build_file" ]; then
+    build_dir="$(cat "$last_build_file")"
+    if [ -n "$build_dir" ]; then
+      printf '%s\n' "$repo/$build_dir/$tool"
+    fi
+  fi
 }
 
 quote_command() {
@@ -162,14 +178,14 @@ out_dir="$(cd "$out_dir" && pwd)"
 log_dir="$out_dir/logs"
 summary="$out_dir/summary.md"
 
-doctor_tool="$(find_tool P101_DOCTOR "$script_dir/../programs/p101-doctor/build-clang-22/p101-doctor" "$script_dir/../programs/p101-doctor/build-clang/p101-doctor" p101-doctor)" || { echo "p101 check: p101-doctor not found" >&2; exit 2; }
+doctor_tool="$(find_tool P101_DOCTOR "$(last_build_tool "$script_dir/../programs/p101-doctor" p101-doctor)" "$script_dir/../programs/p101-doctor/build-clang-22/p101-doctor" "$script_dir/../programs/p101-doctor/build-clang/p101-doctor" p101-doctor)" || { echo "p101 check: p101-doctor not found" >&2; exit 2; }
 wrapper_tool="$(find_tool P101_WRAPPER_AUDIT "$script_dir/../programs/p101-wrapper-audit/p101-wrapper-audit" p101-wrapper-audit)" || { echo "p101 check: p101-wrapper-audit not found" >&2; exit 2; }
-module_tool="$(find_tool P101_MODULE_MAP "$script_dir/../programs/p101-module-map/build-clang-22/p101-module-map" "$script_dir/../programs/p101-module-map/build-clang/p101-module-map" p101-module-map)" || { echo "p101 check: p101-module-map not found" >&2; exit 2; }
-observe_tool="$(find_tool P101_OBSERVE "$script_dir/../programs/p101-observe/build-clang-22/p101-observe" "$script_dir/../programs/p101-observe/build-clang/p101-observe" p101-observe)" || { echo "p101 check: p101-observe not found" >&2; exit 2; }
-walk_tool="$(find_tool P101_ERROR_PATH_WALK "$script_dir/../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk" "$script_dir/../programs/p101-error-path-walk/build-clang/p101-error-path-walk" p101-error-path-walk)" || { echo "p101 check: p101-error-path-walk not found" >&2; exit 2; }
-tracker_tool="$(find_tool P101_RESOURCE_TRACKER "$script_dir/../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker" "$script_dir/../programs/p101-resource-tracker/build-clang/p101-resource-tracker" p101-resource-tracker)" || { echo "p101 check: p101-resource-tracker not found" >&2; exit 2; }
-trace_tool="$(find_tool P101_TRACE "$script_dir/../programs/p101-trace/build-clang-22/p101-trace" "$script_dir/../programs/p101-trace/build-clang/p101-trace" p101-trace)" || { echo "p101 check: p101-trace not found" >&2; exit 2; }
-report_tool="$(find_tool P101_REPORT "$script_dir/../programs/p101-report/build-clang-22/p101-report" "$script_dir/../programs/p101-report/build-clang/p101-report" p101-report)" || { echo "p101 check: p101-report not found" >&2; exit 2; }
+module_tool="$(find_tool P101_MODULE_MAP "$(last_build_tool "$script_dir/../programs/p101-module-map" p101-module-map)" "$script_dir/../programs/p101-module-map/build-clang-22/p101-module-map" "$script_dir/../programs/p101-module-map/build-clang/p101-module-map" p101-module-map)" || { echo "p101 check: p101-module-map not found" >&2; exit 2; }
+observe_tool="$(find_tool P101_OBSERVE "$(last_build_tool "$script_dir/../programs/p101-observe" p101-observe)" "$script_dir/../programs/p101-observe/build-clang-22/p101-observe" "$script_dir/../programs/p101-observe/build-clang/p101-observe" p101-observe)" || { echo "p101 check: p101-observe not found" >&2; exit 2; }
+walk_tool="$(find_tool P101_ERROR_PATH_WALK "$(last_build_tool "$script_dir/../programs/p101-error-path-walk" p101-error-path-walk)" "$script_dir/../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk" "$script_dir/../programs/p101-error-path-walk/build-clang/p101-error-path-walk" p101-error-path-walk)" || { echo "p101 check: p101-error-path-walk not found" >&2; exit 2; }
+tracker_tool="$(find_tool P101_RESOURCE_TRACKER "$(last_build_tool "$script_dir/../programs/p101-resource-tracker" p101-resource-tracker)" "$script_dir/../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker" "$script_dir/../programs/p101-resource-tracker/build-clang/p101-resource-tracker" p101-resource-tracker)" || { echo "p101 check: p101-resource-tracker not found" >&2; exit 2; }
+trace_tool="$(find_tool P101_TRACE "$(last_build_tool "$script_dir/../programs/p101-trace" p101-trace)" "$script_dir/../programs/p101-trace/build-clang-22/p101-trace" "$script_dir/../programs/p101-trace/build-clang/p101-trace" p101-trace)" || { echo "p101 check: p101-trace not found" >&2; exit 2; }
+report_tool="$(find_tool P101_REPORT "$(last_build_tool "$script_dir/../programs/p101-report" p101-report)" "$script_dir/../programs/p101-report/build-clang-22/p101-report" "$script_dir/../programs/p101-report/build-clang/p101-report" p101-report)" || { echo "p101 check: p101-report not found" >&2; exit 2; }
 
 quality_status=0
 quality_state="SKIP"
