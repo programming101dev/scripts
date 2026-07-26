@@ -745,6 +745,9 @@ foreach (_exe IN LISTS EXECUTABLE_TARGETS)
     list(APPEND _ALL_SOURCES_FOR_FORMAT ${_srcs_abs})
 
     add_executable(${_exe} ${_srcs_abs})
+    if (DEFINED ${_exe}_OUTPUT_NAME AND NOT "${${_exe}_OUTPUT_NAME}" STREQUAL "")
+        set_target_properties(${_exe} PROPERTIES OUTPUT_NAME "${${_exe}_OUTPUT_NAME}")
+    endif ()
 
     # Project includes as normal (-I)
     if (P101_PROJECT_INC_DIR)
