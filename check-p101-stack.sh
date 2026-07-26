@@ -18,6 +18,7 @@ cppcheck="cppcheck"
 sanitizers=""
 out_dir=""
 skip_repo_build=0
+skip_install=0
 skip_templates=0
 skip_playground=0
 template_no_tests=0
@@ -46,6 +47,7 @@ Options:
   --fuzz-secs <s>  Fuzz smoke budget if playground fuzz is enabled. Default: 5.
 
   --skip-repo-build     Do not run build-repo.sh.
+  --skip-install        Build repos but do not run each repo's install.sh.
   --skip-templates      Do not run check-templates-standalone.sh.
   --skip-playground     Do not run p101-tool-playground/tour.sh.
   --template-no-tests   Build copied templates but skip copied template tests.
@@ -70,6 +72,7 @@ while [ "$#" -gt 0 ]; do
     -n) fault_count="${2:?}"; shift 2 ;;
     --fuzz-secs) fuzz_secs="${2:?}"; shift 2 ;;
     --skip-repo-build) skip_repo_build=1; shift ;;
+    --skip-install) skip_install=1; shift ;;
     --skip-templates) skip_templates=1; shift ;;
     --skip-playground) skip_playground=1; shift ;;
     --template-no-tests) template_no_tests=1; shift ;;
@@ -130,6 +133,9 @@ if [ "$skip_repo_build" -eq 0 ]; then
   build_args=(-c "$cc" -x "$cxx" -f "$clang_format" -t "$clang_tidy" -k "$cppcheck")
   if [ -n "$sanitizers" ]; then
     build_args+=(-s "$sanitizers")
+  fi
+  if [ "$skip_install" -eq 1 ]; then
+    build_args+=(-I)
   fi
   run_logged "strict-build repos from repos.txt" "$log_dir/repos-build.log" ./build-repo.sh "${build_args[@]}" -S
 else

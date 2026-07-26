@@ -15,10 +15,11 @@ clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
 sanitizers=""
 forward_skip_cache=false   # if true, pass -S to install.sh (skip cache refresh)
+skip_install=false
 
 usage() {
   cat <<USAGE >&2
-Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [-S]
+Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [-S] [-I]
   -c  C compiler         (e.g. gcc-15, clang)
   -x  C++ compiler       (e.g. g++-15, clang++)
   -f  clang-format       (default: clang-format; path or name)
@@ -26,6 +27,7 @@ Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>
   -k  cppcheck           (default: cppcheck;    path or name)
   -s  sanitizers list    (e.g. address,undefined) — if omitted, repo may read sanitizers.txt
   -S  forward 'skip cache update' to install.sh (passes -S to install.sh)
+  -I  skip install.sh after building repos
 
 Example:
   $0 -c clang -x clang++ -f clang-format -t clang-tidy -k cppcheck -s address,undefined -S
@@ -37,7 +39,7 @@ USAGE
 case " $* " in *" --help "*|*" -h "*) ( usage ) || true; exit 0 ;; esac
 
 # ----------------- args -----------------
-while getopts ":c:x:f:t:k:s:S" opt; do
+while getopts ":c:x:f:t:k:s:SI" opt; do
   case "$opt" in
     c) c_compiler="$OPTARG" ;;
     x) cxx_compiler="$OPTARG" ;;
@@ -46,6 +48,7 @@ while getopts ":c:x:f:t:k:s:S" opt; do
     k) cppcheck_name="$OPTARG" ;;
     s) sanitizers="$OPTARG" ;;
     S) forward_skip_cache=true ;;
+    I) skip_install=true ;;
     \?|:) usage ;;
   esac
 done
@@ -177,7 +180,9 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   fi
 
   # If there’s an installer, run it (forward -s to skip cache if -S was given)
-  if [[ -x ./install.sh ]]; then
+  if $skip_install; then
+    say "Skipping install: ${dir}"
+  elif [[ -x ./install.sh ]]; then
     if $forward_skip_cache; then
       say "Installing (skip cache update): ${dir}"
       ./install.sh -S

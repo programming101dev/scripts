@@ -159,6 +159,8 @@ To run the broader p101 stack ratchet, use:
 That script builds repos from `repos.txt`, runs the standalone template check,
 and then runs the `p101-tool-playground` tour. During development, you can use
 `--skip-repo-build` for a quicker smoke of the template and playground pieces.
+Use `--skip-install` when you want a non-interactive build-only stack check
+that does not run each repo's `install.sh`.
 
 ## **Discovering new flags**
 
