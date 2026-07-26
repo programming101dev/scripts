@@ -88,6 +88,29 @@ config, code that must be rejected by clang-tidy, and a C++ variant) against
 the `CMakeLists.txt` in this directory, so regressions are caught here instead
 of in a student's build. Use `-k` to keep the sandbox with all logs.
 
+## **Running the acceptance checks**
+
+To verify that copied templates are self-contained aside from intentional
+shared-artifact symlinks such as `.flags`, run:
+
+```bash
+./check-templates-standalone.sh
+```
+
+It copies `template-c`, `template-c-program`, and `template-cxx` to `/tmp`,
+rejects hidden parent-workspace script dependencies, and configures, builds,
+and tests each copied project.
+
+To run the broader p101 stack ratchet, use:
+
+```bash
+./check-p101-stack.sh -c clang -x clang++
+```
+
+That script builds repos from `repos.txt`, runs the standalone template check,
+and then runs the `p101-tool-playground` tour. During development, you can use
+`--skip-repo-build` for a quicker smoke of the template and playground pieces.
+
 ## **Discovering new flags**
 
 To see every flag your installed compilers support that `flags/*.txt` has no
