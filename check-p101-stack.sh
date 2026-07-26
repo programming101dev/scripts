@@ -21,6 +21,7 @@ skip_repo_build=0
 skip_install=0
 skip_templates=0
 skip_playground=0
+skip_p101_check=0
 template_no_tests=0
 playground_skip_quality=1
 playground_skip_coverage=1
@@ -50,6 +51,7 @@ Options:
   --skip-install        Build repos but do not run each repo's install.sh.
   --skip-templates      Do not run check-templates-standalone.sh.
   --skip-playground     Do not run p101-tool-playground/tour.sh.
+  --skip-p101-check     Do not run the p101 check golden-path smoke.
   --template-no-tests   Build copied templates but skip copied template tests.
 
   --playground-quality  Let tour.sh run build/test/fuzz/coverage quality steps.
@@ -75,6 +77,7 @@ while [ "$#" -gt 0 ]; do
     --skip-install) skip_install=1; shift ;;
     --skip-templates) skip_templates=1; shift ;;
     --skip-playground) skip_playground=1; shift ;;
+    --skip-p101-check) skip_p101_check=1; shift ;;
     --template-no-tests) template_no_tests=1; shift ;;
     --playground-quality) playground_skip_quality=0; shift ;;
     --playground-coverage) playground_skip_coverage=0; shift ;;
@@ -170,6 +173,15 @@ if [ "$skip_playground" -eq 0 ]; then
   run_logged "p101-tool-playground tour" "$log_dir/playground-tour.log" ../programs/p101-tool-playground/tour.sh "${tour_args[@]}"
 else
   say "==> p101-tool-playground tour"
+  say "    SKIP"
+fi
+
+if [ "$skip_p101_check" -eq 0 ]; then
+  p101_check_out="$out_dir/p101-check"
+  reset_child_dir "$p101_check_out"
+  run_logged "p101 check golden-path smoke" "$log_dir/p101-check.log" ./p101 check --skip-quality -p ../programs/p101-tool-playground -s src -n "$fault_count" -o "$p101_check_out" -- ./build-clang/p101-tool-playground -s tour
+else
+  say "==> p101 check golden-path smoke"
   say "    SKIP"
 fi
 

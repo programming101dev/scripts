@@ -2,6 +2,8 @@
 # p101 — small dispatcher for the p101 teaching tools.
 
 set -euo pipefail
+dispatch_cwd="$(pwd)"
+export P101_DISPATCH_CWD="$dispatch_cwd"
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 usage() {
@@ -18,6 +20,7 @@ Commands:
   module-map    Run p101-module-map
   doctor        Run p101-doctor
   playground    Run p101-tool-playground
+  check         Run the full p101 check workflow
   html-report   Run p101-html-report.py
   cohort        Run p101-cohort-summary.py
   bug-bundle    Run p101-bug-bundle.sh
@@ -88,6 +91,9 @@ case "$command_name" in
     ;;
   playground)
     exec "$(find_tool P101_TOOL_PLAYGROUND ../programs/p101-tool-playground/build-clang-22/p101-tool-playground ../programs/p101-tool-playground/build-clang/p101-tool-playground p101-tool-playground)" "$@"
+    ;;
+  check)
+    exec ./p101-check.sh "$@"
     ;;
   html-report)
     exec ./p101-html-report.py "$@"

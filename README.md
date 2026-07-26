@@ -91,7 +91,18 @@ For a shorter behavior-only gate, run:
 ./check-p101-regression-corpus.sh
 ```
 
-For student/instructor tooling around observed runs:
+For the student-facing tool workflow, use the dispatcher:
+
+```bash
+./p101 check -s src -- ./build-clang/my-program input.txt
+```
+
+`p101 check` writes one report directory with the project quality gate
+(`check.sh` when present), wrapper audit, module map, observed resource/call
+logs, correlated findings, error-path walking, optional coverage, a
+self-contained `index.html`, and a bug bundle.
+
+For lower-level student/instructor tooling around observed runs:
 
 ```bash
 ./p101 html-report /path/to/p101-observe-output
@@ -157,8 +168,9 @@ To run the broader p101 stack ratchet, use:
 ```
 
 That script builds repos from `repos.txt`, runs the standalone template check,
-and then runs the `p101-tool-playground` tour. During development, you can use
-`--skip-repo-build` for a quicker smoke of the template and playground pieces.
+then runs the `p101-tool-playground` tour and a `p101 check` golden-path smoke.
+During development, you can use `--skip-repo-build` for a quicker smoke of the
+template and playground pieces.
 Use `--skip-install` when you want a non-interactive build-only stack check
 that does not run each repo's `install.sh`.
 
