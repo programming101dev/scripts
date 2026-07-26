@@ -9,91 +9,103 @@ Generated from active `libraries/lib_*` directories. `_to_delete` is excluded.
 - Wrapper-to-wrapper edges: `126`
 - Wrapper-to-native wrapped-call edges: `958`
 - Domains: `46`
+- Recommended repo: `p101-tool-playground`
+- Recommended tracks: `11`
+- Uncovered domains: `0`
 
-## Playground-level graph
+## Single playground repo graph
 
 ```mermaid
 flowchart LR
-  p101_c_playground["p101-c-playground\n608 wrappers"]
-  c_atomics["c/atomics"] --> p101_c_playground
-  c_cli_parsing["c/cli-parsing"] --> p101_c_playground
-  c_control_flow["c/control-flow"] --> p101_c_playground
-  c_control_flow_extensions["c/control-flow-extensions"] --> p101_c_playground
-  c_conversion["c/conversion"] --> p101_c_playground
-  c_ctype["c/ctype"] --> p101_c_playground
-  c_ctype_extensions["c/ctype-extensions"] --> p101_c_playground
-  c_inttypes["c/inttypes"] --> p101_c_playground
-  c_locale["c/locale"] --> p101_c_playground
-  c_locale_extensions["c/locale-extensions"] --> p101_c_playground
-  c_math["c/math"] --> p101_c_playground
-  c_math_extensions["c/math-extensions"] --> p101_c_playground
-  c_stdio["c/stdio"] --> p101_c_playground
-  c_stdio_extensions["c/stdio-extensions"] --> p101_c_playground
-  c_stdlib["c/stdlib"] --> p101_c_playground
-  c_stdlib_extensions["c/stdlib-extensions"] --> p101_c_playground
-  c_string["c/string"] --> p101_c_playground
-  c_string_extensions["c/string-extensions"] --> p101_c_playground
-  c_time["c/time"] --> p101_c_playground
-  c_time_extensions["c/time-extensions"] --> p101_c_playground
-  c_wchar["c/wchar"] --> p101_c_playground
-  c_wchar_extensions["c/wchar-extensions"] --> p101_c_playground
-  c_wctype["c/wctype"] --> p101_c_playground
-  c_wctype_extensions["c/wctype-extensions"] --> p101_c_playground
-  p101_systems_playground["p101-systems-playground\n361 wrappers"]
-  systems_async_io["systems/async-io"] --> p101_systems_playground
-  systems_dynamic_loading["systems/dynamic-loading"] --> p101_systems_playground
-  systems_file_io["systems/file-io"] --> p101_systems_playground
-  systems_io_multiplexing["systems/io-multiplexing"] --> p101_systems_playground
-  systems_ipc["systems/ipc"] --> p101_systems_playground
-  systems_legacy_database["systems/legacy-database"] --> p101_systems_playground
-  systems_localization_conversion["systems/localization-conversion"] --> p101_systems_playground
-  systems_logging_diagnostics["systems/logging-diagnostics"] --> p101_systems_playground
-  systems_platform_admin["systems/platform-admin"] --> p101_systems_playground
-  systems_process_signal["systems/process-signal"] --> p101_systems_playground
-  systems_resource_time_memory["systems/resource-time-memory"] --> p101_systems_playground
-  systems_search_structures["systems/search-structures"] --> p101_systems_playground
-  systems_text_patterns["systems/text-patterns"] --> p101_systems_playground
-  systems_threading["systems/threading"] --> p101_systems_playground
-  systems_users_terminals["systems/users-terminals"] --> p101_systems_playground
-  p101_network_playground["p101-network-playground\n89 wrappers"]
-  network["network"] --> p101_network_playground
-  p101_tooling_playground["p101-tooling-playground\n127 wrappers"]
-  support_environment["support/environment"] --> p101_tooling_playground
-  support_error["support/error"] --> p101_tooling_playground
-  support_fsm["support/fsm"] --> p101_tooling_playground
-  support_instrumentation["support/instrumentation"] --> p101_tooling_playground
-  support_util["support/util"] --> p101_tooling_playground
-  tooling_c_facts["tooling/c-facts"] --> p101_tooling_playground
+  p101_tool_playground["p101-tool-playground\n11 tracks"]
+  track_c_core["c-core\n608 wrappers"] --> p101_tool_playground
+  c_atomics["c/atomics"] --> track_c_core
+  c_cli_parsing["c/cli-parsing"] --> track_c_core
+  c_control_flow["c/control-flow"] --> track_c_core
+  c_control_flow_extensions["c/control-flow-extensions"] --> track_c_core
+  c_conversion["c/conversion"] --> track_c_core
+  c_ctype["c/ctype"] --> track_c_core
+  c_ctype_extensions["c/ctype-extensions"] --> track_c_core
+  c_inttypes["c/inttypes"] --> track_c_core
+  c_locale["c/locale"] --> track_c_core
+  c_locale_extensions["c/locale-extensions"] --> track_c_core
+  c_math["c/math"] --> track_c_core
+  c_math_extensions["c/math-extensions"] --> track_c_core
+  c_stdio["c/stdio"] --> track_c_core
+  c_stdio_extensions["c/stdio-extensions"] --> track_c_core
+  c_stdlib["c/stdlib"] --> track_c_core
+  c_stdlib_extensions["c/stdlib-extensions"] --> track_c_core
+  c_string["c/string"] --> track_c_core
+  c_string_extensions["c/string-extensions"] --> track_c_core
+  c_time["c/time"] --> track_c_core
+  c_time_extensions["c/time-extensions"] --> track_c_core
+  c_wchar["c/wchar"] --> track_c_core
+  c_wchar_extensions["c/wchar-extensions"] --> track_c_core
+  c_wctype["c/wctype"] --> track_c_core
+  c_wctype_extensions["c/wctype-extensions"] --> track_c_core
+  track_file_io["file-io\n126 wrappers"] --> p101_tool_playground
+  systems_async_io["systems/async-io"] --> track_file_io
+  systems_file_io["systems/file-io"] --> track_file_io
+  track_processes_signals["processes-signals\n35 wrappers"] --> p101_tool_playground
+  systems_process_signal["systems/process-signal"] --> track_processes_signals
+  track_threading["threading\n77 wrappers"] --> p101_tool_playground
+  systems_threading["systems/threading"] --> track_threading
+  track_ipc["ipc\n21 wrappers"] --> p101_tool_playground
+  systems_io_multiplexing["systems/io-multiplexing"] --> track_ipc
+  systems_ipc["systems/ipc"] --> track_ipc
+  track_networking["networking\n89 wrappers"] --> p101_tool_playground
+  network["network"] --> track_networking
+  track_terminals_users["terminals-users\n27 wrappers"] --> p101_tool_playground
+  systems_users_terminals["systems/users-terminals"] --> track_terminals_users
+  track_resources_platform["resources-platform\n27 wrappers"] --> p101_tool_playground
+  systems_platform_admin["systems/platform-admin"] --> track_resources_platform
+  systems_resource_time_memory["systems/resource-time-memory"] --> track_resources_platform
+  track_logging_diagnostics["logging-diagnostics\n12 wrappers"] --> p101_tool_playground
+  systems_logging_diagnostics["systems/logging-diagnostics"] --> track_logging_diagnostics
+  track_runtime_services["runtime-services\n36 wrappers"] --> p101_tool_playground
+  systems_dynamic_loading["systems/dynamic-loading"] --> track_runtime_services
+  systems_legacy_database["systems/legacy-database"] --> track_runtime_services
+  systems_localization_conversion["systems/localization-conversion"] --> track_runtime_services
+  systems_search_structures["systems/search-structures"] --> track_runtime_services
+  systems_text_patterns["systems/text-patterns"] --> track_runtime_services
+  track_observability_tools["observability-tools\n127 wrappers"] --> p101_tool_playground
+  support_environment["support/environment"] --> track_observability_tools
+  support_error["support/error"] --> track_observability_tools
+  support_fsm["support/fsm"] --> track_observability_tools
+  support_instrumentation["support/instrumentation"] --> track_observability_tools
+  support_util["support/util"] --> track_observability_tools
+  tooling_c_facts["tooling/c-facts"] --> track_observability_tools
 ```
 
-## Recommended playground cuts
+## Recommended repo structure
 
-| Playground | Function count | Domains | Purpose |
+Use one playground repository, `p101-tool-playground`, with small explicit tracks inside it. Do not create a broad `systems` playground and do not create a `misc` track.
+
+| Track | Function count | Domains | Purpose |
 | --- | ---: | --- | --- |
-| `p101-c-playground` | 608 | `c/atomics`, `c/cli-parsing`, `c/control-flow`, `c/control-flow-extensions`, `c/conversion`, `c/ctype`, `c/ctype-extensions`, `c/inttypes`, `c/locale`, `c/locale-extensions`, `c/math`, `c/math-extensions`, `c/stdio`, `c/stdio-extensions`, `c/stdlib`, `c/stdlib-extensions`, `c/string`, `c/string-extensions`, `c/time`, `c/time-extensions`, `c/wchar`, `c/wchar-extensions`, `c/wctype`, `c/wctype-extensions` | C language, memory, strings, integers, parsing, atomics, and portable diagnostics. |
-| `p101-systems-playground` | 361 | `systems/async-io`, `systems/dynamic-loading`, `systems/file-io`, `systems/io-multiplexing`, `systems/ipc`, `systems/legacy-database`, `systems/localization-conversion`, `systems/logging-diagnostics`, `systems/platform-admin`, `systems/process-signal`, `systems/resource-time-memory`, `systems/search-structures`, `systems/text-patterns`, `systems/threading`, `systems/users-terminals` | POSIX files, processes, signals, resources, terminals, pthreads, IPC, and I/O multiplexing. |
-| `p101-network-playground` | 89 | `network` | Sockets, address resolution, interfaces, resolver/name helpers, and byte-order/network conversions. |
-| `p101-tooling-playground` | 127 | `support/environment`, `support/error`, `support/fsm`, `support/instrumentation`, `support/util`, `tooling/c-facts` | p101 support libraries: env/error/fsm/facts/instrumentation and how the tools observe programs. |
+| `c-core` | 608 | `c/atomics`, `c/cli-parsing`, `c/control-flow`, `c/control-flow-extensions`, `c/conversion`, `c/ctype`, `c/ctype-extensions`, `c/inttypes`, `c/locale`, `c/locale-extensions`, `c/math`, `c/math-extensions`, `c/stdio`, `c/stdio-extensions`, `c/stdlib`, `c/stdlib-extensions`, `c/string`, `c/string-extensions`, `c/time`, `c/time-extensions`, `c/wchar`, `c/wchar-extensions`, `c/wctype`, `c/wctype-extensions` | C language, memory, strings, integers, parsing, atomics, math, stdio, and common C/POSIX extensions. |
+| `file-io` | 126 | `systems/async-io`, `systems/file-io` | File descriptors, streams, directories, paths, short reads/writes, async I/O, descriptor ownership, and cleanup. |
+| `processes-signals` | 35 | `systems/process-signal` | fork, exec, wait, spawn, signals, inherited resources, CLOEXEC, and process failure paths. |
+| `threading` | 77 | `systems/threading` | pthreads, mutexes, condition variables, cancellation, cleanup, and race-oriented resource handling. |
+| `ipc` | 21 | `systems/io-multiplexing`, `systems/ipc` | POSIX and XSI IPC: message queues, semaphores, shared memory, keys, readiness, cleanup, and permissions. |
+| `networking` | 89 | `network` | TCP/UDP sockets, address resolution, interfaces, resolver helpers, protocol databases, and byte ordering. |
+| `terminals-users` | 27 | `systems/users-terminals` | Terminal control, user/group lookup, tty databases, utmpx records, and interactive program boundaries. |
+| `resources-platform` | 27 | `systems/platform-admin`, `systems/resource-time-memory` | Resource limits, priorities, clocks/time, memory mapping/locking, sysctl, mounts, fstab, and platform administration APIs. |
+| `logging-diagnostics` | 12 | `systems/logging-diagnostics` | syslog, err/warn-style diagnostics, formatted messages, and teachable logging/error-reporting practice. |
+| `runtime-services` | 36 | `systems/dynamic-loading`, `systems/legacy-database`, `systems/localization-conversion`, `systems/search-structures`, `systems/text-patterns` | Dynamic loading, regex, iconv, locale/message catalogs, legacy DBM, and libc search structures. |
+| `observability-tools` | 127 | `support/environment`, `support/error`, `support/fsm`, `support/instrumentation`, `support/util`, `tooling/c-facts` | env/error/fsm/facts, call traces, resource logs, fault injection, and writing analyses over event streams. |
 
-## Candidate specialized playgrounds
+## Coverage
 
-| Candidate | Function count | Domains | Why it exists |
-| --- | ---: | --- | --- |
-| `p101-process-playground` | 153 | `systems/process-signal`, `systems/file-io` | fork, exec, wait, spawn, signal handling, CLOEXEC, inherited resources, and failure-path cleanup. |
-| `p101-file-io-playground` | 126 | `systems/file-io`, `systems/async-io` | File descriptors, streams, directories, paths, short reads/writes, descriptor ownership, and exec inheritance. |
-| `p101-observability-playground` | 126 | `support/environment`, `support/error`, `support/fsm`, `support/instrumentation`, `tooling/c-facts` | env/error/fsm/facts, call traces, resource logs, fault injection, and writing small analyses over event streams. |
-| `p101-network-playground` | 89 | `network` | TCP/UDP sockets, address resolution, interfaces, resolver helpers, protocol databases, and byte ordering. |
-| `p101-threading-playground` | 85 | `systems/threading`, `c/atomics` | Threads, mutexes, condition variables, cancellation, cleanup, atomics, and race-oriented resource handling. |
-| `p101-runtime-services-playground` | 36 | `systems/dynamic-loading`, `systems/text-patterns`, `systems/localization-conversion`, `systems/legacy-database`, `systems/search-structures` | Dynamic loading, regex, iconv, locale/message catalogs, legacy DBM, and libc search structures. |
-| `p101-ipc-playground` | 21 | `systems/ipc`, `systems/io-multiplexing` | POSIX and XSI IPC: message queues, semaphores, shared memory, keys, cleanup, and permission mistakes. |
+Every discovered domain is assigned to one primary track.
 
 ## Curriculum reading
 
-- The existing wrapper examples can collapse into playground tracks once each cluster has a working "good path" plus focused defect labs.
+- The existing wrapper examples can collapse into tracks inside one playground repo once each cluster has a working "good path" plus focused defect labs.
 - `systems/ipc` is big enough to justify an IPC unit, especially when paired with `systems/io-multiplexing` so students see blocking, readiness, cleanup, and ownership together.
-- `systems/file-io`, `systems/threading`, and `network` are the three largest non-C clusters; they should not be squeezed into one general systems lab.
-- Dynamic loading, regex, iconv/catalogs, DBM, and XSI search are now split out of the old misc bucket; they belong in a runtime-services playground, not in file/process/thread labs.
-- `support/instrumentation` plus `tooling/c-facts` should become a meta/tooling playground: students learn that the wrappers are observable APIs, not just safer spelling.
+- `file-io`, `threading`, `networking`, `runtime-services`, and `observability-tools` are separate tracks; they should not be squeezed into one general systems lab.
+- Dynamic loading, regex, iconv/catalogs, DBM, and XSI search are split out explicitly; they belong in `runtime-services`, not in a misc bucket.
+- `support/instrumentation` plus `tooling/c-facts` should become `observability-tools`: students learn that the wrappers are observable APIs, not just safer spelling.
 
 ## Counts by library
 
@@ -115,52 +127,52 @@ flowchart LR
 
 | Domain | Functions | Libraries | Playground signal |
 | --- | ---: | --- | --- |
-| `c/atomics` | 8 | `lib_c`:8 | C playground |
-| `c/cli-parsing` | 2 | `lib_unix`:2 | C playground |
-| `c/control-flow` | 4 | `lib_c`:4 | C playground |
-| `c/control-flow-extensions` | 2 | `lib_posix`:2 | C playground |
-| `c/conversion` | 32 | `lib_convert`:32 | C playground |
-| `c/ctype` | 14 | `lib_c`:14 | C playground |
-| `c/ctype-extensions` | 14 | `lib_posix`:14 | C playground |
-| `c/inttypes` | 6 | `lib_c`:6 | C playground |
-| `c/locale` | 2 | `lib_c`:2 | C playground |
-| `c/locale-extensions` | 4 | `lib_posix`:4 | C playground |
-| `c/math` | 242 | `lib_c`:242 | C playground |
-| `c/math-extensions` | 6 | `lib_posix_xsi`:6 | C playground |
-| `c/stdio` | 40 | `lib_c`:40 | C playground |
-| `c/stdio-extensions` | 22 | `lib_posix`:19, `lib_unix`:3 | C playground |
-| `c/stdlib` | 31 | `lib_c`:31 | C playground |
-| `c/stdlib-extensions` | 24 | `lib_posix`:5, `lib_posix_optional`:1, `lib_posix_xsi`:13, `lib_unix`:5 | C playground |
-| `c/string` | 19 | `lib_c`:19 | C playground |
-| `c/string-extensions` | 19 | `lib_posix`:14, `lib_posix_xsi`:2, `lib_unix`:3 | C playground |
-| `c/time` | 5 | `lib_c`:5 | C playground |
-| `c/time-extensions` | 9 | `lib_posix`:8, `lib_posix_xsi`:1 | C playground |
-| `c/wchar` | 53 | `lib_c`:53 | C playground |
-| `c/wchar-extensions` | 14 | `lib_posix`:12, `lib_posix_xsi`:2 | C playground |
-| `c/wctype` | 18 | `lib_c`:18 | C playground |
-| `c/wctype-extensions` | 18 | `lib_posix`:18 | C playground |
-| `network` | 89 | `lib_posix`:42, `lib_unix`:47 | network playground cluster |
-| `support/environment` | 18 | `lib_env`:18 | tooling/meta playground |
-| `support/error` | 47 | `lib_error`:47 | tooling/meta playground |
-| `support/fsm` | 17 | `lib_fsm`:17 | tooling/meta playground |
-| `support/instrumentation` | 41 | `lib_env`:41 | tooling/meta playground |
-| `support/util` | 1 | `lib_util`:1 | tooling/meta playground |
-| `systems/async-io` | 8 | `lib_posix`:7, `lib_posix_optional`:1 | systems playground |
-| `systems/dynamic-loading` | 4 | `lib_posix`:4 | runtime services playground |
-| `systems/file-io` | 118 | `lib_posix`:96, `lib_posix_xsi`:16, `lib_unix`:6 | systems playground |
+| `c/atomics` | 8 | `lib_c`:8 | c-core track |
+| `c/cli-parsing` | 2 | `lib_unix`:2 | c-core track |
+| `c/control-flow` | 4 | `lib_c`:4 | c-core track |
+| `c/control-flow-extensions` | 2 | `lib_posix`:2 | c-core track |
+| `c/conversion` | 32 | `lib_convert`:32 | c-core track |
+| `c/ctype` | 14 | `lib_c`:14 | c-core track |
+| `c/ctype-extensions` | 14 | `lib_posix`:14 | c-core track |
+| `c/inttypes` | 6 | `lib_c`:6 | c-core track |
+| `c/locale` | 2 | `lib_c`:2 | c-core track |
+| `c/locale-extensions` | 4 | `lib_posix`:4 | c-core track |
+| `c/math` | 242 | `lib_c`:242 | c-core track |
+| `c/math-extensions` | 6 | `lib_posix_xsi`:6 | c-core track |
+| `c/stdio` | 40 | `lib_c`:40 | c-core track |
+| `c/stdio-extensions` | 22 | `lib_posix`:19, `lib_unix`:3 | c-core track |
+| `c/stdlib` | 31 | `lib_c`:31 | c-core track |
+| `c/stdlib-extensions` | 24 | `lib_posix`:5, `lib_posix_optional`:1, `lib_posix_xsi`:13, `lib_unix`:5 | c-core track |
+| `c/string` | 19 | `lib_c`:19 | c-core track |
+| `c/string-extensions` | 19 | `lib_posix`:14, `lib_posix_xsi`:2, `lib_unix`:3 | c-core track |
+| `c/time` | 5 | `lib_c`:5 | c-core track |
+| `c/time-extensions` | 9 | `lib_posix`:8, `lib_posix_xsi`:1 | c-core track |
+| `c/wchar` | 53 | `lib_c`:53 | c-core track |
+| `c/wchar-extensions` | 14 | `lib_posix`:12, `lib_posix_xsi`:2 | c-core track |
+| `c/wctype` | 18 | `lib_c`:18 | c-core track |
+| `c/wctype-extensions` | 18 | `lib_posix`:18 | c-core track |
+| `network` | 89 | `lib_posix`:42, `lib_unix`:47 | networking track |
+| `support/environment` | 18 | `lib_env`:18 | observability-tools track |
+| `support/error` | 47 | `lib_error`:47 | observability-tools track |
+| `support/fsm` | 17 | `lib_fsm`:17 | observability-tools track |
+| `support/instrumentation` | 41 | `lib_env`:41 | observability-tools track |
+| `support/util` | 1 | `lib_util`:1 | observability-tools track |
+| `systems/async-io` | 8 | `lib_posix`:7, `lib_posix_optional`:1 | systems-family track |
+| `systems/dynamic-loading` | 4 | `lib_posix`:4 | runtime-services track |
+| `systems/file-io` | 118 | `lib_posix`:96, `lib_posix_xsi`:16, `lib_unix`:6 | systems-family track |
 | `systems/io-multiplexing` | 3 | `lib_posix`:3 | systems reference/advanced cluster |
 | `systems/ipc` | 18 | `lib_posix`:6, `lib_posix_xsi`:12 | strong IPC playground cluster |
-| `systems/legacy-database` | 9 | `lib_posix_xsi`:9 | runtime services playground |
-| `systems/localization-conversion` | 8 | `lib_posix`:8 | runtime services playground |
-| `systems/logging-diagnostics` | 12 | `lib_posix_xsi`:4, `lib_unix`:8 | systems playground |
-| `systems/platform-admin` | 8 | `lib_posix`:1, `lib_unix`:7 | systems playground |
-| `systems/process-signal` | 35 | `lib_posix`:16, `lib_posix_optional`:17, `lib_posix_xsi`:2 | systems playground |
-| `systems/resource-time-memory` | 19 | `lib_posix`:4, `lib_posix_optional`:7, `lib_posix_xsi`:6, `lib_unix`:2 | systems playground |
-| `systems/search-structures` | 11 | `lib_posix_xsi`:11 | runtime services playground |
-| `systems/text-patterns` | 4 | `lib_posix`:4 | runtime services playground |
-| `systems/threading` | 77 | `lib_posix`:51, `lib_posix_optional`:26 | systems playground |
-| `systems/users-terminals` | 27 | `lib_posix`:15, `lib_posix_xsi`:6, `lib_unix`:6 | systems playground |
-| `tooling/c-facts` | 3 | `lib_c_facts`:3 | tooling/meta playground |
+| `systems/legacy-database` | 9 | `lib_posix_xsi`:9 | runtime-services track |
+| `systems/localization-conversion` | 8 | `lib_posix`:8 | runtime-services track |
+| `systems/logging-diagnostics` | 12 | `lib_posix_xsi`:4, `lib_unix`:8 | systems-family track |
+| `systems/platform-admin` | 8 | `lib_posix`:1, `lib_unix`:7 | systems-family track |
+| `systems/process-signal` | 35 | `lib_posix`:16, `lib_posix_optional`:17, `lib_posix_xsi`:2 | systems-family track |
+| `systems/resource-time-memory` | 19 | `lib_posix`:4, `lib_posix_optional`:7, `lib_posix_xsi`:6, `lib_unix`:2 | systems-family track |
+| `systems/search-structures` | 11 | `lib_posix_xsi`:11 | runtime-services track |
+| `systems/text-patterns` | 4 | `lib_posix`:4 | runtime-services track |
+| `systems/threading` | 77 | `lib_posix`:51, `lib_posix_optional`:26 | systems-family track |
+| `systems/users-terminals` | 27 | `lib_posix`:15, `lib_posix_xsi`:6, `lib_unix`:6 | systems-family track |
+| `tooling/c-facts` | 3 | `lib_c_facts`:3 | observability-tools track |
 
 ## Large clusters and representative functions
 

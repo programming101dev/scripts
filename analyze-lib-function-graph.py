@@ -361,36 +361,97 @@ def domain_summaries(nodes: dict[str, FunctionNode]) -> dict[str, dict[str, Any]
     }
 
 
-def playground_recommendations(domain_counts: Counter[str]) -> list[dict[str, Any]]:
-    plans = [
-        (
-            "p101-c-playground",
-            "C language, memory, strings, integers, parsing, atomics, and portable diagnostics.",
-            ("c/",),
-        ),
-        (
-            "p101-systems-playground",
-            "POSIX files, processes, signals, resources, terminals, pthreads, IPC, and I/O multiplexing.",
-            ("systems/",),
-        ),
-        (
-            "p101-network-playground",
-            "Sockets, address resolution, interfaces, resolver/name helpers, and byte-order/network conversions.",
-            ("network",),
-        ),
-        (
-            "p101-tooling-playground",
-            "p101 support libraries: env/error/fsm/facts/instrumentation and how the tools observe programs.",
-            ("support/", "tooling/"),
-        ),
+def track_recommendations(domain_counts: Counter[str]) -> list[dict[str, Any]]:
+    """Return non-overlapping tracks for a single playground repository."""
+    track_specs = [
+        {
+            "track": "c-core",
+            "purpose": "C language, memory, strings, integers, parsing, atomics, math, stdio, and common C/POSIX extensions.",
+            "prefixes": ("c/",),
+            "domains": (),
+        },
+        {
+            "track": "file-io",
+            "purpose": "File descriptors, streams, directories, paths, short reads/writes, async I/O, descriptor ownership, and cleanup.",
+            "prefixes": (),
+            "domains": ("systems/file-io", "systems/async-io"),
+        },
+        {
+            "track": "processes-signals",
+            "purpose": "fork, exec, wait, spawn, signals, inherited resources, CLOEXEC, and process failure paths.",
+            "prefixes": (),
+            "domains": ("systems/process-signal",),
+        },
+        {
+            "track": "threading",
+            "purpose": "pthreads, mutexes, condition variables, cancellation, cleanup, and race-oriented resource handling.",
+            "prefixes": (),
+            "domains": ("systems/threading",),
+        },
+        {
+            "track": "ipc",
+            "purpose": "POSIX and XSI IPC: message queues, semaphores, shared memory, keys, readiness, cleanup, and permissions.",
+            "prefixes": (),
+            "domains": ("systems/ipc", "systems/io-multiplexing"),
+        },
+        {
+            "track": "networking",
+            "purpose": "TCP/UDP sockets, address resolution, interfaces, resolver helpers, protocol databases, and byte ordering.",
+            "prefixes": (),
+            "domains": ("network",),
+        },
+        {
+            "track": "terminals-users",
+            "purpose": "Terminal control, user/group lookup, tty databases, utmpx records, and interactive program boundaries.",
+            "prefixes": (),
+            "domains": ("systems/users-terminals",),
+        },
+        {
+            "track": "resources-platform",
+            "purpose": "Resource limits, priorities, clocks/time, memory mapping/locking, sysctl, mounts, fstab, and platform administration APIs.",
+            "prefixes": (),
+            "domains": ("systems/resource-time-memory", "systems/platform-admin"),
+        },
+        {
+            "track": "logging-diagnostics",
+            "purpose": "syslog, err/warn-style diagnostics, formatted messages, and teachable logging/error-reporting practice.",
+            "prefixes": (),
+            "domains": ("systems/logging-diagnostics",),
+        },
+        {
+            "track": "runtime-services",
+            "purpose": "Dynamic loading, regex, iconv, locale/message catalogs, legacy DBM, and libc search structures.",
+            "prefixes": (),
+            "domains": (
+                "systems/dynamic-loading",
+                "systems/text-patterns",
+                "systems/localization-conversion",
+                "systems/legacy-database",
+                "systems/search-structures",
+            ),
+        },
+        {
+            "track": "observability-tools",
+            "purpose": "env/error/fsm/facts, call traces, resource logs, fault injection, and writing analyses over event streams.",
+            "prefixes": ("support/", "tooling/"),
+            "domains": (),
+        },
     ]
-    recommendations = []
-    for name, purpose, prefixes in plans:
-        domains = [domain for domain in sorted(domain_counts) if any(domain.startswith(prefix) for prefix in prefixes)]
+
+    assigned: set[str] = set()
+    recommendations: list[dict[str, Any]] = []
+    for spec in track_specs:
+        domains = [
+            domain
+            for domain in sorted(domain_counts)
+            if domain not in assigned
+            and (domain in spec["domains"] or any(domain.startswith(prefix) for prefix in spec["prefixes"]))
+        ]
+        assigned.update(domains)
         recommendations.append(
             {
-                "playground": name,
-                "purpose": purpose,
+                "track": spec["track"],
+                "purpose": spec["purpose"],
                 "function_count": sum(domain_counts[domain] for domain in domains),
                 "domains": domains,
             }
@@ -398,63 +459,18 @@ def playground_recommendations(domain_counts: Counter[str]) -> list[dict[str, An
     return recommendations
 
 
-def specialized_recommendations(domain_counts: Counter[str]) -> list[dict[str, Any]]:
-    candidates = [
-        (
-            "p101-file-io-playground",
-            "File descriptors, streams, directories, paths, short reads/writes, descriptor ownership, and exec inheritance.",
-            ("systems/file-io", "systems/async-io"),
-        ),
-        (
-            "p101-threading-playground",
-            "Threads, mutexes, condition variables, cancellation, cleanup, atomics, and race-oriented resource handling.",
-            ("systems/threading", "c/atomics"),
-        ),
-        (
-            "p101-ipc-playground",
-            "POSIX and XSI IPC: message queues, semaphores, shared memory, keys, cleanup, and permission mistakes.",
-            ("systems/ipc", "systems/io-multiplexing"),
-        ),
-        (
-            "p101-process-playground",
-            "fork, exec, wait, spawn, signal handling, CLOEXEC, inherited resources, and failure-path cleanup.",
-            ("systems/process-signal", "systems/file-io"),
-        ),
-        (
-            "p101-network-playground",
-            "TCP/UDP sockets, address resolution, interfaces, resolver helpers, protocol databases, and byte ordering.",
-            ("network",),
-        ),
-        (
-            "p101-runtime-services-playground",
-            "Dynamic loading, regex, iconv, locale/message catalogs, legacy DBM, and libc search structures.",
-            (
-                "systems/dynamic-loading",
-                "systems/text-patterns",
-                "systems/localization-conversion",
-                "systems/legacy-database",
-                "systems/search-structures",
-            ),
-        ),
-        (
-            "p101-observability-playground",
-            "env/error/fsm/facts, call traces, resource logs, fault injection, and writing small analyses over event streams.",
-            ("support/environment", "support/error", "support/fsm", "support/instrumentation", "tooling/c-facts"),
-        ),
-    ]
-
-    recommendations: list[dict[str, Any]] = []
-    for name, purpose, domains in candidates:
-        present = [domain for domain in domains if domain_counts[domain] > 0]
-        recommendations.append(
-            {
-                "playground": name,
-                "purpose": purpose,
-                "function_count": sum(domain_counts[domain] for domain in present),
-                "domains": present,
-            }
-        )
-    return sorted(recommendations, key=lambda item: (-item["function_count"], item["playground"]))
+def repository_recommendation(domain_counts: Counter[str], tracks: list[dict[str, Any]]) -> dict[str, Any]:
+    assigned = {domain for track in tracks for domain in track["domains"]}
+    uncovered = sorted(domain for domain in domain_counts if domain not in assigned)
+    return {
+        "repository": "p101-tool-playground",
+        "layout": "single repository with small explicit tracks",
+        "track_count": len(tracks),
+        "covered_function_count": sum(domain_counts[domain] for domain in assigned),
+        "uncovered_function_count": sum(domain_counts[domain] for domain in uncovered),
+        "uncovered_domains": uncovered,
+        "tracks": tracks,
+    }
 
 
 def write_json(
@@ -462,8 +478,7 @@ def write_json(
     nodes: dict[str, FunctionNode],
     edges: list[FunctionEdge],
     domains: dict[str, dict[str, Any]],
-    recommendations: list[dict[str, Any]],
-    specialized: list[dict[str, Any]],
+    repo_plan: dict[str, Any],
 ) -> None:
     data = {
         "summary": {
@@ -474,8 +489,8 @@ def write_json(
         "nodes": [asdict(node) for node in sorted(nodes.values(), key=lambda item: item.name)],
         "edges": [asdict(edge) for edge in edges],
         "domains": domains,
-        "playground_recommendations": recommendations,
-        "specialized_playground_candidates": specialized,
+        "repository_recommendation": repo_plan,
+        "track_recommendations": repo_plan["tracks"],
     }
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
@@ -493,14 +508,16 @@ def write_dot(path: Path, nodes: dict[str, FunctionNode], edges: list[FunctionEd
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def domain_mermaid(recommendations: list[dict[str, Any]]) -> str:
+def domain_mermaid(repo_plan: dict[str, Any]) -> str:
     lines = ["```mermaid", "flowchart LR"]
-    for rec in recommendations:
-        pg = rec["playground"].replace("-", "_")
-        lines.append(f'  {pg}["{rec["playground"]}\\n{rec["function_count"]} wrappers"]')
+    repo_id = repo_plan["repository"].replace("-", "_")
+    lines.append(f'  {repo_id}["{repo_plan["repository"]}\\n{repo_plan["track_count"]} tracks"]')
+    for rec in repo_plan["tracks"]:
+        track_id = f"track_{rec['track'].replace('-', '_')}"
+        lines.append(f'  {track_id}["{rec["track"]}\\n{rec["function_count"]} wrappers"] --> {repo_id}')
         for domain in rec["domains"]:
             did = re.sub(r"[^A-Za-z0-9_]", "_", domain)
-            lines.append(f'  {did}["{domain}"] --> {pg}')
+            lines.append(f'  {did}["{domain}"] --> {track_id}')
     lines.append("```")
     return "\n".join(lines)
 
@@ -510,8 +527,7 @@ def write_markdown(
     nodes: dict[str, FunctionNode],
     edges: list[FunctionEdge],
     domains: dict[str, dict[str, Any]],
-    recommendations: list[dict[str, Any]],
-    specialized: list[dict[str, Any]],
+    repo_plan: dict[str, Any],
 ) -> None:
     lib_counts = Counter(node.library for node in nodes.values())
     domain_counts = Counter(node.domain for node in nodes.values())
@@ -530,33 +546,40 @@ def write_markdown(
         f"- Wrapper-to-wrapper edges: `{wrapper_edges}`",
         f"- Wrapper-to-native wrapped-call edges: `{wrapped_native_edges}`",
         f"- Domains: `{len(domains)}`",
+        f"- Recommended repo: `{repo_plan['repository']}`",
+        f"- Recommended tracks: `{repo_plan['track_count']}`",
+        f"- Uncovered domains: `{len(repo_plan['uncovered_domains'])}`",
         "",
-        "## Playground-level graph",
+        "## Single playground repo graph",
         "",
-        domain_mermaid(recommendations),
+        domain_mermaid(repo_plan),
         "",
-        "## Recommended playground cuts",
+        "## Recommended repo structure",
         "",
-        "| Playground | Function count | Domains | Purpose |",
+        f"Use one playground repository, `{repo_plan['repository']}`, with small explicit tracks inside it. Do not create a broad `systems` playground and do not create a `misc` track.",
+        "",
+        "| Track | Function count | Domains | Purpose |",
         "| --- | ---: | --- | --- |",
     ]
-    for rec in recommendations:
-        lines.append(f"| `{rec['playground']}` | {rec['function_count']} | {', '.join(f'`{domain}`' for domain in rec['domains'])} | {rec['purpose']} |")
+    for rec in repo_plan["tracks"]:
+        lines.append(f"| `{rec['track']}` | {rec['function_count']} | {', '.join(f'`{domain}`' for domain in rec['domains'])} | {rec['purpose']} |")
 
-    lines.extend(["", "## Candidate specialized playgrounds", "", "| Candidate | Function count | Domains | Why it exists |", "| --- | ---: | --- | --- |"])
-    for rec in specialized:
-        lines.append(f"| `{rec['playground']}` | {rec['function_count']} | {', '.join(f'`{domain}`' for domain in rec['domains'])} | {rec['purpose']} |")
+    lines.extend(["", "## Coverage", ""])
+    if repo_plan["uncovered_domains"]:
+        lines.append(f"Uncovered domains: {', '.join(f'`{domain}`' for domain in repo_plan['uncovered_domains'])}.")
+    else:
+        lines.append("Every discovered domain is assigned to one primary track.")
 
     lines.extend(
         [
             "",
             "## Curriculum reading",
             "",
-            "- The existing wrapper examples can collapse into playground tracks once each cluster has a working \"good path\" plus focused defect labs.",
+            "- The existing wrapper examples can collapse into tracks inside one playground repo once each cluster has a working \"good path\" plus focused defect labs.",
             "- `systems/ipc` is big enough to justify an IPC unit, especially when paired with `systems/io-multiplexing` so students see blocking, readiness, cleanup, and ownership together.",
-            "- `systems/file-io`, `systems/threading`, and `network` are the three largest non-C clusters; they should not be squeezed into one general systems lab.",
-            "- Dynamic loading, regex, iconv/catalogs, DBM, and XSI search are now split out of the old misc bucket; they belong in a runtime-services playground, not in file/process/thread labs.",
-            "- `support/instrumentation` plus `tooling/c-facts` should become a meta/tooling playground: students learn that the wrappers are observable APIs, not just safer spelling.",
+            "- `file-io`, `threading`, `networking`, `runtime-services`, and `observability-tools` are separate tracks; they should not be squeezed into one general systems lab.",
+            "- Dynamic loading, regex, iconv/catalogs, DBM, and XSI search are split out explicitly; they belong in `runtime-services`, not in a misc bucket.",
+            "- `support/instrumentation` plus `tooling/c-facts` should become `observability-tools`: students learn that the wrappers are observable APIs, not just safer spelling.",
         ]
     )
 
@@ -573,7 +596,7 @@ def write_markdown(
         elif domain == "systems/io-multiplexing":
             signal = "systems reference/advanced cluster"
         elif domain == "network":
-            signal = "network playground cluster"
+            signal = "networking track"
         elif domain in {
             "systems/dynamic-loading",
             "systems/text-patterns",
@@ -581,13 +604,13 @@ def write_markdown(
             "systems/legacy-database",
             "systems/search-structures",
         }:
-            signal = "runtime services playground"
+            signal = "runtime-services track"
         elif domain.startswith("c/"):
-            signal = "C playground"
+            signal = "c-core track"
         elif domain.startswith("systems/"):
-            signal = "systems playground"
+            signal = "systems-family track"
         elif domain.startswith("support/") or domain.startswith("tooling/"):
-            signal = "tooling/meta playground"
+            signal = "observability-tools track"
         lines.append(f"| `{domain}` | {count} | {libraries} | {signal} |")
 
     lines.extend(["", "## Large clusters and representative functions", ""])
@@ -608,11 +631,14 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     nodes, edges, _declared = collect(root)
     domains = domain_summaries(nodes)
-    recommendations = playground_recommendations(Counter(node.domain for node in nodes.values()))
-    specialized = specialized_recommendations(Counter(node.domain for node in nodes.values()))
-    write_json(out_dir / "lib-function-graph.json", nodes, edges, domains, recommendations, specialized)
+    domain_counts = Counter(node.domain for node in nodes.values())
+    tracks = track_recommendations(domain_counts)
+    repo_plan = repository_recommendation(domain_counts, tracks)
+    if any("misc" in domain for domain in domain_counts):
+        raise RuntimeError("misc domains are not allowed; split vague buckets into explicit tracks")
+    write_json(out_dir / "lib-function-graph.json", nodes, edges, domains, repo_plan)
     write_dot(out_dir / "lib-function-graph.dot", nodes, edges)
-    write_markdown(out_dir / "lib-function-graph.md", nodes, edges, domains, recommendations, specialized)
+    write_markdown(out_dir / "lib-function-graph.md", nodes, edges, domains, repo_plan)
     print(f"wrote {out_dir / 'lib-function-graph.md'}")
     print(f"wrote {out_dir / 'lib-function-graph.json'}")
     print(f"wrote {out_dir / 'lib-function-graph.dot'}")

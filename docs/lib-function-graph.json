@@ -17656,10 +17656,143 @@
       ]
     }
   },
-  "playground_recommendations": [
+  "repository_recommendation": {
+    "repository": "p101-tool-playground",
+    "layout": "single repository with small explicit tracks",
+    "track_count": 11,
+    "covered_function_count": 1185,
+    "uncovered_function_count": 0,
+    "uncovered_domains": [],
+    "tracks": [
+      {
+        "track": "c-core",
+        "purpose": "C language, memory, strings, integers, parsing, atomics, math, stdio, and common C/POSIX extensions.",
+        "function_count": 608,
+        "domains": [
+          "c/atomics",
+          "c/cli-parsing",
+          "c/control-flow",
+          "c/control-flow-extensions",
+          "c/conversion",
+          "c/ctype",
+          "c/ctype-extensions",
+          "c/inttypes",
+          "c/locale",
+          "c/locale-extensions",
+          "c/math",
+          "c/math-extensions",
+          "c/stdio",
+          "c/stdio-extensions",
+          "c/stdlib",
+          "c/stdlib-extensions",
+          "c/string",
+          "c/string-extensions",
+          "c/time",
+          "c/time-extensions",
+          "c/wchar",
+          "c/wchar-extensions",
+          "c/wctype",
+          "c/wctype-extensions"
+        ]
+      },
+      {
+        "track": "file-io",
+        "purpose": "File descriptors, streams, directories, paths, short reads/writes, async I/O, descriptor ownership, and cleanup.",
+        "function_count": 126,
+        "domains": [
+          "systems/async-io",
+          "systems/file-io"
+        ]
+      },
+      {
+        "track": "processes-signals",
+        "purpose": "fork, exec, wait, spawn, signals, inherited resources, CLOEXEC, and process failure paths.",
+        "function_count": 35,
+        "domains": [
+          "systems/process-signal"
+        ]
+      },
+      {
+        "track": "threading",
+        "purpose": "pthreads, mutexes, condition variables, cancellation, cleanup, and race-oriented resource handling.",
+        "function_count": 77,
+        "domains": [
+          "systems/threading"
+        ]
+      },
+      {
+        "track": "ipc",
+        "purpose": "POSIX and XSI IPC: message queues, semaphores, shared memory, keys, readiness, cleanup, and permissions.",
+        "function_count": 21,
+        "domains": [
+          "systems/io-multiplexing",
+          "systems/ipc"
+        ]
+      },
+      {
+        "track": "networking",
+        "purpose": "TCP/UDP sockets, address resolution, interfaces, resolver helpers, protocol databases, and byte ordering.",
+        "function_count": 89,
+        "domains": [
+          "network"
+        ]
+      },
+      {
+        "track": "terminals-users",
+        "purpose": "Terminal control, user/group lookup, tty databases, utmpx records, and interactive program boundaries.",
+        "function_count": 27,
+        "domains": [
+          "systems/users-terminals"
+        ]
+      },
+      {
+        "track": "resources-platform",
+        "purpose": "Resource limits, priorities, clocks/time, memory mapping/locking, sysctl, mounts, fstab, and platform administration APIs.",
+        "function_count": 27,
+        "domains": [
+          "systems/platform-admin",
+          "systems/resource-time-memory"
+        ]
+      },
+      {
+        "track": "logging-diagnostics",
+        "purpose": "syslog, err/warn-style diagnostics, formatted messages, and teachable logging/error-reporting practice.",
+        "function_count": 12,
+        "domains": [
+          "systems/logging-diagnostics"
+        ]
+      },
+      {
+        "track": "runtime-services",
+        "purpose": "Dynamic loading, regex, iconv, locale/message catalogs, legacy DBM, and libc search structures.",
+        "function_count": 36,
+        "domains": [
+          "systems/dynamic-loading",
+          "systems/legacy-database",
+          "systems/localization-conversion",
+          "systems/search-structures",
+          "systems/text-patterns"
+        ]
+      },
+      {
+        "track": "observability-tools",
+        "purpose": "env/error/fsm/facts, call traces, resource logs, fault injection, and writing analyses over event streams.",
+        "function_count": 127,
+        "domains": [
+          "support/environment",
+          "support/error",
+          "support/fsm",
+          "support/instrumentation",
+          "support/util",
+          "tooling/c-facts"
+        ]
+      }
+    ]
+  },
+  "track_recommendations": [
     {
-      "playground": "p101-c-playground",
-      "purpose": "C language, memory, strings, integers, parsing, atomics, and portable diagnostics.",
+      "track": "c-core",
+      "purpose": "C language, memory, strings, integers, parsing, atomics, math, stdio, and common C/POSIX extensions.",
       "function_count": 608,
       "domains": [
         "c/atomics",
@@ -17689,38 +17822,87 @@
       ]
     },
     {
-      "playground": "p101-systems-playground",
-      "purpose": "POSIX files, processes, signals, resources, terminals, pthreads, IPC, and I/O multiplexing.",
-      "function_count": 361,
+      "track": "file-io",
+      "purpose": "File descriptors, streams, directories, paths, short reads/writes, async I/O, descriptor ownership, and cleanup.",
+      "function_count": 126,
       "domains": [
         "systems/async-io",
-        "systems/dynamic-loading",
-        "systems/file-io",
-        "systems/io-multiplexing",
-        "systems/ipc",
-        "systems/legacy-database",
-        "systems/localization-conversion",
-        "systems/logging-diagnostics",
-        "systems/platform-admin",
-        "systems/process-signal",
-        "systems/resource-time-memory",
-        "systems/search-structures",
-        "systems/text-patterns",
-        "systems/threading",
-        "systems/users-terminals"
+        "systems/file-io"
       ]
     },
     {
-      "playground": "p101-network-playground",
-      "purpose": "Sockets, address resolution, interfaces, resolver/name helpers, and byte-order/network conversions.",
+      "track": "processes-signals",
+      "purpose": "fork, exec, wait, spawn, signals, inherited resources, CLOEXEC, and process failure paths.",
+      "function_count": 35,
+      "domains": [
+        "systems/process-signal"
+      ]
+    },
+    {
+      "track": "threading",
+      "purpose": "pthreads, mutexes, condition variables, cancellation, cleanup, and race-oriented resource handling.",
+      "function_count": 77,
+      "domains": [
+        "systems/threading"
+      ]
+    },
+    {
+      "track": "ipc",
+      "purpose": "POSIX and XSI IPC: message queues, semaphores, shared memory, keys, readiness, cleanup, and permissions.",
+      "function_count": 21,
+      "domains": [
+        "systems/io-multiplexing",
+        "systems/ipc"
+      ]
+    },
+    {
+      "track": "networking",
+      "purpose": "TCP/UDP sockets, address resolution, interfaces, resolver helpers, protocol databases, and byte ordering.",
       "function_count": 89,
       "domains": [
         "network"
       ]
     },
     {
-      "playground": "p101-tooling-playground",
-      "purpose": "p101 support libraries: env/error/fsm/facts/instrumentation and how the tools observe programs.",
+      "track": "terminals-users",
+      "purpose": "Terminal control, user/group lookup, tty databases, utmpx records, and interactive program boundaries.",
+      "function_count": 27,
+      "domains": [
+        "systems/users-terminals"
+      ]
+    },
+    {
+      "track": "resources-platform",
+      "purpose": "Resource limits, priorities, clocks/time, memory mapping/locking, sysctl, mounts, fstab, and platform administration APIs.",
+      "function_count": 27,
+      "domains": [
+        "systems/platform-admin",
+        "systems/resource-time-memory"
+      ]
+    },
+    {
+      "track": "logging-diagnostics",
+      "purpose": "syslog, err/warn-style diagnostics, formatted messages, and teachable logging/error-reporting practice.",
+      "function_count": 12,
+      "domains": [
+        "systems/logging-diagnostics"
+      ]
+    },
+    {
+      "track": "runtime-services",
+      "purpose": "Dynamic loading, regex, iconv, locale/message catalogs, legacy DBM, and libc search structures.",
+      "function_count": 36,
+      "domains": [
+        "systems/dynamic-loading",
+        "systems/legacy-database",
+        "systems/localization-conversion",
+        "systems/search-structures",
+        "systems/text-patterns"
+      ]
+    },
+    {
+      "track": "observability-tools",
+      "purpose": "env/error/fsm/facts, call traces, resource logs, fault injection, and writing analyses over event streams.",
       "function_count": 127,
       "domains": [
         "support/environment",
@@ -17729,76 +17911,6 @@
         "support/instrumentation",
         "support/util",
         "tooling/c-facts"
-      ]
-    }
-  ],
-  "specialized_playground_candidates": [
-    {
-      "playground": "p101-process-playground",
-      "purpose": "fork, exec, wait, spawn, signal handling, CLOEXEC, inherited resources, and failure-path cleanup.",
-      "function_count": 153,
-      "domains": [
-        "systems/process-signal",
-        "systems/file-io"
-      ]
-    },
-    {
-      "playground": "p101-file-io-playground",
-      "purpose": "File descriptors, streams, directories, paths, short reads/writes, descriptor ownership, and exec inheritance.",
-      "function_count": 126,
-      "domains": [
-        "systems/file-io",
-        "systems/async-io"
-      ]
-    },
-    {
-      "playground": "p101-observability-playground",
-      "purpose": "env/error/fsm/facts, call traces, resource logs, fault injection, and writing small analyses over event streams.",
-      "function_count": 126,
-      "domains": [
-        "support/environment",
-        "support/error",
-        "support/fsm",
-        "support/instrumentation",
-        "tooling/c-facts"
-      ]
-    },
-    {
-      "playground": "p101-network-playground",
-      "purpose": "TCP/UDP sockets, address resolution, interfaces, resolver helpers, protocol databases, and byte ordering.",
-      "function_count": 89,
-      "domains": [
-        "network"
-      ]
-    },
-    {
-      "playground": "p101-threading-playground",
-      "purpose": "Threads, mutexes, condition variables, cancellation, cleanup, atomics, and race-oriented resource handling.",
-      "function_count": 85,
-      "domains": [
-        "systems/threading",
-        "c/atomics"
-      ]
-    },
-    {
-      "playground": "p101-runtime-services-playground",
-      "purpose": "Dynamic loading, regex, iconv, locale/message catalogs, legacy DBM, and libc search structures.",
-      "function_count": 36,
-      "domains": [
-        "systems/dynamic-loading",
-        "systems/text-patterns",
-        "systems/localization-conversion",
-        "systems/legacy-database",
-        "systems/search-structures"
-      ]
-    },
-    {
-      "playground": "p101-ipc-playground",
-      "purpose": "POSIX and XSI IPC: message queues, semaphores, shared memory, keys, cleanup, and permission mistakes.",
-      "function_count": 21,
-      "domains": [
-        "systems/ipc",
-        "systems/io-multiplexing"
       ]
     }
   ]
