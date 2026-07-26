@@ -75,6 +75,9 @@ out_dir="$(mkdir -p "$out_dir" && cd "$out_dir" && pwd)"
 log_dir="$out_dir/logs"
 mkdir -p "$log_dir"
 summary="$out_dir/summary.md"
+host_os="$(uname -s)"
+host_release="$(uname -r)"
+host_machine="$(uname -m)"
 
 trim_line() {
   awk 'NF && $0 !~ /^[[:space:]]*#/ { print $1; exit }' "$1"
@@ -158,11 +161,18 @@ Compilers:
 - C: ${cc}
 - C++: ${cxx}
 
+Host:
+
+- OS: ${host_os}
+- Release: ${host_release}
+- Machine: ${host_machine}
+
 | Status | Check | Artifact |
 | --- | --- | --- |
 EOF
 
 say "p101 post-update-all check output: $out_dir"
+say "Host:         $host_os $host_release $host_machine"
 say "C compiler:   $cc"
 say "C++ compiler: $cxx"
 
