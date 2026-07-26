@@ -157,6 +157,10 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         ./change-compiler.sh -c "$CXX_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH"
       fi
       ;;
+    python)
+      say "Configuring Python/Clang tool with: clang=${CC_PATH}"
+      ./change-compiler.sh -c "$CC_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH"
+      ;;
     *)
       say "  -> Unknown repo type '${repo_type}', skipping."
       popd >/dev/null
