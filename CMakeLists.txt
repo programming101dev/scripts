@@ -50,6 +50,22 @@ foreach (_sf IN LISTS STANDARD_FLAGS)
     endif ()
 endforeach ()
 
+set(P101_EFFECTIVE_STANDARD_FLAGS ${STANDARD_FLAGS})
+if (APPLE AND DEFINED DARWIN_STANDARD_FLAGS)
+    list(APPEND P101_EFFECTIVE_STANDARD_FLAGS ${DARWIN_STANDARD_FLAGS})
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND DEFINED LINUX_STANDARD_FLAGS)
+    list(APPEND P101_EFFECTIVE_STANDARD_FLAGS ${LINUX_STANDARD_FLAGS})
+elseif (CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD" AND DEFINED BSD_STANDARD_FLAGS)
+    list(APPEND P101_EFFECTIVE_STANDARD_FLAGS ${BSD_STANDARD_FLAGS})
+endif ()
+
+set(P101_FEATURE_TEST_FLAGS "")
+foreach (_sf IN LISTS P101_EFFECTIVE_STANDARD_FLAGS)
+    if (_sf MATCHES "^-D")
+        list(APPEND P101_FEATURE_TEST_FLAGS "${_sf}")
+    endif ()
+endforeach ()
+
 # =========================
 # Tool paths (required/optional)
 # =========================
@@ -87,23 +103,13 @@ set(P101_TIDY_EXTRA_ARGS "" CACHE STRING "Extra clang-tidy args (space-separated
 set(P101_CPPCHECK_ARGS "" CACHE STRING "cppcheck args (space-separated)")
 set(P101_HEADER_FILTER ".*" CACHE STRING "Regex for -header-filter (default: all)")
 
-set(CPPCHECK_SUPPRESSIONS
-        "missingIncludeSystem unusedFunction staticFunction constParameterPointer unmatchedSuppression checkersReport"
-        CACHE STRING "Space-separated cppcheck suppressions"
-)
-
 set(P101_ANALYZE_FAIL_ON_DIAGNOSTICS OFF CACHE BOOL "Fail build if analyze stage emits diagnostics")
 
 # Clang Static Analyzer deep pass
-set(P101_CLANG_SA_PROFILE "deep" CACHE STRING "CSA profile: basic|deep")
+set(P101_CLANG_SA_PROFILE "${P101_CLANG_SA_PROFILE}" CACHE STRING "CSA profile: basic|deep")
 set_property(CACHE P101_CLANG_SA_PROFILE PROPERTY STRINGS basic deep)
 set(P101_CLANG_SA_FAIL_ON_DIAGNOSTICS ON CACHE BOOL "Fail build on any CSA diagnostic")
 set(P101_CLANG_SA_EXTRA_ARGS "" CACHE STRING "Extra --analyze args for clang (space-separated)")
-
-# Disable noisy checker
-set(P101_CLANG_SA_DISABLE_CHECKERS
-        "alpha.core.Conversion,security.insecureAPI.DeprecatedOrUnsafeBufferHandling,security.insecureAPI.strcpy"
-        CACHE STRING "Comma-separated Clang Static Analyzer checkers to disable")
 
 # =========================
 # QoL
@@ -136,6 +142,13 @@ if (NOT EXISTS "${P101_CMAKE_DIR}/FailIfCppcheckDiagnostics.cmake")
             "workspace run scripts/link-cmake.sh to symlink them; for a "
             "standalone checkout run scripts/recreate-cmake-helpers.sh.")
 endif ()
+if (NOT EXISTS "${P101_CMAKE_DIR}/ToolConfig.cmake")
+    message(FATAL_ERROR
+            "p101 tool config not found in ${P101_CMAKE_DIR}. In the "
+            "workspace run scripts/link-cmake.sh to symlink it; for a "
+            "standalone checkout run scripts/recreate-cmake-helpers.sh.")
+endif ()
+include("${P101_CMAKE_DIR}/ToolConfig.cmake")
 
 # Do not use CMake’s built-in tidy/cppcheck launchers
 set(CMAKE_C_CLANG_TIDY "" CACHE STRING "" FORCE)
@@ -154,9 +167,12 @@ endif ()
 # Split cache strings to lists
 separate_arguments(P101_PUBLIC_INCLUDE_DIRS_LIST NATIVE_COMMAND "${P101_PUBLIC_INCLUDE_DIRS}")
 separate_arguments(P101_PUBLIC_LINK_DIRS_LIST NATIVE_COMMAND "${P101_PUBLIC_LINK_DIRS}")
+if (P101_TIDY_EXTRA_CHECKS)
+    set(P101_TIDY_EXTRA_CHECKS_LIST ${P101_TIDY_EXTRA_CHECKS})
+endif ()
 separate_arguments(P101_TIDY_EXTRA_ARGS_LIST NATIVE_COMMAND "${P101_TIDY_EXTRA_ARGS}")
 separate_arguments(P101_CPPCHECK_ARGS_LIST NATIVE_COMMAND "${P101_CPPCHECK_ARGS}")
-separate_arguments(CPPCHECK_SUPPRESSIONS_LIST NATIVE_COMMAND "${CPPCHECK_SUPPRESSIONS}")
+set(P101_CPPCHECK_SUPPRESSIONS_LIST ${P101_CPPCHECK_SUPPRESSIONS})
 separate_arguments(P101_CLANG_SA_EXTRA_ARGS_LIST NATIVE_COMMAND "${P101_CLANG_SA_EXTRA_ARGS}")
 
 # macOS convenience roots
@@ -462,12 +478,12 @@ set(PUBLIC_INC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 set(_INC_CANDIDATES
         "${PUBLIC_INC_DIR}"
-        "/usr/local/include"
         ${P101_PUBLIC_INCLUDE_DIRS_LIST}
+        "/usr/local/include"
 )
 set(_LIB_CANDIDATES
-        "/usr/local/lib" "/usr/local/lib64"
         ${P101_PUBLIC_LINK_DIRS_LIST}
+        "/usr/local/lib" "/usr/local/lib64"
 )
 if (APPLE)
     list(APPEND _INC_CANDIDATES /opt/homebrew/include /opt/local/include)
@@ -527,9 +543,12 @@ endif()
 # Try to locate a concrete libiconv first (BSD/macOS/Homebrew/MacPorts, etc.)
 find_library(P101_ICONV_LIB
         NAMES iconv libiconv
-        HINTS ${P101_PUBLIC_LINK_DIRS_EXISTING}
-        /usr/local/lib /usr/lib /opt/homebrew/lib /opt/local/lib
+        PATHS ${P101_PUBLIC_LINK_DIRS_EXISTING}
+        NO_DEFAULT_PATH
 )
+if(NOT P101_ICONV_LIB)
+    find_library(P101_ICONV_LIB NAMES iconv libiconv)
+endif()
 
 if(P101_ICONV_LIB)
     set_property(TARGET p101::iconv PROPERTY INTERFACE_LINK_LIBRARIES "${P101_ICONV_LIB}")
@@ -578,10 +597,14 @@ function(_p101_resolve_link_items OUT)
 
         find_library(_FOUND_LIB
                 NAMES "${_name}" "lib${_name}"
-                HINTS ${P101_PUBLIC_LINK_DIRS_EXISTING}
-                /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
-                /opt/homebrew/lib /opt/local/lib
+                PATHS ${P101_PUBLIC_LINK_DIRS_EXISTING}
+                NO_DEFAULT_PATH
         )
+        if(NOT _FOUND_LIB)
+            find_library(_FOUND_LIB
+                    NAMES "${_name}" "lib${_name}"
+            )
+        endif()
 
         if(_FOUND_LIB)
             list(APPEND _accum "${_FOUND_LIB}")
@@ -694,7 +717,7 @@ foreach (_lib IN LISTS LIBRARY_TARGETS)
         target_include_directories(${_lib} SYSTEM PUBLIC ${_EXT_INC_DIRS})
     endif ()
 
-    target_compile_options(${_lib} PRIVATE ${STANDARD_FLAGS} ${P101_EXTRA_CFLAGS} ${_P101_SANITIZER_COMPILE_OPTS})
+    target_compile_options(${_lib} PRIVATE ${P101_EFFECTIVE_STANDARD_FLAGS} ${P101_EXTRA_CFLAGS} ${_P101_SANITIZER_COMPILE_OPTS})
     target_link_options(${_lib} PRIVATE ${P101_EXTRA_LDFLAGS} ${_P101_SANITIZER_LINK_OPTS})
 
     if (${_lib}_LINK_LIBRARIES)
@@ -732,7 +755,7 @@ foreach (_exe IN LISTS EXECUTABLE_TARGETS)
         target_include_directories(${_exe} SYSTEM PRIVATE ${_EXT_INC_DIRS})
     endif ()
 
-    target_compile_options(${_exe} PRIVATE ${STANDARD_FLAGS} ${P101_EXTRA_CFLAGS} ${_P101_SANITIZER_COMPILE_OPTS})
+    target_compile_options(${_exe} PRIVATE ${P101_EFFECTIVE_STANDARD_FLAGS} ${P101_EXTRA_CFLAGS} ${_P101_SANITIZER_COMPILE_OPTS})
     target_link_options(${_exe} PRIVATE ${P101_EXTRA_LDFLAGS} ${_P101_SANITIZER_LINK_OPTS})
 
     # Link the compiled-in sanitizer default-options object (executables only).
@@ -854,38 +877,10 @@ endforeach ()
 # clang-tidy (AFTER analyze)
 # =========================
 if (P101_TIDY_CHECKS STREQUAL "")
-    set(P101_TIDY_CHECKS_LIST
-            "*"
-            "-llvmlibc-*"
-            "-clang-diagnostic-unused-macros"
-            "-llvmlibc-restrict-system-libc-headers"
-            "-altera-struct-pack-align"
-            "-readability-identifier-length"
-            "-altera-unroll-loops"
-            "-cppcoreguidelines-init-variables"
-            "-cert-err33-c"
-            "-bugprone-easily-swappable-parameters"
-            "-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling"
-            "-altera-id-dependent-backward-branch"
-            "-concurrency-mt-unsafe"
-            "-misc-unused-parameters"
-            "-hicpp-signed-bitwise"
-            "-google-readability-todo"
-            "-cert-msc30-c"
-            "-readability-function-cognitive-complexity"
-            "-clang-analyzer-security.insecureAPI.strcpy"
-            "-cert-env33-c"
-            "-android-cloexec-accept"
-            "-misc-include-cleaner"
-            "-llvm-header-guard"
-            "-google-readability-casting"
-            "-readability-redundant-casting"
-            # fuchsia-trailing-return directly contradicts
-            # modernize-use-trailing-return-type under checks=* — with
-            # -warnings-as-errors=* NO C++ function could pass the gate.
-            # Keep the modernize (trailing-return) style; drop the fuchsia ban.
-            "-fuchsia-trailing-return"
-    )
+    set(P101_TIDY_CHECKS_LIST ${P101_TIDY_DEFAULT_CHECKS})
+    if (P101_TIDY_EXTRA_CHECKS_LIST)
+        list(APPEND P101_TIDY_CHECKS_LIST ${P101_TIDY_EXTRA_CHECKS_LIST})
+    endif ()
     string(JOIN "," P101_TIDY_CHECKS ${P101_TIDY_CHECKS_LIST})
 endif ()
 
@@ -907,28 +902,16 @@ endif ()
 set(_P101_TIDY_ARGS
         "-header-filter=${P101_HEADER_FILTER}"
         "-checks=${P101_TIDY_CHECKS}"
-        "-warnings-as-errors=*"
         "-quiet"
         "--format-style=file"
-        "--extra-arg-before=-D_POSIX_C_SOURCE=200809L"
-        "--extra-arg-before=-D_XOPEN_SOURCE=700"
 )
-
-# _GNU_SOURCE is a glibc feature-test macro. "UNIX AND NOT APPLE" also matches
-# the BSDs, where it is not meaningful and can perturb declaration visibility;
-# BSD gets __BSD_VISIBLE below instead. Gate on Linux specifically.
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-D_GNU_SOURCE")
-endif()
-
-if (APPLE)
-    list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-D_DARWIN_C_SOURCE")
-endif()
-
-# BSD visibility for clang-tidy too
-if (CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD")
-    list(APPEND _P101_TIDY_ARGS "--extra-arg-before=-D__BSD_VISIBLE=1")
+if (NOT P101_TIDY_WARNINGS_AS_ERRORS STREQUAL "")
+    list(APPEND _P101_TIDY_ARGS "-warnings-as-errors=${P101_TIDY_WARNINGS_AS_ERRORS}")
 endif ()
+
+foreach (_feature_define IN LISTS P101_FEATURE_TEST_FLAGS)
+    list(APPEND _P101_TIDY_ARGS "--extra-arg-before=${_feature_define}")
+endforeach ()
 
 # Our includes
 if (P101_PROJECT_INC_DIR)
@@ -1118,13 +1101,10 @@ endfunction()
 
 if (P101_CPPCHECK_ARGS STREQUAL "")
     _p101_cppcheck_std(_CPPCHECK_STD _CPPCHECK_LANG)
-    set(P101_CPPCHECK_ARGS_LIST
-            --enable=all --inconclusive --check-level=exhaustive --library=posix
-            --force --inline-suppr --quiet
-            --language=${_CPPCHECK_LANG} --std=${_CPPCHECK_STD}
-    )
+    set(P101_CPPCHECK_ARGS_LIST ${P101_CPPCHECK_BASE_ARGS})
+    list(APPEND P101_CPPCHECK_ARGS_LIST --language=${_CPPCHECK_LANG} --std=${_CPPCHECK_STD})
 
-    # --check-level=exhaustive only exists in cppcheck >= 2.11. On an older
+    # P101_CPPCHECK_EXHAUSTIVE_ARG only exists in cppcheck >= 2.11. On an older
     # cppcheck the option is rejected; passing it (or, worse, silently getting
     # the "normalCheckLevelMaxBranches" advisory when it IS absent) breaks the
     # build. CPU is a poor proxy for the cppcheck version — an old Raspberry Pi
@@ -1146,12 +1126,12 @@ if (P101_CPPCHECK_ARGS STREQUAL "")
         endif ()
     endif ()
     if (NOT P101_CPPCHECK_HAS_CHECK_LEVEL)
-        list(REMOVE_ITEM P101_CPPCHECK_ARGS_LIST --check-level=exhaustive)
+        list(REMOVE_ITEM P101_CPPCHECK_ARGS_LIST ${P101_CPPCHECK_EXHAUSTIVE_ARG})
     endif ()
 endif ()
 
 set(_CPPCHECK_SUPPRESSIONS)
-foreach (_s IN LISTS CPPCHECK_SUPPRESSIONS_LIST)
+foreach (_s IN LISTS P101_CPPCHECK_SUPPRESSIONS_LIST)
     if (NOT _s STREQUAL "")
         list(APPEND _CPPCHECK_SUPPRESSIONS "--suppress=${_s}")
     endif ()
@@ -1263,33 +1243,24 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
     # Reuse analyzer-only flags (best-effort; CSA is separate from the syntax-only stage)
     set(_SA_FLAGS ${P101_ANALYZER_ONLY_CFLAGS})
 
-    set(_SA_ARGS_COMMON
-            --analyze
-            -Xanalyzer -analyzer-output=text
-    )
+    set(_SA_ARGS_COMMON ${P101_CLANG_SA_COMMON_ARGS})
 
     # Only analyze implementation files; report only in the main source file
-    set(_SA_ARGS_PROFILE
-            -Xanalyzer -analyzer-config -Xanalyzer analyze-headers=false
-            -Xanalyzer -analyzer-config -Xanalyzer report-in-main-source-file=true
-    )
+    set(_SA_ARGS_PROFILE ${P101_CLANG_SA_PROFILE_ARGS})
 
-    set(_SA_CHECKER_GROUPS core unix security nullability)
+    set(_SA_CHECKER_GROUPS ${P101_CLANG_SA_BASE_CHECKERS})
     if (APPLE)
-        list(APPEND _SA_CHECKER_GROUPS osx)
+        list(APPEND _SA_CHECKER_GROUPS ${P101_CLANG_SA_APPLE_CHECKERS})
     endif ()
 
     if (NOT _COMPILER_ID STREQUAL "AppleClang")
-        list(APPEND _SA_CHECKER_GROUPS deadcode optin apiModeling)
+        list(APPEND _SA_CHECKER_GROUPS ${P101_CLANG_SA_NON_APPLE_CHECKERS})
         if (PROJECT_LANGUAGE STREQUAL "CXX")
-            list(APPEND _SA_CHECKER_GROUPS cplusplus)
+            list(APPEND _SA_CHECKER_GROUPS ${P101_CLANG_SA_CXX_CHECKERS})
         endif ()
         if (P101_CLANG_SA_PROFILE STREQUAL "deep")
-            list(APPEND _SA_CHECKER_GROUPS alpha.core alpha.security alpha.unix)
-            list(APPEND _SA_ARGS_PROFILE
-                    -Xanalyzer -analyzer-config -Xanalyzer aggressive-binary-operation-simplification=true
-                    -Xanalyzer -analyzer-config -Xanalyzer unroll-loops=true
-            )
+            list(APPEND _SA_CHECKER_GROUPS ${P101_CLANG_SA_DEEP_CHECKERS})
+            list(APPEND _SA_ARGS_PROFILE ${P101_CLANG_SA_DEEP_ARGS})
         endif ()
     endif ()
 
@@ -1297,7 +1268,10 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
         list(APPEND _SA_ARGS_PROFILE -Xanalyzer -analyzer-checker=${_grp})
     endforeach ()
 
-    string(REPLACE "," ";" _CSA_DISABLE_LIST "${P101_CLANG_SA_DISABLE_CHECKERS}")
+    set(_CSA_DISABLE_LIST ${P101_CLANG_SA_DISABLE_CHECKERS})
+    if ("${P101_CLANG_SA_DISABLE_CHECKERS}" MATCHES ",")
+        string(REPLACE "," ";" _CSA_DISABLE_LIST "${P101_CLANG_SA_DISABLE_CHECKERS}")
+    endif ()
     foreach (_dis IN LISTS _CSA_DISABLE_LIST)
         string(STRIP "${_dis}" _dis)
         if (NOT _dis STREQUAL "")
@@ -1313,21 +1287,7 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
     string(JOIN " " _SA_ARGS_CMD ${_SA_ARGS})
     string(JOIN " " _SA_FLAGS_CMD ${_SA_FLAGS})
 
-    set(_P101_SA_DEFS
-            -D_POSIX_C_SOURCE=200809L
-            -D_XOPEN_SOURCE=700
-    )
-
-    if (APPLE)
-        list(APPEND _P101_SA_DEFS -D_DARWIN_C_SOURCE)
-    elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        # _GNU_SOURCE is glibc-specific; BSD (also UNIX) gets __BSD_VISIBLE below.
-        list(APPEND _P101_SA_DEFS -D_GNU_SOURCE)
-    endif()
-
-    if (CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD")
-        list(APPEND _P101_SA_DEFS -D__BSD_VISIBLE=1)
-    endif ()
+    set(_P101_SA_DEFS ${P101_FEATURE_TEST_FLAGS})
 
     string(JOIN " " _P101_SA_DEFS_CMD ${_P101_SA_DEFS})
 
@@ -1412,7 +1372,7 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
         if (P101_EXTDEF_MAPPING)
             # same checker/config profile as the per-file pass, minus the bare
             # --analyze (the helper adds it); it also adds the CTU config
-            set(_CTU_ARGS -Xanalyzer -analyzer-output=text ${_SA_ARGS_PROFILE})
+            set(_CTU_ARGS ${P101_CLANG_SA_CTU_COMMON_ARGS} ${_SA_ARGS_PROFILE})
             if (P101_CLANG_SA_EXTRA_ARGS_LIST)
                 list(APPEND _CTU_ARGS ${P101_CLANG_SA_EXTRA_ARGS_LIST})
             endif ()

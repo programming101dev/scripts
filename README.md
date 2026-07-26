@@ -108,3 +108,53 @@ rejected* — to make a decision, move the flag into the right file in one of
 those two forms, bump `version.txt`, and `generate-flags.sh` will probe
 whether each choice actually works on each machine. Run it again after a
 compiler upgrade to see what new checks became available.
+
+## **Discovering common non-POSIX Unix functions**
+
+To seed future `lib_unix` wrappers, use:
+
+```bash
+./fetch-unix-doc-sources.sh -d /tmp/unix-doc-sources
+./discover-common-unix-functions.py \
+  --linux /tmp/unix-doc-sources/linux-man-pages \
+  --freebsd /tmp/unix-doc-sources/freebsd-src \
+  --macos /tmp/unix-doc-sources/apple-Libc \
+  --posix-symbols /path/to/posix-symbols.txt \
+  --posix-html /path/to/posix/functions/toc.html \
+  --output /tmp/unix-doc-sources/common-unix-functions.csv \
+  --emit-probes /tmp/unix-doc-sources/probe-work
+```
+
+The analyzer computes:
+
+```text
+documented(Linux) ∩ documented(FreeBSD) ∩ documented(macOS)
+  - POSIX interfaces
+  - existing p101 wrappers
+  - built-in legacy/unsafe exclusions
+```
+
+The CSV is only a wrapper backlog. Treat the generated compile probes as the
+real gate: copy `/tmp/unix-doc-sources/probe-work` to macOS, FreeBSD, and
+Linux machines and run:
+
+```bash
+cd /tmp/unix-doc-sources/probe-work
+CC=cc ./run-probes.sh
+```
+
+Only functions that compile and link on all target systems should be promoted
+to `lib_unix` candidates. Documentation finds the goblins; compiler probes
+decide which goblins are real functions.
+
+`--posix-symbols` accepts a simple newline list. `--posix-html` accepts a local
+POSIX function TOC or individual function page; if sibling function pages are
+present locally, the analyzer reads their `NAME` blocks too. That matters
+because POSIX groups related interfaces on one page, so an index-only list can
+miss names such as formatted I/O variants.
+
+By default, the analyzer also excludes old or unsafe interfaces such as
+`mktemp`, old BSD signal-mask APIs, obsolete byte/string aliases, `getw`/`putw`,
+`getpass`, and historical globals. Use `--include-all` to see them in the CSV as
+`excluded-legacy`, or `--no-default-excludes` if you intentionally want the raw
+set.

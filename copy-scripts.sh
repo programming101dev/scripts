@@ -15,6 +15,10 @@
 #
 # copy-template.sh is deliberately NOT in the sync list: it is the template's
 # own self-copier and does not belong in the repos stamped out from it.
+#
+# install.sh / uninstall.sh only exist in LIBRARY repos (programs and templates
+# are not installed), so their canonical lives HERE in the scripts repo and they
+# are only distributed to repos under libraries/.
 set -eu
 
 usage() {
@@ -47,6 +51,9 @@ SYNC_SCRIPTS="build-all.sh build.sh change-compiler.sh check-compilers.sh check-
 
 # Non-executable canonical files kept in lock-step the same way.
 SYNC_FILES=".gitignore"
+
+# Library-only scripts; canonical is this scripts repo itself (see header).
+SYNC_LIB_SCRIPTS="install.sh uninstall.sh"
 
 [ -f "$REPOS_FILE" ] || { printf 'Error: %s not found.\n' "$REPOS_FILE" >&2; exit 1; }
 [ -d "$C_SRC" ]      || { printf 'Error: C canonical %s not found.\n' "$C_SRC" >&2; exit 1; }
@@ -117,6 +124,14 @@ while IFS= read -r line || [ -n "$line" ]; do
   for s in $SYNC_FILES; do
     sync_one "$src" "$destdir" "$dest" "$s" -
   done
+
+  # Library repos additionally get install/uninstall from this scripts repo.
+  case "$dest" in
+    *libraries/*)
+      for s in $SYNC_LIB_SCRIPTS; do
+        sync_one "$SCRIPT_DIR" "$destdir" "$dest" "$s" x
+      done ;;
+  esac
 done < "$REPOS_FILE"
 
 if [ "$DRYRUN" -eq 1 ]; then
