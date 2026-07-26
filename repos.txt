@@ -16,6 +16,7 @@ https://github.com/programming101dev/p101-report.git|../programs/p101-report|c
 https://github.com/programming101dev/p101-error-path-walk.git|../programs/p101-error-path-walk|c
 https://github.com/programming101dev/p101-audit.git|../programs/p101-audit|c
 https://github.com/programming101dev/p101-wrapper-audit.git|../programs/p101-wrapper-audit|python
+https://github.com/programming101dev/p101-doctor.git|../programs/p101-doctor|c
 https://github.com/programming101dev/p101-tool-playground.git|../programs/p101-tool-playground|c
 https://github.com/programming101dev/template-c.git|../templates/template-c|c
 https://github.com/programming101dev/template-c-program.git|../templates/template-c-program|c
