@@ -8,7 +8,7 @@ https://github.com/programming101dev/lib_unix.git|../libraries/lib_unix|c
 https://github.com/programming101dev/lib_fsm.git|../libraries/lib_fsm|c
 https://github.com/programming101dev/lib_util.git|../libraries/lib_util|c
 https://github.com/programming101dev/lib_convert.git|../libraries/lib_convert|c
-https://github.com/programming101dev/resource-tracker.git|../programs/resource-tracker|c
+https://github.com/programming101dev/p101-resource-tracker.git|../programs/p101-resource-tracker|c
 https://github.com/programming101dev/simple-port-forwarder.git|../programs/simple-port-forwarder|c
 https://github.com/programming101dev/p101-trace.git|../programs/p101-trace|c
 https://github.com/programming101dev/p101-observe.git|../programs/p101-observe|c
