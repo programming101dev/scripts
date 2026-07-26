@@ -74,6 +74,16 @@ If you want to verify that everything compiles with all of the supported compile
 ./update-all.sh
 ```
 
+After `update-all.sh` succeeds, run the post-build acceptance checks:
+
+```bash
+./check-after-update-all.sh
+```
+
+This does not rebuild every repository again. It runs the shared CMake
+regression harness, copied-template standalone checks, and the
+`p101-tool-playground` tour.
+
 ## **Testing the shared CMakeLists.txt**
 
 Before committing changes to `CMakeLists.txt`, run:
