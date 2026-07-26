@@ -92,6 +92,20 @@ say() {
   printf '%s\n' "$*"
 }
 
+reset_child_dir() {
+  child="$1"
+
+  case "$child" in
+    "$out_dir"/*)
+      rm -rf "$child"
+      ;;
+    *)
+      echo "Refusing to remove path outside output directory: $child" >&2
+      exit 3
+      ;;
+  esac
+}
+
 run_logged() {
   title="$1"
   log="$2"
@@ -135,7 +149,9 @@ else
 fi
 
 if [ "$skip_playground" -eq 0 ]; then
-  tour_args=(-o "$out_dir/playground-tour" -n "$fault_count" -t "$fuzz_secs")
+  playground_out="$out_dir/playground-tour"
+  reset_child_dir "$playground_out"
+  tour_args=(-o "$playground_out" -n "$fault_count" -t "$fuzz_secs")
   if [ "$playground_skip_quality" -eq 1 ]; then
     tour_args+=(--skip-quality)
   fi
