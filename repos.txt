@@ -14,6 +14,7 @@ https://github.com/programming101dev/p101-trace.git|../programs/p101-trace|c
 https://github.com/programming101dev/p101-observe.git|../programs/p101-observe|c
 https://github.com/programming101dev/p101-report.git|../programs/p101-report|c
 https://github.com/programming101dev/p101-error-path-walk.git|../programs/p101-error-path-walk|c
+https://github.com/programming101dev/p101-tool-playground.git|../programs/p101-tool-playground|c
 https://github.com/programming101dev/template-c.git|../templates/template-c|c
 https://github.com/programming101dev/template-c-program.git|../templates/template-c-program|c
 https://github.com/programming101dev/template-cpp.git|../templates/template-cxx|cxx
