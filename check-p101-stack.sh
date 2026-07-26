@@ -203,7 +203,7 @@ fi
 if [ "$skip_lab" -eq 0 ]; then
   lab_out="$out_dir/p101-lab"
   reset_child_dir "$lab_out"
-  run_logged "p101-tool-playground lab-book smoke" "$log_dir/p101-lab.log" ./p101 lab --quick -o "$lab_out"
+  run_logged "p101-tool-playground lab-book smoke" "$log_dir/p101-lab.log" ./p101 lab --quick --strict-corpus -o "$lab_out"
 else
   say "==> p101-tool-playground lab-book smoke"
   say "    SKIP"

@@ -109,7 +109,7 @@ To run the checked playground lesson corpus:
 ./p101 corpus
 ```
 
-To turn that corpus into a student-facing lab book:
+To turn that corpus into a student-facing lab series:
 
 ```bash
 ./p101 lab --quick
@@ -117,8 +117,11 @@ To turn that corpus into a student-facing lab book:
 ```
 
 `p101 lab` writes a self-contained `index.html`, a Markdown lab outline, the
-checked corpus reports, and the command logs. It is the best single artifact
-for showing the full p101 toolchain in class.
+checked corpus reports, and the command logs. Each lab has an issue ID, lesson,
+fix checklist, and progress state. Students can fix one issue at a time and
+re-run the command to watch labs move from `OPEN` to `FIXED`. Use
+`--strict-corpus` for instructor/CI checks that should fail if the committed
+broken fixtures stop producing their expected diagnostics.
 
 For lower-level student/instructor tooling around observed runs:
 
