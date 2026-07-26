@@ -21,6 +21,7 @@ Commands:
   doctor        Run p101-doctor
   playground    Run p101-tool-playground
   check         Run the full p101 check workflow
+  corpus        Run the p101-tool-playground lesson corpus
   html-report   Run p101-html-report.py
   cohort        Run p101-cohort-summary.py
   bug-bundle    Run p101-bug-bundle.sh
@@ -94,6 +95,9 @@ case "$command_name" in
     ;;
   check)
     exec ./p101-check.sh "$@"
+    ;;
+  corpus)
+    exec ../programs/p101-tool-playground/corpus.sh "$@"
     ;;
   html-report)
     exec ./p101-html-report.py "$@"
