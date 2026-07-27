@@ -22,7 +22,7 @@ jobs:
       - name: Detect compilers
         run: cd scripts && ./check-compilers.sh
       - name: Update all repos
-        run: cd scripts && ./update-all.sh
+        run: cd scripts && ./update-all.sh --skip-install
       - name: Check after update-all
         run: cd scripts && ./check-after-update-all.sh -c clang -x clang++
 
@@ -39,7 +39,7 @@ jobs:
       - name: Detect compilers
         run: cd scripts && ./check-compilers.sh
       - name: Update all repos
-        run: cd scripts && ./update-all.sh
+        run: cd scripts && ./update-all.sh --skip-install
       - name: Check after update-all
         run: cd scripts && ./check-after-update-all.sh -c clang -x clang++
 
@@ -58,5 +58,5 @@ jobs:
             cd scripts
             ./clone-repos.sh
             ./check-compilers.sh
-            ./update-all.sh
+            ./update-all.sh --skip-install
             bash ./check-after-update-all.sh -c clang -x clang++

@@ -20,6 +20,7 @@ sanitizers_given=false
 dry_run=false
 no_flags=false
 standard=false
+skip_install=false
 
 # Files and helper scripts expected in the current directory
 # CACHE_ROOT / FLAGS_VERSION_FILE are re-pointed for the --standard profile
@@ -76,6 +77,8 @@ Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clan
                        by default. Combines with any other mode.
   --profile            Opt-in: also instrument every target for profiling
                        (-pg / gprof). Off by default. Combines with --coverage.
+  --skip-install       Build repositories but do not run their install.sh
+                       scripts. Useful for CI and smoke checks.
 
 Examples:
   ./update.sh -c clang -x clang++
@@ -191,6 +194,7 @@ LONG_NO_FLAGS=0
 LONG_STANDARD=0
 LONG_COVERAGE=0
 LONG_PROFILE=0
+LONG_SKIP_INSTALL=0
 declare -a _argv=()
 for _a in "$@"; do
   if [[ "$_a" == "--dry-run" ]]; then
@@ -203,6 +207,8 @@ for _a in "$@"; do
     LONG_COVERAGE=1
   elif [[ "$_a" == "--profile" ]]; then
     LONG_PROFILE=1
+  elif [[ "$_a" == "--skip-install" ]]; then
+    LONG_SKIP_INSTALL=1
   else
     _argv+=("$_a")
   fi
@@ -234,6 +240,7 @@ shift $((OPTIND-1))
 # compose with each other and with a normal or sanitizer build.
 [[ $LONG_COVERAGE -eq 1 ]] && export P101_COVERAGE=1
 [[ $LONG_PROFILE  -eq 1 ]] && export P101_PROFILE=1
+[[ $LONG_SKIP_INSTALL -eq 1 ]] && skip_install=true
 
 if $no_flags && $standard; then
   die "--no-flags and --standard are mutually exclusive (one means no flags, the other a fixed standard set)."
@@ -539,13 +546,18 @@ run_or_echo "$LINK_COMPILERS_SH"
 run_or_echo "$LINK_CMAKE_SH"
 
 # ----------------- build all repos -----------------
-run_or_echo "$BUILD_REPO_SH" \
-  -c "$CC_PATH" \
-  -x "$CXX_PATH" \
-  -f "$CLANG_FORMAT_PATH" \
-  -t "$CLANG_TIDY_PATH" \
-  -k "$CPPCHECK_PATH" \
-  -s "$sanitizers" \
+build_repo_args=(
+  -c "$CC_PATH"
+  -x "$CXX_PATH"
+  -f "$CLANG_FORMAT_PATH"
+  -t "$CLANG_TIDY_PATH"
+  -k "$CPPCHECK_PATH"
+  -s "$sanitizers"
   -S
+)
+if $skip_install; then
+  build_repo_args+=(-I)
+fi
+run_or_echo "$BUILD_REPO_SH" "${build_repo_args[@]}"
 
 note "All done."
