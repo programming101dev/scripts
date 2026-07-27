@@ -18023,7 +18023,7 @@
     }
   },
   "repository_recommendation": {
-    "repository": "p101-tool-playground",
+    "repository": "playgrounds",
     "layout": "single repository with small explicit tracks",
     "track_count": 40,
     "covered_function_count": 1185,

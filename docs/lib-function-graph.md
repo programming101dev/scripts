@@ -9,7 +9,7 @@ Generated from active `libraries/lib_*` directories. `_to_delete` is excluded.
 - Wrapper-to-wrapper edges: `126`
 - Wrapper-to-native wrapped-call edges: `958`
 - Domains: `90`
-- Recommended repo: `p101-tool-playground`
+- Recommended repo: `playgrounds`
 - Recommended tracks: `40`
 - Uncovered domains: `0`
 
@@ -17,62 +17,62 @@ Generated from active `libraries/lib_*` directories. `_to_delete` is excluded.
 
 ```mermaid
 flowchart LR
-  p101_tool_playground["p101-tool-playground\n40 tracks"]
-  track_c_memory_runtime["c-memory-runtime\n55 wrappers"] --> p101_tool_playground
+  playgrounds["playgrounds\n40 tracks"]
+  track_c_memory_runtime["c-memory-runtime\n55 wrappers"] --> playgrounds
   c_stdlib["c/stdlib"] --> track_c_memory_runtime
   c_stdlib_extensions["c/stdlib-extensions"] --> track_c_memory_runtime
-  track_c_memory_bytes["c-memory-bytes\n7 wrappers"] --> p101_tool_playground
+  track_c_memory_bytes["c-memory-bytes\n7 wrappers"] --> playgrounds
   c_byte_utility["c/byte-utility"] --> track_c_memory_bytes
   c_memory_bytes["c/memory-bytes"] --> track_c_memory_bytes
   c_memory_bytes_extensions["c/memory-bytes-extensions"] --> track_c_memory_bytes
-  track_c_byte_strings["c-byte-strings\n32 wrappers"] --> p101_tool_playground
+  track_c_byte_strings["c-byte-strings\n32 wrappers"] --> playgrounds
   c_byte_strings["c/byte-strings"] --> track_c_byte_strings
   c_byte_strings_extensions["c/byte-strings-extensions"] --> track_c_byte_strings
-  track_c_char_classification["c-char-classification\n28 wrappers"] --> p101_tool_playground
+  track_c_char_classification["c-char-classification\n28 wrappers"] --> playgrounds
   c_char_classification["c/char-classification"] --> track_c_char_classification
   c_char_classification_extensions["c/char-classification-extensions"] --> track_c_char_classification
-  track_c_wide_strings["c-wide-strings\n34 wrappers"] --> p101_tool_playground
+  track_c_wide_strings["c-wide-strings\n34 wrappers"] --> playgrounds
   c_wide_memory["c/wide-memory"] --> track_c_wide_strings
   c_wide_strings["c/wide-strings"] --> track_c_wide_strings
   c_wide_strings_extensions["c/wide-strings-extensions"] --> track_c_wide_strings
-  track_c_wide_io_conversion["c-wide-io-conversion\n33 wrappers"] --> p101_tool_playground
+  track_c_wide_io_conversion["c-wide-io-conversion\n33 wrappers"] --> playgrounds
   c_wide_conversion["c/wide-conversion"] --> track_c_wide_io_conversion
   c_wide_conversion_extensions["c/wide-conversion-extensions"] --> track_c_wide_io_conversion
   c_wide_stdio["c/wide-stdio"] --> track_c_wide_io_conversion
-  track_c_wide_classification["c-wide-classification\n36 wrappers"] --> p101_tool_playground
+  track_c_wide_classification["c-wide-classification\n36 wrappers"] --> playgrounds
   c_wide_char_classification["c/wide-char-classification"] --> track_c_wide_classification
   c_wide_char_classification_extensions["c/wide-char-classification-extensions"] --> track_c_wide_classification
-  track_c_stdio_streams["c-stdio-streams\n30 wrappers"] --> p101_tool_playground
+  track_c_stdio_streams["c-stdio-streams\n30 wrappers"] --> playgrounds
   c_stdio_streams_files["c/stdio-streams-files"] --> track_c_stdio_streams
   c_stdio_streams_files_extensions["c/stdio-streams-files-extensions"] --> track_c_stdio_streams
-  track_c_stdio_formatted["c-stdio-formatted\n13 wrappers"] --> p101_tool_playground
+  track_c_stdio_formatted["c-stdio-formatted\n13 wrappers"] --> playgrounds
   c_stdio_formatted["c/stdio-formatted"] --> track_c_stdio_formatted
   c_stdio_formatted_extensions["c/stdio-formatted-extensions"] --> track_c_stdio_formatted
-  track_c_stdio_character_buffering["c-stdio-character-buffering\n19 wrappers"] --> p101_tool_playground
+  track_c_stdio_character_buffering["c-stdio-character-buffering\n19 wrappers"] --> playgrounds
   c_stdio_character_io["c/stdio-character-io"] --> track_c_stdio_character_buffering
   c_stdio_character_io_extensions["c/stdio-character-io-extensions"] --> track_c_stdio_character_buffering
   c_stdio_state_buffering["c/stdio-state-buffering"] --> track_c_stdio_character_buffering
-  track_c_conversion_parsing["c-conversion-parsing\n41 wrappers"] --> p101_tool_playground
+  track_c_conversion_parsing["c-conversion-parsing\n41 wrappers"] --> playgrounds
   c_cli_parsing["c/cli-parsing"] --> track_c_conversion_parsing
   c_conversion["c/conversion"] --> track_c_conversion_parsing
   c_inttypes["c/inttypes"] --> track_c_conversion_parsing
-  track_c_math_trig["c-math-trig\n39 wrappers"] --> p101_tool_playground
+  track_c_math_trig["c-math-trig\n39 wrappers"] --> playgrounds
   c_math_trig["c/math-trig"] --> track_c_math_trig
-  track_c_math_exp_log_power["c-math-exp-log-power\n48 wrappers"] --> p101_tool_playground
+  track_c_math_exp_log_power["c-math-exp-log-power\n48 wrappers"] --> playgrounds
   c_math_exp_log_power["c/math-exp-log-power"] --> track_c_math_exp_log_power
-  track_c_math_rounding["c-math-rounding\n54 wrappers"] --> p101_tool_playground
+  track_c_math_rounding["c-math-rounding\n54 wrappers"] --> playgrounds
   c_math_rounding_remainder["c/math-rounding-remainder"] --> track_c_math_rounding
-  track_c_floating_point["c-floating-point\n47 wrappers"] --> p101_tool_playground
+  track_c_floating_point["c-floating-point\n47 wrappers"] --> playgrounds
   c_floating_env["c/floating-env"] --> track_c_floating_point
   c_math_floating["c/math-floating"] --> track_c_floating_point
   c_math_other["c/math-other"] --> track_c_floating_point
-  track_c_complex_components["c-complex-components\n18 wrappers"] --> p101_tool_playground
+  track_c_complex_components["c-complex-components\n18 wrappers"] --> playgrounds
   c_complex_components["c/complex-components"] --> track_c_complex_components
-  track_c_complex_trig["c-complex-trig\n30 wrappers"] --> p101_tool_playground
+  track_c_complex_trig["c-complex-trig\n30 wrappers"] --> playgrounds
   c_complex_trig["c/complex-trig"] --> track_c_complex_trig
-  track_c_complex_exp_log_power["c-complex-exp-log-power\n12 wrappers"] --> p101_tool_playground
+  track_c_complex_exp_log_power["c-complex-exp-log-power\n12 wrappers"] --> playgrounds
   c_complex_exp_log_power["c/complex-exp-log-power"] --> track_c_complex_exp_log_power
-  track_c_time_locale_control["c-time-locale-control\n34 wrappers"] --> p101_tool_playground
+  track_c_time_locale_control["c-time-locale-control\n34 wrappers"] --> playgrounds
   c_atomics["c/atomics"] --> track_c_time_locale_control
   c_control_flow["c/control-flow"] --> track_c_time_locale_control
   c_control_flow_extensions["c/control-flow-extensions"] --> track_c_time_locale_control
@@ -80,79 +80,79 @@ flowchart LR
   c_locale_extensions["c/locale-extensions"] --> track_c_time_locale_control
   c_time["c/time"] --> track_c_time_locale_control
   c_time_extensions["c/time-extensions"] --> track_c_time_locale_control
-  track_file_io["file-io\n26 wrappers"] --> p101_tool_playground
+  track_file_io["file-io\n26 wrappers"] --> playgrounds
   systems_async_io["systems/async-io"] --> track_file_io
   systems_fd_io["systems/fd-io"] --> track_file_io
-  track_filesystem_paths["filesystem-paths\n34 wrappers"] --> p101_tool_playground
+  track_filesystem_paths["filesystem-paths\n34 wrappers"] --> playgrounds
   systems_filesystem_paths["systems/filesystem-paths"] --> track_filesystem_paths
-  track_directories_patterns["directories-patterns\n19 wrappers"] --> p101_tool_playground
+  track_directories_patterns["directories-patterns\n19 wrappers"] --> playgrounds
   systems_directories_patterns["systems/directories-patterns"] --> track_directories_patterns
-  track_processes_signals["processes-signals\n51 wrappers"] --> p101_tool_playground
+  track_processes_signals["processes-signals\n51 wrappers"] --> playgrounds
   systems_process_control["systems/process-control"] --> track_processes_signals
   systems_process_signal["systems/process-signal"] --> track_processes_signals
   systems_scheduling_basics["systems/scheduling-basics"] --> track_processes_signals
-  track_thread_lifecycle["thread-lifecycle\n30 wrappers"] --> p101_tool_playground
+  track_thread_lifecycle["thread-lifecycle\n30 wrappers"] --> playgrounds
   systems_scheduler["systems/scheduler"] --> track_thread_lifecycle
   systems_thread_attributes["systems/thread-attributes"] --> track_thread_lifecycle
   systems_thread_lifecycle["systems/thread-lifecycle"] --> track_thread_lifecycle
-  track_thread_synchronization["thread-synchronization\n38 wrappers"] --> p101_tool_playground
+  track_thread_synchronization["thread-synchronization\n38 wrappers"] --> playgrounds
   systems_thread_conditions["systems/thread-conditions"] --> track_thread_synchronization
   systems_thread_mutexes["systems/thread-mutexes"] --> track_thread_synchronization
   systems_thread_rwlocks["systems/thread-rwlocks"] --> track_thread_synchronization
-  track_thread_state_cancellation["thread-state-cancellation\n9 wrappers"] --> p101_tool_playground
+  track_thread_state_cancellation["thread-state-cancellation\n9 wrappers"] --> playgrounds
   systems_thread_cancellation["systems/thread-cancellation"] --> track_thread_state_cancellation
   systems_thread_local_once["systems/thread-local-once"] --> track_thread_state_cancellation
-  track_ipc["ipc\n21 wrappers"] --> p101_tool_playground
+  track_ipc["ipc\n21 wrappers"] --> playgrounds
   systems_io_multiplexing["systems/io-multiplexing"] --> track_ipc
   systems_ipc["systems/ipc"] --> track_ipc
-  track_network_sockets["network-sockets\n12 wrappers"] --> p101_tool_playground
+  track_network_sockets["network-sockets\n12 wrappers"] --> playgrounds
   network_sockets["network/sockets"] --> track_network_sockets
-  track_network_io_addresses["network-io-addresses\n21 wrappers"] --> p101_tool_playground
+  track_network_io_addresses["network-io-addresses\n21 wrappers"] --> playgrounds
   network_address_conversion["network/address-conversion"] --> track_network_io_addresses
   network_io["network/io"] --> track_network_io_addresses
-  track_network_names_interfaces["network-names-interfaces\n23 wrappers"] --> p101_tool_playground
+  track_network_names_interfaces["network-names-interfaces\n23 wrappers"] --> playgrounds
   network_ethernet["network/ethernet"] --> track_network_names_interfaces
   network_interfaces["network/interfaces"] --> track_network_names_interfaces
   network_name_resolution["network/name-resolution"] --> track_network_names_interfaces
-  track_network_dns_resolver["network-dns-resolver\n33 wrappers"] --> p101_tool_playground
+  track_network_dns_resolver["network-dns-resolver\n33 wrappers"] --> playgrounds
   network_dns_resolver["network/dns-resolver"] --> track_network_dns_resolver
-  track_terminals_users["terminals-users\n46 wrappers"] --> p101_tool_playground
+  track_terminals_users["terminals-users\n46 wrappers"] --> playgrounds
   systems_users_identity["systems/users-identity"] --> track_terminals_users
   systems_users_terminals["systems/users-terminals"] --> track_terminals_users
-  track_resources_platform["resources-platform\n37 wrappers"] --> p101_tool_playground
+  track_resources_platform["resources-platform\n37 wrappers"] --> playgrounds
   systems_platform_admin["systems/platform-admin"] --> track_resources_platform
   systems_resource_time_memory["systems/resource-time-memory"] --> track_resources_platform
   systems_security_legacy["systems/security-legacy"] --> track_resources_platform
   systems_system_configuration["systems/system-configuration"] --> track_resources_platform
-  track_logging_diagnostics["logging-diagnostics\n12 wrappers"] --> p101_tool_playground
+  track_logging_diagnostics["logging-diagnostics\n12 wrappers"] --> playgrounds
   systems_logging_diagnostics["systems/logging-diagnostics"] --> track_logging_diagnostics
-  track_runtime_services["runtime-services\n36 wrappers"] --> p101_tool_playground
+  track_runtime_services["runtime-services\n36 wrappers"] --> playgrounds
   systems_dynamic_loading["systems/dynamic-loading"] --> track_runtime_services
   systems_legacy_database["systems/legacy-database"] --> track_runtime_services
   systems_localization_conversion["systems/localization-conversion"] --> track_runtime_services
   systems_search_structures["systems/search-structures"] --> track_runtime_services
   systems_text_patterns["systems/text-patterns"] --> track_runtime_services
-  track_error_handling["error-handling\n47 wrappers"] --> p101_tool_playground
+  track_error_handling["error-handling\n47 wrappers"] --> playgrounds
   support_assertions["support/assertions"] --> track_error_handling
   support_error_codes["support/error-codes"] --> track_error_handling
   support_error_core["support/error-core"] --> track_error_handling
-  track_environment_lifecycle["environment-lifecycle\n10 wrappers"] --> p101_tool_playground
+  track_environment_lifecycle["environment-lifecycle\n10 wrappers"] --> playgrounds
   support_environment_lifecycle["support/environment-lifecycle"] --> track_environment_lifecycle
-  track_event_streams["event-streams\n49 wrappers"] --> p101_tool_playground
+  track_event_streams["event-streams\n49 wrappers"] --> playgrounds
   support_call_tracing["support/call-tracing"] --> track_event_streams
   support_event_log_format["support/event-log-format"] --> track_event_streams
   support_fault_injection["support/fault-injection"] --> track_event_streams
   support_resource_events["support/resource-events"] --> track_event_streams
-  track_fsm["fsm\n17 wrappers"] --> p101_tool_playground
+  track_fsm["fsm\n17 wrappers"] --> playgrounds
   support_fsm["support/fsm"] --> track_fsm
-  track_tool_building["tool-building\n4 wrappers"] --> p101_tool_playground
+  track_tool_building["tool-building\n4 wrappers"] --> playgrounds
   support_util["support/util"] --> track_tool_building
   tooling_c_facts["tooling/c-facts"] --> track_tool_building
 ```
 
 ## Recommended repo structure
 
-Use one playground repository, `p101-tool-playground`, with small explicit tracks inside it. Do not create a broad `systems` playground and do not create a `misc` track.
+Use one playground repository, `playgrounds`, with small explicit tracks inside it. Do not create a broad `systems` playground and do not create a `misc` track.
 
 | Track | Function count | Domains | Purpose |
 | --- | ---: | --- | --- |

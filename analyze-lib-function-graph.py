@@ -953,7 +953,7 @@ def repository_recommendation(domain_counts: Counter[str], tracks: list[dict[str
     assigned = {domain for track in tracks for domain in track["domains"]}
     uncovered = sorted(domain for domain in domain_counts if domain not in assigned)
     return {
-        "repository": "p101-tool-playground",
+        "repository": "playgrounds",
         "layout": "single repository with small explicit tracks",
         "track_count": len(tracks),
         "covered_function_count": sum(domain_counts[domain] for domain in assigned),
