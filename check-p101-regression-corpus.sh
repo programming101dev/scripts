@@ -206,7 +206,7 @@ observe="$(find_tool P101_OBSERVE ../programs/p101-observe/build-clang-22/p101-o
 tracker="$(find_tool P101_RESOURCE_TRACKER ../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker ../programs/p101-resource-tracker/build-clang/p101-resource-tracker p101-resource-tracker)"
 trace="$(find_tool P101_TRACE ../programs/p101-trace/build-clang-22/p101-trace ../programs/p101-trace/build-clang/p101-trace p101-trace)"
 report="$(find_tool P101_REPORT ../programs/p101-report/build-clang-22/p101-report ../programs/p101-report/build-clang/p101-report p101-report)"
-playground="$(find_tool P101_TOOL_PLAYGROUND ../programs/p101-tool-playground/build-clang-22/p101-tool-playground ../programs/p101-tool-playground/build-clang/p101-tool-playground p101-tool-playground)"
+playground="$(find_tool P101_TOOL_PLAYGROUND ../playgrounds/build-clang-22/p101-tool-playground ../playgrounds/build-clang/p101-tool-playground p101-tool-playground)"
 
 cat > "$summary" <<'EOF'
 # p101 regression corpus

@@ -108,16 +108,16 @@ case "$command_name" in
     exec "$(find_tool P101_DOCTOR "$(last_build_tool ../programs/p101-doctor p101-doctor)" ../programs/p101-doctor/build-clang-22/p101-doctor ../programs/p101-doctor/build-clang/p101-doctor p101-doctor)" "$@"
     ;;
   playground)
-    exec "$(find_tool P101_TOOL_PLAYGROUND "$(last_build_tool ../programs/p101-tool-playground p101-tool-playground)" ../programs/p101-tool-playground/build-clang-22/p101-tool-playground ../programs/p101-tool-playground/build-clang/p101-tool-playground p101-tool-playground)" "$@"
+    exec "$(find_tool P101_TOOL_PLAYGROUND "$(last_build_tool ../playgrounds p101-tool-playground)" ../playgrounds/build-clang-22/p101-tool-playground ../playgrounds/build-clang/p101-tool-playground p101-tool-playground)" "$@"
     ;;
   check)
     exec ./p101-check.sh "$@"
     ;;
   corpus)
-    exec ../programs/p101-tool-playground/corpus.sh "$@"
+    exec ../playgrounds/corpus.sh "$@"
     ;;
   lab|playground-lab)
-    exec ../programs/p101-tool-playground/lab.sh "$@"
+    exec ../playgrounds/lab.sh "$@"
     ;;
   html-report)
     exec ./p101-html-report.py "$@"

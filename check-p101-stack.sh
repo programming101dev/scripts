@@ -176,7 +176,7 @@ if [ "$skip_playground" -eq 0 ]; then
   if [ "$playground_skip_fuzz" -eq 1 ]; then
     tour_args+=(--skip-fuzz)
   fi
-  run_logged "p101-tool-playground tour" "$log_dir/playground-tour.log" ../programs/p101-tool-playground/tour.sh "${tour_args[@]}"
+  run_logged "p101-tool-playground tour" "$log_dir/playground-tour.log" ../playgrounds/tour.sh "${tour_args[@]}"
 else
   say "==> p101-tool-playground tour"
   say "    SKIP"
@@ -185,7 +185,7 @@ fi
 if [ "$skip_p101_check" -eq 0 ]; then
   p101_check_out="$out_dir/p101-check"
   reset_child_dir "$p101_check_out"
-  run_logged "p101 check golden-path smoke" "$log_dir/p101-check.log" ./p101 check --skip-quality -p ../programs/p101-tool-playground -s src -n "$fault_count" -o "$p101_check_out" -- ./build-clang/p101-tool-playground -s tour
+  run_logged "p101 check golden-path smoke" "$log_dir/p101-check.log" ./p101 check --skip-quality -p ../playgrounds -s src -n "$fault_count" -o "$p101_check_out" -- ./build-clang/p101-tool-playground -s tour
 else
   say "==> p101 check golden-path smoke"
   say "    SKIP"
