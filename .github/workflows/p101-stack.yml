@@ -14,7 +14,9 @@ jobs:
         with:
           path: scripts
       - name: Install tools
-        run: brew install cmake cppcheck llvm gcovr
+        run: |
+          brew untap aws/tap || true
+          brew install cmake cppcheck llvm gcovr
       - name: Clone p101 repos
         run: cd scripts && ./clone-repos.sh
       - name: Detect compilers
