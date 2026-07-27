@@ -18,14 +18,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def discover_json(paths: list[Path]) -> list[Path]:
+def discover_json(paths: list[Path]) -> tuple[list[Path], list[Path]]:
     files: list[Path] = []
+    missing: list[Path] = []
     for path in paths:
         if path.is_dir():
             files.extend(sorted(path.rglob("*.json")))
         elif path.is_file():
             files.append(path)
-    return files
+        else:
+            missing.append(path)
+    return files, missing
 
 
 def load_json(path: Path) -> Any | None:
@@ -107,7 +110,11 @@ def print_markdown(summary: dict[str, Any]) -> None:
 
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
-    files = discover_json(args.paths)
+    files, missing = discover_json(args.paths)
+    if missing:
+        for path in missing:
+            print(f"p101-cohort-summary: input path not found: {path}", file=sys.stderr)
+        return 2
     summary = collect(files)
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))

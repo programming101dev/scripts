@@ -8,6 +8,7 @@
 #      error-path walking through p101-doctor.
 
 set -euo pipefail
+unset CDPATH
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 cc="clang"
@@ -132,8 +133,44 @@ run_logged() {
     printf '\n\n'
   } > "$log"
 
+  if "$@" >> "$log" 2>&1; then
+    say "    PASS"
+  else
+    rc=$?
+    say "    FAIL (exit $rc; see $log)"
+    return "$rc"
+  fi
+}
+
+run_logged_expect() {
+  title="$1"
+  log="$2"
+  expected="$3"
+  shift 3
+
+  say "==> $title"
+  {
+    printf '$'
+    for arg in "$@"; do
+      printf ' %s' "$arg"
+    done
+    printf '\n\n'
+  } > "$log"
+
+  set +e
   "$@" >> "$log" 2>&1
-  say "    PASS"
+  rc=$?
+  set -e
+
+  for ok in $expected; do
+    if [ "$rc" -eq "$ok" ]; then
+      say "    PASS (exit $rc)"
+      return 0
+    fi
+  done
+
+  say "    FAIL (exit $rc; see $log)"
+  return "$rc"
 }
 
 say "p101 stack check output: $out_dir"
@@ -185,9 +222,9 @@ fi
 if [ "$skip_p101_check" -eq 0 ]; then
   p101_check_out="$out_dir/p101-check"
   reset_child_dir "$p101_check_out"
-  run_logged "p101 check golden-path smoke" "$log_dir/p101-check.log" ./p101 check --skip-quality -p ../playgrounds -s src -n "$fault_count" -o "$p101_check_out" -- ./build-clang/p101-tool-playground -s tour
+  run_logged_expect "p101 check full-source smoke" "$log_dir/p101-check.log" "0 1" ./p101 check --skip-quality -p ../playgrounds -s src -n "$fault_count" -o "$p101_check_out" -- ./build-clang/p101-tool-playground -s tour
 else
-  say "==> p101 check golden-path smoke"
+  say "==> p101 check full-source smoke"
   say "    SKIP"
 fi
 

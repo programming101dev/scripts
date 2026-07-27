@@ -2,6 +2,7 @@
 # p101-bug-bundle.sh — package a p101 report directory for bug reports.
 
 set -euo pipefail
+unset CDPATH
 
 usage() {
   cat <<'USAGE'
@@ -34,14 +35,19 @@ if [ ! -d "$report_dir" ]; then
   exit 2
 fi
 
-report_dir="$(cd "$report_dir" && pwd)"
+report_dir="$(cd -- "$report_dir" && pwd)"
 if [ -z "$out_file" ]; then
   out_file="${TMPDIR:-/tmp}/$(basename "$report_dir")-bug-bundle.tar.gz"
 fi
 
-work_dir="${TMPDIR:-/tmp}/p101-bug-bundle-$$"
+if [ -e "$out_file" ] || [ -L "$out_file" ]; then
+  echo "p101-bug-bundle: output already exists: $out_file" >&2
+  exit 2
+fi
+
+work_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-bug-bundle.XXXXXX")"
 trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
-mkdir -p "$work_dir/bundle"
+mkdir -p -- "$work_dir/bundle"
 
 cp -R "$report_dir" "$work_dir/bundle/report"
 
@@ -57,6 +63,8 @@ cp -R "$report_dir" "$work_dir/bundle/report"
   done
 } > "$work_dir/bundle/environment.txt"
 
-mkdir -p "$(dirname "$out_file")"
-tar -czf "$out_file" -C "$work_dir" bundle
+mkdir -p -- "$(dirname -- "$out_file")"
+tmp_out="$work_dir/bundle.tar.gz"
+tar -czf "$tmp_out" -C "$work_dir" bundle
+mv "$tmp_out" "$out_file"
 echo "$out_file"

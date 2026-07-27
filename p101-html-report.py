@@ -126,7 +126,15 @@ def main(argv: list[str]) -> int:
         print(f"p101-html-report: not a directory: {report_dir}", file=sys.stderr)
         return 2
     output = args.output or (report_dir / "index.html")
-    output.write_text(render(report_dir), encoding="utf-8")
+    if output.exists() or output.is_symlink():
+        print(f"p101-html-report: output already exists: {output}", file=sys.stderr)
+        return 2
+    try:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(render(report_dir), encoding="utf-8")
+    except OSError as exc:
+        print(f"p101-html-report: could not write {output}: {exc}", file=sys.stderr)
+        return 2
     print(output)
     return 0
 

@@ -109,7 +109,11 @@ while IFS= read -r line || [ -n "$line" ]; do
     continue
   fi
 
-  case "$lang" in cxx|CXX|CPP) src="$CXX_SRC" ;; *) src="$C_SRC" ;; esac
+  case "$lang" in
+    c|C) src="$C_SRC" ;;
+    cxx|CXX|CPP) src="$CXX_SRC" ;;
+    *) [ "$VERBOSE" -eq 1 ] && printf 'Skip (unsupported language %s): %s\n' "$lang" "$dest"; continue ;;
+  esac
   [ -d "$src" ] || { [ "$VERBOSE" -eq 1 ] && printf 'Skip (no canonical for %s): %s\n' "$lang" "$dest"; continue; }
 
   # Don't copy a canonical onto itself.

@@ -2,6 +2,7 @@
 # check-p101-regression-corpus.sh — run known p101 playground defects and check expected findings.
 
 set -euo pipefail
+unset CDPATH
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 out_dir=""

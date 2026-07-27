@@ -28,6 +28,12 @@ project(${PROJECT_NAME}
         DESCRIPTION "${PROJECT_DESCRIPTION}"
         LANGUAGES ${PROJECT_LANGUAGE})
 
+# config.cmake is read before project() so it can define PROJECT_NAME and
+# PROJECT_LANGUAGE. Platform and compiler conditionals such as
+# CMAKE_SYSTEM_NAME, APPLE, UNIX, and CMAKE_*_COMPILER_ID are only reliable
+# after project(), so repos may add a config-post.cmake hook for those.
+include("${CMAKE_CURRENT_SOURCE_DIR}/config-post.cmake" OPTIONAL)
+
 # Derive helpers for language/compilers
 if (PROJECT_LANGUAGE STREQUAL "CXX")
     set(_LANG CXX)
@@ -80,6 +86,21 @@ find_program(SCAN_BUILD_NAME NAMES scan-build DOC "scan-build executable used by
 
 # Enforce: cppcheck must exist and will always run
 find_program(CPPCHECK_NAME NAMES cppcheck REQUIRED DOC "cppcheck executable used by the build")
+execute_process(
+        COMMAND "${CPPCHECK_NAME}" --version
+        OUTPUT_VARIABLE _P101_CPPCHECK_VERSION_TEXT
+        ERROR_VARIABLE _P101_CPPCHECK_VERSION_ERROR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE _P101_CPPCHECK_VERSION_RC)
+if (_P101_CPPCHECK_VERSION_RC EQUAL 0)
+    string(REGEX MATCH "[0-9]+\\.[0-9]+(\\.[0-9]+)?" _P101_CPPCHECK_VERSION "${_P101_CPPCHECK_VERSION_TEXT}")
+    if (_P101_CPPCHECK_VERSION VERSION_LESS "2.14")
+        message(WARNING "cppcheck ${_P101_CPPCHECK_VERSION} is older than the p101 known-good floor 2.14; self-diagnostics will be logged but filtered from the fatal gate.")
+    endif ()
+else ()
+    message(WARNING "Could not determine cppcheck version: ${_P101_CPPCHECK_VERSION_ERROR}")
+endif ()
 
 # Python (required for JSON-safe compile DB sanitizer + analyze-from-DB)
 find_program(PYTHON3_EXECUTABLE NAMES python3 python REQUIRED DOC "Python executable for helper scripts")
@@ -522,24 +543,34 @@ set(_LIB_CANDIDATES
         ${P101_PUBLIC_LINK_DIRS_LIST}
         "/usr/local/lib" "/usr/local/lib64"
 )
+set(_INSTALL_LIB_CANDIDATES
+        ${P101_PUBLIC_LINK_DIRS_LIST}
+        "/usr/local/lib" "/usr/local/lib64"
+)
 if (APPLE)
     list(APPEND _INC_CANDIDATES /opt/homebrew/include /opt/local/include)
     list(APPEND _LIB_CANDIDATES /opt/homebrew/lib /opt/local/lib)
+    list(APPEND _INSTALL_LIB_CANDIDATES /opt/homebrew/lib /opt/local/lib)
 endif ()
 list(REMOVE_DUPLICATES _INC_CANDIDATES)
 list(REMOVE_DUPLICATES _LIB_CANDIDATES)
+list(REMOVE_DUPLICATES _INSTALL_LIB_CANDIDATES)
 
 _p101_filter_existing_dirs(P101_PUBLIC_INCLUDE_DIRS_EXISTING ${_INC_CANDIDATES})
 _p101_filter_existing_dirs(P101_PUBLIC_LINK_DIRS_EXISTING ${_LIB_CANDIDATES})
+_p101_filter_existing_dirs(P101_INSTALL_LINK_DIRS_EXISTING ${_INSTALL_LIB_CANDIDATES})
 
 if (P101_PUBLIC_LINK_DIRS_EXISTING)
     set(CMAKE_BUILD_RPATH "${P101_PUBLIC_LINK_DIRS_EXISTING}")
-    set(CMAKE_INSTALL_RPATH "${P101_PUBLIC_LINK_DIRS_EXISTING}")
-    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
 endif ()
+if (P101_INSTALL_LINK_DIRS_EXISTING)
+    set(CMAKE_INSTALL_RPATH "${P101_INSTALL_LINK_DIRS_EXISTING}")
+endif ()
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH OFF)
 
 message(STATUS "Public include dirs used: ${P101_PUBLIC_INCLUDE_DIRS_EXISTING}")
 message(STATUS "Public link dirs used:    ${P101_PUBLIC_LINK_DIRS_EXISTING}")
+message(STATUS "Install rpath dirs used:  ${P101_INSTALL_LINK_DIRS_EXISTING}")
 
 # --- Classify include dirs into project vs external (system)
 set(P101_PROJECT_INC_DIR "")

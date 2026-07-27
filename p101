@@ -2,6 +2,7 @@
 # p101 — small dispatcher for the p101 teaching tools.
 
 set -euo pipefail
+unset CDPATH
 dispatch_cwd="$(pwd)"
 export P101_DISPATCH_CWD="$dispatch_cwd"
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
