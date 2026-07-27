@@ -138,6 +138,7 @@ To check that each `p101-*` README exposes the minimum contract surface, run:
 
 ```bash
 ./check-p101-tool-contracts.sh
+./p101 contracts
 ```
 
 To replay the broader p101 tool audit — README contract checks, strict
@@ -145,6 +146,7 @@ wrapper-audit checks over the C tools, and module-map design reports — run:
 
 ```bash
 ./check-p101-tool-audit.sh
+./p101 tool-audit
 ```
 
 By default, module-map design notes are reported but do not fail the audit. Use
@@ -154,6 +156,14 @@ current module-splitting rules.
 `github-actions/p101-stack.yml` is a starter CI workflow for macOS, Linux, and
 FreeBSD. Copy it to `.github/workflows/` in the repo that should own the
 multi-platform gate.
+
+When a repo is checked out inside the broader `programming101dev` workspace,
+the shared CMake and standalone `test.sh`/`fuzz.sh` scripts prefer sibling
+`libraries/*/include` and compiler-matching `libraries/*/build-<compiler>`
+directories before installed `/usr/local` headers and libraries. That keeps
+development builds honest after wrapper/library API changes. If a template or
+repo is copied out by itself, those sibling paths are absent and the scripts
+fall back to the installed p101 stack.
 
 ## **Testing the shared CMakeLists.txt**
 
@@ -186,6 +196,7 @@ To run the broader p101 stack ratchet, use:
 
 ```bash
 ./check-p101-stack.sh -c clang -x clang++
+./p101 stack-check -c clang -x clang++
 ```
 
 That script builds repos from `repos.txt`, runs the standalone template check,

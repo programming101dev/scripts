@@ -24,6 +24,10 @@ Commands:
   check         Run the full p101 check workflow
   corpus        Run the p101-tool-playground lesson corpus
   lab           Build the p101-tool-playground lab book
+  contracts     Check p101 tool README contracts
+  tool-audit    Run the broader p101 tool audit
+  stack-check   Run the p101 stack smoke
+  after-update  Run checks intended after update-all.sh
   html-report   Run p101-html-report.py
   cohort        Run p101-cohort-summary.py
   bug-bundle    Run p101-bug-bundle.sh
@@ -119,6 +123,18 @@ case "$command_name" in
     ;;
   lab|playground-lab)
     exec ../playgrounds/lab.sh "$@"
+    ;;
+  contracts|tool-contracts)
+    exec ./check-p101-tool-contracts.sh "$@"
+    ;;
+  tool-audit|audit-tools)
+    exec ./check-p101-tool-audit.sh "$@"
+    ;;
+  stack-check|stack)
+    exec ./check-p101-stack.sh "$@"
+    ;;
+  after-update|post-update)
+    exec ./check-after-update-all.sh "$@"
     ;;
   html-report)
     exec ./p101-html-report.py "$@"

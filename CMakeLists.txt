@@ -502,6 +502,7 @@ set(_P101_WORKSPACE_ROOT_CANDIDATES
 )
 set(_P101_LOCAL_INCLUDE_DIRS "")
 set(_P101_LOCAL_LINK_DIRS "")
+get_filename_component(_P101_COMPILER_BASENAME "${CMAKE_C_COMPILER}" NAME)
 foreach (_p101_root IN LISTS _P101_WORKSPACE_ROOT_CANDIDATES)
     get_filename_component(_p101_root_abs "${_p101_root}" ABSOLUTE)
     if (IS_DIRECTORY "${_p101_root_abs}/libraries")
@@ -510,6 +511,9 @@ foreach (_p101_root IN LISTS _P101_WORKSPACE_ROOT_CANDIDATES)
         foreach (_p101_library_repo IN LISTS _p101_library_repos)
             if (IS_DIRECTORY "${_p101_library_repo}/include")
                 list(APPEND _P101_LOCAL_INCLUDE_DIRS "${_p101_library_repo}/include")
+            endif ()
+            if (IS_DIRECTORY "${_p101_library_repo}/build-${_P101_COMPILER_BASENAME}")
+                list(APPEND _P101_LOCAL_LINK_DIRS "${_p101_library_repo}/build-${_P101_COMPILER_BASENAME}")
             endif ()
             if (EXISTS "${_p101_library_repo}/.last-build-dir")
                 file(READ "${_p101_library_repo}/.last-build-dir" _p101_last_build_dir)
@@ -578,10 +582,19 @@ if (IS_DIRECTORY "${PUBLIC_INC_DIR}")
     set(P101_PROJECT_INC_DIR "${PUBLIC_INC_DIR}")
 endif ()
 
+set(_LOCAL_INC_DIRS ${_P101_LOCAL_INCLUDE_DIRS})
+if (P101_PROJECT_INC_DIR)
+    list(REMOVE_ITEM _LOCAL_INC_DIRS "${P101_PROJECT_INC_DIR}")
+endif ()
+list(REMOVE_DUPLICATES _LOCAL_INC_DIRS)
+
 set(_EXT_INC_DIRS "${P101_PUBLIC_INCLUDE_DIRS_EXISTING}")
 if (P101_PROJECT_INC_DIR)
     list(REMOVE_ITEM _EXT_INC_DIRS "${P101_PROJECT_INC_DIR}")
 endif ()
+foreach (_d IN LISTS _LOCAL_INC_DIRS)
+    list(REMOVE_ITEM _EXT_INC_DIRS "${_d}")
+endforeach ()
 list(REMOVE_DUPLICATES _EXT_INC_DIRS)
 
 # Prebuild convenience strings for custom commands (best-effort; used only for echo lines)
@@ -599,6 +612,11 @@ set(_PROJ_I_CMD "")
 if (P101_PROJECT_INC_DIR)
     set(_PROJ_I_CMD "-I\"${P101_PROJECT_INC_DIR}\"")
 endif ()
+set(_LOCAL_I_LIST)
+foreach (_d IN LISTS _LOCAL_INC_DIRS)
+    list(APPEND _LOCAL_I_LIST -I "\"${_d}\"")
+endforeach ()
+string(JOIN " " _LOCAL_I_CMD ${_LOCAL_I_LIST})
 
 # =========================
 # Iconv (portable, **opt-in via "iconv" token in config.cmake**)
@@ -780,6 +798,10 @@ foreach (_lib IN LISTS LIBRARY_TARGETS)
     if (P101_PROJECT_INC_DIR)
         target_include_directories(${_lib} PUBLIC "${P101_PROJECT_INC_DIR}")
     endif ()
+    # Local p101 workspace libraries as normal (-I), before installed prefixes.
+    if (_LOCAL_INC_DIRS)
+        target_include_directories(${_lib} PUBLIC ${_LOCAL_INC_DIRS})
+    endif ()
     # External as SYSTEM (-isystem)
     if (_EXT_INC_DIRS)
         target_include_directories(${_lib} SYSTEM PUBLIC ${_EXT_INC_DIRS})
@@ -820,6 +842,10 @@ foreach (_exe IN LISTS EXECUTABLE_TARGETS)
     # Project includes as normal (-I)
     if (P101_PROJECT_INC_DIR)
         target_include_directories(${_exe} PRIVATE "${P101_PROJECT_INC_DIR}")
+    endif ()
+    # Local p101 workspace libraries as normal (-I), before installed prefixes.
+    if (_LOCAL_INC_DIRS)
+        target_include_directories(${_exe} PRIVATE ${_LOCAL_INC_DIRS})
     endif ()
     # External as SYSTEM (-isystem)
     if (_EXT_INC_DIRS)
@@ -1378,10 +1404,10 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
         add_custom_command(
                 OUTPUT "${_stamp}"
                 COMMAND ${CMAKE_COMMAND} -E echo
-                "${ICON} running: ${_COMPILER} ${_SA_STD} ${_P101_SA_DEFS_CMD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} ${_PROJ_I_CMD} ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \"${_abs}\""
+                "${ICON} running: ${_COMPILER} ${_SA_STD} ${_P101_SA_DEFS_CMD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} ${_PROJ_I_CMD} ${_LOCAL_I_CMD} ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \"${_abs}\""
                 COMMAND /bin/sh -c
                 "\"${_COMPILER}\" ${_SA_STD} ${_P101_SA_DEFS_CMD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} \
-                   ${_PROJ_I_CMD} ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \
+                   ${_PROJ_I_CMD} ${_LOCAL_I_CMD} ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \
                    \"${_abs}\" > \"${_out}\" 2>&1 || true"
                 COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
                 DEPENDS "${_abs}"

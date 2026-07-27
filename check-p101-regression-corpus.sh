@@ -203,6 +203,52 @@ check_raw_exec_cloexec_ok() {
   return 1
 }
 
+check_raw_malformed_line() {
+  name="$1"
+  kind="$2"
+  raw_log="$out_dir/$name.log"
+  json="$out_dir/$name.json"
+  log="$log_dir/$name.log"
+
+  echo "==> $name"
+  rm -f "$raw_log" "$json"
+
+  case "$kind" in
+    embedded-nul)
+      python3 -c 'from pathlib import Path; import sys; Path(sys.argv[1]).write_bytes(b"P101FD\t1\t123\tOPEN\x00\t3\t10\tmain\tbad.c\n")' "$raw_log"
+      ;;
+    overlong)
+      python3 -c 'from pathlib import Path; import sys; Path(sys.argv[1]).write_bytes(b"P101FD\t1\t123\tOPEN\t3\t10\tmain\t" + (b"a" * 3000) + b"\n")' "$raw_log"
+      ;;
+    *)
+      echo "internal error: unknown malformed fixture kind: $kind" >&2
+      return 1
+      ;;
+  esac
+
+  if "$tracker" -j "$raw_log" > "$json" 2> "$log"; then
+    rc=0
+  else
+    rc=$?
+  fi
+
+  malformed="$(json_number "$json" malformed)"
+  fd="$(json_number "$json" fd_leaks)"
+  alloc="$(json_number "$json" allocation_leaks)"
+  bad="$(json_number "$json" bad_releases)"
+  exec_inherit="$(json_number "$json" exec_inheritances)"
+
+  if [ "$rc" -eq 0 ] && [ "$malformed" -eq 1 ] && [ "$fd" -eq 0 ] && [ "$alloc" -eq 0 ] && [ "$bad" -eq 0 ] && [ "$exec_inherit" -eq 0 ]; then
+    echo "    PASS"
+    printf '| PASS | %s | rc=%s malformed=%s fd=%s alloc=%s bad=%s exec=%s |\n' "$name" "$rc" "$malformed" "$fd" "$alloc" "$bad" "$exec_inherit" >> "$summary"
+    return 0
+  fi
+
+  echo "    FAIL: got rc=$rc malformed=$malformed fd=$fd alloc=$alloc bad=$bad exec=$exec_inherit"
+  printf '| FAIL | %s | expected rc=0 malformed=1 fd=0 alloc=0 bad=0 exec=0; got rc=%s malformed=%s fd=%s alloc=%s bad=%s exec=%s; [log](./logs/%s) |\n' "$name" "$rc" "$malformed" "$fd" "$alloc" "$bad" "$exec_inherit" "$(basename "$log")" >> "$summary"
+  return 1
+}
+
 observe="$(find_tool P101_OBSERVE ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe)"
 tracker="$(find_tool P101_RESOURCE_TRACKER ../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker ../programs/p101-resource-tracker/build-clang/p101-resource-tracker p101-resource-tracker)"
 trace="$(find_tool P101_TRACE ../programs/p101-trace/build-clang-22/p101-trace ../programs/p101-trace/build-clang/p101-trace p101-trace)"
@@ -224,6 +270,8 @@ check_case double-close-error-path double-close 0 0 0 0 1 || failures=1
 check_raw_bad_release || failures=1
 check_raw_exec_inherit || failures=1
 check_raw_exec_cloexec_ok || failures=1
+check_raw_malformed_line synthetic-embedded-nul embedded-nul || failures=1
+check_raw_malformed_line synthetic-overlong-line overlong || failures=1
 
 echo "p101 regression corpus output: $out_dir"
 echo "Summary: $summary"
