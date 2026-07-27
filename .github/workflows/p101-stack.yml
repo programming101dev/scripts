@@ -1,0 +1,59 @@
+name: p101 stack
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: scripts
+      - name: Install tools
+        run: brew install cmake cppcheck llvm gcovr
+      - name: Clone p101 repos
+        run: cd scripts && ./clone-repos.sh
+      - name: Detect compilers
+        run: cd scripts && ./check-compilers.sh
+      - name: Update all repos
+        run: cd scripts && ./update-all.sh
+      - name: Check after update-all
+        run: cd scripts && ./check-after-update-all.sh -c clang -x clang++
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: scripts
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y cmake clang clang-tidy clang-format cppcheck gcovr
+      - name: Clone p101 repos
+        run: cd scripts && ./clone-repos.sh
+      - name: Detect compilers
+        run: cd scripts && ./check-compilers.sh
+      - name: Update all repos
+        run: cd scripts && ./update-all.sh
+      - name: Check after update-all
+        run: cd scripts && ./check-after-update-all.sh -c clang -x clang++
+
+  freebsd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: scripts
+      - name: Check in FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          prepare: |
+            pkg install -y bash cmake llvm cppcheck py311-gcovr
+          run: |
+            cd scripts
+            ./clone-repos.sh
+            ./check-compilers.sh
+            ./update-all.sh
+            bash ./check-after-update-all.sh -c clang -x clang++
