@@ -9,29 +9,34 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install tools
         run: brew install cmake cppcheck llvm gcovr
+      - name: Bootstrap workspace
+        run: ./setup.sh -c clang -x clang++ -s ""
       - name: Check after update-all
         run: ./check-after-update-all.sh -c clang -x clang++
 
   linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y cmake clang clang-tidy clang-format cppcheck gcovr
+      - name: Bootstrap workspace
+        run: ./setup.sh -c clang -x clang++ -s ""
       - name: Check after update-all
         run: ./check-after-update-all.sh -c clang -x clang++
 
   freebsd:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check in FreeBSD VM
         uses: vmactions/freebsd-vm@v1
         with:
           prepare: |
-            pkg install -y bash cmake llvm cppcheck py311-gcovr
+            pkg install -y bash git cmake llvm cppcheck py311-gcovr
           run: |
+            bash ./setup.sh -c clang -x clang++ -s ""
             bash ./check-after-update-all.sh -c clang -x clang++

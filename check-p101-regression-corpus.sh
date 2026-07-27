@@ -114,9 +114,9 @@ check_raw_bad_release() {
   echo "==> $name"
   rm -f "$raw_log" "$json"
   {
-    printf 'P101FD\t1\t123\tOPEN\t3\t10\tmain\tbad-release.c\n'
-    printf 'P101FD\t1\t123\tCLOSE\t3\t11\tmain\tbad-release.c\n'
-    printf 'P101FD\t1\t123\tCLOSE\t3\t12\tmain\tbad-release.c\n'
+    printf 'P101FD\t2\t123\t1\t100\t200\tOPEN\t3\t10\tmain\tbad-release.c\n'
+    printf 'P101FD\t2\t123\t2\t110\t210\tCLOSE\t3\t11\tmain\tbad-release.c\n'
+    printf 'P101FD\t2\t123\t3\t120\t220\tCLOSE\t3\t12\tmain\tbad-release.c\n'
   } > "$raw_log"
 
   if "$tracker" -j "$raw_log" > "$json" 2> "$log"; then
@@ -146,9 +146,9 @@ check_raw_exec_inherit() {
   echo "==> $name"
   rm -f "$raw_log" "$json"
   {
-    printf 'P101FD\t1\t123\tOPEN\t3\t10\tmain\texec-leak.c\n'
-    printf 'P101EXEC\t1\t123\t3\t0\t20\tp101_execvp\tunistd.c\t/bin/echo\n'
-    printf 'P101FD\t1\t123\tCLOSE\t3\t30\tmain\texec-leak.c\n'
+    printf 'P101FD\t2\t123\t1\t100\t200\tOPEN\t3\t10\tmain\texec-leak.c\n'
+    printf 'P101EXEC\t2\t123\t2\t110\t210\t3\t0\t20\tp101_execvp\tunistd.c\t/bin/echo\n'
+    printf 'P101FD\t2\t123\t3\t120\t220\tCLOSE\t3\t30\tmain\texec-leak.c\n'
   } > "$raw_log"
 
   if "$tracker" -j "$raw_log" > "$json" 2> "$log"; then
@@ -179,9 +179,8 @@ check_raw_exec_cloexec_ok() {
   echo "==> $name"
   rm -f "$raw_log" "$json"
   {
-    printf 'P101FD\t1\t123\tOPEN\t3\t10\tmain\texec-ok.c\n'
-    printf 'P101EXEC\t1\t123\t3\t1\t20\tp101_execvp\tunistd.c\t/bin/echo\n'
-    printf 'P101FD\t1\t123\tCLOSE\t3\t30\tmain\texec-ok.c\n'
+    printf 'P101FD\t2\t123\t1\t100\t200\tOPEN\t3\t10\tmain\texec-ok.c\n'
+    printf 'P101EXEC\t2\t123\t2\t110\t210\t3\t1\t20\tp101_execvp\tunistd.c\t/bin/echo\n'
   } > "$raw_log"
 
   if "$tracker" -j "$raw_log" > "$json" 2> "$log"; then
@@ -215,10 +214,10 @@ check_raw_malformed_line() {
 
   case "$kind" in
     embedded-nul)
-      python3 -c 'from pathlib import Path; import sys; Path(sys.argv[1]).write_bytes(b"P101FD\t1\t123\tOPEN\x00\t3\t10\tmain\tbad.c\n")' "$raw_log"
+      python3 -c 'from pathlib import Path; import sys; Path(sys.argv[1]).write_bytes(b"P101FD\t2\t123\t1\t100\t200\tOPEN\x00\t3\t10\tmain\tbad.c\n")' "$raw_log"
       ;;
     overlong)
-      python3 -c 'from pathlib import Path; import sys; Path(sys.argv[1]).write_bytes(b"P101FD\t1\t123\tOPEN\t3\t10\tmain\t" + (b"a" * 3000) + b"\n")' "$raw_log"
+      python3 -c 'from pathlib import Path; import sys; Path(sys.argv[1]).write_bytes(b"P101FD\t2\t123\t1\t100\t200\tOPEN\t3\t10\tmain\t" + (b"a" * 3000) + b"\n")' "$raw_log"
       ;;
     *)
       echo "internal error: unknown malformed fixture kind: $kind" >&2
