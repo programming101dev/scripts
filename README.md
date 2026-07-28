@@ -153,6 +153,16 @@ By default, module-map design notes are reported but do not fail the audit. Use
 `--fail-module-notes` when intentionally ratcheting the p101 tools toward the
 current module-splitting rules.
 
+## Wrapper caveat: `setjmp`
+
+Most p101 wrappers can behave like the underlying C or POSIX function with
+better error reporting and observability. `setjmp` and `sigsetjmp` are the
+important exception: the macro must be invoked directly in the stack frame that
+will receive the matching `longjmp`. Do not put a normal function wrapper
+between `setjmp` and the caller that expects to resume. Fuzz harnesses and
+teaching examples should call `setjmp`/`sigsetjmp` directly and reserve p101
+wrappers for the surrounding cleanup, logging, and resource-management calls.
+
 `github-actions/p101-stack.yml` is a starter CI workflow for macOS, Linux, and
 FreeBSD. Copy it to `.github/workflows/` in the repo that should own the
 multi-platform gate. In this repo it is kept byte-for-byte identical to
