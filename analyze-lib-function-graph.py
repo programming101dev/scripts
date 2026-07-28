@@ -150,8 +150,20 @@ def extract_header_prototypes(path: Path) -> set[str]:
     return names
 
 
+def remove_prefix(text: str, prefix: str) -> str:
+    if text.startswith(prefix):
+        return text[len(prefix) :]
+    return text
+
+
+def remove_suffix(text: str, suffix: str) -> str:
+    if text.endswith(suffix):
+        return text[: -len(suffix)]
+    return text
+
+
 def native_guess(wrapper: str) -> str:
-    rest = wrapper.removeprefix("p101_")
+    rest = remove_prefix(wrapper, "p101_")
     if rest.startswith("_"):
         return rest
     return rest
@@ -163,7 +175,7 @@ def header_topic(path: str | None, source: str | None) -> str:
     parts = [part for part in candidate.split("/") if part]
     for part in reversed(parts):
         if part.startswith("p101_"):
-            return part.removeprefix("p101_").removesuffix(".h")
+            return remove_suffix(remove_prefix(part, "p101_"), ".h")
     if parts:
         return Path(parts[-1]).stem
     return "unknown"

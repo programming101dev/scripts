@@ -26,7 +26,7 @@ P101_USAGE
 esac
 
 # ---------- paths ----------
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd -P)"
 # Profile selection (P101_FLAGS_PROFILE, set by update.sh --standard): the
 # 'standard' tier probes flags-standard/ into .flags-standard/ so the maximal
@@ -495,7 +495,7 @@ whole_set_check() {
   # $1=name $2=path $3=lang $4=src
   local name="$1" cc="$2" lang="$3" src="$4"
   local out_cc="${OUT_DIR}/$(basename "$name")"
-  local all="" f base tok exe="$TMP/ws.out" errlog="$TMP/ws.err"
+  local all="" f base tok exe="$TMP/ws.out" so="$TMP/ws.so" errlog="$TMP/ws.err"
   local sel="" g gfile
 
   # non-sanitizer accepted flags, in cache order
@@ -522,12 +522,27 @@ whole_set_check() {
 
   # shellcheck disable=SC2086
   if ( cd "$TMP" && "$cc" $all "$src" -o "$exe" ) >"$errlog" 2>&1; then
-    return 0
+    # p101 libraries are shared libraries, so also prove the accepted compile
+    # flag set can produce a shared object. This catches executable-only codegen
+    # flags such as -fPIE that can pass an executable probe but break .so links.
+    # shellcheck disable=SC2086
+    if ( cd "$TMP" && "$cc" -shared -fPIC $all "$src" -o "$so" ) >>"$errlog" 2>&1; then
+      return 0
+    fi
   fi
 
   echo "  ⚠️  whole-set check FAILED for $name — bisecting for mutually exclusive flags..."
+  whole_set_candidate_check() {
+    local candidate_flags="$1"
+    # shellcheck disable=SC2086
+    ( cd "$TMP" && "$cc" $candidate_flags "$src" -o "$exe" ) >/dev/null 2>&1 || return 1
+    # shellcheck disable=SC2086
+    ( cd "$TMP" && "$cc" -shared -fPIC $candidate_flags "$src" -o "$so" ) >/dev/null 2>&1
+  }
+
   # phase 1 — single-drop: drop one token at a time until the set compiles.
-  # Finds conflicts where ONE flag is the odd one out.
+  # Finds conflicts where ONE flag is the odd one out. Candidate sets must
+  # produce both an executable and a shared object, matching the final gate.
   local conflicts="" keep tokens t candidate
   tokens="$all"
   while :; do
@@ -537,8 +552,7 @@ whole_set_check() {
       for tok in $tokens; do
         [[ "$tok" == "$t" ]] || keep="$keep $tok"
       done
-      # shellcheck disable=SC2086
-      if ( cd "$TMP" && "$cc" $keep "$src" -o "$exe" ) >/dev/null 2>&1; then
+      if whole_set_candidate_check "$keep"; then
         candidate="$t"
         break
       fi
@@ -550,8 +564,7 @@ whole_set_check() {
       [[ "$tok" == "$candidate" ]] || keep="$keep $tok"
     done
     tokens="$keep"
-    # shellcheck disable=SC2086
-    ( cd "$TMP" && "$cc" $tokens "$src" -o "$exe" ) >/dev/null 2>&1 && break
+    whole_set_candidate_check "$tokens" && break
   done
 
   # phase 2 — greedy forward-build: when single-drop can't fix it (three
@@ -559,13 +572,11 @@ whole_set_check() {
   # conflicting pair), rebuild from the front, dropping each token that
   # breaks the accumulated set. First-listed of an exclusive group wins,
   # matching last-one-wins expectations as closely as a keep-set can.
-  # shellcheck disable=SC2086
-  if ! ( cd "$TMP" && "$cc" $tokens "$src" -o "$exe" ) >/dev/null 2>&1; then
+  if ! whole_set_candidate_check "$tokens"; then
     echo "  ⚠️  single-drop insufficient — greedy forward-build..."
     keep=""
     for t in $tokens; do
-      # shellcheck disable=SC2086
-      if ( cd "$TMP" && "$cc" $keep $t "$src" -o "$exe" ) >/dev/null 2>&1; then
+      if whole_set_candidate_check "$keep $t"; then
         keep="$keep $t"
       else
         conflicts="$conflicts $t"

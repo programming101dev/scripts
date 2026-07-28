@@ -23,7 +23,7 @@ esac
 
 create_symlinks() {
   local script_dir cmake_dir repos_file
-  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+  script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
   cmake_dir="${script_dir}/cmake"
   repos_file="${script_dir}/repos.txt"
 

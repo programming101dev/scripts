@@ -1005,7 +1005,7 @@
         "-Wignored-base-class-qualifiers"
         "-Walias-template-in-declaration-name"
         "-Wabbreviated-auto-in-template-arg"
-        "-Wallocator-wrappers"
+#        "-Wallocator-wrappers"    # GCC 16 warning for functions that intentionally wrap allocators. The p101 C library deliberately provides malloc/calloc/realloc wrappers for error handling and resource tracking, so this warning conflicts with the library design. GCC also emits it but rejects it in #pragma GCC diagnostic, so keep it out of generated warning flags.
         "-Warray-compare-cxx26"
         "-Wunnecessary-virtual-specifier"
         "-Wunique-object-duplication"

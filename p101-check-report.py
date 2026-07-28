@@ -29,10 +29,14 @@ def read_text(path: Path, limit: int = 24000) -> str:
 
 
 def read_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
+    except OSError as exc:
+        raise ValueError(f"could not read JSON file {path}: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid JSON in {path}: {exc}") from exc
     return data if isinstance(data, dict) else {}
 
 
@@ -238,7 +242,18 @@ def main(argv: list[str]) -> int:
         print(f"p101-check-report: not a directory: {check_dir}", file=sys.stderr)
         return 2
     output = args.output or (check_dir / "index.html")
-    output.write_text(render(check_dir), encoding="utf-8")
+    if output.is_symlink():
+        print(f"p101-check-report: refusing to write through symlink: {output}", file=sys.stderr)
+        return 2
+    if output.exists() and not output.is_file():
+        print(f"p101-check-report: output exists and is not a regular file: {output}", file=sys.stderr)
+        return 2
+    try:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(render(check_dir), encoding="utf-8")
+    except (OSError, ValueError) as exc:
+        print(f"p101-check-report: {exc}", file=sys.stderr)
+        return 2
     print(output)
     return 0
 

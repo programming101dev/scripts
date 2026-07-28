@@ -26,6 +26,7 @@ flag-selection.standard.json into flags-standard/). Defaults are the
 maximal profile (flag-selection.json -> flags/).
 """
 
+import argparse
 import json
 import os
 import sys
@@ -35,12 +36,12 @@ FLAGS_DIR = os.path.join(SCRIPT_DIR, "flags")
 SELECTION = os.path.join(SCRIPT_DIR, "flag-selection.json")
 
 
-def _opt(name, default):
-    if name in sys.argv:
-        i = sys.argv.index(name)
-        if i + 1 < len(sys.argv):
-            return sys.argv[i + 1]
-    return default
+def parse_args():
+    parser = argparse.ArgumentParser(description="Render flag-selection JSON into flags/*.txt.")
+    parser.add_argument("--check", action="store_true", help="verify rendered flags instead of writing them")
+    parser.add_argument("--selection", default=SELECTION, help="selection JSON path")
+    parser.add_argument("--out", default=FLAGS_DIR, help="output flags directory")
+    return parser.parse_args()
 
 
 def load():
@@ -83,11 +84,19 @@ def tokens_of(path):
 
 def main():
     global SELECTION, FLAGS_DIR
-    check = "--check" in sys.argv
-    SELECTION = _opt("--selection", SELECTION)
-    FLAGS_DIR = _opt("--out", FLAGS_DIR)
+    args = parse_args()
+    check = args.check
+    SELECTION = args.selection
+    FLAGS_DIR = args.out
     os.makedirs(FLAGS_DIR, exist_ok=True)
     sel = load()
+    if not isinstance(sel.get("files"), dict) or not sel["files"]:
+        print("render-flags.py: selection contains no files", file=sys.stderr)
+        return 2
+    entry_count = sum(len(s.get("entries", [])) for s in sel["files"].values() if isinstance(s, dict))
+    if entry_count == 0:
+        print("render-flags.py: selection contains no flag entries", file=sys.stderr)
+        return 2
     overrides = {"gcc": [], "clang": [], "c": [], "cxx": []}
     rc = 0
 
@@ -145,11 +154,6 @@ def main():
           f"c={len(overrides['c'])} cxx={len(overrides['cxx'])}")
     return 0
 
-
-# --help / -h: print module docstring and exit (P101 uniform CLI help)
-if __name__ == "__main__" and ("--help" in sys.argv or "-h" in sys.argv):
-    print(__doc__ or __file__)
-    raise SystemExit(0)
 
 if __name__ == "__main__":
     raise SystemExit(main())

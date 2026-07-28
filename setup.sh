@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # Always operate from the directory this script lives in.
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 c_compiler=""
 cxx_compiler=""

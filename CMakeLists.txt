@@ -241,7 +241,16 @@ set(_FLAG_DIRS_USED "")
 if (EXISTS "${_FLAGS_ROOT}/${_CC_BASE}")
     set(_FLAG_DIRS_USED "${_FLAGS_ROOT}/${_CC_BASE}")
 else ()
-    message(STATUS "No flags dir for ${_CC_BASE}; no compiler flags will be loaded.")
+    if (DEFINED ENV{P101_ALLOW_NO_FLAGS}
+            AND NOT "$ENV{P101_ALLOW_NO_FLAGS}" STREQUAL ""
+            AND NOT "$ENV{P101_ALLOW_NO_FLAGS}" STREQUAL "0")
+        message(WARNING "No flags dir for ${_CC_BASE}; P101_ALLOW_NO_FLAGS is set, so no compiler flags will be loaded.")
+    else ()
+        message(FATAL_ERROR
+                "No flags dir for ${_CC_BASE} under ${_FLAGS_ROOT}. "
+                "Run scripts/update.sh or scripts/generate-flags.sh for this compiler, "
+                "or set P101_ALLOW_NO_FLAGS=1 for an explicit flagless bring-up build.")
+    endif ()
 endif ()
 
 # One-off flagless build: P101_NO_FLAGS in the ENVIRONMENT (set by
@@ -1408,9 +1417,10 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
                 COMMAND /bin/sh -c
                 "\"${_COMPILER}\" ${_SA_STD} ${_P101_SA_DEFS_CMD} ${_SA_FLAGS_CMD} ${_SA_ARGS_CMD} \
                    ${_PROJ_I_CMD} ${_LOCAL_I_CMD} ${_EXT_ISYSTEM_CMD} ${_MAC_SYSROOT_CMD} \
-                   \"${_abs}\" > \"${_out}\" 2>&1 || true"
+                   \"${_abs}\" > \"${_out}\" 2>&1"
                 COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
                 DEPENDS "${_abs}"
+                IMPLICIT_DEPENDS C "${_abs}"
                 VERBATIM
         )
         list(APPEND _SA_STAMPS "${_stamp}")

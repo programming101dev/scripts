@@ -12,7 +12,7 @@ esac
 
 # Always operate from the directory this script lives in (repos.txt lives
 # here, and the relative dest paths in it are relative to this directory).
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 REPOS_FILE="repos.txt"
 GIT_RETRY_ATTEMPTS=5

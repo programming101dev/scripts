@@ -19,6 +19,11 @@
 # install.sh / uninstall.sh only exist in LIBRARY repos (programs and templates
 # are not installed), so their canonical lives HERE in the scripts repo and they
 # are only distributed to repos under libraries/.
+#
+# When a differing file is overwritten, the previous target is first copied to
+# .p101-script-backups/<relative-repo>/<file>.<timestamp>. This keeps the common
+# "refresh all helper scripts" workflow non-interactive while making accidental
+# local drift recoverable instead of silently clobbered.
 set -eu
 
 usage() {
@@ -45,6 +50,8 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPOS_FILE="$SCRIPT_DIR/repos.txt"
 C_SRC="$SCRIPT_DIR/../templates/template-c"
 CXX_SRC="$SCRIPT_DIR/../templates/template-cxx"
+BACKUP_DIR="${P101_SCRIPT_BACKUP_DIR:-$SCRIPT_DIR/.p101-script-backups}"
+BACKUP_STAMP=$(date +%Y%m%d%H%M%S)
 
 # The per-repo scripts kept in lock-step across repos (chmod +x on copy).
 SYNC_SCRIPTS="build-all.sh build.sh change-compiler.sh check-compilers.sh check-env.sh check.sh clean.sh coverage-report.sh create-links.sh debug.sh doctor.sh fuzz.sh profile-report.sh report.sh test-all.sh test.sh"
@@ -59,6 +66,16 @@ SYNC_LIB_SCRIPTS="install.sh uninstall.sh"
 [ -d "$C_SRC" ]      || { printf 'Error: C canonical %s not found.\n' "$C_SRC" >&2; exit 1; }
 
 abspath() { ( CDPATH= cd -- "$1" 2>/dev/null && pwd ); }
+
+backup_existing() {
+  b_dest="$1"; b_label="$2"; b_file="$3"
+  b_dir="$BACKUP_DIR/$(printf '%s\n' "$b_label" | sed 's#[^A-Za-z0-9._-]#_#g')"
+  b_path="$b_dir/$b_file.$BACKUP_STAMP"
+
+  mkdir -p "$b_dir"
+  cp -p "$b_dest/$b_file" "$b_path"
+  printf 'Backup: %s/%s -> %s\n' "$b_label" "$b_file" "$b_path"
+}
 
 # sync_one <src> <destdir> <destlabel> <file> <exec?>
 sync_one() {
@@ -86,6 +103,7 @@ sync_one() {
   if [ "$DRYRUN" -eq 1 ]; then
     printf '[dry-run] update: %s/%s\n' "$s_dest" "$s_f"
   else
+    backup_existing "$s_destdir" "$s_dest" "$s_f"
     cp "$s_src/$s_f" "$s_destdir/$s_f"
     [ "$s_x" = "x" ] && chmod +x "$s_destdir/$s_f"
     printf 'Updated: %s/%s\n' "$s_dest" "$s_f"

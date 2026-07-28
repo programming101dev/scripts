@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Always operate from the directory this script lives in, so outputs like
 # sanitizers.txt land in the scripts repo no matter where we're invoked from.
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 c_compiler=""
 cxx_compiler=""

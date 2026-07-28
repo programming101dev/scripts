@@ -11,7 +11,7 @@ P101_USAGE
 esac
 
 # Always operate on the repo this script lives in, regardless of cwd.
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 dir_name=${PWD##*/}
 

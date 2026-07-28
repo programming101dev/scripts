@@ -34,8 +34,8 @@ def discover_json(paths: list[Path]) -> tuple[list[Path], list[Path]]:
 def load_json(path: Path) -> Any | None:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{path}: {exc}") from exc
 
 
 def finding_id(finding: dict[str, Any]) -> str:
@@ -46,6 +46,11 @@ def finding_id(finding: dict[str, Any]) -> str:
     if isinstance(kind, str) and kind:
         return kind
     return "unknown"
+
+
+def markdown_cell(text: object) -> str:
+    value = str(text)
+    return value.replace("\\", "\\\\").replace("|", "\\|").replace("`", "\\`").replace("\r", " ").replace("\n", " ")
 
 
 def collect(files: list[Path]) -> dict[str, Any]:
@@ -97,15 +102,15 @@ def print_markdown(summary: dict[str, Any]) -> None:
     print("| ID | Count |")
     print("| --- | ---: |")
     for diag, count in sorted(summary["diagnostics"].items(), key=lambda item: (-item[1], item[0])):
-        print(f"| `{diag}` | {count} |")
+        print(f"| `{markdown_cell(diag)}` | {count} |")
     print()
     print("## Source hot spots")
     print()
     print("| Source | Findings |")
     print("| --- | --- |")
     for source, diagnostics in summary["files"].items():
-        text = ", ".join(f"{diag}: {count}" for diag, count in diagnostics.items())
-        print(f"| `{source}` | {text} |")
+        text = ", ".join(f"{markdown_cell(diag)}: {count}" for diag, count in diagnostics.items())
+        print(f"| `{markdown_cell(source)}` | {text} |")
 
 
 def main(argv: list[str]) -> int:
@@ -115,7 +120,14 @@ def main(argv: list[str]) -> int:
         for path in missing:
             print(f"p101-cohort-summary: input path not found: {path}", file=sys.stderr)
         return 2
-    summary = collect(files)
+    try:
+        summary = collect(files)
+    except ValueError as exc:
+        print(f"p101-cohort-summary: {exc}", file=sys.stderr)
+        return 2
+    if summary["reports_read"] == 0:
+        print("p101-cohort-summary: no valid p101 finding reports were found", file=sys.stderr)
+        return 2
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:

@@ -21,8 +21,8 @@
         "-frecord-gcc-switches"
         "-fpic"
         "-fPIC"
-        "-fpie"    # PIE/ASLR hardening for executables (companion to -fPIC for libraries); verified to compile+link cleanly alongside -fPIC
-        "-fPIE"    # PIE/ASLR hardening for executables (companion to -fPIC for libraries); verified to compile+link cleanly alongside -fPIC
+#        "-fpie"    # executable-only PIE codegen; do not put in shared-library compile flags
+#        "-fPIE"    # executable-only PIE codegen; do not put in shared-library compile flags
         "-fno-plt"
 #        "-fno-jump-tables"
 #        "-fno-bit-tests"

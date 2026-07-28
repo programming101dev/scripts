@@ -60,7 +60,7 @@ esac
 
 set -u
 
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")" || exit 1
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" || exit 1
 SCRIPT_DIR="$PWD"
 OUT="$SCRIPT_DIR/claude-report"
 

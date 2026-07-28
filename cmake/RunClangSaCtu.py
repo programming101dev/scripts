@@ -77,12 +77,22 @@ def main():
     for fpath, cwd, argv in tus:
         ast_out = os.path.join(ast_dir, fpath.lstrip("/").replace("/", "_") + ".ast")
         cmd = strip_out(argv) + ["-emit-ast", "-o", ast_out]
-        subprocess.run(cmd, cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        r = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        if r.returncode != 0:
+            print(f"CTU emit-ast failed for {fpath} (exit {r.returncode})", file=sys.stderr)
+            if r.stdout:
+                print(r.stdout, file=sys.stderr)
+            return r.returncode
         # extdef-mapping prints "<len>:<usr> <sourcepath>"; repoint at the .ast
         # clang-extdef-mapping wants: <file> -- <compiler flags>
         flags = [a for a in argv[1:] if a.startswith(("-I", "-D", "-std", "-isystem", "-isysroot"))]
         r = subprocess.run([extdef, fpath, "--"] + flags,
-                           cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+                           cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        if r.returncode != 0:
+            print(f"CTU extdef mapping failed for {fpath} (exit {r.returncode})", file=sys.stderr)
+            if r.stdout:
+                print(r.stdout, file=sys.stderr)
+            return r.returncode
         for line in (r.stdout or "").splitlines():
             if " " in line:
                 usr, src = line.split(" ", 1)
@@ -124,6 +134,9 @@ def main():
         if out:
             have_diag = True
             print(out)
+        if r.returncode != 0:
+            print(f"CTU analyze failed for {fpath} (exit {r.returncode})", file=sys.stderr)
+            return r.returncode
     if have_diag and fail_on_diag:
         return 1
     return 0

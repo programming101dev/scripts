@@ -11,7 +11,7 @@
 #   4. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor.
 
 set -euo pipefail
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 cc=""
 cxx=""
@@ -76,10 +76,10 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ -z "$out_dir" ]; then
-  out_dir="${TMPDIR:-/tmp}/p101-after-update-all-check-$$"
+  out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-after-update-all-check.XXXXXX")"
 fi
 
-out_dir="$(mkdir -p "$out_dir" && cd "$out_dir" && pwd)"
+out_dir="$(mkdir -p "$out_dir" && CDPATH= cd -P "$out_dir" && pwd -P)"
 log_dir="$out_dir/logs"
 mkdir -p "$log_dir"
 summary="$out_dir/summary.md"

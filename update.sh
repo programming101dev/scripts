@@ -6,7 +6,7 @@ set -euo pipefail
 IFS=$' \t\n'
 
 # Always operate from the directory this script lives in.
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 # ----------------- globals and defaults -----------------
 c_compiler=""

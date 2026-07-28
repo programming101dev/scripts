@@ -113,11 +113,20 @@ def split_flag(tok):
 
 
 def main():
+    if not os.path.isdir(FLAGS_DIR):
+        print(f"lint-flags.py: missing flags directory: {FLAGS_DIR}", file=sys.stderr)
+        return 2
+
+    active_flags = list(actives())
+    if not active_flags:
+        print("lint-flags.py: no active flags found", file=sys.stderr)
+        return 2
+
     # Collect every occurrence per base; only the FINAL occurrence takes
     # effect (last-one-wins), so judge the final state against the
     # strongest value seen anywhere, not each consecutive pair.
     occ = {}  # base -> list of (file, ln, value, neg)
-    for fname, ln, tok in actives():
+    for fname, ln, tok in active_flags:
         b, v, neg = split_flag(tok)
         if b in ADDITIVE:
             continue
@@ -155,7 +164,7 @@ def main():
 
     # same-axis pairs (-fpic/-fPIC): silent last-wins across DIFFERENT tokens
     order = []  # every active token in command-line order
-    for fname, ln, tok in actives():
+    for fname, ln, tok in active_flags:
         order.append((tok, fname, ln))
     pos = {}
     for i, (tok, fname, ln) in enumerate(order):

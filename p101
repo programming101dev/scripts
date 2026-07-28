@@ -5,7 +5,7 @@ set -euo pipefail
 unset CDPATH
 dispatch_cwd="$(pwd)"
 export P101_DISPATCH_CWD="$dispatch_cwd"
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 usage() {
   cat <<'USAGE'
@@ -76,6 +76,18 @@ last_build_tool() {
   fi
 }
 
+exec_found() {
+  tool_label="$1"
+  env_name="$2"
+  shift 2
+
+  tool_path="$(find_tool "$env_name" "$@")" || {
+    echo "p101: ${tool_label} not found; build it first or set ${env_name}" >&2
+    exit 2
+  }
+  exec "$tool_path" "${command_args[@]}"
+}
+
 if [ "$#" -eq 0 ]; then
   usage
   exit 2
@@ -83,37 +95,38 @@ fi
 
 command_name="$1"
 shift
+command_args=("$@")
 
 case "$command_name" in
   -h|--help|help)
     usage
     ;;
   observe)
-    exec "$(find_tool P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe)" "$@"
+    exec_found p101-observe P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe
     ;;
   report)
-    exec "$(find_tool P101_REPORT "$(last_build_tool ../programs/p101-report p101-report)" ../programs/p101-report/build-clang-22/p101-report ../programs/p101-report/build-clang/p101-report p101-report)" "$@"
+    exec_found p101-report P101_REPORT "$(last_build_tool ../programs/p101-report p101-report)" ../programs/p101-report/build-clang-22/p101-report ../programs/p101-report/build-clang/p101-report p101-report
     ;;
   trace)
-    exec "$(find_tool P101_TRACE "$(last_build_tool ../programs/p101-trace p101-trace)" ../programs/p101-trace/build-clang-22/p101-trace ../programs/p101-trace/build-clang/p101-trace p101-trace)" "$@"
+    exec_found p101-trace P101_TRACE "$(last_build_tool ../programs/p101-trace p101-trace)" ../programs/p101-trace/build-clang-22/p101-trace ../programs/p101-trace/build-clang/p101-trace p101-trace
     ;;
   resource|resource-tracker)
-    exec "$(find_tool P101_RESOURCE_TRACKER "$(last_build_tool ../programs/p101-resource-tracker p101-resource-tracker)" ../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker ../programs/p101-resource-tracker/build-clang/p101-resource-tracker p101-resource-tracker)" "$@"
+    exec_found p101-resource-tracker P101_RESOURCE_TRACKER "$(last_build_tool ../programs/p101-resource-tracker p101-resource-tracker)" ../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker ../programs/p101-resource-tracker/build-clang/p101-resource-tracker p101-resource-tracker
     ;;
   walk|error-path-walk)
-    exec "$(find_tool P101_ERROR_PATH_WALK "$(last_build_tool ../programs/p101-error-path-walk p101-error-path-walk)" ../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk ../programs/p101-error-path-walk/build-clang/p101-error-path-walk p101-error-path-walk)" "$@"
+    exec_found p101-error-path-walk P101_ERROR_PATH_WALK "$(last_build_tool ../programs/p101-error-path-walk p101-error-path-walk)" ../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk ../programs/p101-error-path-walk/build-clang/p101-error-path-walk p101-error-path-walk
     ;;
   audit|wrapper-audit)
-    exec "$(find_tool P101_WRAPPER_AUDIT ../programs/p101-wrapper-audit/p101-wrapper-audit p101-wrapper-audit)" "$@"
+    exec_found p101-wrapper-audit P101_WRAPPER_AUDIT ../programs/p101-wrapper-audit/p101-wrapper-audit p101-wrapper-audit
     ;;
   module-map)
-    exec "$(find_tool P101_MODULE_MAP "$(last_build_tool ../programs/p101-module-map p101-module-map)" ../programs/p101-module-map/build-clang-22/p101-module-map ../programs/p101-module-map/build-clang/p101-module-map p101-module-map)" "$@"
+    exec_found p101-module-map P101_MODULE_MAP "$(last_build_tool ../programs/p101-module-map p101-module-map)" ../programs/p101-module-map/build-clang-22/p101-module-map ../programs/p101-module-map/build-clang/p101-module-map p101-module-map
     ;;
   doctor)
-    exec "$(find_tool P101_DOCTOR "$(last_build_tool ../programs/p101-doctor p101-doctor)" ../programs/p101-doctor/build-clang-22/p101-doctor ../programs/p101-doctor/build-clang/p101-doctor p101-doctor)" "$@"
+    exec_found p101-doctor P101_DOCTOR "$(last_build_tool ../programs/p101-doctor p101-doctor)" ../programs/p101-doctor/build-clang-22/p101-doctor ../programs/p101-doctor/build-clang/p101-doctor p101-doctor
     ;;
   playground)
-    exec "$(find_tool P101_TOOL_PLAYGROUND "$(last_build_tool ../playgrounds p101-tool-playground)" ../playgrounds/build-clang-22/p101-tool-playground ../playgrounds/build-clang/p101-tool-playground p101-tool-playground)" "$@"
+    exec_found p101-tool-playground P101_TOOL_PLAYGROUND "$(last_build_tool ../playgrounds p101-tool-playground)" ../playgrounds/build-clang-22/p101-tool-playground ../playgrounds/build-clang/p101-tool-playground p101-tool-playground
     ;;
   check)
     exec ./p101-check.sh "$@"

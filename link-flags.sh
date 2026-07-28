@@ -13,7 +13,7 @@ esac
 create_symlinks() {
   # Resolve script and repo root so links are absolute & stable
   local script_dir repo_root flags_dir link_name
-  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+  script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
   repo_root="$(cd -- "${script_dir}/.." && pwd -P)"
   # Profile-aware (P101_FLAGS_PROFILE=standard -> .flags-standard), so each
   # repo links the cache the current build actually reads.

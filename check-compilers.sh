@@ -12,7 +12,7 @@ esac
 
 # Always operate from the directory this script lives in, so the outputs
 # land in the scripts repo.
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 # Detect the operating system
 OS="$(uname)"

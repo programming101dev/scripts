@@ -13,7 +13,7 @@ esac
 create_symlinks() {
   # Anchor to the directory this script lives in, not the caller's cwd.
   local root
-  root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+  root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 
   # Absolute inputs
   local c_compilers_file="${root}/supported_c_compilers.txt"

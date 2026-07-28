@@ -12,7 +12,7 @@
 # cleanup ratchet.
 
 set -euo pipefail
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 programs_dir="../programs"
 out_dir=""
@@ -54,10 +54,10 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ -z "$out_dir" ]; then
-  out_dir="${TMPDIR:-/tmp}/p101-tool-audit-$$"
+  out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-tool-audit.XXXXXX")"
 fi
 
-out_dir="$(mkdir -p "$out_dir" && cd "$out_dir" && pwd)"
+out_dir="$(mkdir -p "$out_dir" && CDPATH= cd -P "$out_dir" && pwd -P)"
 log_dir="$out_dir/logs"
 mkdir -p "$log_dir"
 summary="$out_dir/summary.md"

@@ -9,7 +9,7 @@
 # of them — that is intended: a stale bucket is stale everywhere. It never
 # touches a bucket for a currently-supported compiler.
 set -uo pipefail
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 usage() {
   cat <<'USAGE'

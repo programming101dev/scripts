@@ -37,10 +37,13 @@ Requires: python3 (already required by the build). No network.
 
 import argparse
 import fnmatch
+import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FLAGS_DIR = os.path.join(SCRIPT_DIR, "flags")
@@ -369,7 +372,6 @@ def merge_database(per_cc):
     per_cc: {cc_name: (family, label, universe_dict)}.  Entries for
     compilers not queried this run are preserved, so runs on different
     machines (Linux gcc, Apple clang, FreeBSD) accumulate into one file."""
-    import json
     db = {"_doc": "Canonical flag universe, harvested from installed "
                   "compiler binaries by harvest-flags.py. Regenerate by "
                   "running it; entries merge across machines/compilers. "
@@ -379,8 +381,8 @@ def merge_database(per_cc):
         try:
             with open(DB_FILE, encoding="utf-8") as f:
                 db = json.load(f)
-        except (json.JSONDecodeError, OSError):
-            pass
+        except (json.JSONDecodeError, OSError) as exc:
+            raise ValueError(f"could not read existing {DB_FILE}: {exc}") from exc
     flags = db.setdefault("flags", {})
     queried = set(per_cc)
     for cc, (family, label, universe) in per_cc.items():
@@ -400,9 +402,11 @@ def merge_database(per_cc):
                 del seen[cc]
         if not seen:
             del flags[flag]
-    with open(DB_FILE, "w", encoding="utf-8") as f:
+    fd, tmp_path = tempfile.mkstemp(prefix=".flag-database.", suffix=".json", dir=SCRIPT_DIR)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump(db, f, indent=1, sort_keys=True)
         f.write("\n")
+    os.replace(tmp_path, DB_FILE)
     return len(flags)
 
 
@@ -412,6 +416,8 @@ def group_primaries():
     Combo lines (cfi + -flto) come through whole, so pair-testing uses the
     same shape the build does."""
     groups = {}
+    if not os.path.isdir(FLAGS_DIR):
+        return groups
     for name in sorted(os.listdir(FLAGS_DIR)):
         m = re.match(r"(.+)_sanitizer_flags\.txt$", name)
         if not m:
@@ -511,104 +517,109 @@ def main():
     os.makedirs(REPORT_DIR, exist_ok=True)
     rc = 0
     per_cc = {}
-    import tempfile
     tmpdir = tempfile.mkdtemp(prefix="harvest-sv-")
+    try:
+        for cc in args.compilers:
+            cc_bin = map_resolve(cc)
+            family, label = detect_family(cc_bin)
+            if family == "missing":
+                print(f"[{cc}] not found in PATH; skipping", file=sys.stderr)
+                rc = 1
+                continue
+            if family == "unknown":
+                print(f"[{cc}] cannot identify compiler family; skipping",
+                      file=sys.stderr)
+                rc = 1
+                continue
 
-    for cc in args.compilers:
-        cc_bin = map_resolve(cc)
-        family, label = detect_family(cc_bin)
-        if family == "missing":
-            print(f"[{cc}] not found in PATH; skipping", file=sys.stderr)
-            rc = 1
-            continue
-        if family == "unknown":
-            print(f"[{cc}] cannot identify compiler family; skipping",
-                  file=sys.stderr)
-            rc = 1
-            continue
+            universe = harvest_gcc(cc_bin) if family == "gcc" else harvest_clang(cc_bin)
+            if not universe:
+                print(f"[{cc}] harvested nothing — unexpected; skipping",
+                      file=sys.stderr)
+                rc = 1
+                continue
+            per_cc[os.path.basename(cc)] = (family, label, universe)
 
-        universe = harvest_gcc(cc_bin) if family == "gcc" else harvest_clang(cc_bin)
-        if not universe:
-            print(f"[{cc}] harvested nothing — unexpected; skipping",
-                  file=sys.stderr)
-            rc = 1
-            continue
-        per_cc[os.path.basename(cc)] = (family, label, universe)
+            def status(flag):
+                k = base_key(flag)
+                if k in included:
+                    return "+"
+                if k in excluded or matches_exclusion(flag, excl_patterns):
+                    return "-"
+                return "?"
 
-        def status(flag):
-            k = base_key(flag)
-            if k in included:
-                return "+"
-            if k in excluded or matches_exclusion(flag, excl_patterns):
-                return "-"
-            return "?"
-
-        base = os.path.basename(cc)
+            base = os.path.basename(cc)
 
         # full canonical list with selection status
-        canon_path = os.path.join(REPORT_DIR, f"{base}-canonical.txt")
-        counts = {"+": 0, "-": 0, "?": 0}
-        with open(canon_path, "w", encoding="utf-8") as out:
-            out.write(f"# Canonical flag universe of {cc} ({label})\n")
-            out.write("# [+] included in flags/*.txt   [-] excluded "
-                      "(commented)   [?] no decision yet\n")
-            out.write("# [=] takes a value\n\n")
-            for flag in sorted(universe):
-                s = status(flag)
-                counts[s] += 1
-                out.write(f"[{s}] {flag}{'   [=]' if universe[flag] else ''}\n")
+            canon_path = os.path.join(REPORT_DIR, f"{base}-canonical.txt")
+            counts = {"+": 0, "-": 0, "?": 0}
+            with open(canon_path, "w", encoding="utf-8") as out:
+                out.write(f"# Canonical flag universe of {cc} ({label})\n")
+                out.write("# [+] included in flags/*.txt   [-] excluded "
+                          "(commented)   [?] no decision yet\n")
+                out.write("# [=] takes a value\n\n")
+                for flag in sorted(universe):
+                    s = status(flag)
+                    counts[s] += 1
+                    out.write(f"[{s}] {flag}{'   [=]' if universe[flag] else ''}\n")
 
         # worklist: only the undecided, minus negative variants of decided/
         # present positive forms
-        new_items = []
-        skipped_neg = 0
-        for flag, nv in sorted(universe.items()):
-            if status(flag) != "?":
-                continue
-            pos = negative_of(flag)
-            if pos is not None and (base_key(pos) in included
-                                    or base_key(pos) in excluded
-                                    or pos in universe
-                                    or pos + "=" in universe):
-                skipped_neg += 1
-                continue
-            new_items.append((flag, nv))
+            new_items = []
+            skipped_neg = 0
+            for flag, nv in sorted(universe.items()):
+                if status(flag) != "?":
+                    continue
+                pos = negative_of(flag)
+                if pos is not None and (base_key(pos) in included
+                                        or base_key(pos) in excluded
+                                        or pos in universe
+                                        or pos + "=" in universe):
+                    skipped_neg += 1
+                    continue
+                new_items.append((flag, nv))
 
-        work_path = os.path.join(REPORT_DIR, f"{base}-new-flags.txt")
-        with open(work_path, "w", encoding="utf-8") as out:
-            out.write(f"# Undecided flags for {cc} ({label})\n")
-            out.write(f"# universe={len(universe)}  included={counts['+']}  "
-                      f"excluded={counts['-']}  undecided={len(new_items)}\n")
-            out.write(f"# ({skipped_neg} -Wno-/-fno- variants of decided or "
-                      "listed positive forms omitted)\n")
-            out.write("# Move each line into the suggested flags/ file — "
-                      "active to include, commented to exclude — then bump "
-                      "version.txt and let generate-flags.sh probe them.\n\n")
-            buckets = {}
-            for flag, nv in new_items:
-                buckets.setdefault(bucket_for(flag), []).append((flag, nv))
-            for bucket in sorted(buckets):
-                out.write(f"## suggested destination: {bucket}\n")
-                for flag, nv in buckets[bucket]:
-                    out.write(f"{flag}{'   [=]' if nv else ''}\n")
-                out.write("\n")
+            work_path = os.path.join(REPORT_DIR, f"{base}-new-flags.txt")
+            with open(work_path, "w", encoding="utf-8") as out:
+                out.write(f"# Undecided flags for {cc} ({label})\n")
+                out.write(f"# universe={len(universe)}  included={counts['+']}  "
+                          f"excluded={counts['-']}  undecided={len(new_items)}\n")
+                out.write(f"# ({skipped_neg} -Wno-/-fno- variants of decided or "
+                          "listed positive forms omitted)\n")
+                out.write("# Move each line into the suggested flags/ file — "
+                          "active to include, commented to exclude — then bump "
+                          "version.txt and let generate-flags.sh probe them.\n\n")
+                buckets = {}
+                for flag, nv in new_items:
+                    buckets.setdefault(bucket_for(flag), []).append((flag, nv))
+                for bucket in sorted(buckets):
+                    out.write(f"## suggested destination: {bucket}\n")
+                    for flag, nv in buckets[bucket]:
+                        out.write(f"{flag}{'   [=]' if nv else ''}\n")
+                    out.write("\n")
 
         # value space of -fsanitize=, probed against the binary
-        n_accepted, new_vals = report_sanitize_values(
-            cc, cc_bin, base, curated_sans, tmpdir)
-        n_conflicts = report_sanitize_combos(cc, cc_bin, base, tmpdir)
+            n_accepted, new_vals = report_sanitize_values(
+                cc, cc_bin, base, curated_sans, tmpdir)
+            n_conflicts = report_sanitize_combos(cc, cc_bin, base, tmpdir)
 
-        print(f"[{cc}] universe {len(universe)} | included {counts['+']} | "
-              f"excluded {counts['-']} | undecided {len(new_items)} "
-              f"(+{skipped_neg} negatives omitted)")
-        print(f"      sanitize values: {n_accepted} accepted"
-              + (f" | NEW: {' '.join(new_vals)}" if new_vals else " | no new")
-              + f" | conflicting group pairs: {n_conflicts}")
-        print(f"      -> {os.path.relpath(canon_path, SCRIPT_DIR)}")
-        print(f"      -> {os.path.relpath(work_path, SCRIPT_DIR)}")
+            print(f"[{cc}] universe {len(universe)} | included {counts['+']} | "
+                  f"excluded {counts['-']} | undecided {len(new_items)} "
+                  f"(+{skipped_neg} negatives omitted)")
+            print(f"      sanitize values: {n_accepted} accepted"
+                  + (f" | NEW: {' '.join(new_vals)}" if new_vals else " | no new")
+                  + f" | conflicting group pairs: {n_conflicts}")
+            print(f"      -> {os.path.relpath(canon_path, SCRIPT_DIR)}")
+            print(f"      -> {os.path.relpath(work_path, SCRIPT_DIR)}")
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
     if per_cc:
-        total = merge_database(per_cc)
+        try:
+            total = merge_database(per_cc)
+        except ValueError as exc:
+            print(f"harvest-flags.py: {exc}", file=sys.stderr)
+            return 2
         print(f"flag-database.json: {total} canonical flags "
               f"(merged {len(per_cc)} compiler(s))")
     return rc

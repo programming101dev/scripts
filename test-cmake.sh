@@ -41,7 +41,7 @@
 
 set -euo pipefail
 
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$PWD"
 CMAKE_FILE="${SCRIPT_DIR}/CMakeLists.txt"
 
@@ -124,7 +124,7 @@ new_proj() {
   cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
   # the shared CMakeLists now sources its helpers from cmake/ — mirror the
   # workspace symlink so the harness exercises the real layout
-  ln -sfn "$(cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
+  ln -sfn "$(CDPATH= cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
   printf 'BasedOnStyle: LLVM\nIndentWidth: 4\n' > "$PROJ/.clang-format"
 }
 
@@ -132,7 +132,7 @@ new_proj() {
 configure() {
   local p="$1"; shift
   RC=0
-  cmake -S "$p" -B "$p/build" -DCMAKE_C_COMPILER="$c_compiler" "$@" \
+  P101_ALLOW_NO_FLAGS="${P101_ALLOW_NO_FLAGS:-1}" cmake -S "$p" -B "$p/build" -DCMAKE_C_COMPILER="$c_compiler" "$@" \
     > "$p/configure.log" 2>&1 || RC=$?
 }
 

@@ -4,7 +4,7 @@
 set -u
 set -o pipefail
 
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 invoke_cwd="${P101_DISPATCH_CWD:-$(pwd)}"
 
 out_dir=""
@@ -156,12 +156,12 @@ if [ "$#" -eq 0 ]; then
   exit 2
 fi
 
-project_dir="$(cd "$project_dir" && pwd)" || {
+project_dir="$(CDPATH= cd -P "$project_dir" && pwd -P)" || {
   echo "p101 check: project directory does not exist: $project_dir" >&2
   exit 2
 }
 if [ -z "$out_dir" ]; then
-  out_dir="$project_dir/p101-check-$$"
+  out_dir="$(mktemp -d "$project_dir/p101-check.XXXXXX")"
 fi
 case "$out_dir" in
   /*) ;;
@@ -174,7 +174,7 @@ if [ -e "$out_dir" ]; then
 fi
 
 mkdir -p "$out_dir/logs"
-out_dir="$(cd "$out_dir" && pwd)"
+out_dir="$(CDPATH= cd -P "$out_dir" && pwd -P)"
 log_dir="$out_dir/logs"
 summary="$out_dir/summary.md"
 

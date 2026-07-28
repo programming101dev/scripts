@@ -640,13 +640,13 @@
         },
         {
           "flags": "-fpie",
-          "enabled": true,
-          "comment": "PIE/ASLR hardening for executables (companion to -fPIC for libraries); verified to compile+link cleanly alongside -fPIC"
+          "enabled": false,
+          "comment": "Executable-only PIE code generation. It can make shared-library links fail on ELF platforms when combined with shared-library targets, so keep it out of the shared compile flag corpus."
         },
         {
           "flags": "-fPIE",
-          "enabled": true,
-          "comment": "PIE/ASLR hardening for executables (companion to -fPIC for libraries); verified to compile+link cleanly alongside -fPIC"
+          "enabled": false,
+          "comment": "Executable-only PIE code generation. It can make shared-library links fail on ELF platforms when combined with shared-library targets, so keep it out of the shared compile flag corpus."
         },
         {
           "flags": "-fno-plt",
