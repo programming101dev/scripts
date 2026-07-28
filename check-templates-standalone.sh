@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# check-templates-standalone.sh — prove copied templates are self-contained.
+# check-templates-standalone.sh — prove fresh template instances are self-contained.
 #
-# The template repos may live inside the broader p101 workspace, and the copied
-# projects may intentionally symlink expensive shared artifacts such as .flags.
-# The scripts inside the copied projects, however, must stand on their own: no
-# implicit ../scripts lookup, no dependence on the caller's current directory,
-# and materialized CMake helper files.
+# The template repos may live inside the broader p101 workspace. A fresh
+# instance may intentionally symlink expensive shared artifacts such as .flags,
+# but its scripts must stand on their own: no implicit ../scripts lookup, no
+# dependence on the caller's current directory, and materialized CMake helper
+# files.
 
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
@@ -21,17 +21,17 @@ usage() {
   cat <<'USAGE'
 Usage: ./check-templates-standalone.sh [options]
 
-Copies each template to a temporary directory from outside the template repo,
-then verifies that the copied project is self-contained except for intentional
-shared-artifact symlinks.
+Instantiates each template in a temporary directory from outside the template
+repo, then verifies that the fresh project instance is self-contained except
+for intentional shared-artifact symlinks.
 
 Options:
-  -c <cc>       C compiler used for copied C templates. Default: clang.
-  -x <cxx>      C++ compiler used for copied C++ template. Default: clang++.
+  -c <cc>       C compiler used for fresh C template instances. Default: clang.
+  -x <cxx>      C++ compiler used for fresh C++ template instances. Default: clang++.
   -o <dir>      Output directory. Default: fresh /tmp directory.
   -k            Keep the output directory even on success.
   --no-build    Copy and audit only; skip configure/build/test.
-  --no-tests    Configure/build, but skip copied template tests.
+  --no-tests    Configure/build, but skip fresh instance tests.
   -h, --help    Show this help.
 USAGE
 }
@@ -111,7 +111,7 @@ require_cmake_helpers() {
   require_file "$dir/cmake/FailIfCppcheckDiagnostics.cmake"
   require_file "$dir/cmake/RunClangTidyOverList.cmake"
   if [ -L "$dir/cmake" ]; then
-    fail "$dir/cmake must be materialized in copied templates, not a symlink"
+    fail "$dir/cmake must be materialized in fresh template instances, not a symlink"
   fi
 }
 
@@ -138,7 +138,7 @@ check_allowed_symlinks() {
       .flags|sanitizers.txt|supported_c_compilers.txt|supported_cxx_compilers.txt)
         ;;
       *)
-        fail "$template copied unexpected top-level symlink: $name -> $(readlink "$link_path")"
+        fail "$template fresh instance has unexpected top-level symlink: $name -> $(readlink "$link_path")"
         ;;
     esac
   done < <(find "$dir" -maxdepth 1 -type l -print)
@@ -149,10 +149,10 @@ check_script_references() {
   template="$2"
   bad_refs="$log_dir/${template}-bad-script-refs.txt"
 
-  # Scripts may use paths within the copied project, but they must not search
+  # Scripts may use paths within the fresh project instance, but they must not search
   # parent workspace layouts or bake in this developer's absolute workspace.
   if find "$dir" -name '*.sh' -type f -exec grep -nE '(\.\./scripts|\.\./\.\./scripts|/Users/ds|programming101dev|source_dir/\.\./\.flags)' {} + > "$bad_refs" 2>/dev/null; then
-    fail "$template copied scripts contain non-standalone references; see $bad_refs"
+    fail "$template fresh-instance scripts contain non-standalone references; see $bad_refs"
   else
     rm -f "$bad_refs"
   fi
@@ -190,11 +190,11 @@ copy_and_check() {
     build_log="$log_dir/${template}-build.log"
 
     if [ "$lang" = "cxx" ]; then
-      run_logged "configure/build copied $template" "$build_log" \
+      run_logged "configure/build fresh $template instance" "$build_log" \
         bash -c 'cd "$1" && ./change-compiler.sh -c "$2" -b build-standalone-check && ./build.sh -q' \
         sh "$dest" "$cxx"
     else
-      run_logged "configure/build copied $template" "$build_log" \
+      run_logged "configure/build fresh $template instance" "$build_log" \
         bash -c 'cd "$1" && ./change-compiler.sh -c "$2" -b build-standalone-check && ./build.sh -q' \
         sh "$dest" "$cc"
     fi
@@ -202,7 +202,7 @@ copy_and_check() {
 
   if [ "$run_tests" -eq 1 ] && [ "$failed" -eq 0 ]; then
     test_log="$log_dir/${template}-test.log"
-    run_logged "test copied $template" "$test_log" bash -c 'cd "$1" && ./test.sh' sh "$dest"
+    run_logged "test fresh $template instance" "$test_log" bash -c 'cd "$1" && ./test.sh' sh "$dest"
   fi
 }
 

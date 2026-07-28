@@ -24,8 +24,8 @@ Usage: p101 check [options] [<source-path>] -- <command> [args...]
 
 Run the golden-path p101 teaching workflow:
   1. project quality gate via ./check.sh when present;
-  2. p101-doctor, including wrapper audit, module map, observation, resource
-     tracking, call tracing, correlated report, and error-path walking;
+  2. p101-doctor, including source contracts, module map, observation,
+     resource tracking, call tracing, correlated report, and error-path walking;
   3. optional coverage receipt;
   4. one top-level HTML report and bug bundle.
 
@@ -34,7 +34,7 @@ Options:
   -s <path>         Source path passed to p101-doctor. Default: .
   -p <dir>          Project directory for check.sh/coverage-report.sh. Default: caller cwd.
   -n <count>        Fault-injection cases for p101-error-path-walk. Default: 16
-  -x                Skip static wrapper audit inside p101-doctor.
+  -x                Skip static source-contract checks inside p101-doctor.
   --skip-quality    Do not run ./check.sh before doctor.
   --coverage        Also run ./coverage-report.sh --no-open when available.
   --skip-html       Do not render HTML reports.
@@ -180,6 +180,7 @@ summary="$out_dir/summary.md"
 
 doctor_tool="$(find_tool P101_DOCTOR "$(last_build_tool "$script_dir/../programs/p101-doctor" p101-doctor)" "$script_dir/../programs/p101-doctor/build-clang-22/p101-doctor" "$script_dir/../programs/p101-doctor/build-clang/p101-doctor" p101-doctor)" || { echo "p101 check: p101-doctor not found" >&2; exit 2; }
 wrapper_tool="$(find_tool P101_WRAPPER_AUDIT "$script_dir/../programs/p101-wrapper-audit/p101-wrapper-audit" p101-wrapper-audit)" || { echo "p101 check: p101-wrapper-audit not found" >&2; exit 2; }
+error_contract_tool="$(find_tool P101_ERROR_CONTRACT "$(last_build_tool "$script_dir/../programs/p101-error-contract" p101-error-contract)" "$script_dir/../programs/p101-error-contract/build-clang-22/p101-error-contract" "$script_dir/../programs/p101-error-contract/build-clang/p101-error-contract" p101-error-contract)" || { echo "p101 check: p101-error-contract not found" >&2; exit 2; }
 module_tool="$(find_tool P101_MODULE_MAP "$(last_build_tool "$script_dir/../programs/p101-module-map" p101-module-map)" "$script_dir/../programs/p101-module-map/build-clang-22/p101-module-map" "$script_dir/../programs/p101-module-map/build-clang/p101-module-map" p101-module-map)" || { echo "p101 check: p101-module-map not found" >&2; exit 2; }
 observe_tool="$(find_tool P101_OBSERVE "$(last_build_tool "$script_dir/../programs/p101-observe" p101-observe)" "$script_dir/../programs/p101-observe/build-clang-22/p101-observe" "$script_dir/../programs/p101-observe/build-clang/p101-observe" p101-observe)" || { echo "p101 check: p101-observe not found" >&2; exit 2; }
 walk_tool="$(find_tool P101_ERROR_PATH_WALK "$(last_build_tool "$script_dir/../programs/p101-error-path-walk" p101-error-path-walk)" "$script_dir/../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk" "$script_dir/../programs/p101-error-path-walk/build-clang/p101-error-path-walk" p101-error-path-walk)" || { echo "p101 check: p101-error-path-walk not found" >&2; exit 2; }
@@ -211,7 +212,7 @@ else
   printf 'SKIP: --skip-quality\n' > "$log_dir/quality-check.log"
 fi
 
-doctor_args=(-o "$out_dir/doctor" -s "$source_path" -n "$fault_count" -A "$wrapper_tool" -M "$module_tool" -O "$observe_tool" -W "$walk_tool" -r "$tracker_tool" -t "$trace_tool" -p "$report_tool")
+doctor_args=(-o "$out_dir/doctor" -s "$source_path" -n "$fault_count" -A "$wrapper_tool" -E "$error_contract_tool" -M "$module_tool" -O "$observe_tool" -W "$walk_tool" -r "$tracker_tool" -t "$trace_tool" -p "$report_tool")
 if [ "$skip_wrapper" -eq 1 ]; then
   doctor_args=(-x "${doctor_args[@]}")
 fi

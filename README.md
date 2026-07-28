@@ -81,7 +81,7 @@ After `update-all.sh` succeeds, run the post-build acceptance checks:
 ```
 
 This does not rebuild every repository again. It runs the shared CMake
-regression harness, copied-template standalone checks, and the
+regression harness, fresh-template standalone checks, and the
 `p101-tool-playground` tour, then runs the small p101 behavior regression
 corpus.
 
@@ -162,7 +162,7 @@ the shared CMake and standalone `test.sh`/`fuzz.sh` scripts prefer sibling
 `libraries/*/include` and compiler-matching `libraries/*/build-<compiler>`
 directories before installed `/usr/local` headers and libraries. That keeps
 development builds honest after wrapper/library API changes. If a template or
-repo is copied out by itself, those sibling paths are absent and the scripts
+repo is instantiated outside the workspace, those sibling paths are absent and the scripts
 fall back to the installed p101 stack.
 
 ## **Testing the shared CMakeLists.txt**
@@ -181,7 +181,7 @@ of in a student's build. Use `-k` to keep the sandbox with all logs.
 
 ## **Running the acceptance checks**
 
-To verify that copied templates are self-contained aside from intentional
+To verify that fresh template instances are self-contained aside from intentional
 shared-artifact symlinks such as `.flags`, run:
 
 ```bash
@@ -190,7 +190,7 @@ shared-artifact symlinks such as `.flags`, run:
 
 It copies `template-c`, `template-c-program`, and `template-cxx` to `/tmp`,
 rejects hidden parent-workspace script dependencies, and configures, builds,
-and tests each copied project.
+and tests each fresh project instance.
 
 To run the broader p101 stack ratchet, use:
 

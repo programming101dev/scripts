@@ -7,7 +7,7 @@
 #
 #   1. shared CMakeLists regression harness;
 #   2. p101 tool contract documentation checks;
-#   3. copied-template standalone copy/build/test;
+#   3. fresh-template standalone instantiate/build/test;
 #   4. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor.
 
 set -euo pipefail
@@ -46,7 +46,7 @@ Options:
                       Skip p101 tool README contract checks.
   --skip-stack        Skip template/playground stack checks.
   --skip-regression   Skip the p101 regression corpus.
-  --template-no-tests Build copied templates but skip copied template tests.
+  --template-no-tests Build fresh template instances but skip their tests.
 
   --playground-quality  Let tour.sh run build/test/fuzz/coverage quality steps.
   --playground-coverage Let tour.sh run coverage.

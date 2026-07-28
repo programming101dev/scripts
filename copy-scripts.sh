@@ -47,7 +47,7 @@ C_SRC="$SCRIPT_DIR/../templates/template-c"
 CXX_SRC="$SCRIPT_DIR/../templates/template-cxx"
 
 # The per-repo scripts kept in lock-step across repos (chmod +x on copy).
-SYNC_SCRIPTS="build-all.sh build.sh change-compiler.sh check-compilers.sh check-env.sh check.sh clean.sh coverage-report.sh create-links.sh debug.sh doctor.sh fuzz.sh generate-flags.sh profile-report.sh report.sh test-all.sh test.sh"
+SYNC_SCRIPTS="build-all.sh build.sh change-compiler.sh check-compilers.sh check-env.sh check.sh clean.sh coverage-report.sh create-links.sh debug.sh doctor.sh fuzz.sh profile-report.sh report.sh test-all.sh test.sh"
 
 # Non-executable canonical files kept in lock-step the same way.
 SYNC_FILES=".gitignore"

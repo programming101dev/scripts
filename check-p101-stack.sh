@@ -3,7 +3,7 @@
 #
 # This is the "does the whole thing hang together?" ratchet:
 #   1. strict-build wrapper libraries and tools/templates from repos.txt;
-#   2. prove copied templates are self-contained;
+#   2. prove fresh template instances are self-contained;
 #   3. run the tool playground tour, including observe/resource/trace/report and
 #      error-path walking through p101-doctor.
 
@@ -36,8 +36,8 @@ usage() {
   cat <<'USAGE'
 Usage: ./check-p101-stack.sh [options]
 
-Runs the p101 acceptance stack: repo builds, standalone template copy/build,
-and the p101-tool-playground tour including p101-doctor.
+Runs the p101 acceptance stack: repo builds, standalone template
+instantiation/build, and the p101-tool-playground tour including p101-doctor.
 
 Options:
   -c <cc>          C compiler. Default: clang.
@@ -57,7 +57,7 @@ Options:
   --skip-p101-check     Do not run the p101 check golden-path smoke.
   --skip-corpus         Do not run the p101-tool-playground corpus smoke.
   --skip-lab            Do not run the p101-tool-playground lab-book smoke.
-  --template-no-tests   Build copied templates but skip copied template tests.
+  --template-no-tests   Build fresh template instances but skip their tests.
 
   --playground-quality  Let tour.sh run build/test/fuzz/coverage quality steps.
   --playground-coverage Let tour.sh run coverage.
@@ -194,9 +194,9 @@ if [ "$skip_templates" -eq 0 ]; then
   if [ "$template_no_tests" -eq 1 ]; then
     template_args+=(--no-tests)
   fi
-  run_logged "standalone copied templates" "$log_dir/templates.log" ./check-templates-standalone.sh "${template_args[@]}"
+  run_logged "standalone fresh template instances" "$log_dir/templates.log" ./check-templates-standalone.sh "${template_args[@]}"
 else
-  say "==> standalone copied templates"
+  say "==> standalone fresh template instances"
   say "    SKIP"
 fi
 
