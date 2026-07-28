@@ -490,10 +490,8 @@ fi
 
 # ----------------- sanity: supported compilers lists -----------------
 in_supported() {
-  # The supported lists hold full paths (check-compilers.sh pins them).
-  # Accept a match on exact path, or on basename — in either direction —
-  # so both `-c /usr/bin/clang` and `-c clang` validate against a list
-  # entry of /usr/bin/clang.
+  # The supported lists hold compiler names. Older generated lists may hold
+  # paths, so accept a match on exact text or basename in either direction.
   local needle_full="$1" file="$2" needle_base line line_base
   needle_base="$(basename "$needle_full")"
   [[ -f "$file" ]] || return 1
@@ -510,20 +508,59 @@ in_supported() {
   return 1
 }
 
+compiler_realpath() {
+  local compiler="$1"
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$compiler" 2>/dev/null || printf '%s' "$compiler"
+  else
+    printf '%s' "$compiler"
+  fi
+}
+
+compiler_path_has_supported_alias() {
+  # $1 = compiler path, $2 = supported compiler list
+  local needle="$1" file="$2" needle_real line name path path_real
+  [[ -f "$MAP_FILE" && -f "$file" ]] || return 1
+  needle_real="$(compiler_realpath "$needle")"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ "$line" == *=* ]] || continue
+    name="${line%%=*}"
+    path="${line#*=}"
+    in_supported "$name" "$file" || continue
+    path_real="$(compiler_realpath "$path")"
+    if [[ "$path" == "$needle" || "$path_real" == "$needle_real" ]]; then
+      return 0
+    fi
+  done < "$MAP_FILE"
+  return 1
+}
+
+compiler_supported() {
+  # $1 = requested compiler (name/path), $2 = resolved path, $3 = list file
+  local requested="$1" resolved="$2" file="$3"
+  in_supported "$requested" "$file" \
+    || in_supported "$resolved" "$file" \
+    || compiler_path_has_supported_alias "$requested" "$file" \
+    || compiler_path_has_supported_alias "$resolved" "$file"
+}
+
 # In dry-run mode the lists may not have been (re)generated; don't fail on
 # a file that the real run would have produced.
 if $dry_run && [[ ! -f "$SUPPORTED_C_COMPILERS" || ! -f "$SUPPORTED_CXX_COMPILERS" ]]; then
   note "[dry-run] skipping supported-compiler check (lists not generated yet)"
 else
-  if ! in_supported "$CC_PATH" "$SUPPORTED_C_COMPILERS"; then
-    printf "Error: The specified compiler '%s' is not in %s.\n" "$CC_PATH" "$SUPPORTED_C_COMPILERS" >&2
+  if ! compiler_supported "$c_compiler" "$CC_PATH" "$SUPPORTED_C_COMPILERS"; then
+    printf "Error: The specified compiler '%s' (resolved to '%s') is not in %s.\n" "$c_compiler" "$CC_PATH" "$SUPPORTED_C_COMPILERS" >&2
     printf "Supported compilers:\n" >&2
     { cat "$SUPPORTED_C_COMPILERS" 2>/dev/null || true; } >&2
     exit 3
   fi
 
-  if ! in_supported "$CXX_PATH" "$SUPPORTED_CXX_COMPILERS"; then
-    printf "Error: The specified C++ compiler '%s' is not in %s.\n" "$CXX_PATH" "$SUPPORTED_CXX_COMPILERS" >&2
+  if ! compiler_supported "$cxx_compiler" "$CXX_PATH" "$SUPPORTED_CXX_COMPILERS"; then
+    printf "Error: The specified C++ compiler '%s' (resolved to '%s') is not in %s.\n" "$cxx_compiler" "$CXX_PATH" "$SUPPORTED_CXX_COMPILERS" >&2
     printf "Supported C++ compilers:\n" >&2
     { cat "$SUPPORTED_CXX_COMPILERS" 2>/dev/null || true; } >&2
     exit 3

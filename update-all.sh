@@ -148,8 +148,8 @@ derive_cxx() {
   esac
 }
 
-# Find the list entry (a full path) whose BASENAME matches $1.
-# The supported lists hold absolute paths pinned by check-compilers.sh.
+# Find the list entry whose BASENAME matches $1. Supported lists hold names
+# now; older generated lists may hold paths, so this still handles both.
 find_by_basename() {
   # $1 = wanted basename, $2 = list file
   awk -v want="$1" '
@@ -187,7 +187,7 @@ while read -r c <&3 || [ -n "$c" ]; do
   # skip blanks and comments
   case "$c" in ''|\#*) continue ;; esac
 
-  # entries are full paths; pair by basename
+  # entries are names or legacy full paths; pair by basename
   cbase=$(basename "$c")
   xbase=$(derive_cxx "$cbase")
   if [ -z "$xbase" ]; then

@@ -38,6 +38,9 @@ OS="$(uname)"
 #     /usr/lib/llvm-N, FreeBSD /usr/local/llvmNN), so an uncommented shell
 #     profile cannot hide an installed toolchain
 #   - every candidate must compile a trivial program before being recorded
+#   - generic and versioned aliases are both kept when they point at the same
+#     physical binary, so Ubuntu's gcc and gcc-13 are both valid user-facing
+#     compiler names
 #   - a name is normally the binary's basename; first discovery wins (PATH
 #     order first, keg dirs last), so /usr/bin/clang keeps the name "clang"
 #     even when a keg also ships a plain clang
@@ -117,6 +120,15 @@ _version_major() {
   _version_line "$1" | sed -n -E 's/.*version ([0-9]+).*/\1/p'
 }
 
+_is_versioned_compiler_alias() {
+  case "$1" in
+    gcc-[0-9]*|gcc[0-9]*|gcc-mp-[0-9]*|g++-[0-9]*|g++[0-9]*|g++-mp-[0-9]*|clang-[0-9]*|clang[0-9]*|clang-mp-[0-9]*|clang++-[0-9]*|clang++[0-9]*|clang++-mp-[0-9]*)
+      return 0 ;;
+    *)
+      return 1 ;;
+  esac
+}
+
 # Probe candidates; write NAMES to supported_<type>.txt and NAME=PATH lines
 # to the (already-truncated) map file.
 # Args: <type> <lang> <patterns...>
@@ -144,12 +156,18 @@ probe_list() {
     # $1 = path; assigns a free name or skips
     local p="$1" b name major
     b="$(basename "$p")"
-    # never map the same physical binary twice under different names
+    # Keep stable versioned aliases even when the generic name points at
+    # the same physical binary. On Ubuntu, for example, gcc and gcc-13 are
+    # often both intentional user-facing names for /usr/bin/gcc-13.
     real="$p"
     if command -v realpath >/dev/null 2>&1; then
       real="$(realpath "$p" 2>/dev/null || printf '%s' "$p")"
     fi
-    case " $seen_paths " in *" $real "*) return 0 ;; esac
+    case " $seen_paths " in
+      *" $real "*)
+        _is_versioned_compiler_alias "$b" || return 0
+        ;;
+    esac
 
     name="$b"
     case " $seen_names " in

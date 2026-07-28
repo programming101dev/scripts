@@ -155,11 +155,9 @@ CXX_PATH="$(resolve_compiler "$cxx_compiler")"
 
 ./check-env.sh -c "$CC_PATH" -x "$CXX_PATH" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
 
-# The supported lists hold full paths (check-compilers.sh pins them).
-# Accept a match on exact path, or on basename in either direction, so both
-# `-c /usr/bin/clang` and `-c clang` validate against /usr/bin/clang.
 in_supported() {
-  # $1 = compiler (name or path), $2 = list file
+  # The supported lists hold compiler names. Older generated lists may hold
+  # paths, so accept a match on exact text or basename in either direction.
   local needle_full="$1" file="$2" needle_base line line_base
   needle_base="$(basename "$needle_full")"
   [ -f "$file" ] || return 1
@@ -176,17 +174,59 @@ in_supported() {
   return 1
 }
 
+compiler_realpath() {
+  local compiler="$1"
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$compiler" 2>/dev/null || printf '%s' "$compiler"
+  else
+    printf '%s' "$compiler"
+  fi
+}
+
+compiler_path_has_supported_alias() {
+  # $1 = compiler path, $2 = supported compiler list
+  local needle="$1" file="$2" needle_real line name path path_real
+  [ -f "$MAP_FILE" ] && [ -f "$file" ] || return 1
+  needle_real="$(compiler_realpath "$needle")"
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    case "$line" in
+      *=*) ;;
+      *) continue ;;
+    esac
+    name="${line%%=*}"
+    path="${line#*=}"
+    in_supported "$name" "$file" || continue
+    path_real="$(compiler_realpath "$path")"
+    if [ "$path" = "$needle" ] || [ "$path_real" = "$needle_real" ]; then
+      return 0
+    fi
+  done < "$MAP_FILE"
+  return 1
+}
+
+compiler_supported() {
+  # $1 = requested compiler (name/path), $2 = resolved path, $3 = list file
+  local requested="$1" resolved="$2" file="$3"
+  in_supported "$requested" "$file" \
+    || in_supported "$resolved" "$file" \
+    || compiler_path_has_supported_alias "$requested" "$file" \
+    || compiler_path_has_supported_alias "$resolved" "$file"
+}
+
 # Ensure the compiler is listed in supported_c_compilers.txt
-if ! in_supported "$c_compiler" supported_c_compilers.txt; then
-    echo "Error: The specified compiler '$c_compiler' is not in supported_c_compilers.txt."
+if ! compiler_supported "$c_compiler" "$CC_PATH" supported_c_compilers.txt; then
+    echo "Error: The specified compiler '$c_compiler' (resolved to '$CC_PATH') is not in supported_c_compilers.txt."
     echo "Supported compilers:"
     cat supported_c_compilers.txt
     exit 1
 fi
 
 # Ensure the C++ compiler is listed in supported_cxx_compilers.txt
-if ! in_supported "$cxx_compiler" supported_cxx_compilers.txt; then
-    echo "Error: The specified C++ compiler '$cxx_compiler' is not in supported_cxx_compilers.txt."
+if ! compiler_supported "$cxx_compiler" "$CXX_PATH" supported_cxx_compilers.txt; then
+    echo "Error: The specified C++ compiler '$cxx_compiler' (resolved to '$CXX_PATH') is not in supported_cxx_compilers.txt."
     echo "Supported C++ compilers:"
     cat supported_cxx_compilers.txt
     exit 1
