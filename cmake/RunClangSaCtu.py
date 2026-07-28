@@ -35,6 +35,40 @@ def strip_out(argv):
         out.append(a)
     return out
 
+def extdef_flags(argv):
+    """Keep compile flags needed for clang-extdef-mapping.
+
+    Some important flags are option/value pairs in compile_commands.json:
+    `-isysroot /path`, `-isystem /path`, `-I /path`, etc. A prefix-only
+    filter keeps the option and drops the following value, which makes clang
+    treat the next unrelated flag as the operand. On Darwin that turns
+    `-D_POSIX_C_SOURCE=...` into the sysroot and system headers disappear.
+    """
+    out = []
+    takes_value = {
+        "-I", "-F", "-D", "-U", "-arch", "-target",
+        "-isystem", "-isysroot", "-idirafter", "-iquote", "-include",
+    }
+    keep_prefixes = (
+        "-I", "-F", "-D", "-U", "-std=", "-arch=", "-target=",
+        "-isystem", "-isysroot", "-idirafter", "-iquote", "-include",
+    )
+    i = 1
+    while i < len(argv):
+        arg = argv[i]
+        if arg in takes_value:
+            out.append(arg)
+            if i + 1 < len(argv):
+                out.append(argv[i + 1])
+                i += 2
+            else:
+                i += 1
+            continue
+        if arg.startswith(keep_prefixes):
+            out.append(arg)
+        i += 1
+    return out
+
 def main():
     if "--" not in sys.argv:
         print("missing -- <analyzer args>", file=sys.stderr); return 2
@@ -85,7 +119,7 @@ def main():
             return r.returncode
         # extdef-mapping prints "<len>:<usr> <sourcepath>"; repoint at the .ast
         # clang-extdef-mapping wants: <file> -- <compiler flags>
-        flags = [a for a in argv[1:] if a.startswith(("-I", "-D", "-std", "-isystem", "-isysroot"))]
+        flags = extdef_flags(argv)
         r = subprocess.run([extdef, fpath, "--"] + flags,
                            cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         if r.returncode != 0:
