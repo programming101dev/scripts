@@ -6,7 +6,7 @@ set -euo pipefail
 IFS=$' \t\n'
 
 # Always operate from the directory this script lives in.
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 # ----------------- globals and defaults -----------------
 c_compiler=""
@@ -42,6 +42,8 @@ LINK_FLAGS_SH="./link-flags.sh"
 LINK_COMPILERS_SH="./link-compilers.sh"
 LINK_CMAKE_SH="./link-cmake.sh"
 BUILD_REPO_SH="./build-repo.sh"
+COPY_SCRIPTS_SH="./copy-scripts.sh"
+COPY_PLAYGROUND_TRACK_SCRIPTS_SH="./copy-playground-track-scripts.sh"
 
 # ----------------- messaging helpers -----------------
 die() { printf "Error: %s\n" "$*" >&2; exit 2; }
@@ -582,6 +584,8 @@ fi
 if [[ -x ./copy-cmake.sh ]]; then
   run_or_echo ./copy-cmake.sh
 fi
+run_or_echo "$COPY_SCRIPTS_SH" -a
+run_or_echo "$COPY_PLAYGROUND_TRACK_SCRIPTS_SH"
 
 # ----------------- link discovered flags & compilers into each repo -----------------
 run_or_echo "$LINK_FLAGS_SH"

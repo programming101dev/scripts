@@ -5,7 +5,7 @@ set -euo pipefail
 
 # Always operate from the directory this script lives in (repos.txt lives
 # here, and the relative dest paths in it are relative to this directory).
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 # ----------------- defaults -----------------
 c_compiler=""
@@ -106,6 +106,9 @@ trim() {
   printf '%s' "${s%"${s##*[![:space:]]}"}"
 }
 
+failures=0
+processed=0
+
 # Read repos.txt on fd 3 so the children (change-compiler.sh, build.sh,
 # install.sh — which may legitimately read stdin, e.g. a sudo password
 # prompt in install.sh) keep the real stdin.
@@ -122,16 +125,19 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   dir="$(trim "${dir:-}")"
   repo_type="$(trim "${repo_type:-}")"
 
-  if [[ -z "$dir" || -z "$repo_type" ]]; then
-    say "  -> Skipping malformed line: $raw"
+  if [[ -z "$repo_url" || -z "$dir" || -z "$repo_type" ]]; then
+    say "  -> FAIL: malformed line: $raw"
+    failures=$((failures + 1))
     continue
   fi
+  processed=$((processed + 1))
 
   hr
   say "Working on ${dir} (${repo_type})"
 
   if [[ ! -d "$dir" ]]; then
-    say "  -> Skipping (directory not found): $dir"
+    say "  -> FAIL: directory not found: $dir"
+    failures=$((failures + 1))
     continue
   fi
 
@@ -140,7 +146,8 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   # A repo without change-compiler.sh should be skipped with a message,
   # not kill the whole multi-repo run via set -e.
   if [[ ! -x ./change-compiler.sh ]]; then
-    say "  -> No executable change-compiler.sh in ${dir}; skipping repo."
+    say "  -> FAIL: no executable change-compiler.sh in ${dir}."
+    failures=$((failures + 1))
     popd >/dev/null
     continue
   fi
@@ -170,7 +177,8 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       ./change-compiler.sh -c "$CC_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH"
       ;;
     *)
-      say "  -> Unknown repo type '${repo_type}', skipping."
+      say "  -> FAIL: unknown repo type '${repo_type}'."
+      failures=$((failures + 1))
       popd >/dev/null
       continue
       ;;
@@ -181,7 +189,8 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     say "Building: ${dir}"
     ./build.sh "${build_script_args[@]}"
   else
-    say "  -> No build.sh found, skipping build."
+    say "  -> FAIL: no executable build.sh found."
+    failures=$((failures + 1))
   fi
 
   # If there’s an installer, run it (forward -s to skip cache if -S was given)
@@ -201,4 +210,12 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
 done 3< "$repos_file"
 
 hr
-say "All repositories processed."
+if [[ "$processed" -eq 0 ]]; then
+  say "FAIL: repos.txt did not contain any repositories."
+  exit 1
+fi
+if [[ "$failures" -gt 0 ]]; then
+  say "Repository build failed: ${failures} configuration problem(s)."
+  exit 1
+fi
+say "All ${processed} repositories processed successfully."

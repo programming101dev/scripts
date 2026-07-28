@@ -60,7 +60,7 @@ esac
 
 set -u
 
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" || exit 1
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" || exit 1
 SCRIPT_DIR="$PWD"
 OUT="$SCRIPT_DIR/claude-report"
 
@@ -151,7 +151,7 @@ trivial_check() {
   TRIVIAL_ERR=""
   tmpdir="$(mktemp -d 2>/dev/null || mktemp -d -t ccprobe)" || { TRIVIAL_ST="?"; return; }
   case "$(basename "$cc")" in
-    *++*|c++) lang="c++"; src="$tmpdir/t.cpp"; printf 'int main(){return 0;}\n' >"$src" ;;
+    *++*) lang="c++"; src="$tmpdir/t.cpp"; printf 'int main(){return 0;}\n' >"$src" ;;
     *)        lang="c";   src="$tmpdir/t.c";   printf 'int main(void){return 0;}\n' >"$src" ;;
   esac
   if out="$("$cc" -x "$lang" "$src" -o "$tmpdir/a.out" 2>&1)" && [ -x "$tmpdir/a.out" ]; then

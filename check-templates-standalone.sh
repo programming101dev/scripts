@@ -8,11 +8,12 @@
 # files.
 
 set -euo pipefail
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 cc="clang"
 cxx="clang++"
 out_dir=""
+automatic_out_dir=0
 keep=0
 run_build=1
 run_tests=1
@@ -51,16 +52,17 @@ done
 
 if [ -z "$out_dir" ]; then
   out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-template-standalone.XXXXXX")"
+  automatic_out_dir=1
 fi
 
-out_dir="$(mkdir -p "$out_dir" && CDPATH= cd -P "$out_dir" && pwd -P)"
+out_dir="$(mkdir -p "$out_dir" && CDPATH='' cd -P "$out_dir" && pwd -P)"
 log_dir="$out_dir/logs"
 mkdir -p "$log_dir"
 
 failed=0
 
 cleanup() {
-  if [ "$failed" -eq 0 ] && [ "$keep" -eq 0 ]; then
+  if [ "$automatic_out_dir" -eq 1 ] && [ "$failed" -eq 0 ] && [ "$keep" -eq 0 ]; then
     rm -rf "$out_dir"
   fi
 }
@@ -72,7 +74,7 @@ say() {
 
 fail() {
   printf 'FAIL: %s\n' "$*" >&2
-  failed=1
+  failed=$((failed + 1))
 }
 
 show_log_tail() {
@@ -147,6 +149,9 @@ check_allowed_symlinks() {
     name="$(basename "$link_path")"
     case "$name" in
       .flags|sanitizers.txt|supported_c_compilers.txt|supported_cxx_compilers.txt)
+        if [ ! -e "$link_path" ]; then
+          fail "$template fresh instance has dangling symlink: $name -> $(readlink "$link_path")"
+        fi
         ;;
       *)
         fail "$template fresh instance has unexpected top-level symlink: $name -> $(readlink "$link_path")"
@@ -180,7 +185,13 @@ check_copy_shape() {
   require_executable "$dir/test-all.sh"
   require_file "$dir/CMakeLists.txt"
   require_file "$dir/config.cmake"
+  require_file "$dir/sanitizers.txt"
   require_cmake_helpers "$dir"
+  if [ "$template" = "template-cxx" ]; then
+    require_file "$dir/.flags/$(basename "$cxx")/warning_flags.txt"
+  else
+    require_file "$dir/.flags/$(basename "$cc")/warning_flags.txt"
+  fi
   check_allowed_symlinks "$dir" "$template"
   check_script_references "$dir" "$template"
 }
@@ -192,12 +203,13 @@ copy_and_check() {
 
   dest="$out_dir/$template"
   copy_log="$log_dir/${template}-copy.log"
+  template_failures="$failed"
 
   reset_destination "$dest"
   run_logged "copy $template" "$copy_log" "$src/copy-template.sh" -q "$dest"
   check_copy_shape "$dest" "$template"
 
-  if [ "$run_build" -eq 1 ] && [ "$failed" -eq 0 ]; then
+  if [ "$run_build" -eq 1 ] && [ "$failed" -eq "$template_failures" ]; then
     build_log="$log_dir/${template}-build.log"
 
     if [ "$lang" = "cxx" ]; then
@@ -211,7 +223,7 @@ copy_and_check() {
     fi
   fi
 
-  if [ "$run_tests" -eq 1 ] && [ "$failed" -eq 0 ]; then
+  if [ "$run_tests" -eq 1 ] && [ "$failed" -eq "$template_failures" ]; then
     test_log="$log_dir/${template}-test.log"
     run_logged "test fresh $template instance" "$test_log" bash -c 'cd "$1" && ./test.sh' sh "$dest"
   fi

@@ -11,34 +11,34 @@ P101_USAGE
 esac
 
 # Always operate on the repo this script lives in, regardless of cwd.
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 dir_name=${PWD##*/}
 
 # Ensure we're in a git repo
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "$dir_name is not a git repository; skipping pull."
-  exit 0
+  echo "Error: $dir_name is not a git repository." >&2
+  exit 2
 fi
 
 # Skip detached HEADs (no branch)
 branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
 if [[ -z "$branch" ]]; then
-  echo "$dir_name is on a detached HEAD; skipping pull."
-  exit 0
+  echo "Error: $dir_name is on a detached HEAD." >&2
+  exit 2
 fi
 
 # Ensure an upstream is configured
 if ! git rev-parse --verify -q "@{u}" >/dev/null; then
-  echo "$dir_name has no upstream configured; skipping pull."
-  exit 0
+  echo "Error: $dir_name has no upstream configured." >&2
+  exit 2
 fi
 
 # Update refs and compare
 git fetch --quiet --prune
 
-behind=$(git rev-list --count HEAD..@{u})
-ahead=$(git rev-list --count @{u}..HEAD)
+behind=$(git rev-list --count 'HEAD..@{u}')
+ahead=$(git rev-list --count '@{u}..HEAD')
 
 if (( behind == 0 && ahead == 0 )); then
   echo "$dir_name is already up to date."

@@ -13,7 +13,7 @@ esac
 create_symlinks() {
   # Anchor to the directory this script lives in, not the caller's cwd.
   local root
-  root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+  root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 
   # Absolute inputs
   local c_compilers_file="${root}/supported_c_compilers.txt"
@@ -22,11 +22,13 @@ create_symlinks() {
   local compiler_map_file="${root}/compiler_paths.txt"
   local repos_file="${root}/repos.txt"
 
-  # Sanity checks (don’t hard-fail on sanitizers; some repos may not use them)
+  # These are shared build inputs. Do not create a partially linked repo.
   [[ -f "${repos_file}" ]] || { echo "ERROR: ${repos_file} not found." >&2; exit 1; }
   [[ -f "${c_compilers_file}" ]] || { echo "ERROR: ${c_compilers_file} not found." >&2; exit 1; }
   [[ -f "${cxx_compilers_file}" ]] || { echo "ERROR: ${cxx_compilers_file} not found." >&2; exit 1; }
-  [[ -f "${sanitizers_file}" ]] || echo "WARN: ${sanitizers_file} not found; will skip sanitizer links."
+  [[ -f "${sanitizers_file}" ]] || { echo "ERROR: ${sanitizers_file} not found." >&2; exit 1; }
+  [[ -f "${compiler_map_file}" ]] || { echo "ERROR: ${compiler_map_file} not found." >&2; exit 1; }
+  local failures=0
 
   # Helper: ensure symlink points to target (update if wrong; create if missing)
   ensure_link() {
@@ -35,8 +37,8 @@ create_symlinks() {
 
     # Skip if target is missing (don’t make broken links)
     if [[ ! -e "${target}" ]]; then
-      echo "WARN: target missing, skip link: ${linkpath} -> ${target}"
-      return 0
+      echo "FAIL: target missing: ${linkpath} -> ${target}" >&2
+      return 1
     fi
 
     if [[ -L "${linkpath}" ]]; then
@@ -50,8 +52,8 @@ create_symlinks() {
       ln -sfn -- "${target}" "${linkpath}"
       echo "Updated symlink: ${linkpath} -> ${target}"
     elif [[ -e "${linkpath}" ]]; then
-      echo "SKIP: ${linkpath} exists and is not a symlink."
-      return 0
+      echo "FAIL: ${linkpath} exists and is not a symlink." >&2
+      return 1
     else
       ln -s -- "${target}" "${linkpath}"
       echo "Created symlink: ${linkpath} -> ${target}"
@@ -66,14 +68,15 @@ create_symlinks() {
     raw="$(printf '%s' "${raw}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
     [[ -z "${raw}" ]] && continue
 
-    local repo_url dir repo_type
-    IFS='|' read -r repo_url dir repo_type <<EOF
+    local _repo_url dir repo_type
+    IFS='|' read -r _repo_url dir repo_type <<EOF
 ${raw}
 EOF
 
     # Require a destination dir
     if [[ -z "${dir:-}" ]]; then
-      echo "SKIP: no destination in line: ${raw}"
+      echo "FAIL: no destination in line: ${raw}" >&2
+      failures=$((failures + 1))
       continue
     fi
 
@@ -84,7 +87,8 @@ EOF
     esac
 
     if [[ ! -d "${dir}" ]]; then
-      echo "SKIP: destination directory does not exist: ${dir}"
+      echo "FAIL: destination directory does not exist: ${dir}" >&2
+      failures=$((failures + 1))
       continue
     fi
 
@@ -100,24 +104,35 @@ EOF
         comp_link="${dir}/supported_cxx_compilers.txt"
         ;;
       *)
-        echo "SKIP: unsupported repo type '${repo_type:-}' for ${dir}"
+        # Python tools do not consume the C/C++ compiler-list contract.
+        if [[ "${repo_type:-}" == "python" ]]; then
+          continue
+        fi
+        echo "FAIL: unsupported repo type '${repo_type:-}' for ${dir}" >&2
+        failures=$((failures + 1))
         continue
         ;;
     esac
 
-    ensure_link "${comp_target}" "${comp_link}"
-
-    # Sanitizers link (optional)
-    if [[ -f "${sanitizers_file}" ]]; then
-      ensure_link "${sanitizers_file}" "${dir}/sanitizers.txt"
+    if ! ensure_link "${comp_target}" "${comp_link}"; then
+      failures=$((failures + 1))
     fi
 
-    # Name->path map link (optional), so repos resolve compiler names to the
+    if ! ensure_link "${sanitizers_file}" "${dir}/sanitizers.txt"; then
+      failures=$((failures + 1))
+    fi
+
+    # Name->path map link, so repos resolve compiler names to the
     # same pinned binaries the scripts do
-    if [[ -f "${compiler_map_file}" ]]; then
-      ensure_link "${compiler_map_file}" "${dir}/compiler_paths.txt"
+    if ! ensure_link "${compiler_map_file}" "${dir}/compiler_paths.txt"; then
+      failures=$((failures + 1))
     fi
   done < "${repos_file}"
+
+  if [[ "${failures}" -gt 0 ]]; then
+    echo "Compiler link update failed: ${failures} problem(s)." >&2
+    return 1
+  fi
 }
 
 create_symlinks

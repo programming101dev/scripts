@@ -27,7 +27,7 @@ while getopts "nvh" opt; do
 done
 
 # Paths
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 SRC_CMAKE="$SCRIPT_DIR/CMakeLists.txt"
 REPOS_FILE="$SCRIPT_DIR/repos.txt"
 
@@ -67,6 +67,7 @@ copy_if_needed() {
 }
 
 # Process repos.txt (which lives alongside this script)
+failures=0
 while IFS= read -r line || [ -n "$line" ]; do
   # Strip CR if CRLF file, trim whitespace.
   # NOTE: use tr, not ${line%$'\r'} — $'...' is not POSIX sh and this script
@@ -76,11 +77,18 @@ while IFS= read -r line || [ -n "$line" ]; do
   case "$line" in \#*) continue ;; esac
 
   dest_field=$(printf '%s' "$line" | awk -F'|' '{print $2}')
+  repo_type=$(printf '%s' "$line" | awk -F'|' '{print $3}')
 
-  if [ -z "$dest_field" ]; then
-    printf 'Skip: bad line (missing dest): %s\n' "$line" >&2
+  if [ -z "$dest_field" ] || [ -z "$repo_type" ]; then
+    printf 'FAIL: bad repos.txt line: %s\n' "$line" >&2
+    failures=$((failures + 1))
     continue
   fi
+  case "$repo_type" in c|cxx) ;; python) continue ;; *)
+    printf 'FAIL: unsupported repo type %s: %s\n' "$repo_type" "$dest_field" >&2
+    failures=$((failures + 1))
+    continue ;;
+  esac
 
   # Resolve to absolute path; relative dests (../libraries/lib_c) are
   # relative to the scripts directory, not the caller's cwd.
@@ -88,18 +96,24 @@ while IFS= read -r line || [ -n "$line" ]; do
     /*) dest_probe=$dest_field ;;
     *)  dest_probe="$SCRIPT_DIR/$dest_field" ;;
   esac
-  dest_dir=$(CDPATH= cd -- "$dest_probe" 2>/dev/null && pwd) || {
-    [ "$VERBOSE" -eq 1 ] && printf 'Skip: cannot resolve %s\n' "$dest_field"
+  dest_dir=$(CDPATH='' cd -- "$dest_probe" 2>/dev/null && pwd) || {
+    printf 'FAIL: cannot resolve configured repo %s\n' "$dest_field" >&2
+    failures=$((failures + 1))
     continue
   }
 
   if [ ! -d "$dest_dir" ]; then
-    [ "$VERBOSE" -eq 1 ] && printf 'Skip: not a directory: %s\n' "$dest_dir"
+    printf 'FAIL: not a directory: %s\n' "$dest_dir" >&2
+    failures=$((failures + 1))
     continue
   fi
 
   if [ ! -f "$dest_dir/config.cmake" ]; then
-    [ "$VERBOSE" -eq 1 ] && printf 'Skip: no config.cmake in %s\n' "$dest_dir"
+    case "$dest_field" in
+      *examples/c-examples) continue ;;
+    esac
+    printf 'FAIL: no config.cmake in %s\n' "$dest_dir" >&2
+    failures=$((failures + 1))
     continue
   fi
 
@@ -114,6 +128,12 @@ if [ -x "$SCRIPT_DIR/link-cmake.sh" ]; then
   else
     "$SCRIPT_DIR/link-cmake.sh"
   fi
+else
+  printf 'FAIL: link-cmake.sh is missing or not executable.\n' >&2
+  failures=$((failures + 1))
 fi
 
-exit 0
+if [ "$failures" -gt 0 ]; then
+  printf 'CMake distribution failed: %d problem(s).\n' "$failures" >&2
+  exit 1
+fi

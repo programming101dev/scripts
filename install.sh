@@ -95,15 +95,17 @@ fi
 
 run() {
   if $dry_run; then
-    echo "[dry-run] $*"
+    printf '[dry-run]'
+    printf ' %q' "$@"
+    printf '\n'
   else
-    eval "$@"
+    "$@"
   fi
 }
 
 # ----------------- install -----------------
 if $dry_run; then
-  run "${cmake_cmd[*]}"
+  run "${cmake_cmd[@]}"
 else
   # Only prompt for sudo if needed (prefix/DESTDIR may be writable)
   if [[ -n "$destdir" ]]; then
@@ -150,11 +152,11 @@ if ! $skip_cache_update && [[ -z "$destdir" ]]; then
   # Only makes sense for real installs (not staged DESTDIR)
   if [[ "$(uname -s)" == "Darwin" ]]; then
     if command -v update_dyld_shared_cache >/dev/null 2>&1; then
-      run "sudo update_dyld_shared_cache -force"
+      run sudo update_dyld_shared_cache -force
     fi
   else
     if command -v ldconfig >/dev/null 2>&1; then
-      run "sudo ldconfig"
+      run sudo ldconfig
     fi
   fi
 fi

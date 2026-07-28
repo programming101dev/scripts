@@ -2,7 +2,7 @@
 # check-cmake-distribution.sh — ensure copied CMakeLists.txt files are current.
 
 set -euo pipefail
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 source_file="CMakeLists.txt"
 repos_file="repos.txt"
@@ -27,15 +27,34 @@ while IFS= read -r raw || [[ -n "${raw:-}" ]]; do
   IFS='|' read -r _url dest _type <<EOF
 $raw
 EOF
-  [[ -n "${dest:-}" ]] || continue
+  if [[ -z "${dest:-}" ]]; then
+    echo "FAIL: malformed repos.txt line: $raw"
+    failures=$((failures + 1))
+    continue
+  fi
   [[ "${_type:-}" == "c" || "${_type:-}" == "cxx" ]] || continue
 
   case "$dest" in
     /*) repo_dir="$dest" ;;
-    *) repo_dir="$(CDPATH= cd -- "$dest" 2>/dev/null && pwd -P)" || continue ;;
+    *)
+      if ! repo_dir="$(CDPATH='' cd -- "$dest" 2>/dev/null && pwd -P)"; then
+        echo "FAIL: configured repository is missing: $dest"
+        failures=$((failures + 1))
+        continue
+      fi ;;
   esac
 
-  [[ -f "$repo_dir/config.cmake" ]] || continue
+  # c-examples is a make-tree containing many independent examples rather
+  # than one shared-CMake project.
+  if [[ ! -f "$repo_dir/config.cmake" ]]; then
+    case "$dest" in
+      *examples/c-examples) continue ;;
+      *)
+        echo "FAIL: missing shared-CMake marker: $repo_dir/config.cmake"
+        failures=$((failures + 1))
+        continue ;;
+    esac
+  fi
 
   candidate="$repo_dir/CMakeLists.txt"
   if [[ ! -f "$candidate" ]]; then

@@ -7,13 +7,15 @@
 #
 #   1. GitHub Actions starter workflow drift check;
 #   2. shared CMakeLists distribution drift check;
-#   3. shared CMakeLists regression harness;
-#   4. p101 tool contract documentation checks;
-#   5. fresh-template standalone instantiate/build/test;
-#   6. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor.
+#   3. shared per-repository script distribution drift check;
+#   4. shared playground-track runner distribution drift check;
+#   5. shared CMakeLists regression harness;
+#   6. p101 tool contract documentation checks;
+#   7. fresh-template standalone instantiate/build/test;
+#   8. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor.
 
 set -euo pipefail
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 cc=""
 cxx=""
@@ -81,7 +83,7 @@ if [ -z "$out_dir" ]; then
   out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-after-update-all-check.XXXXXX")"
 fi
 
-out_dir="$(mkdir -p "$out_dir" && CDPATH= cd -P "$out_dir" && pwd -P)"
+out_dir="$(mkdir -p "$out_dir" && CDPATH='' cd -P "$out_dir" && pwd -P)"
 log_dir="$out_dir/logs"
 mkdir -p "$log_dir"
 summary="$out_dir/summary.md"
@@ -189,8 +191,12 @@ say "Host:         $host_os $host_release $host_machine"
 say "C compiler:   $cc"
 say "C++ compiler: $cxx"
 
+run_logged "workspace shell-script gate" "$log_dir/check-shell-scripts.log" ./check-shell-scripts.sh
 run_logged "GitHub Actions starter workflow drift" "$log_dir/check-github-actions-template.log" ./check-github-actions-template.sh
 run_logged "shared CMakeLists distribution drift" "$log_dir/check-cmake-distribution.log" ./check-cmake-distribution.sh
+run_logged "shared repository script distribution drift" "$log_dir/check-script-distribution.log" ./check-script-distribution.sh
+run_logged "shared playground-track runner distribution drift" "$log_dir/check-playground-track-scripts.log" ./copy-playground-track-scripts.sh -c
+run_logged "shared workspace link distribution" "$log_dir/check-shared-links.log" ./check-shared-links.sh
 
 if [ "$skip_cmake" -eq 0 ]; then
   run_logged "shared CMakeLists regression harness" "$log_dir/test-cmake.log" ./test-cmake.sh -c "$cc" -x "$cxx" -k

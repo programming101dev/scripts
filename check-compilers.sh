@@ -12,7 +12,7 @@ esac
 
 # Always operate from the directory this script lives in, so the outputs
 # land in the scripts repo.
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 # Detect the operating system
 OS="$(uname)"
@@ -139,7 +139,7 @@ probe_list() {
 
   # -- collect (name, path) candidates --
   local cand_names=() cand_paths=() seen_names=" " seen_paths=" "
-  local d f base pattern real
+  local d f pattern real
   local search_dirs=()
 
   local IFS_saved="$IFS"

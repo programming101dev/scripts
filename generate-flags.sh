@@ -42,7 +42,7 @@ while getopts ":C:X:h" opt; do
 done
 
 # ---------- paths ----------
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd -P)"
 # Profile selection (P101_FLAGS_PROFILE, set by update.sh --standard): the
 # 'standard' tier probes flags-standard/ into .flags-standard/ so the maximal
@@ -155,10 +155,13 @@ unit_denied() {
 # sense together (e.g. "-fsanitize=cfi -flto -fvisibility=hidden") and they
 # are probed — and later emitted — as a group. Single-flag lines behave
 # exactly as before.
-# usage: read_flags_file <path> <out_array_name>
+# Result is returned in READ_FLAGS_RESULT. A fixed result variable avoids
+# evaluating file contents as shell code while remaining compatible with the
+# Bash 3.2 shipped by macOS.
+READ_FLAGS_RESULT=()
 read_flags_file() {
-  local path="$1" out="$2" line
-  eval "$out=()"
+  local path="$1" line
+  READ_FLAGS_RESULT=()
   [[ -f "$path" ]] || return 0
   # shellcheck disable=SC2162
   while IFS= read -r line || [[ -n "${line-}" ]]; do
@@ -172,7 +175,7 @@ read_flags_file() {
     # collapse internal whitespace so the group joins/splits cleanly
     line="$(printf '%s' "$line" | tr -s ' \t' ' ')"
     line="$(trim "$line")"
-    [[ -n "$line" ]] && eval "$out+=(\"\$line\")"
+    [[ -n "$line" ]] && READ_FLAGS_RESULT+=("$line")
   done < "$path"
 }
 
@@ -358,7 +361,9 @@ probe_flags_file() {
   base="${fname%.txt}"
   mode="$(probe_mode_for_file "$fname")"
 
-  local flags=(); read_flags_file "$file" flags
+  local flags=()
+  read_flags_file "$file"
+  flags=("${READ_FLAGS_RESULT[@]}")
   [[ ${#flags[@]} -gt 0 ]] || return 0
 
   local cc_base out_cc log
@@ -472,21 +477,24 @@ P101_CXX_PROBE_EOF
 tmp_cxx_src="$TMP/probe.cpp"
 
 # ---------- compilers ----------
+READ_LIST_RESULT=()
 read_list_file() {
-  local f="$1" out="$2" line
-  eval "$out=()"
+  local f="$1" line
+  READ_LIST_RESULT=()
   [[ -f "$f" ]] || return 0
   # shellcheck disable=SC2162
   while IFS= read -r line || [[ -n "${line-}" ]]; do
     line="$(trim "${line-}")"
-    [[ -n "$line" ]] && eval "$out+=(\"\$line\")"
+    [[ -n "$line" ]] && READ_LIST_RESULT+=("$line")
   done < "$f"
 }
 
 supported_c_compilers=()
 supported_cxx_compilers=()
-read_list_file "$C_LIST_FILE"   supported_c_compilers
-read_list_file "$CXX_LIST_FILE" supported_cxx_compilers
+read_list_file "$C_LIST_FILE"
+supported_c_compilers=("${READ_LIST_RESULT[@]}")
+read_list_file "$CXX_LIST_FILE"
+supported_cxx_compilers=("${READ_LIST_RESULT[@]}")
 
 if [[ ${#supported_c_compilers[@]} -eq 0 && ${#supported_cxx_compilers[@]} -eq 0 ]]; then
   echo "No compilers listed in:"
@@ -533,7 +541,8 @@ shopt -u nullglob
 whole_set_check() {
   # $1=name $2=path $3=lang $4=src
   local name="$1" cc="$2" lang="$3" src="$4"
-  local out_cc="${OUT_DIR}/$(basename "$name")"
+  local out_cc
+  out_cc="${OUT_DIR}/$(basename "$name")"
   local all="" f base tok exe="$TMP/ws.out" so="$TMP/ws.so" errlog="$TMP/ws.err"
   local sel="" g gfile
 

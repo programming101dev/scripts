@@ -39,12 +39,13 @@ done
 
 create_symlinks() {
   local script_dir cmake_dir repos_file
-  script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+  script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
   cmake_dir="${script_dir}/cmake"
   repos_file="${script_dir}/repos.txt"
 
   [[ -d "${cmake_dir}" ]] || { echo "ERROR: ${cmake_dir} not found." >&2; exit 1; }
   [[ -f "${repos_file}" ]] || { echo "ERROR: ${repos_file} not found." >&2; exit 1; }
+  local failures=0
 
   while IFS= read -r raw || [[ -n "${raw:-}" ]]; do
     raw="${raw%$'\r'}"
@@ -56,14 +57,26 @@ create_symlinks() {
     IFS='|' read -r _url dir _type <<EOF
 ${raw}
 EOF
-    [[ -n "${dir:-}" ]] || continue
+    if [[ -z "${dir:-}" ]]; then
+      echo "FAIL: malformed repos.txt line: ${raw}" >&2
+      failures=$((failures + 1))
+      continue
+    fi
     [[ "${_type:-}" == "c" || "${_type:-}" == "cxx" ]] || continue
 
     case "${dir}" in
       /*) : ;;
-      *) dir="$(cd -- "${script_dir}/${dir}" 2>/dev/null && pwd -P)" || { echo "SKIP: cannot resolve ${dir}"; continue; } ;;
+      *) dir="$(cd -- "${script_dir}/${dir}" 2>/dev/null && pwd -P)" || {
+        echo "FAIL: cannot resolve ${dir}" >&2
+        failures=$((failures + 1))
+        continue
+      } ;;
     esac
-    [[ -d "${dir}" ]] || { echo "SKIP: not a directory: ${dir}"; continue; }
+    if [[ ! -d "${dir}" ]]; then
+      echo "FAIL: not a directory: ${dir}" >&2
+      failures=$((failures + 1))
+      continue
+    fi
     [[ "${dir}" == "${script_dir}" ]] && continue   # scripts/ owns the real dir
 
     # Use a RELATIVE target (../../scripts/cmake) so the symlink is valid no
@@ -85,12 +98,9 @@ EOF
         ln -sfn -- "${target}" "${linkpath}"; echo "Updated: ${linkpath} -> ${target}"
       fi
     elif [[ -e "${linkpath}" ]]; then
-      if [[ "${dry_run}" -eq 1 ]]; then
-        echo "[dry-run] replace directory: ${linkpath} -> ${target}"
-      else
-        rm -rf -- "${linkpath}"
-        ln -s -- "${target}" "${linkpath}"; echo "Replaced: ${linkpath} -> ${target}"
-      fi
+      echo "FAIL: refusing to replace non-symlink path: ${linkpath}" >&2
+      echo "      Move or remove it explicitly, then run this script again." >&2
+      failures=$((failures + 1))
     else
       if [[ "${dry_run}" -eq 1 ]]; then
         echo "[dry-run] create: ${linkpath} -> ${target}"
@@ -99,6 +109,11 @@ EOF
       fi
     fi
   done < "${repos_file}"
+
+  if [[ "${failures}" -gt 0 ]]; then
+    echo "CMake link update failed: ${failures} problem(s)." >&2
+    return 1
+  fi
 }
 
 create_symlinks

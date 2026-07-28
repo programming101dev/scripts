@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 usage() {
   cat <<USAGE >&2
@@ -24,21 +24,24 @@ Default destination:
 Example:
   $0 -d /tmp/unix-doc-sources
 USAGE
-  exit 1
+  exit "${1:-1}"
 }
+case " $* " in
+  *" --help "*|*" -h "*) usage 0 ;;
+esac
 
 destination="../unix-doc-sources"
 
 while getopts ":d:h" opt; do
   case "$opt" in
     d) destination="$OPTARG" ;;
-    h) usage ;;
-    \?|:) usage ;;
+    h) usage 0 ;;
+    \?|:) usage 2 ;;
   esac
 done
 
 mkdir -p "$destination"
-destination="$(CDPATH= cd "$destination" && pwd)"
+destination="$(CDPATH='' cd "$destination" && pwd)"
 
 update_or_clone() {
   local url="$1"
@@ -136,15 +139,25 @@ def fetch(url: str, output: Path) -> bool:
 
 out_dir = Path(sys.argv[1])
 toc_path = out_dir / "toc.html"
+failures = 0
 
-if fetch(urllib.parse.urljoin(BASE, "toc.html"), toc_path):
-    parser = FunctionLinkParser()
-    parser.feed(toc_path.read_text(encoding="utf-8", errors="replace"))
+if not fetch(urllib.parse.urljoin(BASE, "toc.html"), toc_path):
+    raise SystemExit("error: failed to fetch the POSIX function index")
 
-    for href in sorted(parser.hrefs):
-        output = out_dir / href
-        if fetch(urllib.parse.urljoin(BASE, href), output):
-            time.sleep(0.02)
+parser = FunctionLinkParser()
+parser.feed(toc_path.read_text(encoding="utf-8", errors="replace"))
+if not parser.hrefs:
+    raise SystemExit("error: POSIX function index contained no function pages")
+
+for href in sorted(parser.hrefs):
+    output = out_dir / href
+    if fetch(urllib.parse.urljoin(BASE, href), output):
+        time.sleep(0.02)
+    else:
+        failures += 1
+
+if failures:
+    raise SystemExit(f"error: failed to fetch {failures} POSIX function page(s)")
 PY
 
 cat <<REPORT

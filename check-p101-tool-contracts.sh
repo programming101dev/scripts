@@ -6,7 +6,7 @@
 # boundaries, exit behavior, or replayable usage/check evidence.
 
 set -euo pipefail
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 programs_dir="../programs"
 quiet=0

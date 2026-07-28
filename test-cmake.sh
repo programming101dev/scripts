@@ -44,7 +44,7 @@
 
 set -euo pipefail
 
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$PWD"
 CMAKE_FILE="${SCRIPT_DIR}/CMakeLists.txt"
 
@@ -127,7 +127,7 @@ new_proj() {
   cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
   # the shared CMakeLists now sources its helpers from cmake/ — mirror the
   # workspace symlink so the harness exercises the real layout
-  ln -sfn "$(CDPATH= cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
+  ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
   mkdir -p "$PROJ/.flags/$(basename "$c_compiler")"
   if [[ -n "$cxx_compiler" ]]; then
     mkdir -p "$PROJ/.flags/$(basename "$cxx_compiler")"

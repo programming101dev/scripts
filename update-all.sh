@@ -10,7 +10,7 @@
 set -eu
 
 # Always operate from the directory this script lives in.
-cd -- "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+cd -- "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 
 # Defaults
 clang_format_name="clang-format"
@@ -65,43 +65,35 @@ usage() {
 # --help / -h -> usage, exit 0 (P101 uniform CLI help)
 case " $* " in *" --help "*|*" -h "*) ( usage ) || true; exit 0 ;; esac
 
-# Accept the long spellings --no-flags / --standard in addition to -N / -S,
-# plus the opt-in --coverage / --profile. The coverage/profile switches just
-# export P101_COVERAGE / P101_PROFILE here; those env vars propagate into every
-# child update.sh (and its CMake configure), so no per-pair arg threading is
-# needed. They compose with each other and with a normal/standard/sanitized run.
-_args=""
-for _a in "$@"; do
-  if [ "$_a" = "--no-flags" ]; then
-    no_flags=1
-  elif [ "$_a" = "--standard" ]; then
-    standard=1
-  elif [ "$_a" = "--coverage" ]; then
-    export P101_COVERAGE=1
-  elif [ "$_a" = "--profile" ]; then
-    export P101_PROFILE=1
-  elif [ "$_a" = "--skip-install" ]; then
-    skip_install=1
-  else
-    _args="$_args '$(printf '%s' "$_a" | sed "s/'/'\\\\''/g")'"
-  fi
-done
-eval "set -- $_args"
-
-# Options
-while getopts "f:t:k:s:C:X:u:NSIh" opt; do
-  case "$opt" in
-    f) clang_format_name=$OPTARG ;;
-    t) clang_tidy_name=$OPTARG ;;
-    k) cppcheck_name=$OPTARG ;;
-    s) sanitizers=$OPTARG; sanitizers_given=1 ;;
-    C) c_list_file=$OPTARG ;;
-    X) cxx_list_file=$OPTARG ;;
-    u) driver=$OPTARG ;;
-    N) no_flags=1 ;;
-    S) standard=1 ;;
-    I) skip_install=1 ;;
-    h|*) usage ;;
+# Parse short and long spellings without reconstructing argv through eval.
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -f|-t|-k|-s|-C|-X|-u)
+      [ "$#" -ge 2 ] || { printf 'Error: %s requires an argument.\n' "$1" >&2; exit 2; }
+      _opt=$1
+      _value=$2
+      case "$_opt" in
+        -f) clang_format_name=$_value ;;
+        -t) clang_tidy_name=$_value ;;
+        -k) cppcheck_name=$_value ;;
+        -s) sanitizers=$_value; sanitizers_given=1 ;;
+        -C) c_list_file=$_value ;;
+        -X) cxx_list_file=$_value ;;
+        -u) driver=$_value ;;
+      esac
+      shift 2
+      ;;
+    -N|--no-flags) no_flags=1; shift ;;
+    -S|--standard) standard=1; shift ;;
+    -I|--skip-install) skip_install=1; shift ;;
+    --coverage) export P101_COVERAGE=1; shift ;;
+    --profile) export P101_PROFILE=1; shift ;;
+    -h|--help) usage ;;
+    --) shift; [ "$#" -eq 0 ] || { printf 'Error: unexpected arguments.\n' >&2; exit 2; } ;;
+    *)
+      printf 'Error: unknown option: %s\n' "$1" >&2
+      usage
+      ;;
   esac
 done
 
@@ -121,7 +113,7 @@ abs_path() {
     *)
       _dir=$(dirname "$1")
       _base=$(basename "$1")
-      printf '%s/%s' "$(CDPATH= cd -- "$_dir" && pwd -P)" "$_base"
+      printf '%s/%s' "$(CDPATH='' cd -- "$_dir" && pwd -P)" "$_base"
       ;;
   esac
 }

@@ -12,7 +12,7 @@
 # cleanup ratchet.
 
 set -euo pipefail
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 programs_dir="../programs"
 out_dir=""
@@ -57,14 +57,34 @@ if [ -z "$out_dir" ]; then
   out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-tool-audit.XXXXXX")"
 fi
 
-out_dir="$(mkdir -p "$out_dir" && CDPATH= cd -P "$out_dir" && pwd -P)"
+out_dir="$(mkdir -p "$out_dir" && CDPATH='' cd -P "$out_dir" && pwd -P)"
 log_dir="$out_dir/logs"
 mkdir -p "$log_dir"
 summary="$out_dir/summary.md"
-programs_dir="$(CDPATH= cd "$programs_dir" && pwd)"
-workspace_dir="$(CDPATH= cd "$programs_dir/.." && pwd)"
+programs_dir="$(CDPATH='' cd "$programs_dir" && pwd)"
+workspace_dir="$(CDPATH='' cd "$programs_dir/.." && pwd)"
 wrapper_audit="$programs_dir/p101-wrapper-audit/p101-wrapper-audit"
-module_map="$programs_dir/p101-module-map/build-clang/p101-module-map"
+
+find_built_tool() {
+  repo="$1"
+  name="$2"
+  if [ -f "$repo/.last-build-dir" ]; then
+    build_dir="$(cat "$repo/.last-build-dir")"
+    if [ -x "$repo/$build_dir/$name" ]; then
+      printf '%s\n' "$repo/$build_dir/$name"
+      return 0
+    fi
+  fi
+  for candidate in "$repo"/build-*/"$name" "$repo"/build/"$name"; do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  command -v "$name" 2>/dev/null
+}
+
+module_map="$(find_built_tool "$programs_dir/p101-module-map" p101-module-map || true)"
 
 say() {
   printf '%s\n' "$*"

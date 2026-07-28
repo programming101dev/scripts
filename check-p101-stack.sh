@@ -9,7 +9,7 @@
 
 set -euo pipefail
 unset CDPATH
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 cc="clang"
 cxx="clang++"
@@ -97,7 +97,7 @@ if [ -z "$out_dir" ]; then
   out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-stack-check.XXXXXX")"
 fi
 
-out_dir="$(mkdir -p "$out_dir" && CDPATH= cd -P "$out_dir" && pwd -P)"
+out_dir="$(mkdir -p "$out_dir" && CDPATH='' cd -P "$out_dir" && pwd -P)"
 log_dir="$out_dir/logs"
 mkdir -p "$log_dir"
 
@@ -209,7 +209,7 @@ fi
 if [ "$skip_playground" -eq 0 ]; then
   playground_out="$out_dir/playground-tour"
   reset_child_dir "$playground_out"
-  tour_args=(-o "$playground_out" -n "$fault_count" -t "$fuzz_secs")
+  tour_args=(-o "$playground_out" -n "$fault_count" -t "$fuzz_secs" -c "$cc")
   if [ "$playground_skip_quality" -eq 1 ]; then
     tour_args+=(--skip-quality)
   fi

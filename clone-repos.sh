@@ -12,7 +12,7 @@ esac
 
 # Always operate from the directory this script lives in (repos.txt lives
 # here, and the relative dest paths in it are relative to this directory).
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 REPOS_FILE="repos.txt"
 GIT_RETRY_ATTEMPTS=5
@@ -63,6 +63,9 @@ if ! command -v git >/dev/null 2>&1; then
     exit 1
 fi
 
+failures=0
+processed=0
+
 # Read repos.txt on fd 3 so children (git credential prompts, ssh host-key
 # confirmations, submodule hooks) keep the real stdin instead of silently
 # consuming the remaining lines of the list.
@@ -81,9 +84,11 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     repo_type="$(trim_whitespace "${repo_type:-}")"
 
     if [[ -z "${repo_url}" || -z "${target_dir}" ]]; then
-        echo "Skip malformed line: ${raw}" >&2
+        echo "FAIL: malformed line: ${raw}" >&2
+        failures=$((failures + 1))
         continue
     fi
+    processed=$((processed + 1))
 
     if [[ -n "${repo_type}" ]]; then
         echo "==> ${target_dir} (${repo_type})"
@@ -94,8 +99,9 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     mkdir -p -- "$(dirname -- "${target_dir}")"
 
     if [[ -d "${target_dir}" ]]; then
-        if [[ ! -d "${target_dir}/.git" ]]; then
-            echo "  ! Exists but not a git repo — skipping."
+        if ! git -C "${target_dir}" rev-parse --git-dir >/dev/null 2>&1; then
+            echo "  ! Exists but not a git repo."
+            failures=$((failures + 1))
             echo
             continue
         fi
@@ -106,11 +112,20 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
             echo "  ! Origin mismatch:"
             echo "     current: ${current_origin}"
             echo "     wanted : ${repo_url}"
+            failures=$((failures + 1))
+            echo
+            continue
+        elif [[ -z "${current_origin}" ]]; then
+            echo "  ! Missing origin remote; expected ${repo_url}."
+            failures=$((failures + 1))
+            echo
+            continue
         fi
 
         echo "  -> Fetching..."
         if ! retry_git git -C "${target_dir}" fetch --tags --prune; then
-            echo "  ! Fetch failed — skipping repository."
+            echo "  ! Fetch failed."
+            failures=$((failures + 1))
             echo
             continue
         fi
@@ -123,19 +138,24 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
             # wastes 25 seconds per repo.
             if ! git -C "${target_dir}" merge --ff-only --quiet '@{u}'; then
                 echo "  ! Cannot fast-forward (local commits/changes diverge from upstream)."
-                echo "  ! Resolve manually in ${target_dir} — skipping repository."
+                echo "  ! Resolve manually in ${target_dir}."
+                failures=$((failures + 1))
                 echo
                 continue
             fi
         else
-            echo "  ! No upstream tracking branch; skipping pull."
+            echo "  ! No upstream tracking branch."
+            failures=$((failures + 1))
+            echo
+            continue
         fi
     else
         echo "  -> Cloning ${repo_url}"
         if retry_git git clone --recursive "${repo_url}" "${target_dir}"; then
             echo "  -> Clone OK."
         else
-            echo "  ! Clone failed — skipping."
+            echo "  ! Clone failed."
+            failures=$((failures + 1))
             echo
             continue
         fi
@@ -144,11 +164,20 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     if [[ -f "${target_dir}/.gitmodules" ]]; then
         echo "  -> Updating submodules..."
         if ! retry_git git -C "${target_dir}" submodule update --init --recursive; then
-            echo "  ! Submodule update failed — continuing."
+            echo "  ! Submodule update failed."
+            failures=$((failures + 1))
         fi
     fi
 
     echo
 done 3< "${REPOS_FILE}"
 
-echo "All repositories processed."
+if (( processed == 0 )); then
+    echo "Error: ${REPOS_FILE} did not contain any repositories." >&2
+    exit 1
+fi
+if (( failures > 0 )); then
+    echo "Repository update failed: ${failures} problem(s)." >&2
+    exit 1
+fi
+echo "All ${processed} repositories processed successfully."

@@ -3,7 +3,7 @@
 
 set -euo pipefail
 unset CDPATH
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 out_dir=""
 
@@ -28,7 +28,7 @@ done
 if [ -z "$out_dir" ]; then
   out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-regression-corpus.XXXXXX")"
 fi
-out_dir="$(mkdir -p "$out_dir" && CDPATH= cd -P "$out_dir" && pwd -P)"
+out_dir="$(mkdir -p "$out_dir" && CDPATH='' cd -P "$out_dir" && pwd -P)"
 log_dir="$out_dir/logs"
 mkdir -p "$log_dir"
 summary="$out_dir/summary.md"
@@ -37,7 +37,7 @@ find_tool() {
   env_name="$1"
   shift
 
-  eval "configured=\${$env_name:-}"
+  configured="${!env_name:-}"
   if [ -n "$configured" ]; then
     printf '%s\n' "$configured"
     return 0

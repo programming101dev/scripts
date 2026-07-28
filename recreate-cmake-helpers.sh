@@ -18,7 +18,7 @@ P101_USAGE
   exit "${1:-0}"
 }
 
-script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 src_dir="$script_dir/cmake"
 out_dir="$(pwd)/cmake.generated"
 force=0
@@ -46,8 +46,10 @@ done
 
 [ -d "$src_dir" ] || { printf 'Error: canonical CMake helper dir not found: %s\n' "$src_dir" >&2; exit 1; }
 
-case "$(CDPATH= cd -- "$(dirname -- "$out_dir")" 2>/dev/null && pwd -P)/$(basename -- "$out_dir")" in
-  "$src_dir")
+mkdir -p "$(dirname -- "$out_dir")"
+out_dir="$(CDPATH='' cd -- "$(dirname -- "$out_dir")" && printf '%s/%s\n' "$(pwd -P)" "$(basename -- "$out_dir")")"
+case "$out_dir" in
+  "$src_dir"|"$src_dir"/*)
     printf 'Error: refusing to overwrite canonical source dir: %s\n' "$src_dir" >&2
     exit 2
     ;;
@@ -59,9 +61,15 @@ if [ -e "$out_dir" ]; then
     printf 'Pass --force to replace it, or choose another -o directory.\n' >&2
     exit 2
   fi
+  if [ ! -f "$out_dir/.p101-generated-cmake-helpers" ]; then
+    printf 'Error: refusing to replace unmarked directory: %s\n' "$out_dir" >&2
+    printf 'Remove it explicitly, or choose another -o directory.\n' >&2
+    exit 2
+  fi
   rm -rf "$out_dir"
 fi
 
 mkdir -p "$out_dir"
 cp -R "$src_dir/." "$out_dir/"
+: > "$out_dir/.p101-generated-cmake-helpers"
 printf 'Wrote CMake helpers: %s\n' "$out_dir"

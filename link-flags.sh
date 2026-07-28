@@ -13,7 +13,7 @@ esac
 create_symlinks() {
   # Resolve script and repo root so links are absolute & stable
   local script_dir repo_root flags_dir link_name
-  script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+  script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
   repo_root="$(cd -- "${script_dir}/.." && pwd -P)"
   # Profile-aware (P101_FLAGS_PROFILE=standard -> .flags-standard), so each
   # repo links the cache the current build actually reads.
@@ -33,6 +33,7 @@ create_symlinks() {
     echo "ERROR: flags directory not found: ${flags_dir}" >&2
     exit 1
   fi
+  local failures=0
 
   # Helper: ensure link points to target; update if wrong, create if missing
   ensure_link() {
@@ -51,8 +52,8 @@ create_symlinks() {
       echo "Updated symlink: ${linkpath} -> ${target}"
     elif [[ -e "${linkpath}" ]]; then
       # exists but not a symlink — don’t overwrite
-      echo "SKIP: ${linkpath} exists and is not a symlink."
-      return 0
+      echo "FAIL: ${linkpath} exists and is not a symlink." >&2
+      return 1
     else
       ln -s -- "${target}" "${linkpath}"
       echo "Created symlink: ${linkpath} -> ${target}"
@@ -71,23 +72,36 @@ create_symlinks() {
     IFS='|' read -r _url dir _type <<<"${raw}"
 
     if [[ -z "${dir:-}" ]]; then
-      echo "SKIP: missing dest path in line: ${raw}"
+      echo "FAIL: missing dest path in line: ${raw}" >&2
+      failures=$((failures + 1))
       continue
     fi
 
     # Resolve dest to absolute (relative dests are relative to the scripts dir)
     case "${dir}" in
       /*) : ;;
-      *) dir="$(cd -- "${script_dir}/${dir}" 2>/dev/null && pwd -P)" || { echo "SKIP: cannot resolve ${dir}"; continue; }
+      *) dir="$(cd -- "${script_dir}/${dir}" 2>/dev/null && pwd -P)" || {
+        echo "FAIL: cannot resolve ${dir}" >&2
+        failures=$((failures + 1))
+        continue
+      }
     esac
 
     if [[ ! -d "${dir}" ]]; then
-      echo "SKIP: not a directory: ${dir}"
+      echo "FAIL: not a directory: ${dir}" >&2
+      failures=$((failures + 1))
       continue
     fi
 
-    ensure_link "${flags_dir}" "${dir}/${link_name}"
+    if ! ensure_link "${flags_dir}" "${dir}/${link_name}"; then
+      failures=$((failures + 1))
+    fi
   done < "${repos_file}"
+
+  if [[ "${failures}" -gt 0 ]]; then
+    echo "Flags link update failed: ${failures} problem(s)." >&2
+    return 1
+  fi
 }
 
 create_symlinks

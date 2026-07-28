@@ -9,7 +9,7 @@
 # of them — that is intended: a stale bucket is stale everywhere. It never
 # touches a bucket for a currently-supported compiler.
 set -uo pipefail
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" || exit 1
 
 usage() {
   cat <<'USAGE'
@@ -63,6 +63,11 @@ shopt -s nullglob
 stale=()
 for d in "$FLAGS"/*/; do
   cc="$(basename "$d")"
+  case "$cc" in
+    ''|.|..|*[!A-Za-z0-9._+-]*)
+      printf 'Refusing to prune: unsafe compiler bucket name: %s\n' "$cc" >&2
+      exit 1 ;;
+  esac
   case "$supported" in
     *" $cc "*) : ;;               # supported — keep
     *) stale+=("$cc") ;;
@@ -95,6 +100,12 @@ for cc in "${stale[@]}"; do
   fi
   case "$ans" in
     y|Y|yes|YES)
+      target_parent="$(CDPATH='' cd -- "$(dirname -- "$target")" && pwd -P)"
+      flags_root="$(CDPATH='' cd -- "$FLAGS" && pwd -P)"
+      if [ "$target_parent" != "$flags_root" ]; then
+        printf 'Refusing to remove bucket outside %s: %s\n' "$flags_root" "$target" >&2
+        exit 1
+      fi
       if rm -rf -- "$target"; then echo "  removed: $cc"; removed=$((removed+1)); fi ;;
     *) echo "  kept:    $cc"; kept=$((kept+1)) ;;
   esac

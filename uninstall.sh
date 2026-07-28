@@ -8,7 +8,6 @@ ASSUME_YES=false
 DRY_RUN=false
 VERBOSE=false
 NAME=""              # will be auto-detected unless -N is provided
-CAP_NAME=""          # capitalized NAME (portable)
 declare -a PREFIXES=()
 
 usage() {
@@ -41,7 +40,12 @@ while getopts ":nyvN:p:h" opt; do
   esac
 done
 
-log() { $VERBOSE && printf '[info] %s\n' "$*"; }
+log() {
+  if $VERBOSE; then
+    printf '[info] %s\n' "$*"
+  fi
+  return 0
+}
 say() { printf '%s\n' "$*"; }
 err() { printf '[error] %s\n' "$*" >&2; }
 
@@ -102,7 +106,6 @@ detect_name() {
     log "Falling back to repo directory name: $NAME"
   fi
 
-  CAP_NAME="$(cap1 "$NAME")"
 }
 
 confirm() {
@@ -149,21 +152,31 @@ do_rmdir() {
   fi
 }
 
-dedupe_append() {
-  # dedupe_append arr_name items...
-  local arr="$1"; shift
-  local x
-  for x in "$@"; do
-    [[ -z "${x// /}" ]] && continue
-    if ! eval 'for _y in "${'"$arr"'[@]:-}"; do [[ "$_y" == "'"$x"'" ]] && _hit=1; done; [[ -n "${_hit:-}" ]] && unset _hit || :'; then :; fi
-    if ! eval 'for _y in "${'"$arr"'[@]:-}"; do [[ "$_y" == "'"$x"'" ]] && return 0; done'; then
-      eval "$arr+=(\"\$x\")"
-    fi
+append_search_prefix() {
+  local candidate="$1"
+  local existing
+
+  [[ -n "${candidate//[[:space:]]/}" ]] || return 0
+  for existing in "${SEARCH_PREFIXES[@]:-}"; do
+    [[ "$existing" == "$candidate" ]] && return 0
   done
+  SEARCH_PREFIXES+=("$candidate")
+}
+
+validate_name() {
+  if [[ -z "$NAME" || "$NAME" == "." || "$NAME" == ".." || "$NAME" == *"/"* ]]; then
+    err "Unsafe package name '$NAME'."
+    exit 2
+  fi
+  if [[ ! "$NAME" =~ ^[A-Za-z0-9][A-Za-z0-9_.+-]*$ ]]; then
+    err "Package name may contain only letters, digits, '.', '_', '+', and '-'."
+    exit 2
+  fi
 }
 
 # --- main flow ---
 detect_name
+validate_name
 say "Package name: $NAME"
 
 OS="$(uname -s)"
@@ -174,8 +187,12 @@ else
 fi
 
 declare -a SEARCH_PREFIXES=()
-dedupe_append SEARCH_PREFIXES "${PREFIXES[@]:-}"
-dedupe_append SEARCH_PREFIXES "${PREFIX_DEFAULTS[@]}"
+for P in "${PREFIXES[@]:-}"; do
+  append_search_prefix "$P"
+done
+for P in "${PREFIX_DEFAULTS[@]}"; do
+  append_search_prefix "$P"
+done
 
 if [[ ${#SEARCH_PREFIXES[@]} -eq 0 ]]; then
   err "No prefixes to search."

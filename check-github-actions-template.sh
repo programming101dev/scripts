@@ -2,7 +2,7 @@
 # check-github-actions-template.sh — ensure the starter workflow matches CI.
 
 set -euo pipefail
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 live_workflow=".github/workflows/p101-stack.yml"
 starter_workflow="github-actions/p101-stack.yml"

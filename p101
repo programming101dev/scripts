@@ -5,7 +5,7 @@ set -euo pipefail
 unset CDPATH
 dispatch_cwd="$(pwd)"
 export P101_DISPATCH_CWD="$dispatch_cwd"
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 usage() {
   cat <<'USAGE'

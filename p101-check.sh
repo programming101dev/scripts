@@ -4,7 +4,7 @@
 set -u
 set -o pipefail
 
-script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 invoke_cwd="${P101_DISPATCH_CWD:-$(pwd)}"
 
 out_dir=""
@@ -54,7 +54,7 @@ find_tool() {
   env_name="$1"
   shift
 
-  eval "configured=\${$env_name:-}"
+  configured="$(printenv "$env_name" 2>/dev/null || true)"
   if [ -n "$configured" ]; then
     if [ -x "$configured" ] || command -v "$configured" >/dev/null 2>&1; then
       printf '%s\n' "$configured"
@@ -156,7 +156,7 @@ if [ "$#" -eq 0 ]; then
   exit 2
 fi
 
-project_dir="$(CDPATH= cd -P "$project_dir" && pwd -P)" || {
+project_dir="$(CDPATH='' cd -P "$project_dir" && pwd -P)" || {
   echo "p101 check: project directory does not exist: $project_dir" >&2
   exit 2
 }
@@ -174,7 +174,7 @@ if [ -e "$out_dir" ]; then
 fi
 
 mkdir -p "$out_dir/logs"
-out_dir="$(CDPATH= cd -P "$out_dir" && pwd -P)"
+out_dir="$(CDPATH='' cd -P "$out_dir" && pwd -P)"
 log_dir="$out_dir/logs"
 summary="$out_dir/summary.md"
 
@@ -205,8 +205,10 @@ if [ "$skip_quality" -eq 0 ] && [ -x "$project_dir/check.sh" ]; then
   quality_status=$?
   if [ "$quality_status" -eq 0 ]; then quality_state="PASS"; else quality_state="FAIL"; fi
 elif [ "$skip_quality" -eq 0 ]; then
-  printf '==> project quality gate\n    SKIP (no executable check.sh in %s)\n' "$project_dir"
-  printf 'SKIP: no executable check.sh in %s\n' "$project_dir" > "$log_dir/quality-check.log"
+  quality_status=2
+  quality_state="FAIL"
+  printf '==> project quality gate\n    FAIL (no executable check.sh in %s)\n' "$project_dir"
+  printf 'FAIL: no executable check.sh in %s\n' "$project_dir" > "$log_dir/quality-check.log"
 else
   printf '==> project quality gate\n    SKIP\n'
   printf 'SKIP: --skip-quality\n' > "$log_dir/quality-check.log"
@@ -226,8 +228,10 @@ if [ "$run_coverage" -eq 1 ] && [ -x "$project_dir/coverage-report.sh" ]; then
   coverage_status=$?
   if [ "$coverage_status" -eq 0 ]; then coverage_state="PASS"; else coverage_state="FAIL"; fi
 elif [ "$run_coverage" -eq 1 ]; then
-  printf '==> project coverage receipt\n    SKIP (no executable coverage-report.sh in %s)\n' "$project_dir"
-  printf 'SKIP: no executable coverage-report.sh in %s\n' "$project_dir" > "$log_dir/coverage.log"
+  coverage_status=2
+  coverage_state="FAIL"
+  printf '==> project coverage receipt\n    FAIL (no executable coverage-report.sh in %s)\n' "$project_dir"
+  printf 'FAIL: no executable coverage-report.sh in %s\n' "$project_dir" > "$log_dir/coverage.log"
 else
   printf '==> project coverage receipt\n    SKIP\n'
   printf 'SKIP: --coverage not requested\n' > "$log_dir/coverage.log"
@@ -237,9 +241,10 @@ if [ "$skip_html" -eq 0 ]; then
   if [ -d "$out_dir/doctor/observe" ]; then
     python3 "$script_dir/p101-html-report.py" "$out_dir/doctor/observe" -o "$out_dir/doctor/observe/index.html" > "$log_dir/observe-html.log" 2>&1
     html_status=$?
+  else
+    printf 'FAIL: no observe directory available\n' > "$log_dir/observe-html.log"
+    html_status=1
   fi
-  python3 "$script_dir/p101-check-report.py" "$out_dir" -o "$out_dir/index.html" > "$log_dir/check-html.log" 2>&1
-  html_status=$((html_status + $?))
 else
   html_state="SKIP"
   printf 'SKIP: --skip-html\n' > "$log_dir/check-html.log"
@@ -252,8 +257,9 @@ elif [ "$skip_bundle" -eq 1 ]; then
   bundle_state="SKIP"
   printf 'SKIP: --skip-bundle\n' > "$log_dir/bug-bundle.log"
 else
-  bundle_state="SKIP"
-  printf 'SKIP: no observe directory available\n' > "$log_dir/bug-bundle.log"
+  bundle_state="FAIL"
+  bundle_status=1
+  printf 'FAIL: no observe directory available\n' > "$log_dir/bug-bundle.log"
 fi
 
 cat > "$summary" <<EOF
@@ -296,7 +302,8 @@ EOF
 # Re-render now that summary.md exists.
 if [ "$skip_html" -eq 0 ]; then
   python3 "$script_dir/p101-check-report.py" "$out_dir" -o "$out_dir/index.html" > "$log_dir/check-html.log" 2>&1
-  html_status=$?
+  report_status=$?
+  html_status=$((html_status + report_status))
 fi
 
 printf 'p101 check report: %s\n' "$out_dir/index.html"
