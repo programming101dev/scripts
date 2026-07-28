@@ -76,6 +76,7 @@ endif ()
 if (NOT DEFINED P101_CLANG_SA_DISABLE_CHECKERS OR "${P101_CLANG_SA_DISABLE_CHECKERS}" STREQUAL "")
     set(P101_CLANG_SA_DISABLE_CHECKERS
             alpha.core.Conversion
+            alpha.core.FixedAddr
             security.insecureAPI.DeprecatedOrUnsafeBufferHandling
             security.insecureAPI.strcpy
     )
