@@ -413,10 +413,26 @@ probe_flags_file() {
 # ---------- tmp & tiny sources ----------
 mkd() { mktemp -d 2>/dev/null || mktemp -d -t flagprobe; }
 TMP="$(mkd)"; trap 'rm -rf "$TMP" 2>/dev/null || true' EXIT
-# The C probe stays trivial. A flag that breaks only on a specific C construct
+# The C probe emits global data and a relocation-bearing external reference, so
+# the shared-object whole-set check catches executable-only codegen flags such
+# as -fPIE on ELF platforms. A flag that breaks only on a specific C construct
 # (e.g. -fharden-control-flow-redundancy on functions calling setjmp) is handled
 # per-file in the build (P101_FILE_FLAG_OPTOUTS) so it stays on everywhere else.
-tmp_c_src="$TMP/probe.c";      printf 'int main(void){return 0;}\n' >"$tmp_c_src"
+tmp_c_src="$TMP/probe.c"
+cat > "$tmp_c_src" <<'P101_C_PROBE_EOF'
+int p101_probe_global;
+extern int p101_probe_external(void);
+
+int p101_probe_external(void)
+{
+    return p101_probe_global;
+}
+
+int main(void)
+{
+    return p101_probe_global + p101_probe_external();
+}
+P101_C_PROBE_EOF
 # The C++ probe is REPRESENTATIVE: it defines and uses a polymorphic class, so
 # it actually emits a vtable. That makes the probe reflect the real toolchain
 # for codegen flags that only fail once a vtable exists — notably

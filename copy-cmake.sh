@@ -109,7 +109,11 @@ done < "$REPOS_FILE"
 # The slimmed CMakeLists sources its helpers from cmake/; make sure every
 # repo has that symlink so the freshly-copied CMakeLists can find them.
 if [ -x "$SCRIPT_DIR/link-cmake.sh" ]; then
-  "$SCRIPT_DIR/link-cmake.sh" || true
+  if [ "$DRYRUN" -eq 1 ]; then
+    "$SCRIPT_DIR/link-cmake.sh" -n
+  else
+    "$SCRIPT_DIR/link-cmake.sh"
+  fi
 fi
 
 exit 0

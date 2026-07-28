@@ -6,10 +6,11 @@
 # that catch integration/template/tool regressions after the heavy build pass:
 #
 #   1. GitHub Actions starter workflow drift check;
-#   2. shared CMakeLists regression harness;
-#   3. p101 tool contract documentation checks;
-#   4. fresh-template standalone instantiate/build/test;
-#   5. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor.
+#   2. shared CMakeLists distribution drift check;
+#   3. shared CMakeLists regression harness;
+#   4. p101 tool contract documentation checks;
+#   5. fresh-template standalone instantiate/build/test;
+#   6. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor.
 
 set -euo pipefail
 CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
@@ -189,6 +190,7 @@ say "C compiler:   $cc"
 say "C++ compiler: $cxx"
 
 run_logged "GitHub Actions starter workflow drift" "$log_dir/check-github-actions-template.log" ./check-github-actions-template.sh
+run_logged "shared CMakeLists distribution drift" "$log_dir/check-cmake-distribution.log" ./check-cmake-distribution.sh
 
 if [ "$skip_cmake" -eq 0 ]; then
   run_logged "shared CMakeLists regression harness" "$log_dir/test-cmake.log" ./test-cmake.sh -c "$cc" -x "$cxx" -k

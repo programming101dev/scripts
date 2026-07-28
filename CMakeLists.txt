@@ -96,7 +96,7 @@ execute_process(
 if (_P101_CPPCHECK_VERSION_RC EQUAL 0)
     string(REGEX MATCH "[0-9]+\\.[0-9]+(\\.[0-9]+)?" _P101_CPPCHECK_VERSION "${_P101_CPPCHECK_VERSION_TEXT}")
     if (_P101_CPPCHECK_VERSION VERSION_LESS "2.14")
-        message(WARNING "cppcheck ${_P101_CPPCHECK_VERSION} is older than the p101 known-good floor 2.14; self-diagnostics will be logged but filtered from the fatal gate.")
+        message(WARNING "cppcheck ${_P101_CPPCHECK_VERSION} is older than the p101 known-good floor 2.14; upgrade cppcheck if older-version self-diagnostics appear.")
     endif ()
 else ()
     message(WARNING "Could not determine cppcheck version: ${_P101_CPPCHECK_VERSION_ERROR}")
@@ -609,6 +609,21 @@ foreach (_d IN LISTS _LOCAL_INC_DIRS)
     list(REMOVE_ITEM _EXT_INC_DIRS "${_d}")
 endforeach ()
 list(REMOVE_DUPLICATES _EXT_INC_DIRS)
+
+# CMake's IMPLICIT_DEPENDS scanner used by the per-TU static-analyzer custom
+# commands only sees directory-scoped include paths. Keep the target-scoped
+# include_directories below for correct public/private usage, but mirror the
+# same search paths at directory scope so editing a project header causes the
+# static analyzer stamp to rebuild.
+if (P101_PROJECT_INC_DIR)
+    include_directories("${P101_PROJECT_INC_DIR}")
+endif ()
+if (_LOCAL_INC_DIRS)
+    include_directories(${_LOCAL_INC_DIRS})
+endif ()
+if (_EXT_INC_DIRS)
+    include_directories(SYSTEM ${_EXT_INC_DIRS})
+endif ()
 
 # Prebuild convenience strings for custom commands (best-effort; used only for echo lines)
 set(_MAC_SYSROOT_CMD "")

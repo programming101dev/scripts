@@ -7,6 +7,9 @@
 #
 #   exe-simple         configure+build succeed (baseline pipeline:
 #                      compile -> analyze -> tidy -> cppcheck)
+#   missing-flags      no .flags/<compiler> cache -> configure MUST fail
+#                      unless the caller explicitly opts out
+#   no-flags           P101_NO_FLAGS suppresses probed flags when a cache exists
 #   lib-exe-shared     a source listed in BOTH a library and an executable,
 #                      plus a header given as a RELATIVE path
 #                      (regressions: duplicate stamp OUTPUT was a fatal
@@ -125,6 +128,10 @@ new_proj() {
   # the shared CMakeLists now sources its helpers from cmake/ — mirror the
   # workspace symlink so the harness exercises the real layout
   ln -sfn "$(CDPATH= cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
+  mkdir -p "$PROJ/.flags/$(basename "$c_compiler")"
+  if [[ -n "$cxx_compiler" ]]; then
+    mkdir -p "$PROJ/.flags/$(basename "$cxx_compiler")"
+  fi
   printf 'BasedOnStyle: LLVM\nIndentWidth: 4\n' > "$PROJ/.clang-format"
 }
 
@@ -132,7 +139,7 @@ new_proj() {
 configure() {
   local p="$1"; shift
   RC=0
-  P101_ALLOW_NO_FLAGS="${P101_ALLOW_NO_FLAGS:-1}" cmake -S "$p" -B "$p/build" -DCMAKE_C_COMPILER="$c_compiler" "$@" \
+  cmake -S "$p" -B "$p/build" -DCMAKE_C_COMPILER="$c_compiler" "$@" \
     > "$p/configure.log" 2>&1 || RC=$?
 }
 
@@ -181,6 +188,27 @@ else
   bad "exe-simple: configure failed" "$PROJ/configure.log"
 fi
 
+# ---------- case: missing-flags env gate ----------
+# A normal project must not silently configure without its probed flag cache.
+new_proj missing-flags
+write_c_config_exe "$PROJ"
+printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
+rm -rf "$PROJ/.flags/$(basename "$c_compiler")"
+configure "$PROJ"
+if (( RC != 0 )) && grep -q 'No flags dir' "$PROJ/configure.log"; then
+  ok "missing-flags: configure fails without .flags/<compiler>"
+else
+  bad "missing-flags: configure did not fail on missing .flags/<compiler>" "$PROJ/configure.log"
+fi
+
+rm -rf "$PROJ/build"
+P101_ALLOW_NO_FLAGS=1 configure "$PROJ"
+if (( RC == 0 )) && grep -q 'P101_ALLOW_NO_FLAGS is set' "$PROJ/configure.log"; then
+  ok "missing-flags(opt-out): explicit P101_ALLOW_NO_FLAGS permits bring-up configure"
+else
+  bad "missing-flags(opt-out): explicit opt-out did not permit configure" "$PROJ/configure.log"
+fi
+
 # ---------- case: no-flags env gate ----------
 # P101_NO_FLAGS in the environment must suppress probed flags + sanitizers
 # and still configure cleanly. A seeded .flags dir proves suppression: with
@@ -192,19 +220,20 @@ printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
 mkdir -p "$PROJ/.flags/$(basename "$c_compiler")"
 printf '%s' "-DHARNESS_SENTINEL=1" > "$PROJ/.flags/$(basename "$c_compiler")/code_generation_flags.txt"
 # unset -> flag dir is loaded
-( unset P101_NO_FLAGS; configure "$PROJ" )
-RC_A=$?
+unset P101_NO_FLAGS
+configure "$PROJ"
+RC_A=$RC
 grep -q "Flag dirs used:.*\.flags/$(basename "$c_compiler")" "$PROJ/configure.log" && loaded_when_unset=1 || loaded_when_unset=0
 # set -> flag dir suppressed, configure still succeeds
 rm -rf "$PROJ/build"
 P101_NO_FLAGS=1 configure "$PROJ"
-RC_B=$?
+RC_B=$RC
 if grep -q "P101_NO_FLAGS set" "$PROJ/configure.log" \
      && grep -q "Flag dirs used: *$" "$PROJ/configure.log"; then suppressed_when_set=1; else suppressed_when_set=0; fi
-if (( RC_B == 0 && loaded_when_unset == 1 && suppressed_when_set == 1 )); then
+if (( RC_A == 0 && RC_B == 0 && loaded_when_unset == 1 && suppressed_when_set == 1 )); then
   ok "no-flags: P101_NO_FLAGS suppresses flags, configure still succeeds"
 else
-  bad "no-flags: env gate (unset-loaded=$loaded_when_unset set-suppressed=$suppressed_when_set rc=$RC_B)" "$PROJ/configure.log"
+  bad "no-flags: env gate (unset-rc=$RC_A unset-loaded=$loaded_when_unset set-rc=$RC_B set-suppressed=$suppressed_when_set)" "$PROJ/configure.log"
 fi
 
 # ---------- case: lib-exe-shared ----------

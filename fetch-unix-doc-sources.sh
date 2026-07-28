@@ -38,7 +38,7 @@ while getopts ":d:h" opt; do
 done
 
 mkdir -p "$destination"
-destination="$(cd "$destination" && pwd)"
+destination="$(CDPATH= cd "$destination" && pwd)"
 
 update_or_clone() {
   local url="$1"

@@ -161,6 +161,11 @@ multi-platform gate. In this repo it is kept byte-for-byte identical to
 workflow. The workflow can be dispatched for all platforms or one target OS
 (`linux`, `macos`, or `freebsd`) when you only need to rerun a single leg.
 
+`scripts/CMakeLists.txt` is the source of truth for the shared C/C++ build
+pipeline. After editing it, run `./copy-cmake.sh` and commit the copied files in
+the affected repos. `./check-cmake-distribution.sh` and
+`./check-after-update-all.sh` fail if any distributed copy has drifted.
+
 When a repo is checked out inside the broader `programming101dev` workspace,
 the shared CMake and standalone `test.sh`/`fuzz.sh` scripts prefer sibling
 `libraries/*/include` and compiler-matching `libraries/*/build-<compiler>`

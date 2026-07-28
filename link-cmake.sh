@@ -1,14 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# --help / -h -> description, exit 0 (P101 uniform CLI help)
-case " $* " in
-  *" --help "*|*" -h "*)
-    cat <<'P101_USAGE'
-link-cmake.sh — takes no command-line options; run with no arguments.
+dry_run=0
+
+usage() {
+  cat <<'P101_USAGE'
+Usage: ./link-cmake.sh [-n]
+
+Symlink the shared scripts/cmake helper directory into every C/C++ repo listed
+in repos.txt.
+
+Options:
+  -n  dry run; report changes without writing
+  -h  help
 P101_USAGE
-    exit 0 ;;
-esac
+}
+
+case " $* " in *" --help "*|*" -h "*) usage; exit 0 ;; esac
+
+while getopts ":nh" opt; do
+  case "$opt" in
+    n) dry_run=1 ;;
+    h) usage; exit 0 ;;
+    \?|:) usage >&2; exit 2 ;;
+  esac
+done
 
 # link-cmake.sh — symlink the shared cmake/ helper directory into every repo
 # listed in repos.txt, mirroring how link-flags.sh symlinks .flags and
@@ -63,11 +79,24 @@ EOF
     local linkpath="${dir}/cmake"
     if [[ -L "${linkpath}" ]]; then
       [[ "$(readlink "${linkpath}")" == "${target}" ]] && { echo "OK: ${linkpath}"; continue; }
-      ln -sfn -- "${target}" "${linkpath}"; echo "Updated: ${linkpath} -> ${target}"
+      if [[ "${dry_run}" -eq 1 ]]; then
+        echo "[dry-run] update: ${linkpath} -> ${target}"
+      else
+        ln -sfn -- "${target}" "${linkpath}"; echo "Updated: ${linkpath} -> ${target}"
+      fi
     elif [[ -e "${linkpath}" ]]; then
-      echo "SKIP: ${linkpath} exists and is not a symlink."
+      if [[ "${dry_run}" -eq 1 ]]; then
+        echo "[dry-run] replace directory: ${linkpath} -> ${target}"
+      else
+        rm -rf -- "${linkpath}"
+        ln -s -- "${target}" "${linkpath}"; echo "Replaced: ${linkpath} -> ${target}"
+      fi
     else
-      ln -s -- "${target}" "${linkpath}"; echo "Created: ${linkpath} -> ${target}"
+      if [[ "${dry_run}" -eq 1 ]]; then
+        echo "[dry-run] create: ${linkpath} -> ${target}"
+      else
+        ln -s -- "${target}" "${linkpath}"; echo "Created: ${linkpath} -> ${target}"
+      fi
     fi
   done < "${repos_file}"
 }
