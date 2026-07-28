@@ -155,7 +155,11 @@ current module-splitting rules.
 
 `github-actions/p101-stack.yml` is a starter CI workflow for macOS, Linux, and
 FreeBSD. Copy it to `.github/workflows/` in the repo that should own the
-multi-platform gate.
+multi-platform gate. In this repo it is kept byte-for-byte identical to
+`.github/workflows/p101-stack.yml`; `./check-github-actions-template.sh` and
+`./check-after-update-all.sh` fail if the starter copy drifts from the live CI
+workflow. The workflow can be dispatched for all platforms or one target OS
+(`linux`, `macos`, or `freebsd`) when you only need to rerun a single leg.
 
 When a repo is checked out inside the broader `programming101dev` workspace,
 the shared CMake and standalone `test.sh`/`fuzz.sh` scripts prefer sibling
