@@ -38,8 +38,15 @@ else
   FLAGS_DIR="${SCRIPT_DIR}/flags"
   OUT_DIR="${REPO_ROOT}/.flags"
 fi
-C_LIST_FILE="${SCRIPT_DIR}/supported_c_compilers.txt"
-CXX_LIST_FILE="${SCRIPT_DIR}/supported_cxx_compilers.txt"
+resolve_list_file() {
+  case "$1" in
+    /*) printf '%s' "$1" ;;
+    *) printf '%s/%s' "$SCRIPT_DIR" "$1" ;;
+  esac
+}
+
+C_LIST_FILE="$(resolve_list_file "${P101_FLAGS_C_COMPILERS_FILE:-supported_c_compilers.txt}")"
+CXX_LIST_FILE="$(resolve_list_file "${P101_FLAGS_CXX_COMPILERS_FILE:-supported_cxx_compilers.txt}")"
 MAP_FILE="${SCRIPT_DIR}/compiler_paths.txt"
 
 mkdir -p "${OUT_DIR}"

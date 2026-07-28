@@ -114,6 +114,25 @@ fi
 [ -f "$c_list_file" ]   || { printf 'Error: C list not found: %s\n' "$c_list_file" >&2; exit 2; }
 [ -f "$cxx_list_file" ] || { printf 'Error: C++ list not found: %s\n' "$cxx_list_file" >&2; exit 2; }
 
+abs_path() {
+  # $1 = file path, absolute or relative to this scripts directory
+  case "$1" in
+    /*) printf '%s' "$1" ;;
+    *)
+      _dir=$(dirname "$1")
+      _base=$(basename "$1")
+      printf '%s/%s' "$(CDPATH= cd -- "$_dir" && pwd -P)" "$_base"
+      ;;
+  esac
+}
+
+# If update.sh decides the flag cache needs probing, constrain
+# generate-flags.sh to the same compiler lists this update-all invocation is
+# using. Without this, a CI smoke that asks for clang:clang++ still probes
+# every detected compiler on a fresh runner before it builds anything.
+export P101_FLAGS_C_COMPILERS_FILE="$(abs_path "$c_list_file")"
+export P101_FLAGS_CXX_COMPILERS_FILE="$(abs_path "$cxx_list_file")"
+
 # Resolve driver (name or path)
 case "$driver" in
   /*|./*|../*)
