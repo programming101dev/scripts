@@ -62,7 +62,13 @@ jobs:
         uses: vmactions/freebsd-vm@v1
         with:
           prepare: |
-            pkg install -y bash git cmake llvm cppcheck devel/py-gcovr
+            pkg install -y bash git cmake llvm cppcheck
+            gcovr_pkg="$(pkg search -q -x '^py[0-9]+-gcovr$' | head -n 1 || true)"
+            if [ -n "$gcovr_pkg" ]; then
+              pkg install -y "$gcovr_pkg"
+            else
+              echo "No FreeBSD gcovr package found; coverage checks are not enabled in this workflow."
+            fi
           run: |
             cd scripts
             ./clone-repos.sh
