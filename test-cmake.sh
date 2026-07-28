@@ -529,10 +529,11 @@ printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
 P101_PROFILE=1 configure "$PROJ"
 if (( RC == 0 )); then
   P101_PROFILE=1 build "$PROJ"
-  if (( RC == 0 )) && grep -q -- '-pg' "$PROJ/build.log"; then
+  profile_compile_db="$PROJ/build/compile_commands.json"
+  if (( RC == 0 )) && [ -f "$profile_compile_db" ] && grep -q -- '-pg' "$profile_compile_db"; then
     ok "profile: P101_PROFILE reads probed profile_flags.txt, instruments with -pg"
   elif (( RC == 0 )); then
-    bad "profile: built but -pg not on the command line" "$PROJ/build.log"
+    bad "profile: built but -pg not in compile_commands.json" "$PROJ/build.log"
   else
     bad "profile: build failed" "$PROJ/build.log"
   fi

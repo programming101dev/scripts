@@ -576,11 +576,10 @@ else
   fi
 fi
 
-# --no-flags and --standard both rely on the env-aware shared CMakeLists
-# (P101_NO_FLAGS / P101_FLAGS_PROFILE). Make sure each repo has the current
-# one. copy-cmake.sh is idempotent and the CMakeLists behaves identically to
-# before when neither env var is set.
-if { $no_flags || $standard; } && [[ -x ./copy-cmake.sh ]]; then
+# The shared CMakeLists is part of the build system contract, not a per-repo
+# fork. Refresh it before every build so normal update-all runs pick up fixes
+# to tool flags, rpaths, analysis gates, and platform handling immediately.
+if [[ -x ./copy-cmake.sh ]]; then
   run_or_echo ./copy-cmake.sh
 fi
 
