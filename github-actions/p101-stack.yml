@@ -28,7 +28,7 @@ jobs:
           export P101_QUIET=1
           printf 'clang\n' > ci_c_compilers.txt
           printf 'clang++\n' > ci_cxx_compilers.txt
-          ./update-all.sh --skip-install -C ci_c_compilers.txt -X ci_cxx_compilers.txt
+          ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt
       - name: Check after update-all
         run: cd scripts && P101_QUIET=1 ./check-after-update-all.sh -c clang -x clang++
 
@@ -50,7 +50,7 @@ jobs:
           export P101_QUIET=1
           printf 'clang\n' > ci_c_compilers.txt
           printf 'clang++\n' > ci_cxx_compilers.txt
-          ./update-all.sh --skip-install -C ci_c_compilers.txt -X ci_cxx_compilers.txt
+          ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt
       - name: Check after update-all
         run: cd scripts && P101_QUIET=1 ./check-after-update-all.sh -c clang -x clang++
 
@@ -78,5 +78,5 @@ jobs:
             ./check-compilers.sh
             printf 'clang\n' > ci_c_compilers.txt
             printf 'clang++\n' > ci_cxx_compilers.txt
-            ./update-all.sh --skip-install -C ci_c_compilers.txt -X ci_cxx_compilers.txt
+            ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt
             bash ./check-after-update-all.sh -c clang -x clang++
