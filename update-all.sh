@@ -126,12 +126,12 @@ abs_path() {
   esac
 }
 
-# If update.sh decides the flag cache needs probing, constrain
-# generate-flags.sh to the same compiler lists this update-all invocation is
-# using. Without this, a CI smoke that asks for clang:clang++ still probes
-# every detected compiler on a fresh runner before it builds anything.
-export P101_FLAGS_C_COMPILERS_FILE="$(abs_path "$c_list_file")"
-export P101_FLAGS_CXX_COMPILERS_FILE="$(abs_path "$cxx_list_file")"
+# If update.sh decides the flag cache needs probing, pass the same compiler
+# lists this update-all invocation is using. Without this, a CI smoke that
+# asks for clang:clang++ still probes every detected compiler on a fresh runner
+# before it builds anything.
+flag_c_list_file=$(abs_path "$c_list_file")
+flag_cxx_list_file=$(abs_path "$cxx_list_file")
 
 # Resolve driver (name or path)
 case "$driver" in
@@ -226,29 +226,29 @@ while read -r c <&3 || [ -n "$c" ]; do
   if [ "$no_flags" -eq 1 ]; then
     # --no-flags: no probed flags, no sanitizers (update.sh forces empty).
     if [ "$skip_install" -eq 1 ]; then
-      "$driver" -c "$c" -x "$x" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --skip-install --no-flags
+      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --skip-install --no-flags
     else
-      "$driver" -c "$c" -x "$x" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --no-flags
+      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --no-flags
     fi
   elif [ "$standard" -eq 1 ]; then
     # --standard: reasonable safe subset, no sanitizers (update.sh forces).
     if [ "$skip_install" -eq 1 ]; then
-      "$driver" -c "$c" -x "$x" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --skip-install --standard
+      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --skip-install --standard
     else
-      "$driver" -c "$c" -x "$x" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --standard
+      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --standard
     fi
   elif [ "$sanitizers_given" -eq 1 ]; then
     if [ "$skip_install" -eq 1 ]; then
-      "$driver" -c "$c" -x "$x" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --skip-install -s "$sanitizers"
+      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --skip-install -s "$sanitizers"
     else
-      "$driver" -c "$c" -x "$x" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
+      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
     fi
   else
     # No -s: let update.sh keep whatever sanitizers.txt currently holds.
     if [ "$skip_install" -eq 1 ]; then
-      "$driver" -c "$c" -x "$x" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --skip-install
+      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --skip-install
     else
-      "$driver" -c "$c" -x "$x" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
     fi
   fi
   pairs_run=$((pairs_run+1))

@@ -21,9 +21,25 @@ generate-flags.sh — probe flags from scripts/flags/*.txt dynamically
     everything else -> syntax
 - Strict: -Werror, and reject "unknown/unused/ignored" even with rc==0
 - Outputs ONLY to .flags/<compiler-exe>/
+
+Options:
+  -C file   C compiler list,   default supported_c_compilers.txt
+  -X file   C++ compiler list, default supported_cxx_compilers.txt
 P101_USAGE
     exit 0 ;;
 esac
+
+c_list_file="supported_c_compilers.txt"
+cxx_list_file="supported_cxx_compilers.txt"
+
+while getopts ":C:X:h" opt; do
+  case "$opt" in
+    C) c_list_file="$OPTARG" ;;
+    X) cxx_list_file="$OPTARG" ;;
+    h) exit 0 ;;
+    \?|:) printf 'Usage: %s [-C c-list] [-X cxx-list]\n' "$0" >&2; exit 2 ;;
+  esac
+done
 
 # ---------- paths ----------
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
@@ -45,8 +61,8 @@ resolve_list_file() {
   esac
 }
 
-C_LIST_FILE="$(resolve_list_file "${P101_FLAGS_C_COMPILERS_FILE:-supported_c_compilers.txt}")"
-CXX_LIST_FILE="$(resolve_list_file "${P101_FLAGS_CXX_COMPILERS_FILE:-supported_cxx_compilers.txt}")"
+C_LIST_FILE="$(resolve_list_file "$c_list_file")"
+CXX_LIST_FILE="$(resolve_list_file "$cxx_list_file")"
 MAP_FILE="${SCRIPT_DIR}/compiler_paths.txt"
 
 mkdir -p "${OUT_DIR}"

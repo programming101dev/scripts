@@ -30,6 +30,8 @@ FLAGS_VERSION_FILE="../.flags/version.txt"
 CURRENT_VERSION_FILE="./version.txt"
 SUPPORTED_C_COMPILERS="supported_c_compilers.txt"
 SUPPORTED_CXX_COMPILERS="supported_cxx_compilers.txt"
+flag_c_list_file="$SUPPORTED_C_COMPILERS"
+flag_cxx_list_file="$SUPPORTED_CXX_COMPILERS"
 
 PULL_SH="./pull.sh"
 CHECK_ENV_SH="./check-env.sh"
@@ -52,13 +54,17 @@ _p101_cxx_of() { case "$1" in gcc*) printf 'g++%s' "${1#gcc}";; clang*) printf '
 
 usage() {
   cat <<'USAGE'
-Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [--dry-run]
+Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [-C <c-list>] [-X <cxx-list>] [--dry-run]
 
   -c  C compiler       (e.g. gcc, clang, gcc-16, /opt/llvm/bin/clang)
   -x  C++ compiler     (e.g. g++, clang++, g++-16, /opt/llvm/bin/clang++)
   -f  clang-format     (default: clang-format; accepts absolute path or name)
   -t  clang-tidy       (default: clang-tidy;  accepts absolute path or name)
   -k  cppcheck         (default: cppcheck;    accepts absolute path or name)
+  -C  C compiler list  used when flag caches need probing
+                       (default: supported_c_compilers.txt)
+  -X  C++ compiler list used when flag caches need probing
+                       (default: supported_cxx_compilers.txt)
   -s  sanitizers       (default: whatever sanitizers.txt currently holds,
                         falling back to address,leak,pointer_overflow,undefined)
       If empty (e.g. -s ""), downstream decides "no sanitizers".
@@ -220,7 +226,7 @@ else
 fi
 unset _argv _a
 
-while getopts ":c:x:f:t:k:s:" opt; do
+while getopts ":c:x:f:t:k:s:C:X:" opt; do
   case "$opt" in
     c) c_compiler="$OPTARG" ;;
     x) cxx_compiler="$OPTARG" ;;
@@ -228,6 +234,8 @@ while getopts ":c:x:f:t:k:s:" opt; do
     t) clang_tidy_name="$OPTARG" ;;
     k) cppcheck_name="$OPTARG" ;;
     s) sanitizers="$OPTARG"; sanitizers_given=true ;;
+    C) flag_c_list_file="$OPTARG" ;;
+    X) flag_cxx_list_file="$OPTARG" ;;
     \?|:) usage ;;
   esac
 done
@@ -433,7 +441,7 @@ fi
 # would otherwise satisfy a bare -d test and the compiler would silently
 # build with zero flags. Any *.txt result file counts as a cache.
 if ! $update; then
-  for _list in "$SUPPORTED_C_COMPILERS" "$SUPPORTED_CXX_COMPILERS"; do
+  for _list in "$flag_c_list_file" "$flag_cxx_list_file"; do
     [[ -f "$_list" ]] || continue
     while IFS= read -r _name || [[ -n "$_name" ]]; do
       _name="${_name%%#*}"
@@ -477,9 +485,10 @@ if $no_flags; then
   note "--no-flags: skipping flag probing; building with no compiler flags or sanitizers."
 elif $update; then
   run_or_echo "$CHECK_COMPILERS_SH"
-  # generate-flags.sh reads P101_FLAGS_PROFILE: 'standard' probes
-  # flags-standard/ -> .flags-standard/, else flags/ -> .flags/.
-  run_or_echo "$GENERATE_FLAGS_SH"
+  # generate-flags.sh reads P101_FLAGS_PROFILE for the cache profile
+  # (standard vs maximal), while -C/-X explicitly constrain which compiler
+  # lists are probed for this run.
+  run_or_echo "$GENERATE_FLAGS_SH" -C "$flag_c_list_file" -X "$flag_cxx_list_file"
   if ! $dry_run; then
     mkdir -p "$(dirname "$FLAGS_VERSION_FILE")"
     cp "$CURRENT_VERSION_FILE" "$FLAGS_VERSION_FILE"
