@@ -22,7 +22,11 @@ jobs:
       - name: Detect compilers
         run: cd scripts && ./check-compilers.sh
       - name: Update all repos
-        run: cd scripts && ./update-all.sh --skip-install
+        run: |
+          cd scripts
+          printf 'clang\n' > ci_c_compilers.txt
+          printf 'clang++\n' > ci_cxx_compilers.txt
+          ./update-all.sh --skip-install -C ci_c_compilers.txt -X ci_cxx_compilers.txt
       - name: Check after update-all
         run: cd scripts && ./check-after-update-all.sh -c clang -x clang++
 
@@ -39,7 +43,11 @@ jobs:
       - name: Detect compilers
         run: cd scripts && ./check-compilers.sh
       - name: Update all repos
-        run: cd scripts && ./update-all.sh --skip-install
+        run: |
+          cd scripts
+          printf 'clang\n' > ci_c_compilers.txt
+          printf 'clang++\n' > ci_cxx_compilers.txt
+          ./update-all.sh --skip-install -C ci_c_compilers.txt -X ci_cxx_compilers.txt
       - name: Check after update-all
         run: cd scripts && ./check-after-update-all.sh -c clang -x clang++
 
@@ -58,5 +66,7 @@ jobs:
             cd scripts
             ./clone-repos.sh
             ./check-compilers.sh
-            ./update-all.sh --skip-install
+            printf 'clang\n' > ci_c_compilers.txt
+            printf 'clang++\n' > ci_cxx_compilers.txt
+            ./update-all.sh --skip-install -C ci_c_compilers.txt -X ci_cxx_compilers.txt
             bash ./check-after-update-all.sh -c clang -x clang++
