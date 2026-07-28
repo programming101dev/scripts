@@ -2,12 +2,24 @@ name: p101 stack
 
 on:
   workflow_dispatch:
+    inputs:
+      target_os:
+        description: OS job to run
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - linux
+          - macos
+          - freebsd
   pull_request:
   push:
     branches: [ main ]
 
 jobs:
   macos:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.target_os == 'all' || inputs.target_os == 'macos' }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
@@ -33,6 +45,7 @@ jobs:
         run: cd scripts && P101_QUIET=1 ./check-after-update-all.sh -c clang -x clang++
 
   linux:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.target_os == 'all' || inputs.target_os == 'linux' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -55,6 +68,7 @@ jobs:
         run: cd scripts && P101_QUIET=1 ./check-after-update-all.sh -c clang -x clang++
 
   freebsd:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.target_os == 'all' || inputs.target_os == 'freebsd' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
