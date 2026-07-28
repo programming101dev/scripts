@@ -75,6 +75,16 @@ fail() {
   failed=1
 }
 
+show_log_tail() {
+  local log="$1"
+
+  if [ -f "$log" ]; then
+    printf '    --- log tail: %s ---\n' "$log" >&2
+    tail -n 120 "$log" >&2 || true
+    printf '    --- end log tail ---\n' >&2
+  fi
+}
+
 run_logged() {
   title="$1"
   log="$2"
@@ -93,6 +103,7 @@ run_logged() {
     say "    PASS"
   else
     fail "$title; see $log"
+    show_log_tail "$log"
   fi
 }
 
