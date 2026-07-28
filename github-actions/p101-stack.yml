@@ -17,6 +17,7 @@ jobs:
         run: |
           brew untap aws/tap || true
           brew install cmake cppcheck llvm gcovr
+          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
       - name: Clone p101 repos
         run: cd scripts && ./clone-repos.sh
       - name: Detect compilers
@@ -37,7 +38,7 @@ jobs:
         with:
           path: scripts
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y cmake clang clang-tidy clang-format cppcheck gcovr
+        run: sudo apt-get update && sudo apt-get install -y cmake clang clang-tidy clang-format cppcheck gcovr libgdbm-dev libgdbm-compat-dev
       - name: Clone p101 repos
         run: cd scripts && ./clone-repos.sh
       - name: Detect compilers
