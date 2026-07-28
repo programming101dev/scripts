@@ -91,6 +91,11 @@ CLANG_FORMAT_PATH="$(resolve_any "$clang_format_name")"
 CLANG_TIDY_PATH="$(resolve_any "$clang_tidy_name")"
 CPPCHECK_PATH="$(resolve_any "$cppcheck_name")"
 
+build_script_args=()
+if [[ -n "${P101_QUIET:-}" ]]; then
+  build_script_args+=(-q)
+fi
+
 # ----------------- iterate repos -----------------
 repos_file="repos.txt"
 [[ -f "$repos_file" ]] || { echo "Error: $repos_file not found" >&2; exit 3; }
@@ -174,7 +179,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   # Always build right away
   if [[ -x ./build.sh ]]; then
     say "Building: ${dir}"
-    ./build.sh
+    ./build.sh "${build_script_args[@]}"
   else
     say "  -> No build.sh found, skipping build."
   fi

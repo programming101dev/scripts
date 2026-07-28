@@ -138,6 +138,9 @@ run_logged() {
   else
     rc=$?
     say "    FAIL (exit $rc; see $log)"
+    say "    --- log tail ---"
+    tail -n 120 "$log" || true
+    say "    --- end log tail ---"
     return "$rc"
   fi
 }
@@ -170,6 +173,9 @@ run_logged_expect() {
   done
 
   say "    FAIL (exit $rc; see $log)"
+  say "    --- log tail ---"
+  tail -n 120 "$log" || true
+  say "    --- end log tail ---"
   return "$rc"
 }
 

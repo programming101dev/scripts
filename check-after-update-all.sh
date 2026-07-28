@@ -156,6 +156,9 @@ run_logged() {
     printf '| PASS | %s | [log](./logs/%s) |\n' "$title" "$(basename "$log")" >> "$summary"
   else
     say "    FAIL (see $log)"
+    say "    --- log tail ---"
+    tail -n 120 "$log" || true
+    say "    --- end log tail ---"
     printf '| FAIL | %s | [log](./logs/%s) |\n' "$title" "$(basename "$log")" >> "$summary"
     exit 1
   fi

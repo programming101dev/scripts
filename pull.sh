@@ -17,8 +17,8 @@ dir_name=${PWD##*/}
 
 # Ensure we're in a git repo
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "$dir_name is not a git repository."
-  exit 2
+  echo "$dir_name is not a git repository; skipping pull."
+  exit 0
 fi
 
 # Skip detached HEADs (no branch)
