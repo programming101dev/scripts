@@ -216,9 +216,15 @@ policy_force_reject() {
       -fvtable-verify=*|-fvtv-*) return 0 ;;
     esac
   else
-    # these sanitizers are clang-only
+    # These sanitizers and driver-warning suppressions are clang-only.
+    # GCC normally stays silent about an unknown -Wno-* option until some
+    # other diagnostic is emitted, so a clean compile probe otherwise records
+    # a false positive and cc1 later prints an "unrecognized option" note.
     case "$flag" in
-      -fsanitize=shadow-call-stack|-fsanitize=safe-stack) return 0 ;;
+      -fsanitize=shadow-call-stack|-fsanitize=safe-stack|\
+      -Wno-poison-system-directories|\
+      -Wno-invalid-command-line-argument|\
+      -Wno-unused-command-line-argument) return 0 ;;
     esac
   fi
   return 1
@@ -492,9 +498,13 @@ read_list_file() {
 supported_c_compilers=()
 supported_cxx_compilers=()
 read_list_file "$C_LIST_FILE"
-supported_c_compilers=("${READ_LIST_RESULT[@]}")
+if [[ ${#READ_LIST_RESULT[@]} -gt 0 ]]; then
+  supported_c_compilers=("${READ_LIST_RESULT[@]}")
+fi
 read_list_file "$CXX_LIST_FILE"
-supported_cxx_compilers=("${READ_LIST_RESULT[@]}")
+if [[ ${#READ_LIST_RESULT[@]} -gt 0 ]]; then
+  supported_cxx_compilers=("${READ_LIST_RESULT[@]}")
+fi
 
 if [[ ${#supported_c_compilers[@]} -eq 0 && ${#supported_cxx_compilers[@]} -eq 0 ]]; then
   echo "No compilers listed in:"

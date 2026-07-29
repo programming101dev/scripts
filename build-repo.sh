@@ -85,6 +85,12 @@ resolve_any() {
   fi
 }
 
+change_compiler_supports_sanitizers() {
+  # Inspect the option parser instead of executing --help: older repository
+  # scripts do not all give --help the same exit behavior.
+  grep -Fq -- '-s)' ./change-compiler.sh
+}
+
 CC_PATH="$(resolve_any "$c_compiler")"
 CXX_PATH="$(resolve_any "$cxx_compiler")"
 CLANG_FORMAT_PATH="$(resolve_any "$clang_format_name")"
@@ -156,9 +162,12 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   case "$repo_type" in
     c)
       say "Configuring with: CC=${CC_PATH}, clang-format=${CLANG_FORMAT_PATH}, clang-tidy=${CLANG_TIDY_PATH}, cppcheck=${CPPCHECK_PATH}, sanitizers=${sanitizers:-<none>}"
-      if [[ -n "$sanitizers" ]]; then
+      if [[ -n "$sanitizers" ]] && change_compiler_supports_sanitizers; then
         ./change-compiler.sh -c "$CC_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH" -s "$sanitizers"
       else
+        if [[ -n "$sanitizers" ]]; then
+          say "  -> change-compiler.sh does not accept -s; using the repository's configured sanitizer flags."
+        fi
         ./change-compiler.sh -c "$CC_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH"
       fi
       ;;
@@ -166,9 +175,12 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       say "Configuring with: CXX=${CXX_PATH}, clang-format=${CLANG_FORMAT_PATH}, clang-tidy=${CLANG_TIDY_PATH}, cppcheck=${CPPCHECK_PATH}, sanitizers=${sanitizers:-<none>}"
       # Your cxx repos typically have their own change-compiler script taking -c for C++ compiler;
       # if they expect -x for C++ specifically, adjust here. Most of your templates use -c.
-      if [[ -n "$sanitizers" ]]; then
+      if [[ -n "$sanitizers" ]] && change_compiler_supports_sanitizers; then
         ./change-compiler.sh -c "$CXX_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH" -s "$sanitizers"
       else
+        if [[ -n "$sanitizers" ]]; then
+          say "  -> change-compiler.sh does not accept -s; using the repository's configured sanitizer flags."
+        fi
         ./change-compiler.sh -c "$CXX_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH"
       fi
       ;;
@@ -187,7 +199,13 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   # Always build right away
   if [[ -x ./build.sh ]]; then
     say "Building: ${dir}"
-    ./build.sh "${build_script_args[@]}"
+    # Bash 3.2 treats "${empty_array[@]}" as an unbound variable under
+    # `set -u`. Keep the zero-argument path explicit for macOS.
+    if [[ "${#build_script_args[@]}" -gt 0 ]]; then
+      ./build.sh "${build_script_args[@]}"
+    else
+      ./build.sh
+    fi
   else
     say "  -> FAIL: no executable build.sh found."
     failures=$((failures + 1))

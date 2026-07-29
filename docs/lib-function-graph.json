@@ -1,8 +1,8 @@
 {
   "summary": {
-    "function_count": 1171,
-    "edge_count": 1819,
-    "domain_count": 88
+    "function_count": 1207,
+    "edge_count": 1886,
+    "domain_count": 90
   },
   "nodes": [
     {
@@ -1878,6 +1878,22 @@
       "native_guess": "env_check_fault"
     },
     {
+      "name": "p101_env_check_fault_action",
+      "library": "lib_env",
+      "domain": "support/fault-injection",
+      "header": "libraries/lib_env/include/p101_env/env.h",
+      "source": "libraries/lib_env/src/env.c",
+      "native_guess": "env_check_fault_action"
+    },
+    {
+      "name": "p101_env_clear_event_log_error",
+      "library": "lib_env",
+      "domain": "support/environment-lifecycle",
+      "header": "libraries/lib_env/include/p101_env/env.h",
+      "source": "libraries/lib_env/src/env.c",
+      "native_guess": "env_clear_event_log_error"
+    },
+    {
       "name": "p101_env_create",
       "library": "lib_env",
       "domain": "support/environment-lifecycle",
@@ -1918,44 +1934,20 @@
       "native_guess": "env_enable_fd_tracking"
     },
     {
-      "name": "p101_env_event_line_is_ours",
+      "name": "p101_env_event_log_errno",
       "library": "lib_env",
       "domain": "support/environment-lifecycle",
       "header": "libraries/lib_env/include/p101_env/env.h",
       "source": "libraries/lib_env/src/env.c",
-      "native_guess": "env_event_line_is_ours"
+      "native_guess": "env_event_log_errno"
     },
     {
-      "name": "p101_env_event_parse_size_field",
+      "name": "p101_env_event_log_failed",
       "library": "lib_env",
       "domain": "support/environment-lifecycle",
       "header": "libraries/lib_env/include/p101_env/env.h",
       "source": "libraries/lib_env/src/env.c",
-      "native_guess": "env_event_parse_size_field"
-    },
-    {
-      "name": "p101_env_event_parse_status_name",
-      "library": "lib_env",
-      "domain": "support/environment-lifecycle",
-      "header": "libraries/lib_env/include/p101_env/env.h",
-      "source": "libraries/lib_env/src/env.c",
-      "native_guess": "env_event_parse_status_name"
-    },
-    {
-      "name": "p101_env_event_split",
-      "library": "lib_env",
-      "domain": "support/environment-lifecycle",
-      "header": "libraries/lib_env/include/p101_env/env.h",
-      "source": "libraries/lib_env/src/env.c",
-      "native_guess": "env_event_split"
-    },
-    {
-      "name": "p101_env_event_unescape_field",
-      "library": "lib_env",
-      "domain": "support/environment-lifecycle",
-      "header": "libraries/lib_env/include/p101_env/env.h",
-      "source": "libraries/lib_env/src/env.c",
-      "native_guess": "env_event_unescape_field"
+      "native_guess": "env_event_log_failed"
     },
     {
       "name": "p101_env_get_event_log_version",
@@ -1998,20 +1990,12 @@
       "native_guess": "env_get_tracer_data"
     },
     {
-      "name": "p101_env_parse_event_line",
+      "name": "p101_env_pointer_resource_id",
       "library": "lib_env",
       "domain": "support/environment-lifecycle",
       "header": "libraries/lib_env/include/p101_env/env.h",
       "source": "libraries/lib_env/src/env.c",
-      "native_guess": "env_parse_event_line"
-    },
-    {
-      "name": "p101_env_read_event_line",
-      "library": "lib_env",
-      "domain": "support/environment-lifecycle",
-      "header": "libraries/lib_env/include/p101_env/env.h",
-      "source": "libraries/lib_env/src/env.c",
-      "native_guess": "env_read_event_line"
+      "native_guess": "env_pointer_resource_id"
     },
     {
       "name": "p101_env_report_leaks",
@@ -2100,6 +2084,22 @@
       "header": "libraries/lib_env/include/p101_env/env.h",
       "source": "libraries/lib_env/src/env.c",
       "native_guess": "env_set_label"
+    },
+    {
+      "name": "p101_env_set_resource_log",
+      "library": "lib_env",
+      "domain": "support/environment-lifecycle",
+      "header": "libraries/lib_env/include/p101_env/env.h",
+      "source": "libraries/lib_env/src/env.c",
+      "native_guess": "env_set_resource_log"
+    },
+    {
+      "name": "p101_env_set_resource_observer",
+      "library": "lib_env",
+      "domain": "support/environment-lifecycle",
+      "header": "libraries/lib_env/include/p101_env/env.h",
+      "source": "libraries/lib_env/src/env.c",
+      "native_guess": "env_set_resource_observer"
     },
     {
       "name": "p101_env_set_tracer",
@@ -2198,6 +2198,14 @@
       "native_guess": "env_track_free"
     },
     {
+      "name": "p101_env_track_integer_resource",
+      "library": "lib_env",
+      "domain": "support/resource-events",
+      "header": "libraries/lib_env/include/p101_env/env.h",
+      "source": "libraries/lib_env/src/env.c",
+      "native_guess": "env_track_integer_resource"
+    },
+    {
       "name": "p101_env_track_open",
       "library": "lib_env",
       "domain": "support/resource-events",
@@ -2206,12 +2214,28 @@
       "native_guess": "env_track_open"
     },
     {
+      "name": "p101_env_track_pointer_resource",
+      "library": "lib_env",
+      "domain": "support/resource-events",
+      "header": "libraries/lib_env/include/p101_env/env.h",
+      "source": "libraries/lib_env/src/env.c",
+      "native_guess": "env_track_pointer_resource"
+    },
+    {
       "name": "p101_env_track_realloc",
       "library": "lib_env",
       "domain": "support/resource-events",
       "header": "libraries/lib_env/include/p101_env/env.h",
       "source": "libraries/lib_env/src/env.c",
       "native_guess": "env_track_realloc"
+    },
+    {
+      "name": "p101_env_track_resource",
+      "library": "lib_env",
+      "domain": "support/resource-events",
+      "header": "libraries/lib_env/include/p101_env/env.h",
+      "source": "libraries/lib_env/src/env.c",
+      "native_guess": "env_track_resource"
     },
     {
       "name": "p101_env_track_spawn",
@@ -3262,6 +3286,38 @@
       "native_guess": "fsetpos"
     },
     {
+      "name": "p101_fsm_decide_exit",
+      "library": "lib_fsm",
+      "domain": "support/fsm",
+      "header": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "source": "libraries/lib_fsm/src/fsm.c",
+      "native_guess": "fsm_decide_exit"
+    },
+    {
+      "name": "p101_fsm_decide_pause",
+      "library": "lib_fsm",
+      "domain": "support/fsm",
+      "header": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "source": "libraries/lib_fsm/src/fsm.c",
+      "native_guess": "fsm_decide_pause"
+    },
+    {
+      "name": "p101_fsm_decide_transition",
+      "library": "lib_fsm",
+      "domain": "support/fsm",
+      "header": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "source": "libraries/lib_fsm/src/fsm.c",
+      "native_guess": "fsm_decide_transition"
+    },
+    {
+      "name": "p101_fsm_emit_effect",
+      "library": "lib_fsm",
+      "domain": "support/fsm",
+      "header": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "source": "libraries/lib_fsm/src/fsm.c",
+      "native_guess": "fsm_emit_effect"
+    },
+    {
       "name": "p101_fsm_exit_immediately",
       "library": "lib_fsm",
       "domain": "support/fsm",
@@ -3334,6 +3390,14 @@
       "native_guess": "fsm_info_get_bad_change_state_notifier"
     },
     {
+      "name": "p101_fsm_info_get_current_state",
+      "library": "lib_fsm",
+      "domain": "support/fsm",
+      "header": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "source": "libraries/lib_fsm/src/fsm.c",
+      "native_guess": "fsm_info_get_current_state"
+    },
+    {
       "name": "p101_fsm_info_get_did_change_state_notifier",
       "library": "lib_fsm",
       "domain": "support/fsm",
@@ -3350,12 +3414,28 @@
       "native_guess": "fsm_info_get_name"
     },
     {
+      "name": "p101_fsm_info_get_step_sequence",
+      "library": "lib_fsm",
+      "domain": "support/fsm",
+      "header": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "source": "libraries/lib_fsm/src/fsm.c",
+      "native_guess": "fsm_info_get_step_sequence"
+    },
+    {
       "name": "p101_fsm_info_get_will_change_state_notifier",
       "library": "lib_fsm",
       "domain": "support/fsm",
       "header": "libraries/lib_fsm/include/p101_fsm/fsm.h",
       "source": "libraries/lib_fsm/src/fsm.c",
       "native_guess": "fsm_info_get_will_change_state_notifier"
+    },
+    {
+      "name": "p101_fsm_info_is_terminal",
+      "library": "lib_fsm",
+      "domain": "support/fsm",
+      "header": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "source": "libraries/lib_fsm/src/fsm.c",
+      "native_guess": "fsm_info_is_terminal"
     },
     {
       "name": "p101_fsm_info_set_bad_change_state_handler",
@@ -3382,6 +3462,14 @@
       "native_guess": "fsm_info_set_did_change_state_notifier"
     },
     {
+      "name": "p101_fsm_info_set_step_observer",
+      "library": "lib_fsm",
+      "domain": "support/fsm",
+      "header": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "source": "libraries/lib_fsm/src/fsm.c",
+      "native_guess": "fsm_info_set_step_observer"
+    },
+    {
       "name": "p101_fsm_info_set_will_change_state_notifier",
       "library": "lib_fsm",
       "domain": "support/fsm",
@@ -3396,6 +3484,14 @@
       "header": "libraries/lib_fsm/include/p101_fsm/fsm.h",
       "source": "libraries/lib_fsm/src/fsm.c",
       "native_guess": "fsm_run"
+    },
+    {
+      "name": "p101_fsm_step",
+      "library": "lib_fsm",
+      "domain": "support/fsm",
+      "header": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "source": "libraries/lib_fsm/src/fsm.c",
+      "native_guess": "fsm_step"
     },
     {
       "name": "p101_fstat",
@@ -5982,6 +6078,14 @@
       "native_guess": "popen"
     },
     {
+      "name": "p101_posix_exit_immediately",
+      "library": "lib_posix",
+      "domain": "systems/file-io",
+      "header": "libraries/lib_posix/include/p101_posix/p101_unistd.h",
+      "source": "libraries/lib_posix/src/unistd.c",
+      "native_guess": "posix_exit_immediately"
+    },
+    {
       "name": "p101_posix_madvise",
       "library": "lib_posix_optional",
       "domain": "systems/resource-time-memory",
@@ -8526,6 +8630,190 @@
       "native_guess": "tolower_l"
     },
     {
+      "name": "p101_tool_event_fingerprint_file",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "source": "libraries/lib_tool_event/src/receipt.c",
+      "native_guess": "tool_event_fingerprint_file"
+    },
+    {
+      "name": "p101_tool_event_lifecycle_create",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/lifecycle.h",
+      "source": "libraries/lib_tool_event/src/lifecycle.c",
+      "native_guess": "tool_event_lifecycle_create"
+    },
+    {
+      "name": "p101_tool_event_lifecycle_destroy",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/lifecycle.h",
+      "source": "libraries/lib_tool_event/src/lifecycle.c",
+      "native_guess": "tool_event_lifecycle_destroy"
+    },
+    {
+      "name": "p101_tool_event_lifecycle_entry_at",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/lifecycle.h",
+      "source": "libraries/lib_tool_event/src/lifecycle.c",
+      "native_guess": "tool_event_lifecycle_entry_at"
+    },
+    {
+      "name": "p101_tool_event_lifecycle_entry_count",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/lifecycle.h",
+      "source": "libraries/lib_tool_event/src/lifecycle.c",
+      "native_guess": "tool_event_lifecycle_entry_count"
+    },
+    {
+      "name": "p101_tool_event_lifecycle_finding_at",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/lifecycle.h",
+      "source": "libraries/lib_tool_event/src/lifecycle.c",
+      "native_guess": "tool_event_lifecycle_finding_at"
+    },
+    {
+      "name": "p101_tool_event_lifecycle_finding_count",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/lifecycle.h",
+      "source": "libraries/lib_tool_event/src/lifecycle.c",
+      "native_guess": "tool_event_lifecycle_finding_count"
+    },
+    {
+      "name": "p101_tool_event_lifecycle_finish",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/lifecycle.h",
+      "source": "libraries/lib_tool_event/src/lifecycle.c",
+      "native_guess": "tool_event_lifecycle_finish"
+    },
+    {
+      "name": "p101_tool_event_lifecycle_ingest",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/lifecycle.h",
+      "source": "libraries/lib_tool_event/src/lifecycle.c",
+      "native_guess": "tool_event_lifecycle_ingest"
+    },
+    {
+      "name": "p101_tool_event_line_is_ours",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_tool_event/src/event.c",
+      "native_guess": "tool_event_line_is_ours"
+    },
+    {
+      "name": "p101_tool_event_ownership_classify_release",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/ownership.h",
+      "source": "libraries/lib_tool_event/src/ownership.c",
+      "native_guess": "tool_event_ownership_classify_release"
+    },
+    {
+      "name": "p101_tool_event_ownership_classify_replace",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/ownership.h",
+      "source": "libraries/lib_tool_event/src/ownership.c",
+      "native_guess": "tool_event_ownership_classify_replace"
+    },
+    {
+      "name": "p101_tool_event_ownership_exec_inherits",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/ownership.h",
+      "source": "libraries/lib_tool_event/src/ownership.c",
+      "native_guess": "tool_event_ownership_exec_inherits"
+    },
+    {
+      "name": "p101_tool_event_parse_json_size",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/summary.h",
+      "source": "libraries/lib_tool_event/src/summary.c",
+      "native_guess": "tool_event_parse_json_size"
+    },
+    {
+      "name": "p101_tool_event_parse_line",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_tool_event/src/event.c",
+      "native_guess": "tool_event_parse_line"
+    },
+    {
+      "name": "p101_tool_event_parse_resource_summary_json",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/summary.h",
+      "source": "libraries/lib_tool_event/src/summary.c",
+      "native_guess": "tool_event_parse_resource_summary_json"
+    },
+    {
+      "name": "p101_tool_event_parse_size_field",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_tool_event/src/event.c",
+      "native_guess": "tool_event_parse_size_field"
+    },
+    {
+      "name": "p101_tool_event_parse_status_name",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_tool_event/src/event.c",
+      "native_guess": "tool_event_parse_status_name"
+    },
+    {
+      "name": "p101_tool_event_read_line",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_tool_event/src/event.c",
+      "native_guess": "tool_event_read_line"
+    },
+    {
+      "name": "p101_tool_event_resource_summary_finding_count",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/summary.h",
+      "source": "libraries/lib_tool_event/src/summary.c",
+      "native_guess": "tool_event_resource_summary_finding_count"
+    },
+    {
+      "name": "p101_tool_event_split",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_tool_event/src/event.c",
+      "native_guess": "tool_event_split"
+    },
+    {
+      "name": "p101_tool_event_unescape_field",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_tool_event/src/event.c",
+      "native_guess": "tool_event_unescape_field"
+    },
+    {
+      "name": "p101_tool_event_write",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_tool_event/src/event.c",
+      "native_guess": "tool_event_write"
+    },
+    {
       "name": "p101_toupper",
       "library": "lib_c",
       "domain": "c/char-classification",
@@ -10007,11 +10295,6 @@
     },
     {
       "source": "p101_c_fact_parse_line",
-      "target": "p101_env_event_parse_size_field",
-      "kind": "wrapper-call"
-    },
-    {
-      "source": "p101_c_fact_parse_line",
       "target": "p101_memset",
       "kind": "wrapper-call"
     },
@@ -10023,6 +10306,11 @@
     {
       "source": "p101_c_fact_parse_line",
       "target": "p101_strncmp",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_c_fact_parse_line",
+      "target": "p101_tool_event_parse_size_field",
       "kind": "wrapper-call"
     },
     {
@@ -10791,6 +11079,11 @@
       "kind": "native-call"
     },
     {
+      "source": "p101_closedir",
+      "target": "p101_env_pointer_resource_id",
+      "kind": "wrapper-call"
+    },
+    {
       "source": "p101_closelog",
       "target": "closelog",
       "kind": "wrapped-native"
@@ -11267,16 +11560,6 @@
     },
     {
       "source": "p101_dbm_fetch",
-      "target": "dbm_clearerr",
-      "kind": "native-call"
-    },
-    {
-      "source": "p101_dbm_fetch",
-      "target": "dbm_error",
-      "kind": "native-call"
-    },
-    {
-      "source": "p101_dbm_fetch",
       "target": "dbm_error_code",
       "kind": "native-call"
     },
@@ -11286,14 +11569,14 @@
       "kind": "wrapped-native"
     },
     {
-      "source": "p101_dbm_firstkey",
-      "target": "dbm_clearerr",
-      "kind": "native-call"
+      "source": "p101_dbm_fetch",
+      "target": "p101_dbm_clearerr",
+      "kind": "wrapper-call"
     },
     {
-      "source": "p101_dbm_firstkey",
-      "target": "dbm_error",
-      "kind": "native-call"
+      "source": "p101_dbm_fetch",
+      "target": "p101_dbm_error",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_dbm_firstkey",
@@ -11306,14 +11589,14 @@
       "kind": "wrapped-native"
     },
     {
-      "source": "p101_dbm_nextkey",
-      "target": "dbm_clearerr",
-      "kind": "native-call"
+      "source": "p101_dbm_firstkey",
+      "target": "p101_dbm_clearerr",
+      "kind": "wrapper-call"
     },
     {
-      "source": "p101_dbm_nextkey",
-      "target": "dbm_error",
-      "kind": "native-call"
+      "source": "p101_dbm_firstkey",
+      "target": "p101_dbm_error",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_dbm_nextkey",
@@ -11324,6 +11607,16 @@
       "source": "p101_dbm_nextkey",
       "target": "dbm_nextkey",
       "kind": "wrapped-native"
+    },
+    {
+      "source": "p101_dbm_nextkey",
+      "target": "p101_dbm_clearerr",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_dbm_nextkey",
+      "target": "p101_dbm_error",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_dbm_open",
@@ -11384,6 +11677,11 @@
       "source": "p101_dlclose",
       "target": "dlerror",
       "kind": "native-call"
+    },
+    {
+      "source": "p101_dlclose",
+      "target": "p101_env_pointer_resource_id",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_dlerror",
@@ -11481,6 +11779,21 @@
       "kind": "native-call"
     },
     {
+      "source": "p101_env_check_fault_action",
+      "target": "fault_injector",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_env_check_fault_action",
+      "target": "p101_env_environment_fault_action",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_env_clear_event_log_error",
+      "target": "atomic_store_explicit",
+      "kind": "native-call"
+    },
+    {
       "source": "p101_env_create",
       "target": "malloc",
       "kind": "native-call"
@@ -11532,7 +11845,27 @@
     },
     {
       "source": "p101_env_destroy",
+      "target": "fflush",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_env_destroy",
+      "target": "flockfile",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_env_destroy",
+      "target": "fprintf",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_env_destroy",
       "target": "free",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_env_destroy",
+      "target": "funlockfile",
       "kind": "native-call"
     },
     {
@@ -11543,6 +11876,16 @@
     {
       "source": "p101_env_destroy",
       "target": "p101_env_close_owned_resource_log",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_env_destroy",
+      "target": "p101_env_event_log_errno",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_env_destroy",
+      "target": "p101_env_event_log_failed",
       "kind": "wrapper-call"
     },
     {
@@ -11601,19 +11944,14 @@
       "kind": "wrapper-call"
     },
     {
-      "source": "p101_env_event_line_is_ours",
-      "target": "strlen",
+      "source": "p101_env_event_log_errno",
+      "target": "atomic_load_explicit",
       "kind": "native-call"
     },
     {
-      "source": "p101_env_event_line_is_ours",
-      "target": "strncmp",
+      "source": "p101_env_event_log_failed",
+      "target": "atomic_load_explicit",
       "kind": "native-call"
-    },
-    {
-      "source": "p101_env_event_unescape_field",
-      "target": "p101_env_event_unescape_char",
-      "kind": "wrapper-call"
     },
     {
       "source": "p101_env_get_event_log_version",
@@ -11631,63 +11969,8 @@
       "kind": "wrapper-call"
     },
     {
-      "source": "p101_env_parse_event_line",
-      "target": "memset",
-      "kind": "native-call"
-    },
-    {
-      "source": "p101_env_parse_event_line",
-      "target": "p101_env_event_line_is_ours",
-      "kind": "wrapper-call"
-    },
-    {
-      "source": "p101_env_parse_event_line",
-      "target": "p101_env_event_parse_alloc",
-      "kind": "wrapper-call"
-    },
-    {
-      "source": "p101_env_parse_event_line",
-      "target": "p101_env_event_parse_call",
-      "kind": "wrapper-call"
-    },
-    {
-      "source": "p101_env_parse_event_line",
-      "target": "p101_env_event_parse_exec",
-      "kind": "wrapper-call"
-    },
-    {
-      "source": "p101_env_parse_event_line",
-      "target": "p101_env_event_parse_exec_failure",
-      "kind": "wrapper-call"
-    },
-    {
-      "source": "p101_env_parse_event_line",
-      "target": "p101_env_event_parse_fd",
-      "kind": "wrapper-call"
-    },
-    {
-      "source": "p101_env_parse_event_line",
-      "target": "p101_env_event_parse_fork",
-      "kind": "wrapper-call"
-    },
-    {
-      "source": "p101_env_parse_event_line",
-      "target": "p101_env_event_parse_spawn",
-      "kind": "wrapper-call"
-    },
-    {
-      "source": "p101_env_parse_event_line",
-      "target": "strlen",
-      "kind": "native-call"
-    },
-    {
-      "source": "p101_env_read_event_line",
-      "target": "ferror",
-      "kind": "native-call"
-    },
-    {
-      "source": "p101_env_read_event_line",
-      "target": "fgetc",
+      "source": "p101_env_pointer_resource_id",
+      "target": "snprintf",
       "kind": "native-call"
     },
     {
@@ -11796,6 +12079,26 @@
       "kind": "wrapper-call"
     },
     {
+      "source": "p101_env_set_resource_log",
+      "target": "p101_env_close_owned_resource_log_if_unused",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_env_set_resource_log",
+      "target": "p101_env_trace",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_env_set_resource_observer",
+      "target": "p101_env_close_owned_resource_log_if_unused",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_env_set_resource_observer",
+      "target": "p101_env_trace",
+      "kind": "wrapper-call"
+    },
+    {
       "source": "p101_env_set_tracer",
       "target": "p101_env_trace",
       "kind": "wrapper-call"
@@ -11891,6 +12194,16 @@
       "kind": "wrapper-call"
     },
     {
+      "source": "p101_env_track_integer_resource",
+      "target": "p101_env_track_resource",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_env_track_integer_resource",
+      "target": "snprintf",
+      "kind": "native-call"
+    },
+    {
       "source": "p101_env_track_open",
       "target": "malloc",
       "kind": "native-call"
@@ -11901,9 +12214,24 @@
       "kind": "wrapper-call"
     },
     {
+      "source": "p101_env_track_pointer_resource",
+      "target": "p101_env_pointer_resource_id",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_env_track_pointer_resource",
+      "target": "p101_env_track_resource",
+      "kind": "wrapper-call"
+    },
+    {
       "source": "p101_env_track_realloc",
       "target": "p101_env_alloc_notify",
       "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_env_track_resource",
+      "target": "resource_observer",
+      "kind": "native-call"
     },
     {
       "source": "p101_env_track_spawn",
@@ -12002,8 +12330,8 @@
     },
     {
       "source": "p101_err",
-      "target": "verr",
-      "kind": "native-call"
+      "target": "p101_verr",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_errno_get_errno",
@@ -12197,8 +12525,8 @@
     },
     {
       "source": "p101_errx",
-      "target": "verrx",
-      "kind": "native-call"
+      "target": "p101_verrx",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_ether_aton",
@@ -12907,13 +13235,13 @@
     },
     {
       "source": "p101_fork",
-      "target": "getpid",
-      "kind": "native-call"
+      "target": "p101_getpid",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_fork",
-      "target": "getppid",
-      "kind": "native-call"
+      "target": "p101_getppid",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_fpathconf",
@@ -13061,11 +13389,6 @@
       "kind": "wrapped-native"
     },
     {
-      "source": "p101_fseek",
-      "target": "stdio_error_code",
-      "kind": "native-call"
-    },
-    {
       "source": "p101_fseeko",
       "target": "fseeko",
       "kind": "wrapped-native"
@@ -13078,6 +13401,21 @@
     {
       "source": "p101_fsetpos",
       "target": "stdio_error_code",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_fsm_emit_effect",
+      "target": "handle",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_fsm_exit_immediately",
+      "target": "p101_fsm_decide_exit",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_fsm_info_create",
+      "target": "fsm_validate_transitions",
       "kind": "native-call"
     },
     {
@@ -13097,13 +13435,18 @@
     },
     {
       "source": "p101_fsm_info_create",
+      "target": "p101_memcpy",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_fsm_info_create",
       "target": "p101_strdup",
       "kind": "wrapper-call"
     },
     {
       "source": "p101_fsm_info_default_bad_change_state_handler",
-      "target": "snprintf",
-      "kind": "native-call"
+      "target": "p101_fsm_decide_exit",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_fsm_info_default_bad_change_state_notifier",
@@ -13112,8 +13455,8 @@
     },
     {
       "source": "p101_fsm_info_default_bad_change_state_notifier",
-      "target": "printf",
-      "kind": "native-call"
+      "target": "p101_printf",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_fsm_info_default_did_change_state_notifier",
@@ -13122,8 +13465,8 @@
     },
     {
       "source": "p101_fsm_info_default_did_change_state_notifier",
-      "target": "printf",
-      "kind": "native-call"
+      "target": "p101_printf",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_fsm_info_default_will_change_state_notifier",
@@ -13132,8 +13475,8 @@
     },
     {
       "source": "p101_fsm_info_default_will_change_state_notifier",
-      "target": "printf",
-      "kind": "native-call"
+      "target": "p101_printf",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_fsm_info_destroy",
@@ -13142,36 +13485,56 @@
     },
     {
       "source": "p101_fsm_run",
+      "target": "fsm_has_error",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_fsm_run",
+      "target": "p101_fsm_step",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_fsm_step",
       "target": "bad_change_state_handler",
       "kind": "native-call"
     },
     {
-      "source": "p101_fsm_run",
+      "source": "p101_fsm_step",
       "target": "bad_change_state_notifier",
       "kind": "native-call"
     },
     {
-      "source": "p101_fsm_run",
+      "source": "p101_fsm_step",
       "target": "did_change_state_notifier",
       "kind": "native-call"
     },
     {
-      "source": "p101_fsm_run",
-      "target": "fsm_info_has_error",
+      "source": "p101_fsm_step",
+      "target": "fsm_complete_step",
       "kind": "native-call"
     },
     {
-      "source": "p101_fsm_run",
+      "source": "p101_fsm_step",
+      "target": "fsm_has_error",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_fsm_step",
+      "target": "fsm_prepare_result",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_fsm_step",
       "target": "fsm_transition",
       "kind": "native-call"
     },
     {
-      "source": "p101_fsm_run",
+      "source": "p101_fsm_step",
       "target": "perform",
       "kind": "native-call"
     },
     {
-      "source": "p101_fsm_run",
+      "source": "p101_fsm_step",
       "target": "will_change_state_notifier",
       "kind": "native-call"
     },
@@ -13272,13 +13635,13 @@
     },
     {
       "source": "p101_getaddrinfo",
-      "target": "gai_strerror",
-      "kind": "native-call"
+      "target": "getaddrinfo",
+      "kind": "wrapped-native"
     },
     {
       "source": "p101_getaddrinfo",
-      "target": "getaddrinfo",
-      "kind": "wrapped-native"
+      "target": "p101_gai_strerror",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_getc",
@@ -13452,13 +13815,13 @@
     },
     {
       "source": "p101_getnameinfo",
-      "target": "gai_strerror",
-      "kind": "native-call"
+      "target": "getnameinfo",
+      "kind": "wrapped-native"
     },
     {
       "source": "p101_getnameinfo",
-      "target": "getnameinfo",
-      "kind": "wrapped-native"
+      "target": "p101_gai_strerror",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_getopt",
@@ -14197,8 +14560,8 @@
     },
     {
       "source": "p101_j0",
-      "target": "nan",
-      "kind": "native-call"
+      "target": "p101_nan",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_j0",
@@ -14217,8 +14580,8 @@
     },
     {
       "source": "p101_j1",
-      "target": "nan",
-      "kind": "native-call"
+      "target": "p101_nan",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_j1",
@@ -14237,8 +14600,8 @@
     },
     {
       "source": "p101_jn",
-      "target": "nan",
-      "kind": "native-call"
+      "target": "p101_nan",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_jn",
@@ -15096,6 +15459,11 @@
       "kind": "wrapped-native"
     },
     {
+      "source": "p101_munmap",
+      "target": "p101_env_pointer_resource_id",
+      "kind": "wrapper-call"
+    },
+    {
       "source": "p101_nan",
       "target": "nan",
       "kind": "wrapped-native"
@@ -15746,6 +16114,11 @@
       "kind": "native-call"
     },
     {
+      "source": "p101_posix_exit_immediately",
+      "target": "_exit",
+      "kind": "native-call"
+    },
+    {
       "source": "p101_posix_madvise",
       "target": "posix_madvise",
       "kind": "wrapped-native"
@@ -15762,8 +16135,8 @@
     },
     {
       "source": "p101_posix_spawn",
-      "target": "getpid",
-      "kind": "native-call"
+      "target": "p101_getpid",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_posix_spawn",
@@ -15847,8 +16220,8 @@
     },
     {
       "source": "p101_posix_spawnp",
-      "target": "getpid",
-      "kind": "native-call"
+      "target": "p101_getpid",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_posix_spawnp",
@@ -15899,6 +16272,16 @@
       "source": "p101_powl",
       "target": "powl",
       "kind": "wrapped-native"
+    },
+    {
+      "source": "p101_pread",
+      "target": "p101_env_check_fault_action",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_pread",
+      "target": "p101_posix_short_count",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_pread",
@@ -16397,6 +16780,16 @@
     },
     {
       "source": "p101_pwrite",
+      "target": "p101_env_check_fault_action",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_pwrite",
+      "target": "p101_posix_short_count",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_pwrite",
       "target": "pwrite",
       "kind": "wrapped-native"
     },
@@ -16417,7 +16810,12 @@
     },
     {
       "source": "p101_read",
-      "target": "p101_env_check_fault",
+      "target": "p101_env_check_fault_action",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_read",
+      "target": "p101_posix_short_count",
       "kind": "wrapper-call"
     },
     {
@@ -16457,13 +16855,13 @@
     },
     {
       "source": "p101_realpath",
-      "target": "realpath",
-      "kind": "wrapped-native"
+      "target": "p101_strlen",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_realpath",
-      "target": "strlen",
-      "kind": "native-call"
+      "target": "realpath",
+      "kind": "wrapped-native"
     },
     {
       "source": "p101_recv",
@@ -16482,23 +16880,28 @@
     },
     {
       "source": "p101_regcomp",
-      "target": "free",
-      "kind": "native-call"
+      "target": "p101_error_has_error",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_regcomp",
-      "target": "malloc",
-      "kind": "native-call"
+      "target": "p101_free",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_regcomp",
+      "target": "p101_malloc",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_regcomp",
+      "target": "p101_regerror",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_regcomp",
       "target": "regcomp",
       "kind": "wrapped-native"
-    },
-    {
-      "source": "p101_regcomp",
-      "target": "regerror",
-      "kind": "native-call"
     },
     {
       "source": "p101_regerror",
@@ -16814,6 +17217,11 @@
       "source": "p101_select",
       "target": "select",
       "kind": "wrapped-native"
+    },
+    {
+      "source": "p101_sem_close",
+      "target": "p101_env_pointer_resource_id",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_sem_close",
@@ -17377,33 +17785,38 @@
     },
     {
       "source": "p101_strdup",
+      "target": "p101_strlen",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_strdup",
       "target": "strdup",
       "kind": "wrapped-native"
     },
     {
-      "source": "p101_strdup",
-      "target": "strlen",
-      "kind": "native-call"
+      "source": "p101_strerror",
+      "target": "p101_error_has_error",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_strerror",
-      "target": "malloc",
-      "kind": "native-call"
+      "target": "p101_malloc",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_strerror",
-      "target": "memcpy",
-      "kind": "native-call"
+      "target": "p101_memcpy",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_strerror",
+      "target": "p101_strlen",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_strerror",
       "target": "strerror",
       "kind": "wrapped-native"
-    },
-    {
-      "source": "p101_strerror",
-      "target": "strlen",
-      "kind": "native-call"
     },
     {
       "source": "p101_strerror_r",
@@ -17462,13 +17875,13 @@
     },
     {
       "source": "p101_strndup",
-      "target": "strndup",
-      "kind": "wrapped-native"
+      "target": "p101_strnlen",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_strndup",
-      "target": "strnlen",
-      "kind": "native-call"
+      "target": "strndup",
+      "kind": "wrapped-native"
     },
     {
       "source": "p101_strnlen",
@@ -17846,6 +18259,211 @@
       "kind": "wrapped-native"
     },
     {
+      "source": "p101_tool_event_fingerprint_file",
+      "target": "close",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_fingerprint_file",
+      "target": "fnv1a64_multiply",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_fingerprint_file",
+      "target": "memset",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_fingerprint_file",
+      "target": "open",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_fingerprint_file",
+      "target": "read",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_lifecycle_create",
+      "target": "calloc",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_lifecycle_destroy",
+      "target": "free",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_lifecycle_finish",
+      "target": "add_finding",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_lifecycle_finish",
+      "target": "memset",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_lifecycle_ingest",
+      "target": "add_entry",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_lifecycle_ingest",
+      "target": "add_finding",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_lifecycle_ingest",
+      "target": "find_latest",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_lifecycle_ingest",
+      "target": "release_entry",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_line_is_ours",
+      "target": "strlen",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_line_is_ours",
+      "target": "strncmp",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_parse_json_size",
+      "target": "strchr",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_parse_json_size",
+      "target": "strstr",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_parse_line",
+      "target": "memset",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_parse_line",
+      "target": "p101_tool_event_line_is_ours",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_tool_event_parse_line",
+      "target": "p101_tool_event_split",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_tool_event_parse_line",
+      "target": "parse_metadata",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_parse_line",
+      "target": "parse_payload",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_parse_line",
+      "target": "strlen",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_parse_line",
+      "target": "unescape_record",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_parse_resource_summary_json",
+      "target": "memset",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_parse_resource_summary_json",
+      "target": "p101_tool_event_parse_json_size",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_tool_event_read_line",
+      "target": "ferror",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_read_line",
+      "target": "fgetc",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "fclose",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "fflush",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "flockfile",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "fputc",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "fputs",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "free",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "funlockfile",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "fwrite",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "open_memstream",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "output_is_valid",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "record_magic",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "write_metadata",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_tool_event_write",
+      "target": "write_payload",
+      "kind": "native-call"
+    },
+    {
       "source": "p101_toupper",
       "target": "toupper",
       "kind": "wrapped-native"
@@ -18092,13 +18710,13 @@
     },
     {
       "source": "p101_warn",
-      "target": "vwarn",
-      "kind": "native-call"
+      "target": "p101_vwarn",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_warnx",
-      "target": "vwarnx",
-      "kind": "native-call"
+      "target": "p101_vwarnx",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_wcpcpy",
@@ -18152,13 +18770,13 @@
     },
     {
       "source": "p101_wcsdup",
-      "target": "wcsdup",
-      "kind": "wrapped-native"
+      "target": "p101_wcslen",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_wcsdup",
-      "target": "wcslen",
-      "kind": "native-call"
+      "target": "wcsdup",
+      "kind": "wrapped-native"
     },
     {
       "source": "p101_wcsftime",
@@ -18392,7 +19010,12 @@
     },
     {
       "source": "p101_write",
-      "target": "p101_env_check_fault",
+      "target": "p101_env_check_fault_action",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_write",
+      "target": "p101_posix_short_count",
       "kind": "wrapper-call"
     },
     {
@@ -18417,8 +19040,8 @@
     },
     {
       "source": "p101_y0",
-      "target": "nan",
-      "kind": "native-call"
+      "target": "p101_nan",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_y0",
@@ -18437,8 +19060,8 @@
     },
     {
       "source": "p101_y1",
-      "target": "nan",
-      "kind": "native-call"
+      "target": "p101_nan",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_y1",
@@ -18457,8 +19080,8 @@
     },
     {
       "source": "p101_yn",
-      "target": "nan",
-      "kind": "native-call"
+      "target": "p101_nan",
+      "kind": "wrapper-call"
     },
     {
       "source": "p101_yn",
@@ -19648,25 +20271,24 @@
       ]
     },
     "support/environment-lifecycle": {
-      "count": 14,
+      "count": 13,
       "libraries": {
-        "lib_env": 14
+        "lib_env": 13
       },
       "functions": [
+        "p101_env_clear_event_log_error",
         "p101_env_create",
         "p101_env_destroy",
         "p101_env_dup",
-        "p101_env_event_line_is_ours",
-        "p101_env_event_parse_size_field",
-        "p101_env_event_parse_status_name",
-        "p101_env_event_split",
-        "p101_env_event_unescape_field",
+        "p101_env_event_log_errno",
+        "p101_env_event_log_failed",
         "p101_env_get_event_log_version",
         "p101_env_get_label",
-        "p101_env_parse_event_line",
-        "p101_env_read_event_line",
+        "p101_env_pointer_resource_id",
         "p101_env_set_event_log_version",
-        "p101_env_set_label"
+        "p101_env_set_label",
+        "p101_env_set_resource_log",
+        "p101_env_set_resource_observer"
       ]
     },
     "support/error-codes": {
@@ -19711,22 +20333,27 @@
       ]
     },
     "support/fault-injection": {
-      "count": 3,
+      "count": 4,
       "libraries": {
-        "lib_env": 3
+        "lib_env": 4
       },
       "functions": [
         "p101_env_check_fault",
+        "p101_env_check_fault_action",
         "p101_env_default_tracer",
         "p101_env_set_fault_injector"
       ]
     },
     "support/fsm": {
-      "count": 17,
+      "count": 26,
       "libraries": {
-        "lib_fsm": 17
+        "lib_fsm": 26
       },
       "functions": [
+        "p101_fsm_decide_exit",
+        "p101_fsm_decide_pause",
+        "p101_fsm_decide_transition",
+        "p101_fsm_emit_effect",
         "p101_fsm_exit_immediately",
         "p101_fsm_info_create",
         "p101_fsm_info_default_bad_change_state_handler",
@@ -19736,20 +20363,25 @@
         "p101_fsm_info_destroy",
         "p101_fsm_info_get_bad_change_state_handler",
         "p101_fsm_info_get_bad_change_state_notifier",
+        "p101_fsm_info_get_current_state",
         "p101_fsm_info_get_did_change_state_notifier",
         "p101_fsm_info_get_name",
+        "p101_fsm_info_get_step_sequence",
         "p101_fsm_info_get_will_change_state_notifier",
+        "p101_fsm_info_is_terminal",
         "p101_fsm_info_set_bad_change_state_handler",
         "p101_fsm_info_set_bad_change_state_notifier",
         "p101_fsm_info_set_did_change_state_notifier",
+        "p101_fsm_info_set_step_observer",
         "p101_fsm_info_set_will_change_state_notifier",
-        "p101_fsm_run"
+        "p101_fsm_run",
+        "p101_fsm_step"
       ]
     },
     "support/resource-events": {
-      "count": 15,
+      "count": 18,
       "libraries": {
-        "lib_env": 15
+        "lib_env": 18
       },
       "functions": [
         "p101_env_enable_fd_tracking",
@@ -19764,8 +20396,11 @@
         "p101_env_track_exec_failure",
         "p101_env_track_fork",
         "p101_env_track_free",
+        "p101_env_track_integer_resource",
         "p101_env_track_open",
+        "p101_env_track_pointer_resource",
         "p101_env_track_realloc",
+        "p101_env_track_resource",
         "p101_env_track_spawn"
       ]
     },
@@ -19850,6 +20485,15 @@
         "p101_sync",
         "p101_write",
         "p101_writev"
+      ]
+    },
+    "systems/file-io": {
+      "count": 1,
+      "libraries": {
+        "lib_posix": 1
+      },
+      "functions": [
+        "p101_posix_exit_immediately"
       ]
     },
     "systems/filesystem-paths": {
@@ -20380,15 +21024,48 @@
         "p101_c_fact_status_name",
         "p101_c_facts_find_clang_compile_database"
       ]
+    },
+    "tooling/event-protocol": {
+      "count": 23,
+      "libraries": {
+        "lib_tool_event": 23
+      },
+      "functions": [
+        "p101_tool_event_fingerprint_file",
+        "p101_tool_event_lifecycle_create",
+        "p101_tool_event_lifecycle_destroy",
+        "p101_tool_event_lifecycle_entry_at",
+        "p101_tool_event_lifecycle_entry_count",
+        "p101_tool_event_lifecycle_finding_at",
+        "p101_tool_event_lifecycle_finding_count",
+        "p101_tool_event_lifecycle_finish",
+        "p101_tool_event_lifecycle_ingest",
+        "p101_tool_event_line_is_ours",
+        "p101_tool_event_ownership_classify_release",
+        "p101_tool_event_ownership_classify_replace",
+        "p101_tool_event_ownership_exec_inherits",
+        "p101_tool_event_parse_json_size",
+        "p101_tool_event_parse_line",
+        "p101_tool_event_parse_resource_summary_json",
+        "p101_tool_event_parse_size_field",
+        "p101_tool_event_parse_status_name",
+        "p101_tool_event_read_line",
+        "p101_tool_event_resource_summary_finding_count",
+        "p101_tool_event_split",
+        "p101_tool_event_unescape_field",
+        "p101_tool_event_write"
+      ]
     }
   },
   "repository_recommendation": {
     "repository": "playgrounds",
     "layout": "single repository with small explicit tracks",
     "track_count": 40,
-    "covered_function_count": 1171,
-    "uncovered_function_count": 0,
-    "uncovered_domains": [],
+    "covered_function_count": 1206,
+    "uncovered_function_count": 1,
+    "uncovered_domains": [
+      "systems/file-io"
+    ],
     "tracks": [
       {
         "track": "c-memory-runtime",
@@ -20726,7 +21403,7 @@
       {
         "track": "environment-lifecycle",
         "purpose": "Creating, configuring, labeling, duplicating, and destroying p101 environments.",
-        "function_count": 14,
+        "function_count": 13,
         "domains": [
           "support/environment-lifecycle"
         ]
@@ -20734,7 +21411,7 @@
       {
         "track": "event-streams",
         "purpose": "Resource events, call tracing, fault injection, event-log formatting, and observer configuration.",
-        "function_count": 30,
+        "function_count": 34,
         "domains": [
           "support/call-tracing",
           "support/fault-injection",
@@ -20744,7 +21421,7 @@
       {
         "track": "fsm",
         "purpose": "Finite-state-machine structure, state transitions, callbacks, invalid transitions, and lifecycle ownership.",
-        "function_count": 17,
+        "function_count": 26,
         "domains": [
           "support/fsm"
         ]
@@ -20752,9 +21429,10 @@
       {
         "track": "tool-building",
         "purpose": "C facts, small analyzers, and writing tools that reason about p101 projects.",
-        "function_count": 4,
+        "function_count": 27,
         "domains": [
-          "tooling/c-facts"
+          "tooling/c-facts",
+          "tooling/event-protocol"
         ]
       }
     ]
@@ -21096,7 +21774,7 @@
     {
       "track": "environment-lifecycle",
       "purpose": "Creating, configuring, labeling, duplicating, and destroying p101 environments.",
-      "function_count": 14,
+      "function_count": 13,
       "domains": [
         "support/environment-lifecycle"
       ]
@@ -21104,7 +21782,7 @@
     {
       "track": "event-streams",
       "purpose": "Resource events, call tracing, fault injection, event-log formatting, and observer configuration.",
-      "function_count": 30,
+      "function_count": 34,
       "domains": [
         "support/call-tracing",
         "support/fault-injection",
@@ -21114,7 +21792,7 @@
     {
       "track": "fsm",
       "purpose": "Finite-state-machine structure, state transitions, callbacks, invalid transitions, and lifecycle ownership.",
-      "function_count": 17,
+      "function_count": 26,
       "domains": [
         "support/fsm"
       ]
@@ -21122,9 +21800,10 @@
     {
       "track": "tool-building",
       "purpose": "C facts, small analyzers, and writing tools that reason about p101 projects.",
-      "function_count": 4,
+      "function_count": 27,
       "domains": [
-        "tooling/c-facts"
+        "tooling/c-facts",
+        "tooling/event-protocol"
       ]
     }
   ]
