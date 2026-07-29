@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 from collections import Counter, defaultdict
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -87,6 +88,31 @@ def active_libraries(root: Path) -> list[Path]:
     return sorted(path for path in (root / "libraries").glob("lib_*") if path.is_dir())
 
 
+def configured_files(library_dir: Path, suffix: str) -> list[Path]:
+    """Return files admitted by the library's install/build contract."""
+    config = library_dir / "config.cmake"
+    if not config.is_file():
+        return []
+
+    text = config.read_text(encoding="utf-8", errors="replace")
+    targets_match = re.search(r"set\(\s*LIBRARY_TARGETS\b(.*?)\)", text, re.DOTALL)
+    if targets_match is None:
+        return []
+    targets = shlex.split(re.sub(r"#[^\n]*", "", targets_match.group(1)))
+    paths: list[Path] = []
+    for target in targets:
+        pattern = re.compile(rf"set\(\s*{re.escape(target)}_{re.escape(suffix)}\b(.*?)\)", re.DOTALL)
+        match = pattern.search(text)
+        if match is None:
+            continue
+        body = re.sub(r"#[^\n]*", "", match.group(1))
+        for token in shlex.split(body):
+            path = library_dir / token
+            if path.is_file():
+                paths.append(path)
+    return sorted(set(paths))
+
+
 def find_matching(text: str, start: int, open_char: str, close_char: str) -> int | None:
     depth = 0
     i = start
@@ -136,6 +162,9 @@ def extract_header_prototypes(path: Path) -> set[str]:
     names: set[str] = set()
     for match in WRAPPER_RE.finditer(text):
         name = match.group(0)
+        statement_start = max(text.rfind(";", 0, match.start()), text.rfind("{", 0, match.start()), text.rfind("}", 0, match.start()))
+        if re.search(r"\btypedef\b", text[statement_start + 1 : match.start()]):
+            continue
         after = match.end()
         while after < len(text) and text[after].isspace():
             after += 1
@@ -144,8 +173,10 @@ def extract_header_prototypes(path: Path) -> set[str]:
         close_paren = find_matching(text, after, "(", ")")
         if close_paren is None:
             continue
-        tail = text[close_paren + 1 : close_paren + 8]
-        if ";" in tail:
+        after_sig = close_paren + 1
+        semicolon = text.find(";", after_sig)
+        body = text.find("{", after_sig)
+        if semicolon >= 0 and (body < 0 or semicolon < body):
             names.add(name)
     return names
 
@@ -442,7 +473,7 @@ def classify_unistd_like(name: str) -> str | None:
         "p101_sysconf",
     }
     process_names = {
-        "p101__exit",
+        "p101_exit_immediately",
         "p101_execv",
         "p101_execve",
         "p101_execvp",
@@ -524,7 +555,7 @@ def classify(library: str, header: str | None, source: str | None, name: str) ->
     if library == "lib_c_facts":
         return "tooling/c-facts"
     if library == "lib_util":
-        return "support/util"
+        return "c/byte-utility"
 
     if library in {"lib_posix", "lib_posix_optional", "lib_posix_xsi", "lib_unix"}:
         c_extension_topics = {
@@ -618,17 +649,21 @@ def collect(root: Path) -> tuple[dict[str, FunctionNode], list[FunctionEdge], di
 
     for library_dir in active_libraries(root):
         library = library_dir.name
-        for header in sorted((library_dir / "include").glob("**/*.h")):
+        for header in configured_files(library_dir, "HEADERS"):
             for name in extract_header_prototypes(header):
                 headers_by_name.setdefault(name, header)
                 declared_by_library[library].append(name)
-        for source in sorted((library_dir / "src").glob("**/*.c")):
+        for source in configured_files(library_dir, "SOURCES"):
             definitions = extract_definitions(source)
             for name, body in definitions.items():
                 sources_by_name.setdefault(name, source)
                 definitions_by_name.setdefault(name, body)
 
-    all_names = sorted(set(headers_by_name) | set(sources_by_name))
+    # The curriculum graph is a public wrapper-surface inventory. Source-only
+    # p101_* helpers are implementation details, not wrappers students can call.
+    # Keep their bodies available while discovering calls from public wrappers,
+    # but do not turn them into manifest nodes.
+    all_names = sorted(headers_by_name)
     nodes: dict[str, FunctionNode] = {}
     for name in all_names:
         header = headers_by_name.get(name)
@@ -864,7 +899,7 @@ def track_recommendations(domain_counts: Counter[str]) -> list[dict[str, Any]]:
             "track": "network-io-addresses",
             "purpose": "send/recv families, byte order, inet conversion, and network address helper functions.",
             "prefixes": (),
-            "domains": ("network/io", "network/address-conversion"),
+            "domains": ("network/io", "network/address-conversion", "network/conversion"),
         },
         {
             "track": "network-names-interfaces",
@@ -886,7 +921,7 @@ def track_recommendations(domain_counts: Counter[str]) -> list[dict[str, Any]]:
         },
         {
             "track": "resources-platform",
-            "purpose": "Resource limits, priorities, clocks/time, memory mapping/locking, sysctl, mounts, fstab, host/system configuration, and platform administration APIs.",
+            "purpose": "Resource limits, priorities, clocks/time, memory mapping/locking, host/system configuration, and portable platform administration APIs.",
             "prefixes": (),
             "domains": ("systems/resource-time-memory", "systems/platform-admin", "systems/system-configuration", "systems/security-legacy"),
         },
@@ -934,9 +969,9 @@ def track_recommendations(domain_counts: Counter[str]) -> list[dict[str, Any]]:
         },
         {
             "track": "tool-building",
-            "purpose": "C facts, small analyzers, support utilities, and writing tools that reason about p101 projects.",
+            "purpose": "C facts, small analyzers, and writing tools that reason about p101 projects.",
             "prefixes": ("tooling/",),
-            "domains": ("support/util",),
+            "domains": (),
         },
     ]
 

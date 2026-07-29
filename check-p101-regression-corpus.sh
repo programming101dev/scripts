@@ -202,6 +202,40 @@ check_raw_exec_cloexec_ok() {
   return 1
 }
 
+check_raw_exec_failure_ok() {
+  name="synthetic-exec-failure-ok"
+  raw_log="$out_dir/$name.log"
+  json="$out_dir/$name.json"
+  log="$log_dir/$name.log"
+
+  echo "==> $name"
+  rm -f "$raw_log" "$json"
+  {
+    printf 'P101FD\t2\t123\t1\t100\t200\tOPEN\t3\t10\tmain\texec-fail.c\n'
+    printf 'P101EXEC\t2\t123\t2\t110\t210\t3\t0\t20\tp101_execvp\tunistd.c\t/missing\n'
+    printf 'P101EXECFAIL\t2\t123\t3\t120\t220\t20\tp101_execvp\tunistd.c\t/missing\n'
+    printf 'P101FD\t2\t123\t4\t130\t230\tCLOSE\t3\t30\tmain\texec-fail.c\n'
+  } > "$raw_log"
+
+  if "$tracker" -j "$raw_log" > "$json" 2> "$log"; then
+    rc=0
+  else
+    rc=$?
+  fi
+
+  exec_inherit="$(json_number "$json" exec_inheritances)"
+  fd="$(json_number "$json" fd_leaks)"
+  if [ "$rc" -eq 0 ] && [ "$exec_inherit" -eq 0 ] && [ "$fd" -eq 0 ]; then
+    echo "    PASS"
+    printf '| PASS | %s | rc=%s exec=%s fd=%s |\n' "$name" "$rc" "$exec_inherit" "$fd" >> "$summary"
+    return 0
+  fi
+
+  echo "    FAIL: got rc=$rc exec=$exec_inherit fd=$fd"
+  printf '| FAIL | %s | expected rc=0 exec=0 fd=0; got rc=%s exec=%s fd=%s; [log](./logs/%s) |\n' "$name" "$rc" "$exec_inherit" "$fd" "$(basename "$log")" >> "$summary"
+  return 1
+}
+
 check_raw_malformed_line() {
   name="$1"
   kind="$2"
@@ -248,11 +282,11 @@ check_raw_malformed_line() {
   return 1
 }
 
-observe="$(find_tool P101_OBSERVE ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe)"
-tracker="$(find_tool P101_RESOURCE_TRACKER ../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker ../programs/p101-resource-tracker/build-clang/p101-resource-tracker p101-resource-tracker)"
-trace="$(find_tool P101_TRACE ../programs/p101-trace/build-clang-22/p101-trace ../programs/p101-trace/build-clang/p101-trace p101-trace)"
-report="$(find_tool P101_REPORT ../programs/p101-report/build-clang-22/p101-report ../programs/p101-report/build-clang/p101-report p101-report)"
-playground="$(find_tool P101_TOOL_PLAYGROUND ../playgrounds/build-clang-22/p101-tool-playground ../playgrounds/build-clang/p101-tool-playground p101-tool-playground)"
+observe="$(find_tool P101_OBSERVE ../programs/p101-observe/build-clang/p101-observe ../programs/p101-observe/build-clang-22/p101-observe p101-observe)"
+tracker="$(find_tool P101_RESOURCE_TRACKER ../programs/p101-resource-tracker/build-clang/p101-resource-tracker ../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker p101-resource-tracker)"
+trace="$(find_tool P101_TRACE ../programs/p101-trace/build-clang/p101-trace ../programs/p101-trace/build-clang-22/p101-trace p101-trace)"
+report="$(find_tool P101_REPORT ../programs/p101-report/build-clang/p101-report ../programs/p101-report/build-clang-22/p101-report p101-report)"
+playground="$(find_tool P101_TOOL_PLAYGROUND ../playgrounds/build-clang/p101-tool-playground ../playgrounds/build-clang-22/p101-tool-playground p101-tool-playground)"
 
 cat > "$summary" <<'EOF'
 # p101 regression corpus
@@ -269,6 +303,7 @@ check_case double-close-error-path double-close 0 0 1 0 1 || failures=1
 check_raw_bad_release || failures=1
 check_raw_exec_inherit || failures=1
 check_raw_exec_cloexec_ok || failures=1
+check_raw_exec_failure_ok || failures=1
 check_raw_malformed_line synthetic-embedded-nul embedded-nul || failures=1
 check_raw_malformed_line synthetic-overlong-line overlong || failures=1
 

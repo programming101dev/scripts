@@ -570,6 +570,44 @@ else
   bad "profile: configure failed" "$PROJ/configure.log"
 fi
 
+# ---------- case: nested workspace local-header precedence ----------
+# Playground tracks are one level deeper than libraries/programs. Their local
+# checked-out headers must still use -I and win over stale installed headers.
+nested_root="$SANDBOX/nested-workspace"
+PROJ="$nested_root/playgrounds/tracks/sample"
+mkdir -p "$PROJ/src" "$PROJ/include" "$PROJ/.flags/$(basename "$c_compiler")"
+mkdir -p "$nested_root/libraries/lib_fixture/include"
+cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
+ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
+printf 'BasedOnStyle: LLVM\nIndentWidth: 4\n' > "$PROJ/.clang-format"
+cat > "$PROJ/config.cmake" <<'EOF'
+set(PROJECT_NAME nested)
+set(PROJECT_VERSION 1.0.0)
+set(PROJECT_DESCRIPTION "nested workspace precedence")
+set(PROJECT_LANGUAGE C)
+set(STANDARD_FLAGS -std=c17 -Werror)
+set(EXECUTABLE_TARGETS hello)
+set(hello_SOURCES src/main.c)
+EOF
+printf '#ifndef LOCAL_ONLY_H\n#define LOCAL_ONLY_H\n#define LOCAL_VALUE 0\n#endif\n' > "$nested_root/libraries/lib_fixture/include/local_only.h"
+printf '#include <local_only.h>\nint main(void)\n{\n    return LOCAL_VALUE;\n}\n' > "$PROJ/src/main.c"
+configure "$PROJ"
+if (( RC == 0 )); then
+  build "$PROJ"
+  nested_compile_db="$PROJ/build/compile_commands.json"
+  if (( RC == 0 )) && [ -f "$nested_compile_db" ] \
+     && grep -q -- "-I$nested_root/libraries/lib_fixture/include" "$nested_compile_db" \
+     && ! grep -q -- "-isystem $nested_root/libraries/lib_fixture/include" "$nested_compile_db"; then
+    ok "nested-local-precedence: workspace headers use -I ahead of installed prefixes"
+  elif (( RC == 0 )); then
+    bad "nested-local-precedence: local header did not use normal -I precedence" "$nested_compile_db"
+  else
+    bad "nested-local-precedence: build failed" "$PROJ/build.log"
+  fi
+else
+  bad "nested-local-precedence: configure failed" "$PROJ/configure.log"
+fi
+
 # ---------- summary ----------
 echo
 echo "== test-cmake.sh: $pass passed, $fail failed =="
