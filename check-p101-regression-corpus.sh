@@ -63,6 +63,63 @@ json_number() {
   python3 -c 'import json,sys; data=json.load(open(sys.argv[1], encoding="utf-8")); print(int(data.get(sys.argv[2], 0)))' "$file" "$key"
 }
 
+assert_resource_model_parity() {
+  tracker_json="$1"
+  report_json="$2"
+
+  python3 -c '
+import collections, json, sys
+tracker = json.load(open(sys.argv[1], encoding="utf-8"))
+report = json.load(open(sys.argv[2], encoding="utf-8"))
+ids = collections.Counter(item["id"] for item in report.get("findings", []))
+actual = {
+    "fd_leaks": ids["P101-FD-001"],
+    "allocation_leaks": ids["P101-ALLOC-001"],
+    "bad_releases": sum(ids[key] for key in ("P101-FD-002", "P101-FD-003", "P101-ALLOC-002", "P101-ALLOC-003", "P101-ALLOC-004")),
+    "exec_inheritances": ids["P101-FD-004"],
+    "generic_resource_leaks": ids["P101-RESOURCE-001"],
+    "generic_bad_releases": sum(ids[key] for key in ("P101-RESOURCE-002", "P101-RESOURCE-003", "P101-RESOURCE-004", "P101-RESOURCE-005")),
+}
+expected = {key: int(tracker.get(key, 0)) for key in actual}
+if actual != expected:
+    raise SystemExit("resource model mismatch: tracker=%r report=%r" % (expected, actual))
+' "$tracker_json" "$report_json"
+}
+
+assert_observe_receipt() {
+  case_dir="$1"
+  manifest="$case_dir/manifest.txt"
+  receipt="$case_dir/receipt.txt"
+
+  [ -f "$manifest" ] || return 1
+  [ -f "$receipt" ] || return 1
+  manifest_run_id="$(awk -F= '$1 == "run_id" { print substr($0, index($0, "=") + 1); exit }' "$manifest")"
+  receipt_run_id="$(awk -F= '$1 == "run_id" { print substr($0, index($0, "=") + 1); exit }' "$receipt")"
+  [ -n "$manifest_run_id" ] || return 1
+  [ "$manifest_run_id" = "$receipt_run_id" ] || return 1
+  grep -q '^schema=p101-run-receipt-v1$' "$receipt" || return 1
+  grep -q '^fingerprint_security=change-detection-only$' "$receipt" || return 1
+  grep -q '^artifact=resources	' "$receipt" || return 1
+  grep -q '^artifact=calls	' "$receipt" || return 1
+}
+
+check_raw_model_parity() {
+  raw_log="$1"
+  tracker_json="$2"
+  label="$3"
+  report_json="$out_dir/$label-report.json"
+  empty_calls="$out_dir/empty-calls.log"
+
+  : > "$empty_calls"
+  if "$report" -j -r "$raw_log" -c "$empty_calls" > "$report_json" 2>> "$log_dir/$label.log"; then
+    report_rc=0
+  else
+    report_rc=$?
+  fi
+  [ "$report_rc" -le 1 ] || return 1
+  assert_resource_model_parity "$tracker_json" "$report_json"
+}
+
 check_case() {
   name="$1"
   scenario="$2"
@@ -83,9 +140,20 @@ check_case() {
   fi
 
   json="$case_dir/resource-report.json"
+  correlated_json="$case_dir/correlated-report.json"
   if [ ! -f "$json" ]; then
     echo "    FAIL: missing resource-report.json"
     printf '| FAIL | %s | missing resource-report.json; [log](./logs/%s) |\n' "$name" "$(basename "$log")" >> "$summary"
+    return 1
+  fi
+  if [ ! -f "$correlated_json" ] || ! assert_resource_model_parity "$json" "$correlated_json"; then
+    echo "    FAIL: resource tracker/report model mismatch"
+    printf '| FAIL | %s | resource tracker/report model mismatch; [log](./logs/%s) |\n' "$name" "$(basename "$log")" >> "$summary"
+    return 1
+  fi
+  if ! assert_observe_receipt "$case_dir"; then
+    echo "    FAIL: missing or inconsistent run receipt"
+    printf '| FAIL | %s | missing or inconsistent run receipt; [log](./logs/%s) |\n' "$name" "$(basename "$log")" >> "$summary"
     return 1
   fi
 
@@ -124,6 +192,7 @@ check_raw_bad_release() {
   else
     rc=$?
   fi
+  check_raw_model_parity "$raw_log" "$json" "$name" || return 1
 
   bad="$(json_number "$json" bad_releases)"
   if [ "$rc" -eq 1 ] && [ "$bad" -eq 1 ]; then
@@ -134,6 +203,62 @@ check_raw_bad_release() {
 
   echo "    FAIL: got rc=$rc bad=$bad"
   printf '| FAIL | %s | expected rc=1 bad=1; got rc=%s bad=%s; [log](./logs/%s) |\n' "$name" "$rc" "$bad" "$(basename "$log")" >> "$summary"
+  return 1
+}
+
+check_raw_generic_resource() {
+  name="$1"
+  fixture="$2"
+  expected_leaks="$3"
+  expected_bad="$4"
+  raw_log="$out_dir/$name.log"
+  json="$out_dir/$name.json"
+  log="$log_dir/$name.log"
+
+  echo "==> $name"
+  rm -f "$raw_log" "$json"
+  case "$fixture" in
+    leak)
+      printf 'P101RESOURCE\t3\t123\t7\t1\t100\t200\tACQUIRE\tmapping\t0x1000\t-\t4096\tprivate\t10\tmap_file\tmapping.c\n' > "$raw_log"
+      ;;
+    bad-replace)
+      {
+        printf 'P101RESOURCE\t3\t123\t7\t1\t100\t200\tACQUIRE\tmapping\t0x1000\t-\t4096\tprivate\t10\tmap_file\tmapping.c\n'
+        printf 'P101RESOURCE\t3\t123\t7\t2\t110\t210\tREPLACE\tmapping\t0x1000\t-\t8192\tprivate\t11\tgrow_map\tmapping.c\n'
+        printf 'P101RESOURCE\t3\t123\t7\t3\t120\t220\tRELEASE\tmapping\t0x1000\t-\t0\t-\t12\tunmap_file\tmapping.c\n'
+      } > "$raw_log"
+      ;;
+    duplicate-acquire)
+      {
+        printf 'P101RESOURCE\t3\t123\t7\t1\t100\t200\tACQUIRE\tmapping\t0x1000\t-\t4096\tprivate\t10\tmap_file\tmapping.c\n'
+        printf 'P101RESOURCE\t3\t123\t7\t2\t110\t210\tACQUIRE\tmapping\t0x1000\t-\t4096\tprivate\t11\tmap_file_again\tmapping.c\n'
+        printf 'P101RESOURCE\t3\t123\t7\t3\t120\t220\tRELEASE\tmapping\t0x1000\t-\t0\t-\t12\tunmap_file\tmapping.c\n'
+        printf 'P101RESOURCE\t3\t123\t7\t4\t130\t230\tRELEASE\tmapping\t0x1000\t-\t0\t-\t13\tunmap_file_again\tmapping.c\n'
+      } > "$raw_log"
+      ;;
+    *)
+      echo "internal error: unknown generic fixture: $fixture" >&2
+      return 1
+      ;;
+  esac
+
+  if "$tracker" -j "$raw_log" > "$json" 2> "$log"; then
+    rc=0
+  else
+    rc=$?
+  fi
+  check_raw_model_parity "$raw_log" "$json" "$name" || return 1
+
+  leaks="$(json_number "$json" generic_resource_leaks)"
+  bad="$(json_number "$json" generic_bad_releases)"
+  if [ "$rc" -eq 1 ] && [ "$leaks" -eq "$expected_leaks" ] && [ "$bad" -eq "$expected_bad" ]; then
+    echo "    PASS"
+    printf '| PASS | %s | rc=%s generic_leaks=%s generic_bad=%s |\n' "$name" "$rc" "$leaks" "$bad" >> "$summary"
+    return 0
+  fi
+
+  echo "    FAIL: got rc=$rc generic_leaks=$leaks generic_bad=$bad"
+  printf '| FAIL | %s | expected rc=1 generic_leaks=%s generic_bad=%s; got rc=%s generic_leaks=%s generic_bad=%s; [log](./logs/%s) |\n' "$name" "$expected_leaks" "$expected_bad" "$rc" "$leaks" "$bad" "$(basename "$log")" >> "$summary"
   return 1
 }
 
@@ -156,6 +281,7 @@ check_raw_exec_inherit() {
   else
     rc=$?
   fi
+  check_raw_model_parity "$raw_log" "$json" "$name" || return 1
 
   exec_inherit="$(json_number "$json" exec_inheritances)"
   fd="$(json_number "$json" fd_leaks)"
@@ -188,6 +314,7 @@ check_raw_exec_cloexec_ok() {
   else
     rc=$?
   fi
+  check_raw_model_parity "$raw_log" "$json" "$name" || return 1
 
   exec_inherit="$(json_number "$json" exec_inheritances)"
   fd="$(json_number "$json" fd_leaks)"
@@ -222,6 +349,7 @@ check_raw_exec_failure_ok() {
   else
     rc=$?
   fi
+  check_raw_model_parity "$raw_log" "$json" "$name" || return 1
 
   exec_inherit="$(json_number "$json" exec_inheritances)"
   fd="$(json_number "$json" fd_leaks)"
@@ -251,7 +379,7 @@ check_raw_malformed_line() {
       python3 -c 'from pathlib import Path; import sys; Path(sys.argv[1]).write_bytes(b"P101FD\t2\t123\t1\t100\t200\tOPEN\x00\t3\t10\tmain\tbad.c\n")' "$raw_log"
       ;;
     overlong)
-      python3 -c 'from pathlib import Path; import sys; Path(sys.argv[1]).write_bytes(b"P101FD\t2\t123\t1\t100\t200\tOPEN\t3\t10\tmain\t" + (b"a" * 3000) + b"\n")' "$raw_log"
+      python3 -c 'from pathlib import Path; import sys; Path(sys.argv[1]).write_bytes(b"P101FD\t2\t123\t1\t100\t200\tOPEN\t3\t10\tmain\t" + (b"a" * 5000) + b"\n")' "$raw_log"
       ;;
     *)
       echo "internal error: unknown malformed fixture kind: $kind" >&2
@@ -264,6 +392,7 @@ check_raw_malformed_line() {
   else
     rc=$?
   fi
+  check_raw_model_parity "$raw_log" "$json" "$name" || return 1
 
   malformed="$(json_number "$json" malformed)"
   fd="$(json_number "$json" fd_leaks)"
@@ -301,6 +430,9 @@ check_case fd-leak fd-leak 1 0 0 0 1 || failures=1
 check_case alloc-leak alloc-leak 0 1 0 0 1 || failures=1
 check_case double-close-error-path double-close 0 0 1 0 1 || failures=1
 check_raw_bad_release || failures=1
+check_raw_generic_resource synthetic-generic-leak leak 1 0 || failures=1
+check_raw_generic_resource synthetic-generic-bad-replace bad-replace 0 1 || failures=1
+check_raw_generic_resource synthetic-generic-duplicate-acquire duplicate-acquire 0 1 || failures=1
 check_raw_exec_inherit || failures=1
 check_raw_exec_cloexec_ok || failures=1
 check_raw_exec_failure_ok || failures=1

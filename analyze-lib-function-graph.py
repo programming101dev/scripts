@@ -554,6 +554,8 @@ def classify(library: str, header: str | None, source: str | None, name: str) ->
         return "c/conversion"
     if library == "lib_c_facts":
         return "tooling/c-facts"
+    if library == "lib_tool_event":
+        return "tooling/event-protocol"
     if library == "lib_util":
         return "c/byte-utility"
 

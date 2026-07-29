@@ -41,7 +41,7 @@ When a second tool needs the same parser or protocol, promote the mechanism.
 `lib_c_facts` exists for this reason: the `P101FACT` format is shared
 infrastructure, while `p101-module-map` owns the module-design advice.
 Runtime event logs are the next likely candidate; see
-[`p101-event-parser-extraction.md`](p101-event-parser-extraction.md).
+[`p101-tool-event-parser-extraction.md`](p101-tool-event-parser-extraction.md).
 
 ## 3. Prefer deterministic receipts over claims
 

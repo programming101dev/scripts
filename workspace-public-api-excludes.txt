@@ -1,0 +1,2 @@
+# repository path|reason
+../examples/c-examples|Plain-libc examples intentionally do not consume p101 library interfaces.

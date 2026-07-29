@@ -11,8 +11,13 @@
 #   4. shared playground-track runner distribution drift check;
 #   5. shared CMakeLists regression harness;
 #   6. p101 tool contract documentation checks;
-#   7. fresh-template standalone instantiate/build/test;
-#   8. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor.
+#   7. strict source/module audits over every p101 tool;
+#   8. source-contract and instrumentation audits over wrapper libraries;
+#   9. closed-workspace public API candidate audit;
+#  10. every repository-owned unit suite and bounded fuzz target;
+#  11. fresh-template standalone instantiate/build/test;
+#  12. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor;
+#  13. the cross-tool behavior regression corpus.
 
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
@@ -22,6 +27,8 @@ cxx=""
 out_dir=""
 skip_cmake=0
 skip_tool_contracts=0
+skip_tool_audit=0
+skip_library_audit=0
 skip_stack=0
 skip_regression=0
 template_no_tests=0
@@ -43,11 +50,15 @@ Options:
   -x <cxx>         C++ compiler for checks. Default: matching/first supported C++ compiler.
   -o <dir>         Artifact directory. Default: /tmp/p101-after-update-all-check-<pid>.
   -n <count>       Fault-injection cases for playground tour. Default: 1.
-  --fuzz-secs <s>  Fuzz smoke budget if playground fuzz is enabled. Default: 5.
+  --fuzz-secs <s>  Per-target repository fuzz budget and optional playground
+                   fuzz budget. Default: 5.
 
   --skip-cmake        Skip the shared CMakeLists regression harness.
   --skip-tool-contracts
                       Skip p101 tool README contract checks.
+  --skip-tool-audit   Skip strict wrapper/module audits over p101 tools.
+  --skip-library-audit
+                      Skip wrapper/error/module audits over lib_* repos.
   --skip-stack        Skip template/playground stack checks.
   --skip-regression   Skip the p101 regression corpus.
   --template-no-tests Build fresh template instances but skip their tests.
@@ -69,6 +80,8 @@ while [ "$#" -gt 0 ]; do
     --fuzz-secs) fuzz_secs="${2:?}"; shift 2 ;;
     --skip-cmake) skip_cmake=1; shift ;;
     --skip-tool-contracts) skip_tool_contracts=1; shift ;;
+    --skip-tool-audit) skip_tool_audit=1; shift ;;
+    --skip-library-audit) skip_library_audit=1; shift ;;
     --skip-stack) skip_stack=1; shift ;;
     --skip-regression) skip_regression=1; shift ;;
     --template-no-tests) template_no_tests=1; shift ;;
@@ -214,6 +227,28 @@ else
   printf '| SKIP | p101 tool design contract checks | --skip-tool-contracts |\n' >> "$summary"
 fi
 
+if [ "$skip_tool_audit" -eq 0 ]; then
+  run_logged "p101 tool source/module audit" "$log_dir/check-p101-tool-audit.log" ./check-p101-tool-audit.sh --skip-contracts --fail-module-notes -o "$out_dir/tool-audit"
+else
+  say "==> p101 tool source/module audit"
+  say "    SKIP"
+  printf '| SKIP | p101 tool source/module audit | --skip-tool-audit |\n' >> "$summary"
+fi
+
+if [ "$skip_library_audit" -eq 0 ]; then
+  run_logged "p101 library source-contract audit" "$log_dir/check-p101-library-audit.log" ./check-p101-library-audit.sh -o "$out_dir/library-audit"
+  run_logged "p101 wrapper instrumentation coverage" "$log_dir/check-p101-instrumentation.log" ./check-p101-instrumentation.py
+  run_logged "workspace-wide public API audit" "$log_dir/check-workspace-public-api.log" ./check-workspace-public-api.sh -o "$out_dir/workspace-api"
+else
+  say "==> p101 library source-contract, instrumentation, and workspace API audits"
+  say "    SKIP"
+  printf '| SKIP | p101 library source-contract audit | --skip-library-audit |\n' >> "$summary"
+  printf '| SKIP | p101 wrapper instrumentation coverage | --skip-library-audit |\n' >> "$summary"
+  printf '| SKIP | workspace-wide public API audit | --skip-library-audit |\n' >> "$summary"
+fi
+
+run_logged "standalone repository unit and fuzz checks" "$log_dir/check-repository-tests.log" ./check-repository-tests.sh -c "$cc" -x "$cxx" -o "$out_dir/repository-tests" --fuzz-secs "$fuzz_secs"
+
 if [ "$skip_stack" -eq 0 ]; then
   stack_args=(--skip-repo-build -c "$cc" -x "$cxx" -o "$out_dir/stack" -n "$fault_count" --fuzz-secs "$fuzz_secs")
   if [ "$template_no_tests" -eq 1 ]; then
@@ -249,6 +284,10 @@ cat >> "$summary" <<EOF
 
 - Stack output: [stack](./stack/)
 - Regression corpus: [regression-corpus](./regression-corpus/)
+- Tool audit: [tool-audit](./tool-audit/)
+- Library audit: [library-audit](./library-audit/)
+- Workspace API candidates: [workspace-api/public-api.md](./workspace-api/public-api.md)
+- Standalone repository tests: [repository-tests/summary.md](./repository-tests/summary.md)
 EOF
 
 say "p101 post-update-all checks passed: $out_dir"

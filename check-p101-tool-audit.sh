@@ -114,6 +114,43 @@ run_logged() {
   fi
 }
 
+run_module_logged() {
+  title="$1"
+  log="$2"
+  shift 2
+
+  say "==> $title"
+  {
+    printf '$'
+    for arg in "$@"; do
+      printf ' %s' "$arg"
+    done
+    printf '\n\n'
+  } > "$log"
+
+  set +e
+  "$@" >> "$log" 2>&1
+  command_rc=$?
+  set -e
+
+  case "$command_rc" in
+    0)
+      say "    PASS"
+      printf '| PASS | %s | [log](./logs/%s) |\n' "$title" "$(basename "$log")" >> "$summary"
+      ;;
+    1)
+      say "    PASS WITH FINDINGS"
+      printf '| NOTE | %s | [log](./logs/%s) |\n' "$title" "$(basename "$log")" >> "$summary"
+      ;;
+    *)
+      say "    FAIL (exit $command_rc; see $log)"
+      printf '| FAIL | %s | [log](./logs/%s) |\n' "$title" "$(basename "$log")" >> "$summary"
+      ;;
+  esac
+
+  return "$command_rc"
+}
+
 has_c_sources() {
   tool_dir="$1"
   find "$tool_dir" -path '*/build*' -prune -o -path '*/test/unity' -prune -o -name '*.c' -print -quit | grep -q .
@@ -139,11 +176,20 @@ write_module_notes() {
   report="$1"
   notes="$2"
   awk '
-    /^## Design notes$/ { in_notes = 1; next }
+    /^## (Design|Teaching) notes$/ { in_notes = 1; next }
     /^## / && in_notes { in_notes = 0 }
     in_notes && NF { print }
   ' "$report" > "$notes"
 }
+
+notes_fixture="$out_dir/module-notes-parser-fixture.md"
+notes_fixture_output="$out_dir/module-notes-parser-fixture.txt"
+printf '# fixture\n\n## Teaching notes\n\n- teaching finding\n\n## Other\n\nignored\n\n## Design notes\n\n- design finding\n' > "$notes_fixture"
+write_module_notes "$notes_fixture" "$notes_fixture_output"
+if [ "$(grep -c 'finding$' "$notes_fixture_output" || true)" -ne 2 ]; then
+  echo "Internal error: module-note parser does not recognize both supported headings." >&2
+  exit 2
+fi
 
 cat > "$summary" <<EOF
 # p101 tool audit
@@ -181,12 +227,20 @@ if [ "$skip_wrapper" -eq 0 ]; then
 
       name="$(basename "$tool_dir")"
       log="$log_dir/${name}-wrapper-audit.log"
+      facts="$out_dir/${name}-source-facts.tsv"
+      inputs="$out_dir/${name}-source-inputs.json"
+      allow_file="$tool_dir/.p101-wrapper-audit-allow"
       paths=()
       while IFS= read -r path; do
         paths+=("$path")
       done < <(tool_paths "$tool_dir")
 
-      if run_logged "strict wrapper audit: $name" "$log" "$wrapper_audit" -e "${paths[@]}"; then
+      wrapper_args=(-e --facts-output "$facts" --input-manifest "$inputs")
+      if [ -f "$allow_file" ]; then
+        wrapper_args+=(--allow-file "$allow_file")
+      fi
+
+      if run_logged "strict wrapper audit: $name" "$log" "$wrapper_audit" "${wrapper_args[@]}" "${paths[@]}"; then
         missed="$(metric_value missed_wrappers "$log")"
         external="$(metric_value external_calls "$log")"
         if [ "${missed:-0}" != "0" ] || [ "${external:-0}" != "0" ]; then
@@ -222,12 +276,24 @@ if [ "$skip_module_map" -eq 0 ]; then
       report="$out_dir/${name}-module-map.md"
       log="$log_dir/${name}-module-map.log"
       notes="$out_dir/${name}-module-notes.txt"
+      facts="$out_dir/${name}-source-facts.tsv"
       paths=()
       while IFS= read -r path; do
         paths+=("$path")
       done < <(tool_paths "$tool_dir")
 
-      if run_logged "module-map design report: $name" "$log" "$module_map" -F "$wrapper_audit" -o "$report" "${paths[@]}"; then
+      module_args=(-o "$report")
+      if [ -f "$facts" ]; then
+        module_args+=(-i "$facts")
+      else
+        module_args+=(-F "$wrapper_audit")
+      fi
+      if run_module_logged "module-map design report: $name" "$log" "$module_map" "${module_args[@]}" "${paths[@]}"; then
+        module_rc=0
+      else
+        module_rc=$?
+      fi
+      if [ "$module_rc" -le 1 ]; then
         write_module_notes "$report" "$notes"
         note_count="$(grep -c '^- ' "$notes" || true)"
         module_note_total=$((module_note_total + note_count))

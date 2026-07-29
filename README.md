@@ -81,15 +81,60 @@ After `update-all.sh` succeeds, run the post-build acceptance checks:
 ```
 
 This does not rebuild every repository again. It runs the shared CMake
-regression harness, fresh-template standalone checks, and the
-`p101-tool-playground` tour, then runs the small p101 behavior regression
-corpus.
+regression harness, tool and wrapper audits, fresh-template standalone checks,
+every repository-owned unit suite, bounded fuzz smoke tests where supported,
+the `p101-tool-playground` tour, and the p101 behavior regression corpus.
+
+Three narrower checks enforce contracts that used to be implicit:
+
+```bash
+./check-p101-instrumentation.py
+./check-repository-tests.sh
+./check-workspace-public-api.sh
+```
+
+The workspace API audit requires a compile database from every C/C++ repository
+in `repos.txt`; run `update-all.sh` first. This prevents a missing consumer build
+from being mistaken for an unused public API. `--allow-incomplete` is available
+for an explicitly provisional local report, and labels the result as
+incomplete. Intentional non-consumers must be named with a reason in
+`workspace-public-api-excludes.txt`; they are reported separately rather than
+silently dropped.
+
+The instrumentation check compares Clang-derived wrapper facts with
+`instrumentation-contract.json`: error-aware wrappers must expose a fault
+point, tracing must be balanced, and resource-owning wrappers listed in the
+manifest must emit the corresponding lifecycle event. The repository test
+check reports `NO TEST` and `NO FUZZ TARGET` explicitly instead of treating
+absence as success. The workspace API check combines facts from all built
+libraries, programs, templates, playgrounds, and examples so public functions,
+types, and macros unused by every checked-in consumer become review candidates.
+Those candidates are deterministic evidence, not proof that a general-purpose
+wrapper API should be removed; use `--fail-findings` only after reviewing or
+allowlisting intentional API.
 
 For a shorter behavior-only gate, run:
 
 ```bash
 ./check-p101-regression-corpus.sh
 ```
+
+For every resource fixture, that gate also compares
+`p101-resource-tracker` counts with the corresponding stable finding IDs from
+`p101-report`. A model disagreement fails even when each tool would satisfy its
+own isolated expectation.
+
+To replay the source-contract audit over every active wrapper library:
+
+```bash
+./check-p101-library-audit.sh
+```
+
+This uses each library's compile database, its optional checked-in
+`.p101-wrapper-audit-allow` boundary ledger, `p101-error-contract`, and
+`p101-module-map -L`. Each library is parsed once: the wrapper audit records a
+hashed P101FACT v2 snapshot and admitted-input manifest, and both policy tools
+reuse that snapshot. Reports are written under one artifact directory.
 
 For the student-facing tool workflow, use the dispatcher:
 
@@ -151,7 +196,10 @@ wrapper-audit checks over the C tools, and module-map design reports — run:
 
 By default, module-map design notes are reported but do not fail the audit. Use
 `--fail-module-notes` when intentionally ratcheting the p101 tools toward the
-current module-splitting rules.
+current module-splitting rules. Each C tool is parsed once; module-map reuses
+the recorded P101FACT v2 snapshot, and a checked-in
+`.p101-wrapper-audit-allow` file is treated as a scoped, stale-checked boundary
+ledger.
 
 ## Wrapper caveat: `setjmp`
 
