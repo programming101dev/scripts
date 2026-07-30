@@ -182,6 +182,8 @@ For lower-level student/instructor tooling around observed runs:
 The p101 tools follow a lightweight design contract: bounded inputs, explicit
 blind spots, deterministic receipts, shared mechanisms, and small public APIs.
 See [docs/p101-tool-design-contract.md](docs/p101-tool-design-contract.md).
+The source/runtime ownership map and the consolidation tradeoff are recorded in
+[docs/p101-tool-responsibilities.md](docs/p101-tool-responsibilities.md).
 To check that each `p101-*` README exposes the minimum contract surface, run:
 
 ```bash
