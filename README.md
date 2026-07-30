@@ -132,9 +132,12 @@ To replay the source-contract audit over every active wrapper library:
 
 This uses each library's compile database, its optional checked-in
 `.p101-wrapper-audit-allow` boundary ledger, `p101-error-contract`, and
-`p101-module-map -L`. Each library is parsed once: the wrapper audit records a
-hashed P101FACT v2 snapshot and admitted-input manifest, and both policy tools
-reuse that snapshot. Reports are written under one artifact directory.
+`p101-module-map -L`. Native-wrapper libraries also carry a
+`wrapper-form-contract.json` that checks context/error parameters, native
+target calls, canonical signatures, balanced tracing, and fault form. The
+boundary pass records a hashed P101FACT v2 snapshot and admitted-input
+manifest; both downstream C policy tools reuse that snapshot. Reports are
+written under one artifact directory.
 
 For the student-facing tool workflow, use the dispatcher:
 

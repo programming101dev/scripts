@@ -480,12 +480,12 @@ check_raw_malformed_line() {
   return 1
 }
 
-observe="$(find_tool P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe || true)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe)"
-tracker="$(find_tool P101_RESOURCE_TRACKER "$(last_build_tool ../programs/p101-resource-tracker p101-resource-tracker || true)" ../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker ../programs/p101-resource-tracker/build-clang/p101-resource-tracker p101-resource-tracker)"
-concurrency="$(find_tool P101_SYNC_CHECK "$(last_build_tool ../programs/p101-sync-check p101-sync-check || true)" ../programs/p101-sync-check/build-clang-22/p101-sync-check ../programs/p101-sync-check/build-clang/p101-sync-check p101-sync-check)"
-trace="$(find_tool P101_TRACE "$(last_build_tool ../programs/p101-trace p101-trace || true)" ../programs/p101-trace/build-clang-22/p101-trace ../programs/p101-trace/build-clang/p101-trace p101-trace)"
-report="$(find_tool P101_REPORT "$(last_build_tool ../programs/p101-report p101-report || true)" ../programs/p101-report/build-clang-22/p101-report ../programs/p101-report/build-clang/p101-report p101-report)"
-playground="$(find_tool P101_TOOL_PLAYGROUND "$(last_build_tool ../playgrounds p101-tool-playground || true)" ../playgrounds/build-clang-22/p101-tool-playground ../playgrounds/build-clang/p101-tool-playground p101-tool-playground)"
+observe="$(find_tool P101_OBSERVE ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe "$(last_build_tool ../programs/p101-observe p101-observe || true)" p101-observe)"
+tracker="$(find_tool P101_RESOURCE_TRACKER ../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker ../programs/p101-resource-tracker/build-clang/p101-resource-tracker "$(last_build_tool ../programs/p101-resource-tracker p101-resource-tracker || true)" p101-resource-tracker)"
+concurrency="$(find_tool P101_SYNC_CHECK ../programs/p101-sync-check/build-clang-22/p101-sync-check ../programs/p101-sync-check/build-clang/p101-sync-check "$(last_build_tool ../programs/p101-sync-check p101-sync-check || true)" p101-sync-check)"
+trace="$(find_tool P101_TRACE ../programs/p101-trace/build-clang-22/p101-trace ../programs/p101-trace/build-clang/p101-trace "$(last_build_tool ../programs/p101-trace p101-trace || true)" p101-trace)"
+report="$(find_tool P101_REPORT ../programs/p101-report/build-clang-22/p101-report ../programs/p101-report/build-clang/p101-report "$(last_build_tool ../programs/p101-report p101-report || true)" p101-report)"
+playground="$(find_tool P101_TOOL_PLAYGROUND ../playgrounds/build-clang-22/p101-tool-playground ../playgrounds/build-clang/p101-tool-playground "$(last_build_tool ../playgrounds p101-tool-playground || true)" p101-tool-playground)"
 
 cat > "$summary" <<'EOF'
 # p101 regression corpus

@@ -4,7 +4,8 @@
 # This is a replayable local gate for the tool design work. It checks:
 #   1. README/tool-contract minimums for every p101-* tool;
 #   2. wrapper coverage for C p101 tools in strict mode;
-#   3. module-map design notes for C p101 tools.
+#   3. error-object contracts for C p101 tools;
+#   4. module-map design notes for C p101 tools.
 #
 # Wrapper-audit findings are hard failures because direct/unmapped calls make
 # the observer/reporting tools silently under-report. Module-map notes are
@@ -19,15 +20,16 @@ out_dir=""
 fail_module_notes=0
 skip_contracts=0
 skip_wrapper=0
+skip_error_contract=0
 skip_module_map=0
 
 usage() {
   cat <<'USAGE'
 Usage: ./check-p101-tool-audit.sh [options]
 
-Audit p101-* tools for README contracts, strict wrapper use, and module design
-notes. This script does not build tools; run the normal build/update scripts
-first.
+Audit p101-* tools for README contracts, strict wrapper use, error handling,
+and module design notes. This script does not build tools; run the normal
+build/update scripts first.
 
 Options:
   -p <dir>              Programs directory. Default: ../programs
@@ -35,6 +37,7 @@ Options:
   --fail-module-notes   Treat p101-module-map design notes as failures.
   --skip-contracts      Skip README/tool-contract checks.
   --skip-wrapper        Skip strict p101-wrapper-audit checks.
+  --skip-error-contract Skip p101-error-contract checks.
   --skip-module-map     Skip p101-module-map design-note reports.
   -h, --help            Show this help.
 USAGE
@@ -48,6 +51,7 @@ while [ "$#" -gt 0 ]; do
     --fail-module-notes) fail_module_notes=1; shift ;;
     --skip-contracts) skip_contracts=1; shift ;;
     --skip-wrapper) skip_wrapper=1; shift ;;
+    --skip-error-contract) skip_error_contract=1; shift ;;
     --skip-module-map) skip_module_map=1; shift ;;
     *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
   esac
@@ -68,6 +72,12 @@ wrapper_audit="$programs_dir/p101-wrapper-audit/p101-wrapper-audit"
 find_built_tool() {
   repo="$1"
   name="$2"
+  for build_dir in build-clang-22 build-clang build; do
+    if [ -x "$repo/$build_dir/$name" ]; then
+      printf '%s\n' "$repo/$build_dir/$name"
+      return 0
+    fi
+  done
   if [ -f "$repo/.last-build-dir" ]; then
     build_dir="$(cat "$repo/.last-build-dir")"
     if [ -x "$repo/$build_dir/$name" ]; then
@@ -84,6 +94,7 @@ find_built_tool() {
   command -v "$name" 2>/dev/null
 }
 
+error_contract="$(find_built_tool "$programs_dir/p101-error-contract" p101-error-contract || true)"
 module_map="$(find_built_tool "$programs_dir/p101-module-map" p101-module-map || true)"
 
 say() {
@@ -257,6 +268,43 @@ else
   say "==> strict wrapper audits"
   say "    SKIP"
   printf '| SKIP | strict wrapper audits | --skip-wrapper |\n' >> "$summary"
+fi
+
+if [ "$skip_error_contract" -eq 0 ]; then
+  if [ ! -x "$error_contract" ]; then
+    say "FAIL: p101-error-contract executable not found: $error_contract"
+    printf '| FAIL | p101-error-contract availability | missing executable |\n' >> "$summary"
+    failed=1
+  else
+    for tool_dir in "$programs_dir"/p101-*; do
+      [ -d "$tool_dir" ] || continue
+      if ! has_c_sources "$tool_dir"; then
+        continue
+      fi
+
+      name="$(basename "$tool_dir")"
+      log="$log_dir/${name}-error-contract.log"
+      facts="$out_dir/${name}-source-facts.tsv"
+      paths=()
+      while IFS= read -r path; do
+        paths+=("$path")
+      done < <(tool_paths "$tool_dir")
+
+      error_args=()
+      if [ -f "$facts" ]; then
+        error_args+=(-i "$facts")
+      else
+        error_args+=(-F "$wrapper_audit")
+      fi
+      if ! run_logged "error-contract audit: $name" "$log" "$error_contract" "${error_args[@]}" "${paths[@]}"; then
+        failed=1
+      fi
+    done
+  fi
+else
+  say "==> error-contract audits"
+  say "    SKIP"
+  printf '| SKIP | error-contract audits | --skip-error-contract |\n' >> "$summary"
 fi
 
 if [ "$skip_module_map" -eq 0 ]; then

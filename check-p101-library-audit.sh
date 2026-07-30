@@ -3,7 +3,8 @@
 #
 # Admitted inputs: active TUs from each library compile_commands.json, scanned
 # headers, and an optional checked-in .p101-wrapper-audit-allow file.
-# Outputs: per-library wrapper, error-contract, and module-map reports.
+# Outputs: per-library wrapper-boundary, wrapper-form, error-contract, and
+# module-map reports.
 # Blind spot: inactive platform sources and external library consumers are not
 # treated as active code; library mode deliberately avoids closed-world API-use
 # claims.
@@ -20,8 +21,9 @@ usage() {
   cat <<'USAGE'
 Usage: ./check-p101-library-audit.sh [options]
 
-Run wrapper-audit, error-contract, and module-map in library mode over every
-lib_* repository with an existing compile database. Build/update first.
+Run wrapper-boundary, wrapper-form, error-contract, and module-map checks in
+library mode over every lib_* repository with an existing compile database.
+Build/update first.
 
 Options:
   -l <dir>   Libraries directory. Default: ../libraries
@@ -56,17 +58,30 @@ find_built_tool() {
 
   if [ -f "$repo/.last-build-dir" ]; then
     build_dir="$(cat "$repo/.last-build-dir")"
-    if [ -x "$repo/$build_dir/$name" ]; then
-      printf '%s\n' "$repo/$build_dir/$name"
-      return 0
-    fi
+    case "$build_dir" in
+      *coverage*|*profile*) ;;
+      *)
+        if [ -x "$repo/$build_dir/$name" ]; then
+          printf '%s\n' "$repo/$build_dir/$name"
+          return 0
+        fi
+        ;;
+    esac
   fi
 
-  for candidate in "$repo"/build-*/"$name" "$repo"/build/"$name"; do
-    if [ -x "$candidate" ]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
+  # Prefer conventional non-instrumented builds before version-suffixed build
+  # directories. Shell glob ordering can otherwise select an older
+  # build-clang-<version> binary ahead of a freshly rebuilt build-clang tool.
+  for candidate in "$repo"/build/"$name" "$repo"/build-clang/"$name" "$repo"/build-gcc/"$name" "$repo"/build-*/"$name"; do
+    case "$candidate" in
+      *coverage*|*profile*) ;;
+      *)
+        if [ -x "$candidate" ]; then
+          printf '%s\n' "$candidate"
+          return 0
+        fi
+        ;;
+    esac
   done
 
   command -v "$name" 2>/dev/null
@@ -105,8 +120,8 @@ fi
 cat > "$summary" <<'EOF'
 # p101 library source audit
 
-| Library | Wrapper boundary | Error contract | Module structure |
-| --- | --- | --- | --- |
+| Library | Wrapper boundary | Wrapper form | Error contract | Module structure |
+| --- | --- | --- | --- | --- |
 EOF
 
 printf 'p101 library audit output: %s\n' "$out_dir"
@@ -123,7 +138,7 @@ for repo in "$libraries_dir"/lib_*; do
   compile_db="$(find_compile_database "$repo" || true)"
   if [ -z "$compile_db" ]; then
     printf '==> %-22s FAIL (no compile database)\n' "$name"
-    printf '| %s | FAIL | FAIL | FAIL |\n' "$name" >> "$summary"
+    printf '| %s | FAIL | FAIL | FAIL | FAIL |\n' "$name" >> "$summary"
     failed=1
     continue
   fi
@@ -139,12 +154,26 @@ for repo in "$libraries_dir"/lib_*; do
   fi
 
   wrapper_status="PASS"
+  form_status="N/A"
   error_status="PASS"
   module_status="PASS"
 
   if ! "$wrapper_audit" "${wrapper_args[@]}" "${paths[@]}" > "$repo_out/wrapper-audit.txt" 2>&1; then
     wrapper_status="FAIL"
     failed=1
+  fi
+
+  if [ -f "$repo/wrapper-form-contract.json" ]; then
+    form_status="PASS"
+    if ! "$wrapper_audit" \
+      --compile-db "$compile_db" \
+      --compile-db-only \
+      --wrapper-form-contract "$repo/wrapper-form-contract.json" \
+      --wrapper-form-only \
+      "$repo" > "$repo_out/wrapper-form.txt" 2>&1; then
+      form_status="FAIL"
+      failed=1
+    fi
   fi
 
   if ! (CDPATH='' cd "$repo" && "$error_contract" -j -i "$repo_out/source-facts.tsv" src include) > "$repo_out/error-contract.json" 2> "$repo_out/error-contract.stderr.txt"; then
@@ -161,8 +190,8 @@ for repo in "$libraries_dir"/lib_*; do
     failed=1
   fi
 
-  printf '==> %-22s wrapper=%s error=%s module=%s\n' "$name" "$wrapper_status" "$error_status" "$module_status"
-  printf '| %s | %s | %s | %s |\n' "$name" "$wrapper_status" "$error_status" "$module_status" >> "$summary"
+  printf '==> %-22s boundary=%s form=%s error=%s module=%s\n' "$name" "$wrapper_status" "$form_status" "$error_status" "$module_status"
+  printf '| %s | %s | %s | %s | %s |\n' "$name" "$wrapper_status" "$form_status" "$error_status" "$module_status" >> "$summary"
 done
 
 if [ "$found" -eq 0 ]; then
