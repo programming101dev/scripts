@@ -474,6 +474,7 @@ def classify_unistd_like(name: str) -> str | None:
     }
     process_names = {
         "p101_exit_immediately",
+        "p101_posix_exit_immediately",
         "p101_execv",
         "p101_execve",
         "p101_execvp",

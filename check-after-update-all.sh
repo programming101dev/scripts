@@ -108,6 +108,19 @@ trim_line() {
   awk 'NF && $0 !~ /^[[:space:]]*#/ { print $1; exit }' "$1"
 }
 
+resolve_compiler() {
+  requested="$1"
+  resolved=""
+  if [ -f compiler_paths.txt ]; then
+    resolved="$(awk -F= -v name="$requested" '$1 == name { print substr($0, index($0, "=") + 1); exit }' compiler_paths.txt)"
+  fi
+  if [ -n "$resolved" ]; then
+    printf '%s\n' "$resolved"
+  else
+    command -v "$requested" 2>/dev/null || printf '%s\n' "$requested"
+  fi
+}
+
 derive_cxx_name() {
   base="$(basename "$1")"
   case "$base" in
@@ -149,6 +162,9 @@ if [ -z "$cc" ] || [ -z "$cxx" ]; then
   echo "Unable to choose compilers. Run ./check-compilers.sh first or pass -c/-x." >&2
   exit 2
 fi
+
+cc="$(resolve_compiler "$cc")"
+cxx="$(resolve_compiler "$cxx")"
 
 say() {
   printf '%s\n' "$*"
@@ -237,7 +253,7 @@ fi
 
 if [ "$skip_library_audit" -eq 0 ]; then
   run_logged "p101 library source-contract audit" "$log_dir/check-p101-library-audit.log" ./check-p101-library-audit.sh -o "$out_dir/library-audit"
-  run_logged "p101 wrapper instrumentation coverage" "$log_dir/check-p101-instrumentation.log" ./check-p101-instrumentation.py
+  run_logged "p101 wrapper instrumentation coverage" "$log_dir/check-p101-instrumentation.log" ./check-p101-instrumentation.py --receipt "$out_dir/instrumentation-receipt.json"
   run_logged "workspace-wide public API audit" "$log_dir/check-workspace-public-api.log" ./check-workspace-public-api.sh -o "$out_dir/workspace-api"
 else
   say "==> p101 library source-contract, instrumentation, and workspace API audits"

@@ -2,7 +2,7 @@
   "summary": {
     "function_count": 1207,
     "edge_count": 1886,
-    "domain_count": 90
+    "domain_count": 89
   },
   "nodes": [
     {
@@ -1950,14 +1950,6 @@
       "native_guess": "env_event_log_failed"
     },
     {
-      "name": "p101_env_get_event_log_version",
-      "library": "lib_env",
-      "domain": "support/environment-lifecycle",
-      "header": "libraries/lib_env/include/p101_env/env.h",
-      "source": "libraries/lib_env/src/env.c",
-      "native_guess": "env_get_event_log_version"
-    },
-    {
       "name": "p101_env_get_exit_tracer",
       "library": "lib_env",
       "domain": "support/call-tracing",
@@ -2036,14 +2028,6 @@
       "header": "libraries/lib_env/include/p101_env/env.h",
       "source": "libraries/lib_env/src/env.c",
       "native_guess": "env_set_call_observer"
-    },
-    {
-      "name": "p101_env_set_event_log_version",
-      "library": "lib_env",
-      "domain": "support/environment-lifecycle",
-      "header": "libraries/lib_env/include/p101_env/env.h",
-      "source": "libraries/lib_env/src/env.c",
-      "native_guess": "env_set_event_log_version"
     },
     {
       "name": "p101_env_set_exit_tracer",
@@ -6080,7 +6064,7 @@
     {
       "name": "p101_posix_exit_immediately",
       "library": "lib_posix",
-      "domain": "systems/file-io",
+      "domain": "systems/process-control",
       "header": "libraries/lib_posix/include/p101_posix/p101_unistd.h",
       "source": "libraries/lib_posix/src/unistd.c",
       "native_guess": "posix_exit_immediately"
@@ -8796,6 +8780,22 @@
       "header": "libraries/lib_tool_event/include/p101_tool_event/event.h",
       "source": "libraries/lib_tool_event/src/event.c",
       "native_guess": "tool_event_split"
+    },
+    {
+      "name": "p101_tool_event_stream_health_is_complete",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_tool_event/src/event.c",
+      "native_guess": "tool_event_stream_health_is_complete"
+    },
+    {
+      "name": "p101_tool_event_stream_health_observe",
+      "library": "lib_tool_event",
+      "domain": "tooling/event-protocol",
+      "header": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_tool_event/src/event.c",
+      "native_guess": "tool_event_stream_health_observe"
     },
     {
       "name": "p101_tool_event_unescape_field",
@@ -11894,6 +11894,11 @@
       "kind": "wrapper-call"
     },
     {
+      "source": "p101_env_destroy",
+      "target": "p101_env_write_completion_records",
+      "kind": "wrapper-call"
+    },
+    {
       "source": "p101_env_dup",
       "target": "malloc",
       "kind": "native-call"
@@ -11952,11 +11957,6 @@
       "source": "p101_env_event_log_failed",
       "target": "atomic_load_explicit",
       "kind": "native-call"
-    },
-    {
-      "source": "p101_env_get_event_log_version",
-      "target": "p101_env_trace",
-      "kind": "wrapper-call"
     },
     {
       "source": "p101_env_get_exit_tracer",
@@ -12025,16 +12025,6 @@
     },
     {
       "source": "p101_env_set_call_observer",
-      "target": "p101_env_trace",
-      "kind": "wrapper-call"
-    },
-    {
-      "source": "p101_env_set_event_log_version",
-      "target": "p101_env_supported_event_log_version",
-      "kind": "wrapper-call"
-    },
-    {
-      "source": "p101_env_set_event_log_version",
       "target": "p101_env_trace",
       "kind": "wrapper-call"
     },
@@ -16450,6 +16440,11 @@
     },
     {
       "source": "p101_pthread_create",
+      "target": "pthread_attr_getdetachstate",
+      "kind": "native-call"
+    },
+    {
+      "source": "p101_pthread_create",
       "target": "pthread_create",
       "kind": "wrapped-native"
     },
@@ -17796,6 +17791,11 @@
     {
       "source": "p101_strerror",
       "target": "p101_error_has_error",
+      "kind": "wrapper-call"
+    },
+    {
+      "source": "p101_strerror",
+      "target": "p101_free",
       "kind": "wrapper-call"
     },
     {
@@ -20271,9 +20271,9 @@
       ]
     },
     "support/environment-lifecycle": {
-      "count": 13,
+      "count": 11,
       "libraries": {
-        "lib_env": 13
+        "lib_env": 11
       },
       "functions": [
         "p101_env_clear_event_log_error",
@@ -20282,10 +20282,8 @@
         "p101_env_dup",
         "p101_env_event_log_errno",
         "p101_env_event_log_failed",
-        "p101_env_get_event_log_version",
         "p101_env_get_label",
         "p101_env_pointer_resource_id",
-        "p101_env_set_event_log_version",
         "p101_env_set_label",
         "p101_env_set_resource_log",
         "p101_env_set_resource_observer"
@@ -20487,15 +20485,6 @@
         "p101_writev"
       ]
     },
-    "systems/file-io": {
-      "count": 1,
-      "libraries": {
-        "lib_posix": 1
-      },
-      "functions": [
-        "p101_posix_exit_immediately"
-      ]
-    },
     "systems/filesystem-paths": {
       "count": 34,
       "libraries": {
@@ -20642,9 +20631,9 @@
       ]
     },
     "systems/process-control": {
-      "count": 11,
+      "count": 12,
       "libraries": {
-        "lib_posix": 11
+        "lib_posix": 12
       },
       "functions": [
         "p101_execv",
@@ -20656,6 +20645,7 @@
         "p101_getpid",
         "p101_getppid",
         "p101_getsid",
+        "p101_posix_exit_immediately",
         "p101_setpgid",
         "p101_setsid"
       ]
@@ -21026,9 +21016,9 @@
       ]
     },
     "tooling/event-protocol": {
-      "count": 23,
+      "count": 25,
       "libraries": {
-        "lib_tool_event": 23
+        "lib_tool_event": 25
       },
       "functions": [
         "p101_tool_event_fingerprint_file",
@@ -21052,6 +21042,8 @@
         "p101_tool_event_read_line",
         "p101_tool_event_resource_summary_finding_count",
         "p101_tool_event_split",
+        "p101_tool_event_stream_health_is_complete",
+        "p101_tool_event_stream_health_observe",
         "p101_tool_event_unescape_field",
         "p101_tool_event_write"
       ]
@@ -21061,11 +21053,9 @@
     "repository": "playgrounds",
     "layout": "single repository with small explicit tracks",
     "track_count": 40,
-    "covered_function_count": 1206,
-    "uncovered_function_count": 1,
-    "uncovered_domains": [
-      "systems/file-io"
-    ],
+    "covered_function_count": 1207,
+    "uncovered_function_count": 0,
+    "uncovered_domains": [],
     "tracks": [
       {
         "track": "c-memory-runtime",
@@ -21271,7 +21261,7 @@
       {
         "track": "processes-signals",
         "purpose": "fork, exec, wait, spawn, signals, inherited resources, CLOEXEC, and process failure paths.",
-        "function_count": 50,
+        "function_count": 51,
         "domains": [
           "systems/process-control",
           "systems/process-signal",
@@ -21403,7 +21393,7 @@
       {
         "track": "environment-lifecycle",
         "purpose": "Creating, configuring, labeling, duplicating, and destroying p101 environments.",
-        "function_count": 13,
+        "function_count": 11,
         "domains": [
           "support/environment-lifecycle"
         ]
@@ -21429,7 +21419,7 @@
       {
         "track": "tool-building",
         "purpose": "C facts, small analyzers, and writing tools that reason about p101 projects.",
-        "function_count": 27,
+        "function_count": 29,
         "domains": [
           "tooling/c-facts",
           "tooling/event-protocol"
@@ -21642,7 +21632,7 @@
     {
       "track": "processes-signals",
       "purpose": "fork, exec, wait, spawn, signals, inherited resources, CLOEXEC, and process failure paths.",
-      "function_count": 50,
+      "function_count": 51,
       "domains": [
         "systems/process-control",
         "systems/process-signal",
@@ -21774,7 +21764,7 @@
     {
       "track": "environment-lifecycle",
       "purpose": "Creating, configuring, labeling, duplicating, and destroying p101 environments.",
-      "function_count": 13,
+      "function_count": 11,
       "domains": [
         "support/environment-lifecycle"
       ]
@@ -21800,7 +21790,7 @@
     {
       "track": "tool-building",
       "purpose": "C facts, small analyzers, and writing tools that reason about p101 projects.",
-      "function_count": 27,
+      "function_count": 29,
       "domains": [
         "tooling/c-facts",
         "tooling/event-protocol"

@@ -13,8 +13,9 @@ usage() {
   cat <<'USAGE'
 Usage: ./check-repository-tests.sh [-c <cc>] [-x <cxx>] [-o <dir>] [--fuzz-secs <seconds>] [--skip-fuzz]
 
-Runs every meaningful standalone test.sh named by repos.txt. Repositories with
-a fuzz target also receive a bounded fuzz run when a fuzzer-capable compiler is
+Runs every standalone test.sh named by repos.txt, plus local p101-* program
+repositories that have not yet been added to that manifest. Repositories with a
+fuzz target also receive a bounded fuzz run when a fuzzer-capable compiler is
 available. A missing test suite is reported as NO TEST rather than silently
 treated as tested.
 When -c/-x is supplied, fuzzing is attempted only with that compiler. This
@@ -66,7 +67,14 @@ while IFS='|' read -r _url relative language || [ -n "${relative:-}" ]; do
   unit="NO TEST"
   fuzz="NO FUZZ TARGET"
 
-  if [ -x "$repo/test.sh" ] && { [ -f "$repo/test/CMakeLists.txt" ] || [ "$name" = "p101-wrapper-audit" ]; }; then
+  # C/C++ repositories receive the shared test launcher even when they do not
+  # yet own a test tree. Python tools use repository-specific test launchers.
+  # Keep those cases distinct so a copied launcher is not mistaken for a suite.
+  has_unit_suite=0
+  if [ -f "$repo/test/CMakeLists.txt" ] || [ "$language" = "python" ]; then
+    has_unit_suite=1
+  fi
+  if [ "$has_unit_suite" -eq 1 ] && [ -x "$repo/test.sh" ]; then
     if (CDPATH='' cd "$repo" && ./test.sh) > "$out_dir/$name-test.log" 2>&1; then
       unit="PASS"
     else
@@ -98,7 +106,19 @@ while IFS='|' read -r _url relative language || [ -n "${relative:-}" ]; do
 
   printf '%-30s test=%-8s fuzz=%s\n' "$name" "$unit" "$fuzz"
   printf '| %s | %s | %s |\n' "$name" "$unit" "$fuzz" >> "$summary"
-done < repos.txt
+done < <(
+  cat repos.txt
+  for local_repo in ../programs/p101-*; do
+    [ -d "$local_repo" ] || continue
+    if ! awk -F'|' -v path="$local_repo" '$2 == path { found=1 } END { exit !found }' repos.txt; then
+      if [ -f "$local_repo/CMakeLists.txt" ]; then
+        printf '|%s|c\n' "$local_repo"
+      else
+        printf '|%s|python\n' "$local_repo"
+      fi
+    fi
+  done
+)
 
 printf 'Repository test summary: %s\n' "$summary"
 [ "$failed" -eq 0 ]

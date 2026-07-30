@@ -6,12 +6,12 @@ Generated from active `libraries/lib_*` directories. `_to_delete` is excluded.
 
 - Wrapper/function nodes: `1207`
 - Edges: `1886`
-- Wrapper-to-wrapper edges: `164`
+- Wrapper-to-wrapper edges: `163`
 - Wrapper-to-native wrapped-call edges: `951`
-- Domains: `90`
+- Domains: `89`
 - Recommended repo: `playgrounds`
 - Recommended tracks: `40`
-- Uncovered domains: `1`
+- Uncovered domains: `0`
 
 ## Single playground repo graph
 
@@ -87,7 +87,7 @@ flowchart LR
   systems_filesystem_paths["systems/filesystem-paths"] --> track_filesystem_paths
   track_directories_patterns["directories-patterns\n19 wrappers"] --> playgrounds
   systems_directories_patterns["systems/directories-patterns"] --> track_directories_patterns
-  track_processes_signals["processes-signals\n50 wrappers"] --> playgrounds
+  track_processes_signals["processes-signals\n51 wrappers"] --> playgrounds
   systems_process_control["systems/process-control"] --> track_processes_signals
   systems_process_signal["systems/process-signal"] --> track_processes_signals
   systems_scheduling_basics["systems/scheduling-basics"] --> track_processes_signals
@@ -136,7 +136,7 @@ flowchart LR
   support_assertions["support/assertions"] --> track_error_handling
   support_error_codes["support/error-codes"] --> track_error_handling
   support_error_core["support/error-core"] --> track_error_handling
-  track_environment_lifecycle["environment-lifecycle\n13 wrappers"] --> playgrounds
+  track_environment_lifecycle["environment-lifecycle\n11 wrappers"] --> playgrounds
   support_environment_lifecycle["support/environment-lifecycle"] --> track_environment_lifecycle
   track_event_streams["event-streams\n34 wrappers"] --> playgrounds
   support_call_tracing["support/call-tracing"] --> track_event_streams
@@ -144,7 +144,7 @@ flowchart LR
   support_resource_events["support/resource-events"] --> track_event_streams
   track_fsm["fsm\n26 wrappers"] --> playgrounds
   support_fsm["support/fsm"] --> track_fsm
-  track_tool_building["tool-building\n27 wrappers"] --> playgrounds
+  track_tool_building["tool-building\n29 wrappers"] --> playgrounds
   tooling_c_facts["tooling/c-facts"] --> track_tool_building
   tooling_event_protocol["tooling/event-protocol"] --> track_tool_building
 ```
@@ -177,7 +177,7 @@ Use one playground repository, `playgrounds`, with small explicit tracks inside 
 | `file-io` | 26 | `systems/async-io`, `systems/fd-io` | File descriptors, open/read/write/close, vectored I/O, short reads/writes, async I/O, descriptor ownership, and cleanup. |
 | `filesystem-paths` | 34 | `systems/filesystem-paths` | Paths, permissions, stat, links, directories-as-filesystem-objects, timestamps, and filesystem mutation. |
 | `directories-patterns` | 19 | `systems/directories-patterns` | Directory traversal, glob/fnmatch/wordexp, path decomposition, and tree walking. |
-| `processes-signals` | 50 | `systems/process-control`, `systems/process-signal`, `systems/scheduling-basics` | fork, exec, wait, spawn, signals, inherited resources, CLOEXEC, and process failure paths. |
+| `processes-signals` | 51 | `systems/process-control`, `systems/process-signal`, `systems/scheduling-basics` | fork, exec, wait, spawn, signals, inherited resources, CLOEXEC, and process failure paths. |
 | `thread-lifecycle` | 30 | `systems/scheduler`, `systems/thread-attributes`, `systems/thread-lifecycle` | Thread creation, joining, detaching, identity, scheduling hooks, and basic lifecycle ownership. |
 | `thread-synchronization` | 38 | `systems/thread-conditions`, `systems/thread-mutexes`, `systems/thread-rwlocks` | Mutexes, condition variables, read/write locks, and synchronization cleanup rules. |
 | `thread-state-cancellation` | 9 | `systems/thread-cancellation`, `systems/thread-local-once` | Thread-local storage, once initialization, cancellation state, cancellation points, and cleanup hazards. |
@@ -191,14 +191,14 @@ Use one playground repository, `playgrounds`, with small explicit tracks inside 
 | `logging-diagnostics` | 12 | `systems/logging-diagnostics` | syslog, err/warn-style diagnostics, formatted messages, and teachable logging/error-reporting practice. |
 | `runtime-services` | 36 | `systems/dynamic-loading`, `systems/legacy-database`, `systems/localization-conversion`, `systems/search-structures`, `systems/text-patterns` | Dynamic loading, regex, iconv, locale/message catalogs, legacy DBM, and libc search structures. |
 | `error-handling` | 50 | `support/assertions`, `support/error-codes`, `support/error-core` | Error objects, errno mapping, assertions/check helpers, reporting, and failure-aware control flow. |
-| `environment-lifecycle` | 13 | `support/environment-lifecycle` | Creating, configuring, labeling, duplicating, and destroying p101 environments. |
+| `environment-lifecycle` | 11 | `support/environment-lifecycle` | Creating, configuring, labeling, duplicating, and destroying p101 environments. |
 | `event-streams` | 34 | `support/call-tracing`, `support/fault-injection`, `support/resource-events` | Resource events, call tracing, fault injection, event-log formatting, and observer configuration. |
 | `fsm` | 26 | `support/fsm` | Finite-state-machine structure, state transitions, callbacks, invalid transitions, and lifecycle ownership. |
-| `tool-building` | 27 | `tooling/c-facts`, `tooling/event-protocol` | C facts, small analyzers, and writing tools that reason about p101 projects. |
+| `tool-building` | 29 | `tooling/c-facts`, `tooling/event-protocol` | C facts, small analyzers, and writing tools that reason about p101 projects. |
 
 ## Coverage
 
-Uncovered domains: `systems/file-io`.
+Every discovered domain is assigned to one primary track.
 
 ## Curriculum reading
 
@@ -216,13 +216,13 @@ Uncovered domains: `systems/file-io`.
 | `lib_c` | 466 |
 | `lib_c_facts` | 4 |
 | `lib_convert` | 38 |
-| `lib_env` | 47 |
+| `lib_env` | 45 |
 | `lib_error` | 50 |
 | `lib_fsm` | 26 |
 | `lib_posix` | 352 |
 | `lib_posix_optional` | 51 |
 | `lib_posix_xsi` | 92 |
-| `lib_tool_event` | 23 |
+| `lib_tool_event` | 25 |
 | `lib_unix` | 42 |
 | `lib_util` | 16 |
 
@@ -282,7 +282,7 @@ Uncovered domains: `systems/file-io`.
 | `network/sockets` | 12 | `lib_posix`:12 | candidate |
 | `support/assertions` | 25 | `lib_error`:25 | error-handling track |
 | `support/call-tracing` | 12 | `lib_env`:12 | event-streams track |
-| `support/environment-lifecycle` | 13 | `lib_env`:13 | environment-lifecycle track |
+| `support/environment-lifecycle` | 11 | `lib_env`:11 | environment-lifecycle track |
 | `support/error-codes` | 1 | `lib_error`:1 | error-handling track |
 | `support/error-core` | 24 | `lib_error`:24 | error-handling track |
 | `support/fault-injection` | 4 | `lib_env`:4 | event-streams track |
@@ -292,7 +292,6 @@ Uncovered domains: `systems/file-io`.
 | `systems/directories-patterns` | 19 | `lib_posix`:13, `lib_posix_xsi`:6 | systems-family track |
 | `systems/dynamic-loading` | 4 | `lib_posix`:4 | runtime-services track |
 | `systems/fd-io` | 18 | `lib_posix`:14, `lib_posix_xsi`:4 | systems-family track |
-| `systems/file-io` | 1 | `lib_posix`:1 | systems-family track |
 | `systems/filesystem-paths` | 34 | `lib_posix`:33, `lib_posix_xsi`:1 | systems-family track |
 | `systems/io-multiplexing` | 3 | `lib_posix`:3 | systems reference/advanced cluster |
 | `systems/ipc` | 19 | `lib_posix`:6, `lib_posix_xsi`:13 | strong IPC playground cluster |
@@ -300,7 +299,7 @@ Uncovered domains: `systems/file-io`.
 | `systems/localization-conversion` | 8 | `lib_posix`:8 | runtime-services track |
 | `systems/logging-diagnostics` | 12 | `lib_posix_xsi`:4, `lib_unix`:8 | systems-family track |
 | `systems/platform-admin` | 1 | `lib_posix`:1 | systems-family track |
-| `systems/process-control` | 11 | `lib_posix`:11 | systems-family track |
+| `systems/process-control` | 12 | `lib_posix`:12 | systems-family track |
 | `systems/process-signal` | 35 | `lib_posix`:16, `lib_posix_optional`:17, `lib_posix_xsi`:2 | systems-family track |
 | `systems/resource-time-memory` | 17 | `lib_posix`:4, `lib_posix_optional`:7, `lib_posix_xsi`:6 | systems-family track |
 | `systems/scheduler` | 3 | `lib_posix`:1, `lib_posix_optional`:2 | systems-family track |
@@ -319,7 +318,7 @@ Uncovered domains: `systems/file-io`.
 | `systems/users-identity` | 15 | `lib_posix`:10, `lib_posix_xsi`:2, `lib_unix`:3 | systems-family track |
 | `systems/users-terminals` | 27 | `lib_posix`:19, `lib_posix_xsi`:6, `lib_unix`:2 | systems-family track |
 | `tooling/c-facts` | 4 | `lib_c_facts`:4 | tool-building track |
-| `tooling/event-protocol` | 23 | `lib_tool_event`:23 | tool-building track |
+| `tooling/event-protocol` | 25 | `lib_tool_event`:25 | tool-building track |
 
 ## Large clusters and representative functions
 
@@ -375,6 +374,10 @@ Uncovered domains: `systems/file-io`.
 
 `p101_check_equals_int`, `p101_check_equals_intmax`, `p101_check_equals_string`, `p101_check_equals_uintmax`, `p101_check_greater_than_double`, `p101_check_greater_than_int`, `p101_check_greater_than_intmax`, `p101_check_greater_than_long_double`, `p101_check_greater_than_uintmax`, `p101_check_in_range_double`, `p101_check_in_range_int`, `p101_check_in_range_intmax`, `p101_check_in_range_long_double`, `p101_check_in_range_uintmax`, `p101_check_less_than_double`, `p101_check_less_than_int`, `p101_check_less_than_intmax`, `p101_check_less_than_long_double`, `p101_check_less_than_uintmax`, `p101_check_not_equals_int`, `p101_check_not_equals_intmax`, `p101_check_not_equals_string`, `p101_check_not_equals_uintmax`, `p101_check_not_null`, `p101_check_null`
 
+### `tooling/event-protocol` (25)
+
+`p101_tool_event_fingerprint_file`, `p101_tool_event_lifecycle_create`, `p101_tool_event_lifecycle_destroy`, `p101_tool_event_lifecycle_entry_at`, `p101_tool_event_lifecycle_entry_count`, `p101_tool_event_lifecycle_finding_at`, `p101_tool_event_lifecycle_finding_count`, `p101_tool_event_lifecycle_finish`, `p101_tool_event_lifecycle_ingest`, `p101_tool_event_line_is_ours`, `p101_tool_event_ownership_classify_release`, `p101_tool_event_ownership_classify_replace`, `p101_tool_event_ownership_exec_inherits`, `p101_tool_event_parse_json_size`, `p101_tool_event_parse_line`, `p101_tool_event_parse_resource_summary_json`, `p101_tool_event_parse_size_field`, `p101_tool_event_parse_status_name`, `p101_tool_event_read_line`, `p101_tool_event_resource_summary_finding_count`, `p101_tool_event_split`, `p101_tool_event_stream_health_is_complete`, `p101_tool_event_stream_health_observe`, `p101_tool_event_unescape_field`, `p101_tool_event_write`
+
 ### `c/stdlib-extensions` (24)
 
 `p101_a64l`, `p101_arc4random`, `p101_arc4random_buf`, `p101_arc4random_uniform`, `p101_getloadavg`, `p101_getsubopt`, `p101_grantpt`, `p101_initstate`, `p101_l64a`, `p101_mkdtemp`, `p101_mkstemp`, `p101_posix_memalign`, `p101_posix_openpt`, `p101_ptsname`, `p101_putenv`, `p101_realpath`, `p101_rpmatch`, `p101_seed48`, `p101_setenv`, `p101_setstate`, `p101_srand48`, `p101_srandom`, `p101_unlockpt`, `p101_unsetenv`
@@ -382,10 +385,6 @@ Uncovered domains: `systems/file-io`.
 ### `support/error-core` (24)
 
 `p101_error_check`, `p101_error_copy`, `p101_error_create`, `p101_error_default_error_reporter`, `p101_error_destroy`, `p101_error_errno`, `p101_error_get_code`, `p101_error_get_errno`, `p101_error_get_file_name`, `p101_error_get_function_name`, `p101_error_get_line_number`, `p101_error_get_message`, `p101_error_get_type`, `p101_error_has_error`, `p101_error_has_no_error`, `p101_error_is_errno`, `p101_error_is_error`, `p101_error_is_reporting`, `p101_error_move`, `p101_error_reset`, `p101_error_set_reporting`, `p101_error_system`, `p101_error_user`, `p101_error_user_printf`
-
-### `tooling/event-protocol` (23)
-
-`p101_tool_event_fingerprint_file`, `p101_tool_event_lifecycle_create`, `p101_tool_event_lifecycle_destroy`, `p101_tool_event_lifecycle_entry_at`, `p101_tool_event_lifecycle_entry_count`, `p101_tool_event_lifecycle_finding_at`, `p101_tool_event_lifecycle_finding_count`, `p101_tool_event_lifecycle_finish`, `p101_tool_event_lifecycle_ingest`, `p101_tool_event_line_is_ours`, `p101_tool_event_ownership_classify_release`, `p101_tool_event_ownership_classify_replace`, `p101_tool_event_ownership_exec_inherits`, `p101_tool_event_parse_json_size`, `p101_tool_event_parse_line`, `p101_tool_event_parse_resource_summary_json`, `p101_tool_event_parse_size_field`, `p101_tool_event_parse_status_name`, `p101_tool_event_read_line`, `p101_tool_event_resource_summary_finding_count`, `p101_tool_event_split`, `p101_tool_event_unescape_field`, `p101_tool_event_write`
 
 ### `c/wide-stdio` (21)
 
@@ -475,10 +474,6 @@ Uncovered domains: `systems/file-io`.
 
 `p101_fclose`, `p101_fgetpos`, `p101_fopen`, `p101_fread`, `p101_freopen`, `p101_fseek`, `p101_fsetpos`, `p101_ftell`, `p101_fwrite`, `p101_perror`, `p101_remove`, `p101_rename`, `p101_tmpfile`
 
-### `support/environment-lifecycle` (13)
-
-`p101_env_clear_event_log_error`, `p101_env_create`, `p101_env_destroy`, `p101_env_dup`, `p101_env_event_log_errno`, `p101_env_event_log_failed`, `p101_env_get_event_log_version`, `p101_env_get_label`, `p101_env_pointer_resource_id`, `p101_env_set_event_log_version`, `p101_env_set_label`, `p101_env_set_resource_log`, `p101_env_set_resource_observer`
-
 ### `c/complex-exp-log-power` (12)
 
 `p101_cexp`, `p101_cexpf`, `p101_cexpl`, `p101_clog`, `p101_clogf`, `p101_clogl`, `p101_cpow`, `p101_cpowf`, `p101_cpowl`, `p101_csqrt`, `p101_csqrtf`, `p101_csqrtl`
@@ -503,6 +498,10 @@ Uncovered domains: `systems/file-io`.
 
 `p101_closelog`, `p101_err`, `p101_errx`, `p101_fmtmsg`, `p101_openlog`, `p101_setlogmask`, `p101_verr`, `p101_verrx`, `p101_vwarn`, `p101_vwarnx`, `p101_warn`, `p101_warnx`
 
+### `systems/process-control` (12)
+
+`p101_execv`, `p101_execve`, `p101_execvp`, `p101_fork`, `p101_getpgid`, `p101_getpgrp`, `p101_getpid`, `p101_getppid`, `p101_getsid`, `p101_posix_exit_immediately`, `p101_setpgid`, `p101_setsid`
+
 ### `c/floating-env` (11)
 
 `p101_feclearexcept`, `p101_fegetenv`, `p101_fegetexceptflag`, `p101_fegetround`, `p101_feholdexcept`, `p101_feraiseexcept`, `p101_fesetenv`, `p101_fesetexceptflag`, `p101_fesetround`, `p101_fetestexcept`, `p101_feupdateenv`
@@ -511,9 +510,9 @@ Uncovered domains: `systems/file-io`.
 
 `p101_open_wmemstream`, `p101_wcpcpy`, `p101_wcpncpy`, `p101_wcscasecmp`, `p101_wcscoll_l`, `p101_wcsdup`, `p101_wcsncasecmp`, `p101_wcsnlen`, `p101_wcswidth`, `p101_wcsxfrm_l`, `p101_wcwidth`
 
-### `systems/process-control` (11)
+### `support/environment-lifecycle` (11)
 
-`p101_execv`, `p101_execve`, `p101_execvp`, `p101_fork`, `p101_getpgid`, `p101_getpgrp`, `p101_getpid`, `p101_getppid`, `p101_getsid`, `p101_setpgid`, `p101_setsid`
+`p101_env_clear_event_log_error`, `p101_env_create`, `p101_env_destroy`, `p101_env_dup`, `p101_env_event_log_errno`, `p101_env_event_log_failed`, `p101_env_get_label`, `p101_env_pointer_resource_id`, `p101_env_set_label`, `p101_env_set_resource_log`, `p101_env_set_resource_observer`
 
 ### `systems/search-structures` (11)
 
@@ -670,10 +669,6 @@ Uncovered domains: `systems/file-io`.
 ### `support/error-codes` (1)
 
 `p101_errno_get_errno`
-
-### `systems/file-io` (1)
-
-`p101_posix_exit_immediately`
 
 ### `systems/platform-admin` (1)
 

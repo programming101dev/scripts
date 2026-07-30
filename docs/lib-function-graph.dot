@@ -244,7 +244,6 @@ digraph p101_lib_functions {
   "p101_env_enable_fd_tracking" [label="p101_env_enable_fd_tracking\nsupport/resource-events"];
   "p101_env_event_log_errno" [label="p101_env_event_log_errno\nsupport/environment-lifecycle"];
   "p101_env_event_log_failed" [label="p101_env_event_log_failed\nsupport/environment-lifecycle"];
-  "p101_env_get_event_log_version" [label="p101_env_get_event_log_version\nsupport/environment-lifecycle"];
   "p101_env_get_exit_tracer" [label="p101_env_get_exit_tracer\nsupport/call-tracing"];
   "p101_env_get_label" [label="p101_env_get_label\nsupport/environment-lifecycle"];
   "p101_env_get_tracer" [label="p101_env_get_tracer\nsupport/call-tracing"];
@@ -255,7 +254,6 @@ digraph p101_lib_functions {
   "p101_env_set_alloc_observer" [label="p101_env_set_alloc_observer\nsupport/resource-events"];
   "p101_env_set_call_log" [label="p101_env_set_call_log\nsupport/call-tracing"];
   "p101_env_set_call_observer" [label="p101_env_set_call_observer\nsupport/call-tracing"];
-  "p101_env_set_event_log_version" [label="p101_env_set_event_log_version\nsupport/environment-lifecycle"];
   "p101_env_set_exit_tracer" [label="p101_env_set_exit_tracer\nsupport/call-tracing"];
   "p101_env_set_fault_injector" [label="p101_env_set_fault_injector\nsupport/fault-injection"];
   "p101_env_set_fd_log" [label="p101_env_set_fd_log\nsupport/resource-events"];
@@ -760,7 +758,7 @@ digraph p101_lib_functions {
   "p101_pipe" [label="p101_pipe\nsystems/fd-io"];
   "p101_poll" [label="p101_poll\nsystems/io-multiplexing"];
   "p101_popen" [label="p101_popen\nc/stdio-streams-files-extensions"];
-  "p101_posix_exit_immediately" [label="p101_posix_exit_immediately\nsystems/file-io"];
+  "p101_posix_exit_immediately" [label="p101_posix_exit_immediately\nsystems/process-control"];
   "p101_posix_madvise" [label="p101_posix_madvise\nsystems/resource-time-memory"];
   "p101_posix_memalign" [label="p101_posix_memalign\nc/stdlib-extensions"];
   "p101_posix_openpt" [label="p101_posix_openpt\nc/stdlib-extensions"];
@@ -1100,6 +1098,8 @@ digraph p101_lib_functions {
   "p101_tool_event_read_line" [label="p101_tool_event_read_line\ntooling/event-protocol"];
   "p101_tool_event_resource_summary_finding_count" [label="p101_tool_event_resource_summary_finding_count\ntooling/event-protocol"];
   "p101_tool_event_split" [label="p101_tool_event_split\ntooling/event-protocol"];
+  "p101_tool_event_stream_health_is_complete" [label="p101_tool_event_stream_health_is_complete\ntooling/event-protocol"];
+  "p101_tool_event_stream_health_observe" [label="p101_tool_event_stream_health_observe\ntooling/event-protocol"];
   "p101_tool_event_unescape_field" [label="p101_tool_event_unescape_field\ntooling/event-protocol"];
   "p101_tool_event_write" [label="p101_tool_event_write\ntooling/event-protocol"];
   "p101_toupper" [label="p101_toupper\nc/char-classification"];
@@ -1428,6 +1428,7 @@ digraph p101_lib_functions {
   "p101_env_destroy" -> "p101_env_event_log_errno" [label="wrapper-call", style=solid];
   "p101_env_destroy" -> "p101_env_event_log_failed" [label="wrapper-call", style=solid];
   "p101_env_destroy" -> "p101_env_fault_state_destroy" [label="wrapper-call", style=solid];
+  "p101_env_destroy" -> "p101_env_write_completion_records" [label="wrapper-call", style=solid];
   "p101_env_dup" -> "p101_env_configure_call_log_path" [label="wrapper-call", style=solid];
   "p101_env_dup" -> "p101_env_configure_resource_log_path" [label="wrapper-call", style=solid];
   "p101_env_dup" -> "p101_env_destroy" [label="wrapper-call", style=solid];
@@ -1436,7 +1437,6 @@ digraph p101_lib_functions {
   "p101_env_dup" -> "p101_env_init_event_state" [label="wrapper-call", style=solid];
   "p101_env_dup" -> "p101_error_has_error" [label="wrapper-call", style=solid];
   "p101_env_enable_fd_tracking" -> "p101_env_trace" [label="wrapper-call", style=solid];
-  "p101_env_get_event_log_version" -> "p101_env_trace" [label="wrapper-call", style=solid];
   "p101_env_get_exit_tracer" -> "p101_env_trace" [label="wrapper-call", style=solid];
   "p101_env_get_tracer" -> "p101_env_trace" [label="wrapper-call", style=solid];
   "p101_env_set_alloc_log" -> "p101_env_close_owned_resource_log_if_unused" [label="wrapper-call", style=solid];
@@ -1447,8 +1447,6 @@ digraph p101_lib_functions {
   "p101_env_set_call_log" -> "p101_env_trace" [label="wrapper-call", style=solid];
   "p101_env_set_call_observer" -> "p101_env_close_owned_call_log" [label="wrapper-call", style=solid];
   "p101_env_set_call_observer" -> "p101_env_trace" [label="wrapper-call", style=solid];
-  "p101_env_set_event_log_version" -> "p101_env_supported_event_log_version" [label="wrapper-call", style=solid];
-  "p101_env_set_event_log_version" -> "p101_env_trace" [label="wrapper-call", style=solid];
   "p101_env_set_exit_tracer" -> "p101_env_trace" [label="wrapper-call", style=solid];
   "p101_env_set_fault_injector" -> "p101_env_fault_state_destroy" [label="wrapper-call", style=solid];
   "p101_env_set_fault_injector" -> "p101_env_trace" [label="wrapper-call", style=solid];
@@ -2154,6 +2152,7 @@ digraph p101_lib_functions {
   "p101_strdup" -> "p101_strlen" [label="wrapper-call", style=solid];
   "p101_strdup" -> "strdup" [label="wrapped-native", style=dashed];
   "p101_strerror" -> "p101_error_has_error" [label="wrapper-call", style=solid];
+  "p101_strerror" -> "p101_free" [label="wrapper-call", style=solid];
   "p101_strerror" -> "p101_malloc" [label="wrapper-call", style=solid];
   "p101_strerror" -> "p101_memcpy" [label="wrapper-call", style=solid];
   "p101_strerror" -> "p101_strlen" [label="wrapper-call", style=solid];

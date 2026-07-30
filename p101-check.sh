@@ -185,6 +185,7 @@ module_tool="$(find_tool P101_MODULE_MAP "$(last_build_tool "$script_dir/../prog
 observe_tool="$(find_tool P101_OBSERVE "$(last_build_tool "$script_dir/../programs/p101-observe" p101-observe)" "$script_dir/../programs/p101-observe/build-clang-22/p101-observe" "$script_dir/../programs/p101-observe/build-clang/p101-observe" p101-observe)" || { echo "p101 check: p101-observe not found" >&2; exit 2; }
 walk_tool="$(find_tool P101_ERROR_PATH_WALK "$(last_build_tool "$script_dir/../programs/p101-error-path-walk" p101-error-path-walk)" "$script_dir/../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk" "$script_dir/../programs/p101-error-path-walk/build-clang/p101-error-path-walk" p101-error-path-walk)" || { echo "p101 check: p101-error-path-walk not found" >&2; exit 2; }
 tracker_tool="$(find_tool P101_RESOURCE_TRACKER "$(last_build_tool "$script_dir/../programs/p101-resource-tracker" p101-resource-tracker)" "$script_dir/../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker" "$script_dir/../programs/p101-resource-tracker/build-clang/p101-resource-tracker" p101-resource-tracker)" || { echo "p101 check: p101-resource-tracker not found" >&2; exit 2; }
+concurrency_tool="$(find_tool P101_SYNC_CHECK "$(last_build_tool "$script_dir/../programs/p101-sync-check" p101-sync-check)" "$script_dir/../programs/p101-sync-check/build-clang-22/p101-sync-check" "$script_dir/../programs/p101-sync-check/build-clang/p101-sync-check" p101-sync-check)" || { echo "p101 check: p101-sync-check not found" >&2; exit 2; }
 trace_tool="$(find_tool P101_TRACE "$(last_build_tool "$script_dir/../programs/p101-trace" p101-trace)" "$script_dir/../programs/p101-trace/build-clang-22/p101-trace" "$script_dir/../programs/p101-trace/build-clang/p101-trace" p101-trace)" || { echo "p101 check: p101-trace not found" >&2; exit 2; }
 report_tool="$(find_tool P101_REPORT "$(last_build_tool "$script_dir/../programs/p101-report" p101-report)" "$script_dir/../programs/p101-report/build-clang-22/p101-report" "$script_dir/../programs/p101-report/build-clang/p101-report" p101-report)" || { echo "p101 check: p101-report not found" >&2; exit 2; }
 
@@ -214,7 +215,7 @@ else
   printf 'SKIP: --skip-quality\n' > "$log_dir/quality-check.log"
 fi
 
-doctor_args=(-o "$out_dir/doctor" -s "$source_path" -n "$fault_count" -A "$wrapper_tool" -E "$error_contract_tool" -M "$module_tool" -O "$observe_tool" -W "$walk_tool" -r "$tracker_tool" -t "$trace_tool" -p "$report_tool")
+doctor_args=(-o "$out_dir/doctor" -s "$source_path" -n "$fault_count" -A "$wrapper_tool" -E "$error_contract_tool" -M "$module_tool" -O "$observe_tool" -W "$walk_tool" -r "$tracker_tool" -d "$concurrency_tool" -t "$trace_tool" -p "$report_tool")
 if [ "$skip_wrapper" -eq 1 ]; then
   doctor_args=(-x "${doctor_args[@]}")
 fi

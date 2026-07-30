@@ -19,6 +19,8 @@ Commands:
   walk          Run p101-error-path-walk
   audit         Run p101-wrapper-audit
   module-map    Run p101-module-map
+  sync-check    Run p101-sync-check
+  mutation-check Run p101-mutation-check
   doctor        Run p101-doctor
   playground    Run p101-tool-playground
   check         Run the full p101 check workflow
@@ -121,6 +123,12 @@ case "$command_name" in
     ;;
   module-map)
     exec_found p101-module-map P101_MODULE_MAP "$(last_build_tool ../programs/p101-module-map p101-module-map)" ../programs/p101-module-map/build-clang-22/p101-module-map ../programs/p101-module-map/build-clang/p101-module-map p101-module-map
+    ;;
+  sync|sync-check)
+    exec_found p101-sync-check P101_SYNC_CHECK "$(last_build_tool ../programs/p101-sync-check p101-sync-check)" ../programs/p101-sync-check/build-clang-22/p101-sync-check ../programs/p101-sync-check/build-clang/p101-sync-check p101-sync-check
+    ;;
+  mutation|mutation-check)
+    exec_found p101-mutation-check P101_MUTATION_CHECK ../programs/p101-mutation-check/p101-mutation-check p101-mutation-check
     ;;
   doctor)
     exec_found p101-doctor P101_DOCTOR "$(last_build_tool ../programs/p101-doctor p101-doctor)" ../programs/p101-doctor/build-clang-22/p101-doctor ../programs/p101-doctor/build-clang/p101-doctor p101-doctor

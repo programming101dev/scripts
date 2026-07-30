@@ -42,7 +42,12 @@ jobs:
           printf 'clang++\n' > ci_cxx_compilers.txt
           ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt
       - name: Check after update-all
-        run: cd scripts && P101_QUIET=1 ./check-after-update-all.sh -c clang -x clang++
+        run: cd scripts && P101_QUIET=1 ./check-after-update-all.sh -c clang -x clang++ -o ci-output
+      - name: Publish instrumentation receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumentation-macos
+          path: scripts/ci-output/instrumentation-receipt.json
 
   linux:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.target_os == 'all' || inputs.target_os == 'linux' }}
@@ -65,7 +70,12 @@ jobs:
           printf 'clang++\n' > ci_cxx_compilers.txt
           ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt
       - name: Check after update-all
-        run: cd scripts && P101_QUIET=1 ./check-after-update-all.sh -c clang -x clang++
+        run: cd scripts && P101_QUIET=1 ./check-after-update-all.sh -c clang -x clang++ -o ci-output
+      - name: Publish instrumentation receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumentation-linux
+          path: scripts/ci-output/instrumentation-receipt.json
 
   freebsd:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.target_os == 'all' || inputs.target_os == 'freebsd' }}
@@ -93,4 +103,29 @@ jobs:
             printf 'clang\n' > ci_c_compilers.txt
             printf 'clang++\n' > ci_cxx_compilers.txt
             ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt
-            bash ./check-after-update-all.sh -c clang -x clang++
+            bash ./check-after-update-all.sh -c clang -x clang++ -o ci-output
+      - name: Publish instrumentation receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumentation-freebsd
+          path: scripts/ci-output/instrumentation-receipt.json
+
+  instrumentation-matrix:
+    if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.target_os == 'all') && needs.macos.result == 'success' && needs.linux.result == 'success' && needs.freebsd.result == 'success' }}
+    needs: [macos, linux, freebsd]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: scripts
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: instrumentation-*
+          path: instrumentation-receipts
+      - name: Verify supported-platform instrumentation coverage
+        run: >-
+          python3 scripts/check-p101-instrumentation.py
+          --merge-receipts instrumentation-receipts/*/instrumentation-receipt.json
+          --require-platform Darwin
+          --require-platform Linux
+          --require-platform FreeBSD

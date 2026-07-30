@@ -93,6 +93,40 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+resolve_compiler() {
+  requested="$1"
+  resolved=""
+  if [ -f compiler_paths.txt ]; then
+    resolved="$(awk -F= -v name="$requested" '$1 == name { print substr($0, index($0, "=") + 1); exit }' compiler_paths.txt)"
+  fi
+  if [ -n "$resolved" ]; then
+    printf '%s\n' "$resolved"
+  else
+    command -v "$requested" 2>/dev/null || printf '%s\n' "$requested"
+  fi
+}
+
+playground_program() {
+  build_dir=""
+  if [ -f ../playgrounds/.last-build-dir ]; then
+    IFS= read -r build_dir < ../playgrounds/.last-build-dir
+    if [ -x "../playgrounds/$build_dir/p101-tool-playground" ]; then
+      printf './%s/p101-tool-playground\n' "$build_dir"
+      return 0
+    fi
+  fi
+  for build_dir in build-clang-22 build-clang build-gcc; do
+    if [ -x "../playgrounds/$build_dir/p101-tool-playground" ]; then
+      printf './%s/p101-tool-playground\n' "$build_dir"
+      return 0
+    fi
+  done
+  return 1
+}
+
+cc="$(resolve_compiler "$cc")"
+cxx="$(resolve_compiler "$cxx")"
+
 if [ -z "$out_dir" ]; then
   out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-stack-check.XXXXXX")"
 fi
@@ -228,7 +262,8 @@ fi
 if [ "$skip_p101_check" -eq 0 ]; then
   p101_check_out="$out_dir/p101-check"
   reset_child_dir "$p101_check_out"
-  run_logged_expect "p101 check full-source smoke" "$log_dir/p101-check.log" "0 1" ./p101 check --skip-quality -p ../playgrounds -s src -n "$fault_count" -o "$p101_check_out" -- ./build-clang/p101-tool-playground -s tour
+  playground_binary="$(playground_program)" || { say "    FAIL (no built p101-tool-playground found)"; exit 2; }
+  run_logged_expect "p101 check full-source smoke" "$log_dir/p101-check.log" "0 1" ./p101 check --skip-quality -p ../playgrounds -s src -n "$fault_count" -o "$p101_check_out" -- "$playground_binary" -s tour
 else
   say "==> p101 check full-source smoke"
   say "    SKIP"

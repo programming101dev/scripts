@@ -1,5 +1,19 @@
 {
-  "schema": "p101-instrumentation-contract-v1",
+  "schema": "p101-instrumentation-contract-v2",
+  "library_roles": {
+    "lib_c": "native-wrapper",
+    "lib_c_facts": "traced-api",
+    "lib_convert": "traced-api",
+    "lib_env": "infrastructure",
+    "lib_error": "infrastructure",
+    "lib_fsm": "traced-api",
+    "lib_posix": "native-wrapper",
+    "lib_posix_optional": "native-wrapper",
+    "lib_posix_xsi": "native-wrapper",
+    "lib_tool_event": "infrastructure",
+    "lib_unix": "native-wrapper",
+    "lib_util": "traced-api"
+  },
   "required": {
     "p101_accept": ["fd"],
     "p101_calloc": ["allocation"],
@@ -62,6 +76,9 @@
     "p101_pthread_cond_init": ["resource"],
     "p101_pthread_condattr_destroy": ["resource"],
     "p101_pthread_condattr_init": ["resource"],
+    "p101_pthread_create": ["resource"],
+    "p101_pthread_detach": ["resource"],
+    "p101_pthread_join": ["resource"],
     "p101_pthread_mutex_destroy": ["resource"],
     "p101_pthread_mutex_init": ["resource"],
     "p101_pthread_mutexattr_destroy": ["resource"],

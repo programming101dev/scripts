@@ -24,13 +24,12 @@ Tools include `<p101_tool_event/event.h>` directly. They must not reach through
 ## Contract
 
 Admitted input is a byte stream containing p101 event records, optionally
-mixed with unrelated program output. Version 3 is emitted. The parser also
-accepts version 2 so old teaching receipts remain readable; version 1 is
-rejected.
+mixed with unrelated program output. Version 4 is the sole emitted and
+accepted version. All other formats are rejected.
 
-Version 3 adds an execution-context ID between PID and sequence number. A
-context normally corresponds to one `p101_env`, which is the unit used by the
-one-environment-per-thread convention.
+Version 4 includes an execution-context ID, sequence number, monotonic and wall
+timestamps, and a completion count. `lib_env` serializes sequence assignment
+with record publication for one environment.
 
 Output consists of parsed `struct p101_tool_event_record` values, serialized records,
 or policy-free lifecycle entries and findings. Tool-specific severity,
@@ -48,10 +47,11 @@ unobserved kernel-side effect occurred.
 ## Evidence
 
 ```sh
-cmake -S libraries/lib_tool_event/test -B libraries/lib_tool_event/test/build
-cmake --build libraries/lib_tool_event/test/build
-ctest --test-dir libraries/lib_tool_event/test/build --output-on-failure
+cd libraries/lib_tool_event
+./build.sh -q
+./test.sh
 ```
 
-The test covers version-2 compatibility, version-3 context metadata, escaped
-serialization round-trips, and generic lifecycle replay.
+The test covers non-current-version rejection, version-4 context metadata and
+completion receipts, escaped serialization round-trips, and generic lifecycle
+replay.
