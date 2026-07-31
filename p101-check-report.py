@@ -96,7 +96,7 @@ def doctor_status_table(doctor: dict[str, Any]) -> str:
 def finding_rows(data: dict[str, Any]) -> str:
     findings = data.get("findings")
     if not isinstance(findings, list) or not findings:
-        return "<p>No correlated resource findings in the observed run.</p>"
+        return "<p>No correlated runtime findings in the observed run.</p>"
 
     rows = [
         "<table>",
@@ -106,16 +106,21 @@ def finding_rows(data: dict[str, Any]) -> str:
     for finding in findings:
         if not isinstance(finding, dict):
             continue
-        site = finding.get("site") if isinstance(finding.get("site"), dict) else {}
-        if "fd" in finding:
-            resource = f"fd {finding.get('fd')}"
+        site_value = finding.get("location", finding.get("site"))
+        site = site_value if isinstance(site_value, dict) else {}
+        evidence = finding.get("evidence") if isinstance(finding.get("evidence"), dict) else {}
+        if "fd" in finding or "fd" in evidence:
+            resource = f"fd {finding.get('fd', evidence.get('fd'))}"
+        elif "ptr" in finding or "ptr" in evidence:
+            resource = f"ptr {finding.get('ptr', evidence.get('ptr'))}"
         else:
-            resource = f"ptr {finding.get('ptr', '-')}"
+            resource = str(evidence.get("identity", evidence.get("node", "-")))
         location = f"{site.get('file', '?')}:{site.get('line', '?')} in {site.get('function', '?')}"
+        kind = finding.get("kind", finding.get("policy", "?"))
         rows.append(
             "<tr>"
             f"<td><code>{esc(finding.get('id', '?'))}</code></td>"
-            f"<td>{esc(finding.get('kind', '?'))}</td>"
+            f"<td>{esc(kind)}</td>"
             f"<td>{esc(resource)}</td>"
             f"<td><code>{esc(location)}</code></td>"
             "</tr>"
@@ -131,10 +136,10 @@ def artifact_list(root: Path) -> str:
         (root / "logs" / "coverage.log", "coverage log"),
         (root / "doctor" / "summary.md", "doctor summary"),
         (root / "doctor" / "module-map.md", "module map"),
-        (root / "doctor" / "observe" / "index.html", "observed-run HTML"),
-        (root / "doctor" / "observe" / "correlated-report.txt", "correlated resource report"),
-        (root / "doctor" / "observe" / "resource-lifetimes.md", "resource lifetime Mermaid"),
-        (root / "doctor" / "fault-walk", "fault walk cases"),
+        (root / "runtime" / "analysis" / "index.html", "runtime-analysis HTML"),
+        (root / "runtime" / "analysis" / "correlated-report.txt", "correlated runtime report"),
+        (root / "runtime" / "analysis" / "resource-lifetimes.md", "resource lifetime Mermaid"),
+        (root / "fault-walk", "fault walk cases"),
         (root / "bug-bundle.tar.gz", "bug bundle"),
     ]
     items = []
@@ -148,18 +153,18 @@ def artifact_list(root: Path) -> str:
 
 def render(check_dir: Path) -> str:
     doctor_dir = check_dir / "doctor"
-    observe_dir = doctor_dir / "observe"
+    analysis_dir = check_dir / "runtime" / "analysis"
 
     summary = read_text(check_dir / "summary.md")
     doctor_summary = read_text(doctor_dir / "summary.md")
     module_map = read_text(doctor_dir / "module-map.md")
     quality_log = read_text(check_dir / "logs" / "quality-check.log", 16000)
     coverage_log = read_text(check_dir / "logs" / "coverage.log", 16000)
-    observe_summary = read_text(observe_dir / "summary.txt")
-    trace_summary = read_text(observe_dir / "trace-summary.txt")
-    lifetimes = read_text(observe_dir / "resource-lifetimes.md")
+    observe_summary = read_text(analysis_dir / "summary.md")
+    trace_summary = read_text(analysis_dir / "trace-summary.txt")
+    lifetimes = read_text(analysis_dir / "resource-lifetimes.md")
     doctor_json = read_json(doctor_dir / "doctor.json")
-    correlated = read_json(observe_dir / "correlated-report.json")
+    correlated = read_json(analysis_dir / "correlated-report.json")
 
     return f"""<!doctype html>
 <html lang="en">

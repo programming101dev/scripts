@@ -37,9 +37,16 @@ scope_exclusion_reason() {
 find_tool() {
   repo="$1"
   name="$2"
-  if [ -f "$repo/.last-build-dir" ] && [ -x "$repo/$(cat "$repo/.last-build-dir")/$name" ]; then
-    printf '%s\n' "$repo/$(cat "$repo/.last-build-dir")/$name"
-    return
+  marker="$repo/.last-runtime-build-dir"
+  if [ ! -f "$marker" ]; then
+    marker="$repo/.last-build-dir"
+  fi
+  if [ -f "$marker" ]; then
+    build_dir="$(cat "$marker")"
+    if [ -x "$repo/$build_dir/$name" ]; then
+      printf '%s\n' "$repo/$build_dir/$name"
+      return
+    fi
   fi
   find "$repo" -maxdepth 2 -type f -name "$name" -perm -111 -print -quit
 }

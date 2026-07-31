@@ -24,10 +24,11 @@ Usage: p101 check [options] [<source-path>] -- <command> [args...]
 
 Run the golden-path p101 teaching workflow:
   1. project quality gate via ./check.sh when present;
-  2. p101-doctor, including source contracts, module map, observation,
-     resource tracking, call tracing, correlated report, and error-path walking;
-  3. optional coverage receipt;
-  4. one top-level HTML report and bug bundle.
+  2. p101-doctor source/module preflight;
+  3. one capture and one shared-model runtime analysis;
+  4. systematic error-path walking;
+  5. optional coverage receipt;
+  6. one top-level HTML report and bug bundle.
 
 Options:
   -o <dir>          Output directory. Default: ./p101-check-<pid>
@@ -82,7 +83,10 @@ find_tool() {
 last_build_tool() {
   repo="$1"
   tool="$2"
-  last_build_file="$repo/.last-build-dir"
+  last_build_file="$repo/.last-runtime-build-dir"
+  if [ ! -f "$last_build_file" ]; then
+    last_build_file="$repo/.last-build-dir"
+  fi
 
   if [ -f "$last_build_file" ]; then
     build_dir="$(cat "$last_build_file")"
@@ -178,7 +182,7 @@ out_dir="$(CDPATH='' cd -P "$out_dir" && pwd -P)"
 log_dir="$out_dir/logs"
 summary="$out_dir/summary.md"
 
-doctor_tool="$(find_tool P101_DOCTOR "$script_dir/../programs/p101-doctor/build-clang-22/p101-doctor" "$script_dir/../programs/p101-doctor/build-clang/p101-doctor" "$(last_build_tool "$script_dir/../programs/p101-doctor" p101-doctor)" p101-doctor)" || { echo "p101 check: p101-doctor not found" >&2; exit 2; }
+doctor_tool="$(find_tool P101_DOCTOR "$(last_build_tool "$script_dir/../programs/p101-doctor" p101-doctor)" "$script_dir/../programs/p101-doctor/build-clang-22/p101-doctor" "$script_dir/../programs/p101-doctor/build-clang/p101-doctor" p101-doctor)" || { echo "p101 check: p101-doctor not found" >&2; exit 2; }
 wrapper_tool="$(find_tool P101_WRAPPER_AUDIT "$script_dir/../programs/p101-wrapper-audit/p101-wrapper-audit" p101-wrapper-audit)" || { echo "p101 check: p101-wrapper-audit not found" >&2; exit 2; }
 error_contract_tool="$(find_tool P101_ERROR_CONTRACT "$script_dir/../programs/p101-error-contract/build-clang-22/p101-error-contract" "$script_dir/../programs/p101-error-contract/build-clang/p101-error-contract" "$(last_build_tool "$script_dir/../programs/p101-error-contract" p101-error-contract)" p101-error-contract)" || { echo "p101 check: p101-error-contract not found" >&2; exit 2; }
 module_tool="$(find_tool P101_MODULE_MAP "$script_dir/../programs/p101-module-map/build-clang-22/p101-module-map" "$script_dir/../programs/p101-module-map/build-clang/p101-module-map" "$(last_build_tool "$script_dir/../programs/p101-module-map" p101-module-map)" p101-module-map)" || { echo "p101 check: p101-module-map not found" >&2; exit 2; }
@@ -188,12 +192,15 @@ tracker_tool="$(find_tool P101_RESOURCE_TRACKER "$script_dir/../programs/p101-re
 concurrency_tool="$(find_tool P101_SYNC_CHECK "$script_dir/../programs/p101-sync-check/build-clang-22/p101-sync-check" "$script_dir/../programs/p101-sync-check/build-clang/p101-sync-check" "$(last_build_tool "$script_dir/../programs/p101-sync-check" p101-sync-check)" p101-sync-check)" || { echo "p101 check: p101-sync-check not found" >&2; exit 2; }
 trace_tool="$(find_tool P101_TRACE "$script_dir/../programs/p101-trace/build-clang-22/p101-trace" "$script_dir/../programs/p101-trace/build-clang/p101-trace" "$(last_build_tool "$script_dir/../programs/p101-trace" p101-trace)" p101-trace)" || { echo "p101 check: p101-trace not found" >&2; exit 2; }
 report_tool="$(find_tool P101_REPORT "$script_dir/../programs/p101-report/build-clang-22/p101-report" "$script_dir/../programs/p101-report/build-clang/p101-report" "$(last_build_tool "$script_dir/../programs/p101-report" p101-report)" p101-report)" || { echo "p101 check: p101-report not found" >&2; exit 2; }
+model_tool="$(find_tool P101_EVENT_MODEL "$script_dir/../libraries/lib_tool_event/build-clang-22/p101-event-model" "$script_dir/../libraries/lib_tool_event/build-clang/p101-event-model" "$(last_build_tool "$script_dir/../libraries/lib_tool_event" p101-event-model)" p101-event-model)" || { echo "p101 check: p101-event-model not found" >&2; exit 2; }
 
 quality_status=0
 quality_state="SKIP"
 coverage_status=0
 coverage_state="SKIP"
 doctor_status=2
+runtime_status=2
+walk_status=2
 html_status=0
 html_state="PASS"
 bundle_status=0
@@ -215,7 +222,7 @@ else
   printf 'SKIP: --skip-quality\n' > "$log_dir/quality-check.log"
 fi
 
-doctor_args=(-o "$out_dir/doctor" -s "$source_path" -n "$fault_count" -A "$wrapper_tool" -E "$error_contract_tool" -M "$module_tool" -O "$observe_tool" -W "$walk_tool" -r "$tracker_tool" -d "$concurrency_tool" -t "$trace_tool" -p "$report_tool")
+doctor_args=(-S -o "$out_dir/doctor" -s "$source_path" -A "$wrapper_tool" -E "$error_contract_tool" -M "$module_tool")
 if [ "$skip_wrapper" -eq 1 ]; then
   doctor_args=(-x "${doctor_args[@]}")
 fi
@@ -223,6 +230,14 @@ doctor_args+=(-- "$@")
 
 (cd "$project_dir" && run_logged "p101 doctor" "$log_dir/doctor.log" "$doctor_tool" "${doctor_args[@]}")
 doctor_status=$?
+
+(cd "$project_dir" && run_logged "p101 runtime capture and analysis" "$log_dir/runtime.log" "$script_dir/p101-run.py" -o "$out_dir/runtime" --observe-tool "$observe_tool" --model-tool "$model_tool" -- "$@")
+runtime_status=$?
+
+mkdir -p "$out_dir/fault-walk"
+walk_args=(-n "$fault_count" -l "$out_dir/fault-walk/case" -O "$observe_tool" -r "$tracker_tool" -d "$concurrency_tool" -t "$trace_tool" -p "$report_tool" -- "$@")
+(cd "$project_dir" && run_logged "p101 error-path walk" "$log_dir/error-path-walk.log" "$walk_tool" "${walk_args[@]}")
+walk_status=$?
 
 if [ "$run_coverage" -eq 1 ] && [ -x "$project_dir/coverage-report.sh" ]; then
   (cd "$project_dir" && run_logged "project coverage receipt" "$log_dir/coverage.log" ./coverage-report.sh --no-open -- "$@")
@@ -239,8 +254,8 @@ else
 fi
 
 if [ "$skip_html" -eq 0 ]; then
-  if [ -d "$out_dir/doctor/observe" ]; then
-    python3 "$script_dir/p101-html-report.py" "$out_dir/doctor/observe" -o "$out_dir/doctor/observe/index.html" > "$log_dir/observe-html.log" 2>&1
+  if [ -d "$out_dir/runtime/analysis" ]; then
+    python3 "$script_dir/p101-html-report.py" "$out_dir/runtime/analysis" -o "$out_dir/runtime/analysis/index.html" > "$log_dir/observe-html.log" 2>&1
     html_status=$?
   else
     printf 'FAIL: no observe directory available\n' > "$log_dir/observe-html.log"
@@ -251,8 +266,8 @@ else
   printf 'SKIP: --skip-html\n' > "$log_dir/check-html.log"
 fi
 
-if [ "$skip_bundle" -eq 0 ] && [ -d "$out_dir/doctor/observe" ]; then
-  "$script_dir/p101-bug-bundle.sh" -o "$out_dir/bug-bundle.tar.gz" "$out_dir/doctor/observe" > "$log_dir/bug-bundle.log" 2>&1
+if [ "$skip_bundle" -eq 0 ] && [ -d "$out_dir/runtime" ]; then
+  "$script_dir/p101-bug-bundle.sh" -o "$out_dir/bug-bundle.tar.gz" "$out_dir/runtime" > "$log_dir/bug-bundle.log" 2>&1
   bundle_status=$?
 elif [ "$skip_bundle" -eq 1 ]; then
   bundle_state="SKIP"
@@ -277,7 +292,9 @@ Command: \`$(quote_command "$@")\`
 | Step | Status | Artifact |
 | --- | --- | --- |
 | Project quality gate | ${quality_state} (${quality_status}) | [log](./$(relpath "$log_dir/quality-check.log")) |
-| p101 doctor | $([ "$doctor_status" -eq 0 ] && printf 'PASS' || { [ "$doctor_status" -eq 1 ] && printf 'FINDINGS' || printf 'TROUBLE'; }) (${doctor_status}) | [doctor](./doctor/) |
+| Source/module preflight | $([ "$doctor_status" -eq 0 ] && printf 'PASS' || { [ "$doctor_status" -eq 1 ] && printf 'FINDINGS' || printf 'TROUBLE'; }) (${doctor_status}) | [doctor](./doctor/) |
+| Runtime analysis | $([ "$runtime_status" -eq 0 ] && printf 'PASS' || { [ "$runtime_status" -eq 1 ] && printf 'FINDINGS' || printf 'TROUBLE'; }) (${runtime_status}) | [runtime](./runtime/) |
+| Error-path walk | $([ "$walk_status" -eq 0 ] && printf 'PASS' || { [ "$walk_status" -eq 1 ] && printf 'FINDINGS' || printf 'TROUBLE'; }) (${walk_status}) | [fault-walk](./fault-walk/) |
 | Project coverage | ${coverage_state} (${coverage_status}) | [log](./$(relpath "$log_dir/coverage.log")) |
 | HTML report | $([ "$html_state" = "SKIP" ] && printf 'SKIP' || { [ "$html_status" -eq 0 ] && printf 'PASS' || printf 'FAIL'; }) (${html_status}) | [index.html](./index.html) |
 | Bug bundle | $([ "$bundle_state" = "SKIP" ] && printf 'SKIP' || { [ "$bundle_status" -eq 0 ] && printf 'PASS' || printf 'FAIL'; }) (${bundle_status}) | [bug-bundle.tar.gz](./bug-bundle.tar.gz) |
@@ -287,9 +304,10 @@ Command: \`$(quote_command "$@")\`
 - Student report: [index.html](./index.html)
 - Doctor summary: [doctor/summary.md](./doctor/summary.md)
 - Module map: [doctor/module-map.md](./doctor/module-map.md)
-- Observed run: [doctor/observe](./doctor/observe/)
-- Observed run HTML: [doctor/observe/index.html](./doctor/observe/index.html)
-- Error-path walk cases: [doctor/fault-walk](./doctor/fault-walk/)
+- Runtime capture: [runtime/capture](./runtime/capture/)
+- Runtime analysis: [runtime/analysis](./runtime/analysis/)
+- Runtime HTML: [runtime/analysis/index.html](./runtime/analysis/index.html)
+- Error-path walk cases: [fault-walk](./fault-walk/)
 - Bug bundle: [bug-bundle.tar.gz](./bug-bundle.tar.gz)
 
 ## How to read this
@@ -310,11 +328,11 @@ fi
 printf 'p101 check report: %s\n' "$out_dir/index.html"
 printf 'p101 check summary: %s\n' "$summary"
 
-if [ "$doctor_status" -eq 2 ] || [ "$html_status" -ne 0 ] || [ "$bundle_status" -ne 0 ]; then
+if [ "$doctor_status" -eq 2 ] || [ "$runtime_status" -eq 2 ] || [ "$walk_status" -eq 2 ] || [ "$html_status" -ne 0 ] || [ "$bundle_status" -ne 0 ]; then
   exit 2
 fi
 
-if [ "$quality_status" -ne 0 ] || [ "$doctor_status" -ne 0 ] || [ "$coverage_status" -ne 0 ]; then
+if [ "$quality_status" -ne 0 ] || [ "$doctor_status" -ne 0 ] || [ "$runtime_status" -ne 0 ] || [ "$walk_status" -ne 0 ] || [ "$coverage_status" -ne 0 ]; then
   exit 1
 fi
 

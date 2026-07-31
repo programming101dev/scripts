@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render a p101 observe directory as one self-contained HTML file."""
+"""Render a p101 capture/analysis directory as one self-contained HTML file."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from typing import Any
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Create a self-contained HTML summary for a p101 observe directory.")
-    parser.add_argument("report_dir", type=Path, help="p101-observe report directory")
+    parser = argparse.ArgumentParser(description="Create a self-contained HTML summary for a p101 runtime directory.")
+    parser.add_argument("report_dir", type=Path, help="p101 capture or analysis directory")
     parser.add_argument("-o", "--output", type=Path, help="HTML output path; default: <report-dir>/index.html")
     return parser.parse_args(argv)
 
@@ -43,7 +43,7 @@ def esc(text: object) -> str:
 def finding_rows(data: dict[str, Any]) -> str:
     findings = data.get("findings")
     if not isinstance(findings, list) or not findings:
-        return "<p>No correlated resource findings.</p>"
+        return "<p>No correlated runtime findings.</p>"
 
     rows = [
         "<table>",
@@ -53,13 +53,21 @@ def finding_rows(data: dict[str, Any]) -> str:
     for finding in findings:
         if not isinstance(finding, dict):
             continue
-        site = finding.get("site") if isinstance(finding.get("site"), dict) else {}
-        resource = f"fd {finding.get('fd')}" if "fd" in finding else f"ptr {finding.get('ptr', '-')}"
+        site_value = finding.get("location", finding.get("site"))
+        site = site_value if isinstance(site_value, dict) else {}
+        evidence = finding.get("evidence") if isinstance(finding.get("evidence"), dict) else {}
+        if "fd" in finding or "fd" in evidence:
+            resource = f"fd {finding.get('fd', evidence.get('fd'))}"
+        elif "ptr" in finding or "ptr" in evidence:
+            resource = f"ptr {finding.get('ptr', evidence.get('ptr'))}"
+        else:
+            resource = str(evidence.get("identity", evidence.get("node", "-")))
         location = f"{site.get('file', '?')}:{site.get('line', '?')} in {site.get('function', '?')}"
+        kind = finding.get("kind", finding.get("policy", "?"))
         rows.append(
             "<tr>"
             f"<td><code>{esc(finding.get('id', '?'))}</code></td>"
-            f"<td>{esc(finding.get('kind', '?'))}</td>"
+            f"<td>{esc(kind)}</td>"
             f"<td>{esc(resource)}</td>"
             f"<td><code>{esc(location)}</code></td>"
             "</tr>"
@@ -69,7 +77,7 @@ def finding_rows(data: dict[str, Any]) -> str:
 
 
 def render(report_dir: Path) -> str:
-    summary = read_text(report_dir / "summary.txt")
+    summary = read_text(report_dir / "summary.md") or read_text(report_dir / "summary.txt")
     manifest = read_text(report_dir / "manifest.txt")
     stdout_text = read_text(report_dir / "stdout.txt")
     stderr_text = read_text(report_dir / "stderr.txt")

@@ -9,15 +9,16 @@
 #   2. shared CMakeLists distribution drift check;
 #   3. shared per-repository script distribution drift check;
 #   4. shared playground-track runner distribution drift check;
-#   5. shared CMakeLists regression harness;
-#   6. p101 tool contract documentation checks;
-#   7. strict source/module audits over every p101 tool;
-#   8. source-contract and instrumentation audits over wrapper libraries;
-#   9. closed-workspace public API candidate audit;
-#  10. every repository-owned unit suite and bounded fuzz target;
-#  11. fresh-template standalone instantiate/build/test;
-#  12. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor;
-#  13. the cross-tool behavior regression corpus.
+#   5. replay-analysis receipt/integrity regression tests;
+#   6. shared CMakeLists regression harness;
+#   7. p101 tool contract documentation checks;
+#   8. strict source/module audits over every p101 tool;
+#   9. source-contract and instrumentation audits over wrapper libraries;
+#  10. closed-workspace public API candidate audit;
+#  11. every repository-owned unit suite and bounded fuzz target;
+#  12. fresh-template standalone instantiate/build/test;
+#  13. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor;
+#  14. the cross-tool behavior regression corpus.
 
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
@@ -226,6 +227,10 @@ run_logged "shared CMakeLists distribution drift" "$log_dir/check-cmake-distribu
 run_logged "shared repository script distribution drift" "$log_dir/check-script-distribution.log" ./check-script-distribution.sh
 run_logged "shared playground-track runner distribution drift" "$log_dir/check-playground-track-scripts.log" ./copy-playground-track-scripts.sh -c
 run_logged "shared workspace link distribution" "$log_dir/check-shared-links.log" ./check-shared-links.sh
+run_logged "p101 replay-analysis receipt and integrity tests" "$log_dir/test-p101-analyze.log" ./test-p101-analyze.py
+run_logged "p101 capture/analyze composition tests" "$log_dir/test-p101-run.log" ./test-p101-run.py
+run_logged "p101 causal-model verify and compare tests" "$log_dir/test-p101-model.log" ./test-p101-model.py
+run_logged "p101 shared runtime policy tests" "$log_dir/test-p101-runtime.log" ./test-p101-runtime.py
 
 if [ "$skip_cmake" -eq 0 ]; then
   run_logged "shared CMakeLists regression harness" "$log_dir/test-cmake.log" ./test-cmake.sh -c "$cc" -x "$cxx" -k

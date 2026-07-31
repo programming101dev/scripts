@@ -1,0 +1,34 @@
+{
+  "schema": "p101-rule-pack-v1",
+  "name": "secure-c",
+  "rules": [
+    {
+      "id": "P101-POLICY-SECURE-001",
+      "kind": "forbid-finding",
+      "pattern": "P101-FD-*",
+      "title": "Descriptor misuse can cross a trust boundary",
+      "lesson": "docs/rule-packs.md#security-boundary"
+    },
+    {
+      "id": "P101-POLICY-SECURE-002",
+      "kind": "forbid-finding",
+      "pattern": "P101-ALLOC-*",
+      "title": "Allocation misuse can corrupt memory",
+      "lesson": "docs/rule-packs.md#security-boundary"
+    },
+    {
+      "id": "P101-POLICY-SECURE-003",
+      "kind": "forbid-finding",
+      "pattern": "P101-RES-*",
+      "title": "Resource ownership is ambiguous",
+      "lesson": "docs/rule-packs.md#security-boundary"
+    },
+    {
+      "id": "P101-POLICY-SECURE-004",
+      "kind": "forbid-finding",
+      "pattern": "P101-SYNC-*",
+      "title": "Observed synchronization is unsafe",
+      "lesson": "docs/rule-packs.md#security-boundary"
+    }
+  ]
+}

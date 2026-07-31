@@ -108,8 +108,12 @@ resolve_compiler() {
 
 playground_program() {
   build_dir=""
-  if [ -f ../playgrounds/.last-build-dir ]; then
-    IFS= read -r build_dir < ../playgrounds/.last-build-dir
+  marker="../playgrounds/.last-runtime-build-dir"
+  if [ ! -f "$marker" ]; then
+    marker="../playgrounds/.last-build-dir"
+  fi
+  if [ -f "$marker" ]; then
+    IFS= read -r build_dir < "$marker"
     if [ -x "../playgrounds/$build_dir/p101-tool-playground" ]; then
       printf './%s/p101-tool-playground\n' "$build_dir"
       return 0

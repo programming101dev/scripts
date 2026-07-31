@@ -78,8 +78,12 @@ find_built_tool() {
       return 0
     fi
   done
-  if [ -f "$repo/.last-build-dir" ]; then
-    build_dir="$(cat "$repo/.last-build-dir")"
+  marker="$repo/.last-runtime-build-dir"
+  if [ ! -f "$marker" ]; then
+    marker="$repo/.last-build-dir"
+  fi
+  if [ -f "$marker" ]; then
+    build_dir="$(cat "$marker")"
     if [ -x "$repo/$build_dir/$name" ]; then
       printf '%s\n' "$repo/$build_dir/$name"
       return 0

@@ -119,10 +119,9 @@ For a shorter behavior-only gate, run:
 ./check-p101-regression-corpus.sh
 ```
 
-For every resource fixture, that gate also compares
-`p101-resource-tracker` counts with the corresponding stable finding IDs from
-`p101-report`. A model disagreement fails even when each tool would satisfy its
-own isolated expectation.
+Every runtime fixture in that gate is captured once and analyzed from one
+`p101-run-model-v1`. The gate checks executable expectations and the shared
+resource, synchronization, trace, and correlated views.
 
 To replay the source-contract audit over every active wrapper library:
 
@@ -149,6 +148,58 @@ For the student-facing tool workflow, use the dispatcher:
 (`check.sh` when present), wrapper audit, module map, observed resource/call
 logs, correlated findings, error-path walking, optional coverage, a
 self-contained `index.html`, and a bug bundle.
+
+Capture and analysis are separate so the same evidence can be replayed with a
+newer build of the tools:
+
+```bash
+./p101 observe -o /tmp/student-run -- ./student-program
+./p101 analyze /tmp/student-run
+./p101 analyze -o /tmp/student-run.analysis-2 /tmp/student-run
+```
+
+For the common one-shot workflow, compose the two explicit stages:
+
+```bash
+./p101 run -o /tmp/student-run-with-analysis -- ./student-program
+```
+
+`p101 analyze` admits a `p101-observe` capture whose
+`p101-run-receipt-v1` receipt names event protocol v4 and whose bounded
+artifact fingerprints still match. It verifies the capture before and after
+analysis, builds one policy-free model from one private fingerprint-checked
+snapshot of the event logs, never writes inside the capture, runs the resource,
+synchronization, and trace policy modules, renders the correlated report, and writes a separate
+`p101-analysis-receipt-v1` receipt containing input fingerprints, content-based
+tool versions, exit statuses, and output fingerprints. An existing output
+directory is never reused.
+
+Incomplete or modified captures are refused. `--force` is the explicit
+instructor/debugging override; the resulting analysis receipt is permanently
+labelled `capture_verification=overridden`. FNV-1a fingerprints detect ordinary
+changes but are not signatures, and replay can only analyze wrapper events that
+were actually captured. It cannot reconstruct direct libc calls, third-party
+internals, or omitted events.
+
+Every new analysis bundle also contains `run-model.json`, the canonical causal
+graph of call and resource facts. Verify it directly or make a lesson/CI
+expectation executable:
+
+```bash
+./p101 verify /tmp/student-run.analysis
+./p101 verify -e p101-expectations.txt /tmp/student-run.analysis
+./p101 compare previous.analysis current.analysis
+./p101 check /tmp/student-run.analysis --rules resource-clean
+./p101 explain /tmp/student-run.analysis P101-FD-001
+./p101 resource /tmp/student-run.analysis
+./p101 sync-check /tmp/student-run.analysis
+./p101 trace /tmp/student-run.analysis
+./p101 report /tmp/student-run.analysis
+```
+
+The model contract and expectation language are documented in
+[`docs/run-model.md`](docs/run-model.md). Declarative course-policy packs are
+documented in [`docs/rule-packs.md`](docs/rule-packs.md).
 
 To run the checked playground lesson corpus:
 

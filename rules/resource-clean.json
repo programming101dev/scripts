@@ -1,0 +1,27 @@
+{
+  "schema": "p101-rule-pack-v1",
+  "name": "resource-clean",
+  "rules": [
+    {
+      "id": "P101-POLICY-RESOURCE-001",
+      "kind": "forbid-finding",
+      "pattern": "P101-FD-*",
+      "title": "Descriptor ownership is not clean",
+      "lesson": "docs/rule-packs.md#descriptor-ownership"
+    },
+    {
+      "id": "P101-POLICY-RESOURCE-002",
+      "kind": "forbid-finding",
+      "pattern": "P101-ALLOC-*",
+      "title": "Allocation ownership is not clean",
+      "lesson": "docs/rule-packs.md#allocation-ownership"
+    },
+    {
+      "id": "P101-POLICY-RESOURCE-003",
+      "kind": "forbid-finding",
+      "pattern": "P101-RES-*",
+      "title": "Generic resource ownership is not clean",
+      "lesson": "docs/rule-packs.md#generic-resource-ownership"
+    }
+  ]
+}

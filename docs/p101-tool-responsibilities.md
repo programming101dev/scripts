@@ -18,21 +18,27 @@ tools with explicit judgments.
   include direction, coupling, and dependency cycles.
 - `p101-mutation-check` owns mutation execution and surviving-mutant policy.
 
-`p101-doctor` orchestrates these tools and reuses one fact snapshot. It does
-not reimplement their policies.
+`p101 doctor` is the source/module preflight. It orchestrates these tools and
+reuses one fact snapshot; it does not reimplement their policies. `p101 check`
+owns the larger quality, runtime, fault-walk, HTML, and bundle workflow.
 
 ## Runtime evidence
 
-- `p101-observe -C` captures stdout, stderr, resource events, call events, the
-  manifest, and the run receipt without analysis.
-- `lib_tool_event` owns the event schema, parser, lifecycle model, and receipt
-  mechanics.
-- `p101-report -b DIR RUN_DIR` parses the captured logs once and writes the
-  correlated text, JSON, and Mermaid artifacts from the same model.
-- `p101-resource-tracker`, `p101-sync-check`, and `p101-trace` remain focused
-  analyzers because they enforce domain-specific strictness that the
-  correlated report does not yet preserve: resource high-water/strict release
-  policy, synchronization misuse, and call-stack integrity.
+- `p101 observe` captures stdout, stderr, resource events, call events, the
+  manifest, and the run receipt. Capture does not make policy judgments.
+- `lib_tool_event` owns event protocol v4, parsing, and construction of the
+  policy-free `p101-run-model-v1`. Its `p101-event-model` frontend is the only
+  event-log parser launched by `p101 analyze`.
+- `p101_runtime.py` owns the resource, synchronization, and trace policy
+  modules over that model. It also renders their text/JSON views and the
+  correlated report. Policies share facts but retain separate diagnostic IDs,
+  summaries, and exit statuses.
+- `p101 report`, `p101 resource`, `p101 sync-check`, and `p101 trace` are views
+  over an analysis directory. They do not parse event logs again.
+- The standalone `p101-resource-tracker`, `p101-sync-check`, `p101-trace`, and
+  `p101-report` binaries remain differential/reference implementations while
+  migration receipts are accumulated. They are available through the explicit
+  `p101 report-events` escape hatch, not the ordinary workflow.
 - `p101-error-path-walk` owns repeated fault campaigns. It consumes observe
   receipts; it does not duplicate event parsing.
 
@@ -45,12 +51,17 @@ environment variables or exit-status judgments in a library.
 
 ## Tradeoff
 
-The specialized runtime analyzers have not been collapsed into one large
-binary. Their distinct exit semantics are useful teaching contracts, and
-merging them before the correlated model represents those contracts would
-discard behavior rather than remove duplication. The shared event parser and
-one-pass report bundle remove mechanism duplication now; later consolidation
-should happen only when differential corpus tests prove semantic parity.
+The consolidation shares facts, not policy. A single model builder removes
+duplicate parsing and lifecycle state, while three small policy modules keep
+resource, synchronization, and trace judgments independently testable. The
+standalone analyzers are retained temporarily for differential debugging;
+ordinary commands no longer depend on them. This preserves the useful teaching
+boundaries without paying for seven processes and several competing models per
+run.
+
+`p101 observe` and `p101 analyze` are deliberately separate. `p101 run` is only
+their convenience composition, so one immutable capture can be replayed against
+new policy without rerunning student code.
 
 ## Receipts
 
@@ -65,6 +76,7 @@ programs/p101-module-map/test.sh
 programs/p101-report/test.sh
 programs/p101-observe/test.sh
 programs/p101-doctor/test.sh
+scripts/test-p101-runtime.py
 scripts/check-p101-regression-corpus.sh
 ```
 

@@ -12,18 +12,25 @@ usage() {
 Usage: p101 <command> [args...]
 
 Commands:
-  observe       Run p101-observe
-  report        Run p101-report
-  trace         Run p101-trace
-  resource      Run p101-resource-tracker
+  observe       Capture one command into immutable event streams
+  run           Capture one command and analyze the shared run model
+  analyze       Verify and replay analyzers over an existing capture
+  verify        Check an analysis model and optional expectations
+  compare       Compare two analysis models semantically
+  explain       Explain a finding using its causal neighborhood
+  report        Render the correlated view of a p101 analysis
+  trace         Render the trace view of a p101 analysis
+  resource      Render the resource view of a p101 analysis
   walk          Run p101-error-path-walk
   audit         Run p101-wrapper-audit
   module-map    Run p101-module-map
-  sync-check    Run p101-sync-check
+  sync-check    Render the synchronization view of a p101 analysis
+  report-events Run the standalone event-log reporter (parity/debugging)
   mutation-check Run p101-mutation-check
-  doctor        Run p101-doctor
+  doctor        Run source/module preflight through p101-doctor
+  doctor-full   Run the compatibility all-in-one doctor workflow
   playground    Run p101-tool-playground
-  check         Run the full p101 check workflow
+  check         Check an analysis with rule packs, or run the full workflow
   corpus        Run the p101-tool-playground lesson corpus
   lab           Build the p101-tool-playground lab book
   contracts     Check p101 tool README contracts
@@ -68,7 +75,10 @@ find_tool() {
 last_build_tool() {
   repo="$1"
   tool="$2"
-  last_build_file="$repo/.last-build-dir"
+  last_build_file="$repo/.last-runtime-build-dir"
+  if [ ! -f "$last_build_file" ]; then
+    last_build_file="$repo/.last-build-dir"
+  fi
 
   if [ -f "$last_build_file" ]; then
     build_dir="$(cat "$last_build_file")"
@@ -104,16 +114,32 @@ case "$command_name" in
     usage
     ;;
   observe)
+    command_args=(-C "${command_args[@]}")
     exec_found p101-observe P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe
     ;;
+  run)
+    exec ./p101-run.py "$@"
+    ;;
+  analyze)
+    exec ./p101-analyze.py "$@"
+    ;;
+  verify)
+    exec ./p101-model.py verify "$@"
+    ;;
+  compare)
+    exec ./p101-model.py compare "$@"
+    ;;
+  explain)
+    exec ./p101-model.py explain "$@"
+    ;;
   report)
-    exec_found p101-report P101_REPORT "$(last_build_tool ../programs/p101-report p101-report)" ../programs/p101-report/build-clang-22/p101-report ../programs/p101-report/build-clang/p101-report p101-report
+    exec ./p101-view.py report "$@"
     ;;
   trace)
-    exec_found p101-trace P101_TRACE "$(last_build_tool ../programs/p101-trace p101-trace)" ../programs/p101-trace/build-clang-22/p101-trace ../programs/p101-trace/build-clang/p101-trace p101-trace
+    exec ./p101-view.py trace "$@"
     ;;
   resource|resource-tracker)
-    exec_found p101-resource-tracker P101_RESOURCE_TRACKER "$(last_build_tool ../programs/p101-resource-tracker p101-resource-tracker)" ../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker ../programs/p101-resource-tracker/build-clang/p101-resource-tracker p101-resource-tracker
+    exec ./p101-view.py resource "$@"
     ;;
   walk|error-path-walk)
     exec_found p101-error-path-walk P101_ERROR_PATH_WALK "$(last_build_tool ../programs/p101-error-path-walk p101-error-path-walk)" ../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk ../programs/p101-error-path-walk/build-clang/p101-error-path-walk p101-error-path-walk
@@ -125,18 +151,32 @@ case "$command_name" in
     exec_found p101-module-map P101_MODULE_MAP "$(last_build_tool ../programs/p101-module-map p101-module-map)" ../programs/p101-module-map/build-clang-22/p101-module-map ../programs/p101-module-map/build-clang/p101-module-map p101-module-map
     ;;
   sync|sync-check)
-    exec_found p101-sync-check P101_SYNC_CHECK "$(last_build_tool ../programs/p101-sync-check p101-sync-check)" ../programs/p101-sync-check/build-clang-22/p101-sync-check ../programs/p101-sync-check/build-clang/p101-sync-check p101-sync-check
+    exec ./p101-view.py sync "$@"
+    ;;
+  report-events)
+    exec_found p101-report P101_REPORT "$(last_build_tool ../programs/p101-report p101-report)" ../programs/p101-report/build-clang-22/p101-report ../programs/p101-report/build-clang/p101-report p101-report
     ;;
   mutation|mutation-check)
     exec_found p101-mutation-check P101_MUTATION_CHECK ../programs/p101-mutation-check/p101-mutation-check p101-mutation-check
     ;;
   doctor)
+    command_args=(-S "${command_args[@]}")
+    exec_found p101-doctor P101_DOCTOR "$(last_build_tool ../programs/p101-doctor p101-doctor)" ../programs/p101-doctor/build-clang-22/p101-doctor ../programs/p101-doctor/build-clang/p101-doctor p101-doctor
+    ;;
+  doctor-full)
     exec_found p101-doctor P101_DOCTOR "$(last_build_tool ../programs/p101-doctor p101-doctor)" ../programs/p101-doctor/build-clang-22/p101-doctor ../programs/p101-doctor/build-clang/p101-doctor p101-doctor
     ;;
   playground)
     exec_found p101-tool-playground P101_TOOL_PLAYGROUND "$(last_build_tool ../playgrounds p101-tool-playground)" ../playgrounds/build-clang-22/p101-tool-playground ../playgrounds/build-clang/p101-tool-playground p101-tool-playground
     ;;
-  check)
+  check|check-model)
+    for argument in "$@"; do
+      case "$argument" in
+        --rules|--rules=*)
+          exec ./p101-model.py check "$@"
+          ;;
+      esac
+    done
     exec ./p101-check.sh "$@"
     ;;
   corpus)
