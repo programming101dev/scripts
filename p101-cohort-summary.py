@@ -10,11 +10,19 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+from p101_lessons import Catalog, LessonCatalogError, load_catalog
+
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Aggregate p101 report JSON files for an instructor/cohort view.")
     parser.add_argument("paths", nargs="+", type=Path, help="JSON files or directories containing JSON reports")
     parser.add_argument("-j", "--json", action="store_true", help="emit machine-readable JSON instead of Markdown")
+    parser.add_argument(
+        "--lesson-catalog",
+        type=Path,
+        default=Path(__file__).resolve().parent.parent / "playgrounds" / "lessons" / "manifest.json",
+        help="finding-to-lesson manifest",
+    )
     return parser.parse_args(argv)
 
 
@@ -53,8 +61,11 @@ def markdown_cell(text: object) -> str:
     return value.replace("\\", "\\\\").replace("|", "\\|").replace("`", "\\`").replace("\r", " ").replace("\n", " ")
 
 
-def collect(files: list[Path]) -> dict[str, Any]:
+def collect(files: list[Path], catalog: Catalog) -> dict[str, Any]:
     diagnostics: Counter[str] = Counter()
+    lessons: Counter[str] = Counter()
+    lesson_details: dict[str, dict[str, str]] = {}
+    unmapped: Counter[str] = Counter()
     by_file: dict[str, Counter[str]] = defaultdict(Counter)
     submissions_with_findings = 0
     parsed_files = 0
@@ -77,6 +88,17 @@ def collect(files: list[Path]) -> dict[str, Any]:
                 continue
             diag = finding_id(finding)
             diagnostics[diag] += 1
+            mapped_lessons = catalog.by_finding_id.get(diag, ())
+            if mapped_lessons:
+                primary = mapped_lessons[0]
+                lessons[primary.lesson_id] += 1
+                lesson_details[primary.lesson_id] = {
+                    "title": primary.title,
+                    "url": primary.url,
+                    "track": primary.track,
+                }
+            elif diag not in catalog.ignored_diagnostic_ids:
+                unmapped[diag] += 1
             site = finding.get("site")
             if isinstance(site, dict):
                 source = site.get("file")
@@ -87,6 +109,14 @@ def collect(files: list[Path]) -> dict[str, Any]:
         "reports_read": parsed_files,
         "reports_with_findings": submissions_with_findings,
         "diagnostics": dict(sorted(diagnostics.items())),
+        "lessons": {
+            lesson_id: {
+                **lesson_details[lesson_id],
+                "findings": count,
+            }
+            for lesson_id, count in sorted(lessons.items())
+        },
+        "unmapped_diagnostics": dict(sorted(unmapped.items())),
         "files": {source: dict(sorted(counter.items())) for source, counter in sorted(by_file.items())},
     }
 
@@ -104,6 +134,26 @@ def print_markdown(summary: dict[str, Any]) -> None:
     for diag, count in sorted(summary["diagnostics"].items(), key=lambda item: (-item[1], item[0])):
         print(f"| `{markdown_cell(diag)}` | {count} |")
     print()
+    print("## Lessons to teach next")
+    print()
+    print("| Lesson | Track | Findings |")
+    print("| --- | --- | ---: |")
+    for lesson_id, lesson in sorted(
+        summary["lessons"].items(),
+        key=lambda item: (-item[1]["findings"], item[0]),
+    ):
+        print(
+            f"| [{markdown_cell(lesson['title'])}]({lesson['url']}) "
+            f"(`{markdown_cell(lesson_id)}`) | {markdown_cell(lesson['track'])} "
+            f"| {lesson['findings']} |"
+        )
+    print()
+    if summary["unmapped_diagnostics"]:
+        print("## Unmapped diagnostics")
+        print()
+        for diag, count in summary["unmapped_diagnostics"].items():
+            print(f"- `{markdown_cell(diag)}`: {count}")
+        print()
     print("## Source hot spots")
     print()
     print("| Source | Findings |")
@@ -121,8 +171,9 @@ def main(argv: list[str]) -> int:
             print(f"p101-cohort-summary: input path not found: {path}", file=sys.stderr)
         return 2
     try:
-        summary = collect(files)
-    except ValueError as exc:
+        catalog = load_catalog(args.lesson_catalog)
+        summary = collect(files, catalog)
+    except (LessonCatalogError, ValueError) as exc:
         print(f"p101-cohort-summary: {exc}", file=sys.stderr)
         return 2
     if summary["reports_read"] == 0:
@@ -132,7 +183,7 @@ def main(argv: list[str]) -> int:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
         print_markdown(summary)
-    return 0
+    return 1 if summary["unmapped_diagnostics"] else 0
 
 
 if __name__ == "__main__":

@@ -39,8 +39,22 @@ owns the larger quality, runtime, fault-walk, HTML, and bundle workflow.
   `p101-report` binaries remain differential/reference implementations while
   migration receipts are accumulated. They are available through the explicit
   `p101 report-events` escape hatch, not the ordinary workflow.
-- `p101-error-path-walk` owns repeated fault campaigns. It consumes observe
-  receipts; it does not duplicate event parsing.
+- `p101-error-path-walk` owns repeated fault campaigns. Every baseline and
+  injected case goes through the same `p101 run` capture/model/policy pipeline;
+  the walker consumes the normalized resource-policy summary and never launches
+  the four standalone analyzers.
+
+## Teaching policy
+
+- Diagnostic producers own stable IDs and evidence, not repair walkthroughs.
+- `playgrounds/lessons/manifest.json` maps those IDs to primary and related
+  lessons, prerequisites, tracks, and verification commands.
+- `p101_lessons.py` validates that curriculum contract and annotates reports.
+- `p101 check` writes one `lesson-guide.md` spanning static, runtime, and
+  fault-campaign findings.
+
+This keeps lesson wording and sequencing out of the analyzers while making a
+new unmapped diagnostic fail the workspace acceptance gate.
 
 ## Shared process mechanism
 
@@ -77,6 +91,8 @@ programs/p101-report/test.sh
 programs/p101-observe/test.sh
 programs/p101-doctor/test.sh
 scripts/test-p101-runtime.py
+scripts/test-p101-lessons.py
+scripts/p101 lessons check
 scripts/check-p101-regression-corpus.sh
 ```
 

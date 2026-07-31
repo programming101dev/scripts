@@ -107,6 +107,45 @@ def finding_status(
     return 0
 
 
+def lesson_appendix(
+    directory: Path, document_name: str | None, policy: str
+) -> str:
+    if document_name is None:
+        return ""
+    try:
+        document = json.loads(
+            (directory / document_name).read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return ""
+    findings = document.get("findings")
+    if not isinstance(findings, list):
+        return ""
+    rows: list[str] = []
+    seen: set[tuple[str, str]] = set()
+    for finding in findings:
+        if not isinstance(finding, dict):
+            continue
+        if policy != "report" and finding.get("policy") != policy:
+            continue
+        lesson = finding.get("lesson")
+        primary = lesson.get("primary") if isinstance(lesson, dict) else None
+        if not isinstance(primary, dict):
+            continue
+        finding_id = str(finding.get("id", "?"))
+        url = str(primary.get("url", ""))
+        key = (finding_id, url)
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append(
+            f"- {finding_id}: {primary.get('title', 'lesson')} — {url}"
+        )
+    if not rows:
+        return ""
+    return "\nLessons:\n" + "\n".join(rows) + "\n"
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_arguments(sys.argv[1:] if argv is None else argv)
     directory = Path(args.analysis_dir).expanduser().resolve()
@@ -125,6 +164,9 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_TROUBLE
     try:
         contents = (directory / artifact).read_text(encoding="utf-8")
+        policy = "synchronization" if args.view == "sync" else args.view
+        if not args.json and not args.mermaid:
+            contents += lesson_appendix(directory, finding_document, policy)
         if args.output is None:
             sys.stdout.write(contents)
         else:
@@ -133,7 +175,6 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, UnicodeError) as error:
         print(f"p101 {args.view}: cannot render {artifact}: {error}", file=sys.stderr)
         return EXIT_TROUBLE
-    policy = "synchronization" if args.view == "sync" else args.view
     return finding_status(directory, finding_document, policy)
 
 

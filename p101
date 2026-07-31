@@ -33,6 +33,8 @@ Commands:
   check         Check an analysis with rule packs, or run the full workflow
   corpus        Run the p101-tool-playground lesson corpus
   lab           Build the p101-tool-playground lab book
+  lesson        Show the primary and related lessons for one finding ID
+  lessons       List, validate, or apply the finding-to-lesson catalog
   contracts     Check p101 tool README contracts
   tool-audit    Run the broader p101 tool audit
   stack-check   Run the p101 stack smoke
@@ -142,6 +144,15 @@ case "$command_name" in
     exec ./p101-view.py resource "$@"
     ;;
   walk|error-path-walk)
+    observe_path="$(find_tool P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe)" || {
+      echo "p101: p101-observe not found; build it first or set P101_OBSERVE" >&2
+      exit 2
+    }
+    model_path="$(find_tool P101_EVENT_MODEL "$(last_build_tool ../libraries/lib_tool_event p101-event-model)" ../libraries/lib_tool_event/build-clang-22/p101-event-model ../libraries/lib_tool_event/build-clang/p101-event-model p101-event-model)" || {
+      echo "p101: p101-event-model not found; build it first or set P101_EVENT_MODEL" >&2
+      exit 2
+    }
+    command_args=(-U "$PWD/p101-run.py" -O "$observe_path" -Y "$PWD/p101-analyze.py" -B "$model_path" "${command_args[@]}")
     exec_found p101-error-path-walk P101_ERROR_PATH_WALK "$(last_build_tool ../programs/p101-error-path-walk p101-error-path-walk)" ../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk ../programs/p101-error-path-walk/build-clang/p101-error-path-walk p101-error-path-walk
     ;;
   audit|wrapper-audit)
@@ -164,6 +175,15 @@ case "$command_name" in
     exec_found p101-doctor P101_DOCTOR "$(last_build_tool ../programs/p101-doctor p101-doctor)" ../programs/p101-doctor/build-clang-22/p101-doctor ../programs/p101-doctor/build-clang/p101-doctor p101-doctor
     ;;
   doctor-full)
+    observe_path="$(find_tool P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe)" || {
+      echo "p101: p101-observe not found; build it first or set P101_OBSERVE" >&2
+      exit 2
+    }
+    model_path="$(find_tool P101_EVENT_MODEL "$(last_build_tool ../libraries/lib_tool_event p101-event-model)" ../libraries/lib_tool_event/build-clang-22/p101-event-model ../libraries/lib_tool_event/build-clang/p101-event-model p101-event-model)" || {
+      echo "p101: p101-event-model not found; build it first or set P101_EVENT_MODEL" >&2
+      exit 2
+    }
+    command_args=(-U "$PWD/p101-run.py" -O "$observe_path" -Y "$PWD/p101-analyze.py" -B "$model_path" "${command_args[@]}")
     exec_found p101-doctor P101_DOCTOR "$(last_build_tool ../programs/p101-doctor p101-doctor)" ../programs/p101-doctor/build-clang-22/p101-doctor ../programs/p101-doctor/build-clang/p101-doctor p101-doctor
     ;;
   playground)
@@ -184,6 +204,12 @@ case "$command_name" in
     ;;
   lab|playground-lab)
     exec ../playgrounds/lab.sh "$@"
+    ;;
+  lesson)
+    exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json show "$@"
+    ;;
+  lessons)
+    exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json "$@"
     ;;
   contracts|tool-contracts)
     exec ./check-p101-tool-contracts.sh "$@"

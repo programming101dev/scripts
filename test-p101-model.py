@@ -86,11 +86,19 @@ class ModelTests(unittest.TestCase):
                 {
                     "id": finding_id,
                     "location": {
-                        "path": "student.c",
+                        "file": "student.c",
                         "line": 7,
                         "function": "demo",
                     },
                     "kind": "leak",
+                    "lesson": {
+                        "primary": {
+                            "lesson_id": "P101-LAB-101",
+                            "title": "Descriptor leak",
+                            "url": "https://example.test/fd-leak",
+                        },
+                        "related": [],
+                    },
                 }
             ]
             if finding_id
@@ -223,6 +231,7 @@ class ModelTests(unittest.TestCase):
             self.assertEqual(MODEL.explain(finding, "P101-FD-001"), 0)
         self.assertIn("call-return", output.getvalue())
         self.assertIn("student.c:7", output.getvalue())
+        self.assertIn("P101-LAB-101", output.getvalue())
 
 
 if __name__ == "__main__":

@@ -40,6 +40,20 @@ def esc(text: object) -> str:
     return html.escape(str(text), quote=True)
 
 
+def lesson_cell(finding: dict[str, Any]) -> str:
+    lesson = finding.get("lesson")
+    if not isinstance(lesson, dict):
+        return "Run <code>p101 lesson &lt;ID&gt;</code>"
+    primary = lesson.get("primary")
+    if not isinstance(primary, dict):
+        return "Run <code>p101 lesson &lt;ID&gt;</code>"
+    title = esc(primary.get("title", "lesson"))
+    url = esc(primary.get("url", ""))
+    if not url:
+        return title
+    return f'<a href="{url}">{title}</a>'
+
+
 def finding_rows(data: dict[str, Any]) -> str:
     findings = data.get("findings")
     if not isinstance(findings, list) or not findings:
@@ -47,7 +61,7 @@ def finding_rows(data: dict[str, Any]) -> str:
 
     rows = [
         "<table>",
-        "<thead><tr><th>ID</th><th>Kind</th><th>Resource</th><th>Site</th></tr></thead>",
+        "<thead><tr><th>ID</th><th>Kind</th><th>Resource</th><th>Site</th><th>Lesson</th></tr></thead>",
         "<tbody>",
     ]
     for finding in findings:
@@ -70,6 +84,7 @@ def finding_rows(data: dict[str, Any]) -> str:
             f"<td>{esc(kind)}</td>"
             f"<td>{esc(resource)}</td>"
             f"<td><code>{esc(location)}</code></td>"
+            f"<td>{lesson_cell(finding)}</td>"
             "</tr>"
         )
     rows.append("</tbody></table>")

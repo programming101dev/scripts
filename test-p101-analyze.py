@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -190,6 +191,8 @@ class AnalyzeTests(unittest.TestCase):
         self.assertIn("capture_verification=verified\n", receipt)
         self.assertIn("tool=event_model\t", receipt)
         self.assertIn("version=binary-fnv1a64:", receipt)
+        self.assertIn("lesson_catalog_path_json=", receipt)
+        self.assertIn("lesson_catalog_sha256=", receipt)
         self.assertIn("status=report_renderer\texit=0", receipt)
         self.assertEqual(
             (self.capture / "resources.log").read_text(encoding="utf-8"), ""
@@ -272,6 +275,25 @@ class AnalyzeTests(unittest.TestCase):
         receipt = (output / "analysis-receipt.txt").read_text(encoding="utf-8")
         self.assertIn("status=resource_policy\texit=1", receipt)
         self.assertIn("result=findings", receipt)
+        report = json.loads(
+            (output / "correlated-report.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            report["findings"][0]["lesson"]["primary"]["lesson_id"],
+            "P101-LAB-101",
+        )
+        self.assertEqual(report["lesson_catalog"]["unmapped_finding_ids"], [])
+
+    def test_explicit_missing_lesson_catalog_is_trouble(self) -> None:
+        output = self.root / "analysis"
+        completed = self.run_analyze(
+            output,
+            "--lesson-catalog",
+            os.fspath(self.root / "missing-lessons.json"),
+        )
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("lesson catalog not found", completed.stderr)
+        self.assertFalse(output.exists())
 
     def test_capture_change_during_analysis_is_reported_as_trouble(self) -> None:
         output = self.root / "analysis"

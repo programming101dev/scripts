@@ -2,9 +2,10 @@
 # check-p101-stack.sh — acceptance suite for the p101 workspace.
 #
 # This is the "does the whole thing hang together?" ratchet:
-#   1. strict-build wrapper libraries and tools/templates from repos.txt;
-#   2. prove fresh template instances are self-contained;
-#   3. run the tool playground tour, including observe/resource/trace/report and
+#   1. prove every emitted diagnostic maps to a checked lesson;
+#   2. strict-build wrapper libraries and tools/templates from repos.txt;
+#   3. prove fresh template instances are self-contained;
+#   4. run the tool playground tour, including observe/resource/trace/report and
 #      error-path walking through p101-doctor.
 
 set -euo pipefail
@@ -218,6 +219,8 @@ run_logged_expect() {
 }
 
 say "p101 stack check output: $out_dir"
+
+run_logged "finding-to-lesson curriculum completeness" "$log_dir/p101-lessons.log" ./p101 lessons check
 
 if [ "$skip_repo_build" -eq 0 ]; then
   build_args=(-c "$cc" -x "$cxx" -f "$clang_format" -t "$clang_tidy" -k "$cppcheck")

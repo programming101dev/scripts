@@ -222,6 +222,23 @@ re-run the command to watch labs move from `OPEN` to `FIXED`. Use
 `--strict-corpus` for instructor/CI checks that should fail if the committed
 broken fixtures stop producing their expected diagnostics.
 
+Every stable finding ID is resolved through the checked playground lesson
+catalog. Runtime JSON and HTML reports carry a primary lesson plus any related
+labs; static findings can be resolved with the same dispatcher:
+
+```bash
+./p101 lesson P101-FD-001
+./p101 lessons guide /path/to/check-output
+./p101 lessons check
+```
+
+`p101 lessons check` scans the diagnostic IDs emitted by the tools and fails if
+any non-fallback ID lacks a real lesson file, prerequisites, and a replayable
+verification command. The mapping is curriculum policy in
+`playgrounds/lessons/manifest.json`; the tools continue to own the evidence and
+diagnostic IDs. The boundary and completeness claim are documented in
+[`docs/finding-lessons.md`](docs/finding-lessons.md).
+
 For lower-level student/instructor tooling around observed runs:
 
 ```bash

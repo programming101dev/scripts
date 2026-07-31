@@ -24,6 +24,13 @@ from p101_receipt import (
     parse_fingerprint_line,
     parse_nonnegative,
 )
+from p101_lessons import (
+    Catalog,
+    LessonCatalogError,
+    annotate_report,
+    catalog_digest,
+    load_catalog,
+)
 from p101_runtime import RuntimeModelError, analyze_model, load_model, write_analysis
 
 EXIT_CLEAN = 0
@@ -363,6 +370,8 @@ def write_analysis_receipt(
     results: Iterable[RunResult],
     output_dir: Path,
     overall_status: int,
+    lesson_catalog_path: Path | None,
+    lesson_catalog_digest: str | None,
 ) -> None:
     lines = [
         "p101 analysis receipt",
@@ -382,6 +391,11 @@ def write_analysis_receipt(
             f"\tversion=binary-fnv1a64:{fingerprint.fnv1a64:016x}"
             f"\tbytes={fingerprint.bytes}"
         )
+    if lesson_catalog_path is not None and lesson_catalog_digest is not None:
+        lines.append(
+            f"lesson_catalog_path_json={json.dumps(str(lesson_catalog_path))}"
+        )
+        lines.append(f"lesson_catalog_sha256={lesson_catalog_digest}")
     for result in results:
         if result.signal is None:
             lines.append(f"status={result.role}\texit={result.status}")
@@ -445,6 +459,13 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
         "--model-tool",
         help="p101-event-model executable (default: discover workspace/install)",
     )
+    parser.add_argument(
+        "--lesson-catalog",
+        help=(
+            "finding-to-lesson manifest; default: P101_LESSON_CATALOG or the "
+            "workspace playground catalog when present"
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -453,6 +474,25 @@ def invocation_path(text: str, invocation_dir: Path) -> Path:
     if not path.is_absolute():
         path = invocation_dir / path
     return path.resolve(strict=False)
+
+
+def resolve_lesson_catalog(
+    configured: str | None,
+    invocation_dir: Path,
+    workspace: Path,
+) -> tuple[Catalog | None, Path | None]:
+    requested = configured or os.environ.get("P101_LESSON_CATALOG")
+    explicit = requested is not None
+    path = (
+        invocation_path(requested, invocation_dir)
+        if requested is not None
+        else workspace / "playgrounds" / "lessons" / "manifest.json"
+    )
+    if not path.is_file():
+        if explicit:
+            raise LessonCatalogError(f"lesson catalog not found: {path}")
+        return None, None
+    return load_catalog(path), path
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -466,6 +506,16 @@ def main(argv: list[str] | None = None) -> int:
         if args.output
         else capture_dir.with_name(capture_dir.name + ".analysis")
     )
+    try:
+        lesson_catalog, lesson_catalog_path = resolve_lesson_catalog(
+            args.lesson_catalog, invocation_dir, workspace
+        )
+        lesson_digest = (
+            catalog_digest(lesson_catalog) if lesson_catalog is not None else None
+        )
+    except LessonCatalogError as error:
+        print(f"p101 analyze: {error}", file=sys.stderr)
+        return EXIT_TROUBLE
 
     if not capture_dir.is_dir():
         print(f"p101 analyze: capture directory not found: {capture_dir}", file=sys.stderr)
@@ -604,6 +654,9 @@ def main(argv: list[str] | None = None) -> int:
                 load_model(output_dir / OUTPUT_FILES["run_model"])
             )
             write_analysis(output_dir, runtime_analysis)
+            if lesson_catalog is not None:
+                for role in ("resource_json", "concurrency_json", "correlated_json"):
+                    annotate_report(output_dir / OUTPUT_FILES[role], lesson_catalog)
             results.extend(
                 [
                     RunResult("resource_policy", runtime_analysis.resource.status),
@@ -647,6 +700,13 @@ def main(argv: list[str] | None = None) -> int:
             tool_changed = True
     if tool_changed:
         results.append(RunResult("tool_stability", EXIT_TROUBLE))
+    if lesson_catalog_path is not None and lesson_digest is not None:
+        try:
+            current_lesson_digest = catalog_digest(load_catalog(lesson_catalog_path))
+        except (LessonCatalogError, OSError):
+            current_lesson_digest = None
+        if current_lesson_digest != lesson_digest:
+            results.append(RunResult("lesson_catalog_stability", EXIT_TROUBLE))
 
     try:
         post_snapshot = snapshot_capture(capture_dir)
@@ -675,6 +735,8 @@ def main(argv: list[str] | None = None) -> int:
         results,
         output_dir,
         status,
+        lesson_catalog_path,
+        lesson_digest,
     )
     event_snapshot.cleanup()
     print(f"p101 analyze: {status_word(status).lower()}: {output_dir}")

@@ -320,7 +320,7 @@ def semantic_finding(finding: dict[str, Any]) -> str:
     location = finding.get("location", {})
     if not isinstance(location, dict):
         location = {}
-    path = location.get("path", finding.get("file", "?"))
+    path = location.get("path", location.get("file", finding.get("file", "?")))
     line = location.get("line", finding.get("line", 0))
     function = location.get("function", finding.get("function", "?"))
     resource_class = finding.get("resource_class", "")
@@ -562,7 +562,7 @@ def causal_neighborhood(
     location = finding.get("location", {})
     if not isinstance(location, dict):
         location = {}
-    path = location.get("path", finding.get("file", ""))
+    path = location.get("path", location.get("file", finding.get("file", "")))
     line = location.get("line", finding.get("line", 0))
     function = location.get("function", finding.get("function", ""))
     source_nodes = [
@@ -617,10 +617,17 @@ def explain(directory: Path, finding_id: str) -> int:
     print(f"# {finding_id}: {finding.get('message', finding.get('kind', 'finding'))}")
     if isinstance(location, dict):
         print(
-            f"source={location.get('path', '?')}:{location.get('line', 0)} "
+            f"source={location.get('path', location.get('file', '?'))}:{location.get('line', 0)} "
             f"function={location.get('function', '?')}"
         )
     print(f"causal_nodes={len(nodes)} causal_edges={len(edges)}")
+    lesson = finding.get("lesson")
+    primary = lesson.get("primary") if isinstance(lesson, dict) else None
+    if isinstance(primary, dict):
+        print(
+            f"lesson={primary.get('lesson_id', '?')} "
+            f"{primary.get('title', 'lesson')} {primary.get('url', '')}"
+        )
     for node in nodes:
         source = node["source"]
         label = node.get("name", node.get("resource_class", node["kind"]))
@@ -765,6 +772,7 @@ def receipt_result(directory: Path) -> str:
             role = fields["status"]
             if role not in ANALYSIS_STATUS_ROLES | {
                 "capture_stability",
+                "lesson_catalog_stability",
                 "tool_stability",
             }:
                 raise ModelError(f"unsupported analysis status: {role}")

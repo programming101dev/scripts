@@ -10,6 +10,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from p101_lessons import (
+    LessonCatalogError,
+    finding_ids_from_evidence,
+    iter_evidence_paths,
+    load_catalog,
+)
+
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create a self-contained HTML summary for a p101 check directory.")
@@ -77,6 +84,20 @@ def status_word(status: object) -> str:
     return "trouble"
 
 
+def lesson_cell(finding: dict[str, Any]) -> str:
+    lesson = finding.get("lesson")
+    if not isinstance(lesson, dict):
+        return "Run <code>p101 lesson &lt;ID&gt;</code>"
+    primary = lesson.get("primary")
+    if not isinstance(primary, dict):
+        return "Run <code>p101 lesson &lt;ID&gt;</code>"
+    title = esc(primary.get("title", "lesson"))
+    url = esc(primary.get("url", ""))
+    if not url:
+        return title
+    return f'<a href="{url}">{title}</a>'
+
+
 def doctor_status_table(doctor: dict[str, Any]) -> str:
     statuses = doctor.get("statuses")
     if not isinstance(statuses, dict) or not statuses:
@@ -100,7 +121,7 @@ def finding_rows(data: dict[str, Any]) -> str:
 
     rows = [
         "<table>",
-        "<thead><tr><th>ID</th><th>Kind</th><th>Resource</th><th>Site</th></tr></thead>",
+        "<thead><tr><th>ID</th><th>Kind</th><th>Resource</th><th>Site</th><th>Lesson</th></tr></thead>",
         "<tbody>",
     ]
     for finding in findings:
@@ -123,9 +144,47 @@ def finding_rows(data: dict[str, Any]) -> str:
             f"<td>{esc(kind)}</td>"
             f"<td>{esc(resource)}</td>"
             f"<td><code>{esc(location)}</code></td>"
+            f"<td>{lesson_cell(finding)}</td>"
             "</tr>"
         )
     rows.append("</tbody></table>")
+    return "\n".join(rows)
+
+
+def lesson_rows(root: Path) -> str:
+    catalog_path = Path(__file__).resolve().parent.parent / "playgrounds" / "lessons" / "manifest.json"
+    try:
+        catalog = load_catalog(catalog_path)
+    except LessonCatalogError as error:
+        return f"<p>Lesson catalog unavailable: {esc(error)}</p>"
+    finding_ids: set[str] = set()
+    for path in iter_evidence_paths(
+        (root / "doctor", root / "runtime" / "analysis", root / "fault-walk")
+    ):
+        finding_ids.update(finding_ids_from_evidence(path))
+    rows = [
+        "<table>",
+        "<thead><tr><th>Finding</th><th>Lesson</th><th>Track</th><th>Verify</th></tr></thead>",
+        "<tbody>",
+    ]
+    mapped = 0
+    for finding_id in sorted(finding_ids):
+        lessons = catalog.by_finding_id.get(finding_id)
+        if not lessons:
+            continue
+        primary = lessons[0]
+        mapped += 1
+        rows.append(
+            "<tr>"
+            f"<td><code>{esc(finding_id)}</code></td>"
+            f'<td><a href="{esc(primary.url)}">{esc(primary.title)}</a></td>'
+            f"<td>{esc(primary.track)}</td>"
+            f"<td><code>{esc(primary.verification)}</code></td>"
+            "</tr>"
+        )
+    rows.append("</tbody></table>")
+    if mapped == 0:
+        return "<p>No open findings require lessons.</p>"
     return "\n".join(rows)
 
 
@@ -136,6 +195,7 @@ def artifact_list(root: Path) -> str:
         (root / "logs" / "coverage.log", "coverage log"),
         (root / "doctor" / "summary.md", "doctor summary"),
         (root / "doctor" / "module-map.md", "module map"),
+        (root / "lesson-guide.md", "finding lessons and verification steps"),
         (root / "runtime" / "analysis" / "index.html", "runtime-analysis HTML"),
         (root / "runtime" / "analysis" / "correlated-report.txt", "correlated runtime report"),
         (root / "runtime" / "analysis" / "resource-lifetimes.md", "resource lifetime Mermaid"),
@@ -204,6 +264,11 @@ def render(check_dir: Path) -> str:
   <section>
     <h2>Correlated findings</h2>
     {finding_rows(correlated)}
+  </section>
+
+  <section class="card">
+    <h2>How to fix the findings</h2>
+    {lesson_rows(check_dir)}
   </section>
 
   <section>

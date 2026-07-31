@@ -188,10 +188,6 @@ error_contract_tool="$(find_tool P101_ERROR_CONTRACT "$script_dir/../programs/p1
 module_tool="$(find_tool P101_MODULE_MAP "$script_dir/../programs/p101-module-map/build-clang-22/p101-module-map" "$script_dir/../programs/p101-module-map/build-clang/p101-module-map" "$(last_build_tool "$script_dir/../programs/p101-module-map" p101-module-map)" p101-module-map)" || { echo "p101 check: p101-module-map not found" >&2; exit 2; }
 observe_tool="$(find_tool P101_OBSERVE "$script_dir/../programs/p101-observe/build-clang-22/p101-observe" "$script_dir/../programs/p101-observe/build-clang/p101-observe" "$(last_build_tool "$script_dir/../programs/p101-observe" p101-observe)" p101-observe)" || { echo "p101 check: p101-observe not found" >&2; exit 2; }
 walk_tool="$(find_tool P101_ERROR_PATH_WALK "$script_dir/../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk" "$script_dir/../programs/p101-error-path-walk/build-clang/p101-error-path-walk" "$(last_build_tool "$script_dir/../programs/p101-error-path-walk" p101-error-path-walk)" p101-error-path-walk)" || { echo "p101 check: p101-error-path-walk not found" >&2; exit 2; }
-tracker_tool="$(find_tool P101_RESOURCE_TRACKER "$script_dir/../programs/p101-resource-tracker/build-clang-22/p101-resource-tracker" "$script_dir/../programs/p101-resource-tracker/build-clang/p101-resource-tracker" "$(last_build_tool "$script_dir/../programs/p101-resource-tracker" p101-resource-tracker)" p101-resource-tracker)" || { echo "p101 check: p101-resource-tracker not found" >&2; exit 2; }
-concurrency_tool="$(find_tool P101_SYNC_CHECK "$script_dir/../programs/p101-sync-check/build-clang-22/p101-sync-check" "$script_dir/../programs/p101-sync-check/build-clang/p101-sync-check" "$(last_build_tool "$script_dir/../programs/p101-sync-check" p101-sync-check)" p101-sync-check)" || { echo "p101 check: p101-sync-check not found" >&2; exit 2; }
-trace_tool="$(find_tool P101_TRACE "$script_dir/../programs/p101-trace/build-clang-22/p101-trace" "$script_dir/../programs/p101-trace/build-clang/p101-trace" "$(last_build_tool "$script_dir/../programs/p101-trace" p101-trace)" p101-trace)" || { echo "p101 check: p101-trace not found" >&2; exit 2; }
-report_tool="$(find_tool P101_REPORT "$script_dir/../programs/p101-report/build-clang-22/p101-report" "$script_dir/../programs/p101-report/build-clang/p101-report" "$(last_build_tool "$script_dir/../programs/p101-report" p101-report)" p101-report)" || { echo "p101 check: p101-report not found" >&2; exit 2; }
 model_tool="$(find_tool P101_EVENT_MODEL "$script_dir/../libraries/lib_tool_event/build-clang-22/p101-event-model" "$script_dir/../libraries/lib_tool_event/build-clang/p101-event-model" "$(last_build_tool "$script_dir/../libraries/lib_tool_event" p101-event-model)" p101-event-model)" || { echo "p101 check: p101-event-model not found" >&2; exit 2; }
 
 quality_status=0
@@ -201,6 +197,7 @@ coverage_state="SKIP"
 doctor_status=2
 runtime_status=2
 walk_status=2
+lesson_status=2
 html_status=0
 html_state="PASS"
 bundle_status=0
@@ -235,9 +232,13 @@ doctor_status=$?
 runtime_status=$?
 
 mkdir -p "$out_dir/fault-walk"
-walk_args=(-n "$fault_count" -l "$out_dir/fault-walk/case" -O "$observe_tool" -r "$tracker_tool" -d "$concurrency_tool" -t "$trace_tool" -p "$report_tool" -- "$@")
+walk_args=(-n "$fault_count" -l "$out_dir/fault-walk/case" -U "$script_dir/p101-run.py" -O "$observe_tool" -Y "$script_dir/p101-analyze.py" -B "$model_tool" -- "$@")
 (cd "$project_dir" && run_logged "p101 error-path walk" "$log_dir/error-path-walk.log" "$walk_tool" "${walk_args[@]}")
 walk_status=$?
+
+python3 "$script_dir/p101_lessons.py" --catalog "$script_dir/../playgrounds/lessons/manifest.json" guide --markdown \
+  "$out_dir/doctor" "$out_dir/runtime/analysis" "$out_dir/fault-walk" > "$out_dir/lesson-guide.md" 2> "$log_dir/lesson-guide.log"
+lesson_status=$?
 
 if [ "$run_coverage" -eq 1 ] && [ -x "$project_dir/coverage-report.sh" ]; then
   (cd "$project_dir" && run_logged "project coverage receipt" "$log_dir/coverage.log" ./coverage-report.sh --no-open -- "$@")
@@ -295,6 +296,7 @@ Command: \`$(quote_command "$@")\`
 | Source/module preflight | $([ "$doctor_status" -eq 0 ] && printf 'PASS' || { [ "$doctor_status" -eq 1 ] && printf 'FINDINGS' || printf 'TROUBLE'; }) (${doctor_status}) | [doctor](./doctor/) |
 | Runtime analysis | $([ "$runtime_status" -eq 0 ] && printf 'PASS' || { [ "$runtime_status" -eq 1 ] && printf 'FINDINGS' || printf 'TROUBLE'; }) (${runtime_status}) | [runtime](./runtime/) |
 | Error-path walk | $([ "$walk_status" -eq 0 ] && printf 'PASS' || { [ "$walk_status" -eq 1 ] && printf 'FINDINGS' || printf 'TROUBLE'; }) (${walk_status}) | [fault-walk](./fault-walk/) |
+| Lesson mapping | $([ "$lesson_status" -eq 0 ] && printf 'PASS' || printf 'TROUBLE') (${lesson_status}) | [lesson guide](./lesson-guide.md) |
 | Project coverage | ${coverage_state} (${coverage_status}) | [log](./$(relpath "$log_dir/coverage.log")) |
 | HTML report | $([ "$html_state" = "SKIP" ] && printf 'SKIP' || { [ "$html_status" -eq 0 ] && printf 'PASS' || printf 'FAIL'; }) (${html_status}) | [index.html](./index.html) |
 | Bug bundle | $([ "$bundle_state" = "SKIP" ] && printf 'SKIP' || { [ "$bundle_status" -eq 0 ] && printf 'PASS' || printf 'FAIL'; }) (${bundle_status}) | [bug-bundle.tar.gz](./bug-bundle.tar.gz) |
@@ -308,6 +310,7 @@ Command: \`$(quote_command "$@")\`
 - Runtime analysis: [runtime/analysis](./runtime/analysis/)
 - Runtime HTML: [runtime/analysis/index.html](./runtime/analysis/index.html)
 - Error-path walk cases: [fault-walk](./fault-walk/)
+- Finding lessons and verification steps: [lesson-guide.md](./lesson-guide.md)
 - Bug bundle: [bug-bundle.tar.gz](./bug-bundle.tar.gz)
 
 ## How to read this
@@ -328,7 +331,7 @@ fi
 printf 'p101 check report: %s\n' "$out_dir/index.html"
 printf 'p101 check summary: %s\n' "$summary"
 
-if [ "$doctor_status" -eq 2 ] || [ "$runtime_status" -eq 2 ] || [ "$walk_status" -eq 2 ] || [ "$html_status" -ne 0 ] || [ "$bundle_status" -ne 0 ]; then
+if [ "$doctor_status" -eq 2 ] || [ "$runtime_status" -eq 2 ] || [ "$walk_status" -eq 2 ] || [ "$lesson_status" -ne 0 ] || [ "$html_status" -ne 0 ] || [ "$bundle_status" -ne 0 ]; then
   exit 2
 fi
 
