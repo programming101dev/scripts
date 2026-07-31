@@ -34,7 +34,12 @@ program passes, and a diagnostic should not contain an answer key.
 It produces:
 
 - `p101 lesson <ID>` terminal guidance;
+- `p101 lesson run <ID>` isolated broken-state evidence and a receipt;
+- `p101 lesson verify <ID> [report ...]` student repair verification;
 - `p101 lessons list` mappings;
+- `p101 lessons verify [--quick|--full]` executable acceptance receipts;
+- `p101 lessons coverage` as Markdown or JSON;
+- `p101 lessons progress <receipt-path ...>` prerequisite-aware progress;
 - a linked Markdown guide for a check directory;
 - lesson annotations in runtime JSON and HTML reports;
 - a cohort ranking of the lessons implicated most often;
@@ -48,8 +53,24 @@ lesson files in its receipt. It checks that digest again after analysis.
 
 The workspace gate scans diagnostic IDs that the active tools and shared runtime
 policies can emit. Every non-fallback ID must map to at least one substantive
-lesson file. Fallback IDs ending in `000` are explicitly listed rather than
-silently ignored. Stale ignored IDs also fail the gate.
+lesson file and executable acceptance evidence. Fallback IDs ending in `000`
+are explicitly listed rather than silently ignored. Stale ignored IDs also
+fail the gate.
+
+There are two deliberately separate receipts:
+
+- native evidence runs either the real playground scenario or the owning
+  tool/policy test suite;
+- a canonical broken/repaired report pair proves that the finding routes to the
+  intended lesson and that repaired evidence is accepted.
+
+The coverage matrix labels these columns independently. Passing the protocol
+pair cannot be reported as proof that the analyzer detected the original bug.
+Playground cases also carry a deterministic repair oracle: the detecting
+finding must disappear, or the documented fixed-output contract must hold.
+Declared macOS/Linux/FreeBSD support is a contract, not evidence: a platform is
+listed as verified only when its successful `--full` receipt is supplied with
+`p101 lessons coverage --receipts <path>`.
 
 The first lesson by curriculum order is the primary lesson. Additional labs
 using the same diagnostic become related practice. This lets `P101-FD-001`, for
@@ -64,8 +85,11 @@ an external plugin or third-party tool are not part of the workspace
 completeness claim. A report containing such an ID records it as unmapped and
 `p101 lessons guide` exits `1`.
 
-A mapped lesson does not prove that its repair is correct. The lesson's
-verification command and the original detecting tool provide that evidence.
+An owning-tool suite proves the checked fixture and analyzer behavior, not every
+possible C program. Static heuristics remain bounded by their admitted facts,
+and runtime lessons remain bounded by emitted wrapper events. A student repair
+is accepted only by `p101 lesson verify` using the original detecting evidence
+or the playground case's fixed-state oracle.
 
 ## Replayable evidence
 
@@ -73,5 +97,14 @@ verification command and the original detecting tool provide that evidence.
 ./test-p101-lessons.py
 ./p101 lessons check
 ./p101 lesson P101-FD-001
+./p101 lesson run P101-FD-001
+./p101 lesson verify P101-FD-001 /path/to/correlated-report.json
+./p101 lessons verify --quick
+./p101 lessons coverage
+./p101 lessons progress /path/to/student-receipts
 ./p101 lessons guide --markdown /path/to/p101-check-output
 ```
+
+`check-p101-stack.sh` runs the representative native acceptance set.
+`check-after-update-all.sh` runs every owning-tool profile and every native
+playground issue case on the current platform.

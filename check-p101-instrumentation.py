@@ -9,6 +9,7 @@ The check cannot cover inactive platform translation units or third-party code.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import platform
@@ -25,6 +26,18 @@ def compile_database(repo: Path) -> Path | None:
     candidates.extend(sorted(repo.glob("build-*/compile_commands.json")))
     candidates.append(repo / "build" / "compile_commands.json")
     return next((path for path in candidates if path.is_file()), None)
+
+
+def api_manifest_functions(repo: Path) -> dict[str, str]:
+    path = repo / "api-manifest.tsv"
+    if not path.is_file():
+        return {}
+    with path.open(encoding="utf-8") as stream:
+        return {
+            row["function"]: row.get("current_source", "")
+            for row in csv.DictReader(stream, delimiter="\t")
+            if row.get("function", "")
+        }
 
 
 def main() -> int:
@@ -53,13 +66,15 @@ def main() -> int:
     observed: dict[str, list[dict[str, object]]] = {}
     failures: list[str] = []
     valid_roles = {"native-wrapper", "traced-api", "infrastructure"}
-    libraries = {repo.name: repo for repo in sorted((workspace / "libraries").glob("lib_*")) if (repo / "src").is_dir()}
+    libraries = {
+        name: workspace / "libraries" / name
+        for name in sorted(library_roles)
+        if (workspace / "libraries" / name / "src").is_dir()
+    }
 
     for name, role in sorted(library_roles.items()):
         if role not in valid_roles:
             failures.append(f"contract: {name} has unknown library role {role}")
-    for name in sorted(libraries.keys() - library_roles.keys()):
-        failures.append(f"contract: library {name} is not classified")
     for name in sorted(library_roles.keys() - libraries.keys()):
         failures.append(f"contract: classified library {name} does not exist")
 
@@ -90,9 +105,41 @@ def main() -> int:
                 failures.append(f"{repo.name}: coverage extraction failed: {result.stderr.strip()}")
                 continue
             for record in json.loads(output.read_text(encoding="utf-8"))["functions"]:
+                if not bool(record.get("public")):
+                    continue
                 record["library"] = name
                 record["library_role"] = role
                 observed.setdefault(str(record["function"]), []).append(record)
+
+    for library, repo in sorted(libraries.items()):
+        if library_roles.get(library) == "infrastructure":
+            continue
+        manifest = api_manifest_functions(repo)
+        if not manifest:
+            failures.append(f"{library}: missing or empty api-manifest.tsv")
+            continue
+        expected = set(manifest)
+        actual = {
+            name
+            for name, records in observed.items()
+            if any(record["library"] == library for record in records)
+        }
+        for name in sorted(actual - expected):
+            failures.append(f"{library}:{name}: public API is absent from api-manifest.tsv")
+        for name in sorted(expected - actual):
+            failures.append(f"{library}:{name}: API manifest entry has no public definition on this platform")
+        for name in sorted(expected & actual):
+            expected_path = str((workspace / manifest[name]).resolve())
+            actual_paths = {
+                str(record["path"])
+                for record in observed[name]
+                if record["library"] == library
+            }
+            if expected_path not in actual_paths:
+                failures.append(
+                    f"{library}:{name}: manifest source {manifest[name]!r} "
+                    f"does not match {', '.join(sorted(actual_paths))}"
+                )
 
     for name, records in sorted(observed.items()):
         for record in records:
@@ -133,6 +180,25 @@ def main() -> int:
                 for records in observed.values()
                 for record in records
             }
+        ),
+        "function_capabilities": sorted(
+            (
+                {
+                    "library": record["library"],
+                    "function": record["function"],
+                    "has_env": bool(record["has_env"]),
+                    "has_error": bool(record["has_error"]),
+                    "trace_entry": bool(record["trace_entry"]),
+                    "trace_exit": bool(record["trace_exit"]),
+                    "fault": bool(record["fault"]),
+                    "fd": bool(record["fd"]),
+                    "allocation": bool(record["allocation"]),
+                    "resource": bool(record["resource"]),
+                }
+                for records in observed.values()
+                for record in records
+            ),
+            key=lambda item: (str(item["library"]), str(item["function"])),
         ),
         "explicit_capability_contracts": len(required),
         "failures": failures,

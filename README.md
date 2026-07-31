@@ -74,6 +74,13 @@ If you want to verify that everything compiles with all of the supported compile
 ./update-all.sh
 ```
 
+`repos.txt` uses `c`, `cxx`, and `python` for active projects. A newly created,
+not-yet-populated C repository uses `c-bootstrap`: `clone-repos.sh` keeps it
+present and updated, while build, distribution, test, and audit gates skip it.
+Change the type to `c` in the same change that adds its project contract; an
+active C repository is never allowed to pass without `config.cmake`, build
+scripts, tests, and the shared workspace links.
+
 After `update-all.sh` succeeds, run the post-build acceptance checks:
 
 ```bash
@@ -228,13 +235,22 @@ labs; static findings can be resolved with the same dispatcher:
 
 ```bash
 ./p101 lesson P101-FD-001
+./p101 lesson run P101-FD-001
+./p101 lesson verify P101-FD-001 /path/to/report.json
 ./p101 lessons guide /path/to/check-output
 ./p101 lessons check
+./p101 lessons verify --quick
+./p101 lessons coverage
+./p101 lessons progress /path/to/student-receipts
 ```
 
 `p101 lessons check` scans the diagnostic IDs emitted by the tools and fails if
-any non-fallback ID lacks a real lesson file, prerequisites, and a replayable
-verification command. The mapping is curriculum policy in
+any non-fallback ID lacks a real lesson file, prerequisites, native acceptance
+evidence, and a replayable repair oracle. `p101 lessons verify` materializes a
+broken/repaired protocol pair for every ID; `--quick` runs representative
+native evidence and `--full` runs every owning suite and playground issue case.
+`p101 lessons coverage` exposes evidence level and platform support. The
+mapping is curriculum policy in
 `playgrounds/lessons/manifest.json`; the tools continue to own the evidence and
 diagnostic IDs. The boundary and completeness claim are documented in
 [`docs/finding-lessons.md`](docs/finding-lessons.md).
@@ -367,9 +383,9 @@ those two forms, bump `version.txt`, and `generate-flags.sh` will probe
 whether each choice actually works on each machine. Run it again after a
 compiler upgrade to see what new checks became available.
 
-## **Discovering common non-POSIX Unix functions**
+## **Discovering common portable Unix functions**
 
-To seed future `lib_unix` wrappers, use:
+To seed future functional wrapper libraries, use:
 
 ```bash
 ./fetch-unix-doc-sources.sh -d /tmp/unix-doc-sources
@@ -401,9 +417,57 @@ cd /tmp/unix-doc-sources/probe-work
 CC=cc ./run-probes.sh
 ```
 
-Only functions that compile and link on all target systems should be promoted
-to `lib_unix` candidates. Documentation finds the goblins; compiler probes
-decide which goblins are real functions.
+Only functions that compile and link on all target systems should be promoted.
+Assign each accepted wrapper to its functional owner (`lib_io`, `lib_network`,
+`lib_process`, and so on); standards provenance belongs in its API manifest.
+Documentation finds the goblins; compiler probes decide which goblins are real
+functions.
+
+Every accepted wrapper must also acquire a unit-test row. This is a
+workspace-wide contract, including `lib_c`, `lib_c_facts`, `lib_convert`,
+`lib_fsm`, and `lib_util` as well as the functional wrapper libraries.
+Regenerate the deterministic injected-failure cases and then validate the
+complete contract:
+
+```bash
+./generate-wrapper-unit-tests.py --clang clang
+./check-wrapper-unit-tests.py
+```
+
+The generator assigns wrappers without an injectable failure boundary to an
+existing behavior test or the owning library's handwritten
+`test/test_behavior.c`. The check requires every public manifest API to be
+invoked by exactly one compiled test source; `test.sh` is the runtime receipt.
+The instrumentation audit independently compares public Clang definitions
+against those manifests, so adding a wrapper without adding its test row fails
+the stack gate.
+
+The executable 10x contract replays every library test suite with call and
+resource logging enabled:
+
+```bash
+./check-wrapper-conformance.py -o /tmp/p101-wrapper-conformance
+```
+
+It combines `api-manifest.tsv`, `unit-test-manifest.tsv`, and the
+Clang-derived capability receipt, then requires every env-aware public API to
+appear with balanced runtime ENTER/EXIT records. Fault-capable APIs must be
+wired to their deterministic failure tests. Optional argument/result logging
+is admitted by `wrapper-conformance-contract.json`.
+
+The 11x lifecycle layer exercises interactions rather than isolated calls:
+
+```bash
+./check-wrapper-lifecycles.py -o /tmp/p101-wrapper-lifecycles
+```
+
+`wrapper-lifecycle-contract.json` defines deterministic state machines for
+allocation, descriptors, streams, mappings, mutexes, processes, threads, and
+short I/O. The runner generates replay sequences, walks error/EINTR/timeout
+and short-I/O disruptions to exhaustion, validates the v4 event stream through
+`lib_tool_event`, rejects resource leaks with `p101-resource-tracker`, and
+shrinks any failure to a replayable minimal sequence. Its JSON receipt records
+the seed, compiler, platform, replay, and fault index.
 
 `--posix-symbols` accepts a simple newline list. `--posix-html` accepts a local
 POSIX function TOC or individual function page; if sibling function pages are

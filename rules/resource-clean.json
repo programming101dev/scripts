@@ -19,7 +19,7 @@
     {
       "id": "P101-POLICY-RESOURCE-003",
       "kind": "forbid-finding",
-      "pattern": "P101-RES-*",
+      "pattern": "P101-RESOURCE-*",
       "title": "Generic resource ownership is not clean",
       "lesson": "docs/rule-packs.md#generic-resource-ownership"
     }

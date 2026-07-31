@@ -170,6 +170,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     c|C) src="$C_SRC" ;;
     cxx|CXX|CPP) src="$CXX_SRC" ;;
     python) [ "$VERBOSE" -eq 1 ] && printf 'Skip (Python tool has its own scripts): %s\n' "$dest"; continue ;;
+    c-bootstrap) [ "$VERBOSE" -eq 1 ] && printf 'Skip (C repository is not populated yet): %s\n' "$dest"; continue ;;
     *)
       printf 'FAIL: unsupported language %s: %s\n' "$lang" "$dest" >&2
       failures=$((failures + 1))

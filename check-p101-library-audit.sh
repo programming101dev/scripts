@@ -128,7 +128,11 @@ printf 'p101 library audit output: %s\n' "$out_dir"
 failed=0
 found=0
 
-for repo in "$libraries_dir"/lib_*; do
+while IFS='|' read -r _url relative_path language; do
+  [ -n "${relative_path:-}" ] || continue
+  case "$language" in c|cxx) ;; *) continue ;; esac
+  repo="$(CDPATH='' cd "$(dirname "$relative_path")" 2>/dev/null && pwd -P)/$(basename "$relative_path")"
+  [ "$(dirname "$repo")" = "$libraries_dir" ] || continue
   [ -d "$repo/src" ] || continue
   name="$(basename "$repo")"
   repo_out="$out_dir/$name"
@@ -192,7 +196,7 @@ for repo in "$libraries_dir"/lib_*; do
 
   printf '==> %-22s boundary=%s form=%s error=%s module=%s\n' "$name" "$wrapper_status" "$form_status" "$error_status" "$module_status"
   printf '| %s | %s | %s | %s | %s |\n' "$name" "$wrapper_status" "$form_status" "$error_status" "$module_status" >> "$summary"
-done
+done < repos.txt
 
 if [ "$found" -eq 0 ]; then
   echo "No lib_* repositories found." >&2

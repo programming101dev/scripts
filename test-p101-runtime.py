@@ -109,6 +109,73 @@ class RuntimePolicyTests(unittest.TestCase):
             [finding.diagnostic_id for finding in analysis.resource.findings],
         )
 
+    def test_resource_policy_exercises_every_generic_lifecycle_finding(self) -> None:
+        def resource(
+            sequence: int,
+            operation: str,
+            identity: str,
+            related: str = "",
+        ) -> dict[str, object]:
+            return node(
+                "resource",
+                "resource",
+                sequence,
+                operation=operation,
+                resource_class="teaching-resource",
+                resource_identity=identity,
+                related_identity=related,
+                metadata="",
+                size=1,
+            )
+
+        analysis = analyze_model(
+            model(
+                resource(1, "acquire", "leaked"),
+                resource(2, "acquire", "released"),
+                resource(3, "release", "released"),
+                resource(4, "release", "released"),
+                resource(5, "release", "unknown"),
+                resource(6, "replace", "missing", "replacement"),
+                resource(7, "acquire", "duplicate"),
+                resource(8, "acquire", "duplicate"),
+            )
+        )
+        identifiers = {
+            finding.diagnostic_id for finding in analysis.resource.findings
+        }
+        self.assertEqual(
+            identifiers,
+            {
+                "P101-RESOURCE-001",
+                "P101-RESOURCE-002",
+                "P101-RESOURCE-003",
+                "P101-RESOURCE-004",
+                "P101-RESOURCE-005",
+            },
+        )
+
+    def test_resource_policy_finds_realloc_of_unknown_pointer(self) -> None:
+        analysis = analyze_model(
+            model(
+                node(
+                    "resource",
+                    "realloc",
+                    1,
+                    resource_class="allocation",
+                    resource_identity="0x10",
+                    related_identity="0x20",
+                    size=32,
+                )
+            )
+        )
+        self.assertEqual(
+            {
+                finding.diagnostic_id
+                for finding in analysis.resource.findings
+            },
+            {"P101-ALLOC-004"},
+        )
+
     def test_sync_policy_finds_lock_order_cycle(self) -> None:
         def sync(
             sequence: int,
@@ -171,6 +238,32 @@ class RuntimePolicyTests(unittest.TestCase):
             finding.diagnostic_id for finding in analysis.trace.findings
         }
         self.assertEqual(identifiers, {"P101-TRACE-001", "P101-TRACE-003"})
+
+    def test_trace_policy_finds_mismatched_exit(self) -> None:
+        analysis = analyze_model(
+            model(
+                node(
+                    "call",
+                    "call-enter",
+                    1,
+                    name="p101_open",
+                    arguments="-",
+                    result="-",
+                ),
+                node(
+                    "call",
+                    "call-exit",
+                    2,
+                    name="p101_close",
+                    arguments="-",
+                    result="0",
+                ),
+            )
+        )
+        self.assertIn(
+            "P101-TRACE-002",
+            [finding.diagnostic_id for finding in analysis.trace.findings],
+        )
 
     def test_renderer_writes_every_compatibility_view(self) -> None:
         analysis = analyze_model(model())

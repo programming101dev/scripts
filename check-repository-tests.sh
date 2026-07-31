@@ -61,6 +61,7 @@ printf '# p101 standalone repository tests\n\n| Repository | Unit tests | Fuzz s
 failed=0
 while IFS='|' read -r _url relative language || [ -n "${relative:-}" ]; do
   [ -n "${relative:-}" ] || continue
+  [ "$language" != "c-bootstrap" ] || continue
   repo="$(CDPATH='' cd "$relative" 2>/dev/null && pwd -P || true)"
   [ -n "$repo" ] || { printf '| %s | MISSING | MISSING |\n' "$relative" >> "$summary"; failed=1; continue; }
   name="$(basename "$repo")"

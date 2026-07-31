@@ -76,6 +76,7 @@ create_symlinks() {
       failures=$((failures + 1))
       continue
     fi
+    [[ "${_type:-}" != "c-bootstrap" ]] || continue
 
     # Resolve dest to absolute (relative dests are relative to the scripts dir)
     case "${dir}" in

@@ -85,7 +85,19 @@ def rel(root: Path, path: Path | None) -> str | None:
 
 
 def active_libraries(root: Path) -> list[Path]:
-    return sorted(path for path in (root / "libraries").glob("lib_*") if path.is_dir())
+    repos_file = root / "scripts" / "repos.txt"
+    admitted: list[Path] = []
+    for raw_line in repos_file.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        fields = line.split("|")
+        if len(fields) < 2:
+            continue
+        path = (repos_file.parent / fields[1]).resolve()
+        if path.parent == (root / "libraries").resolve() and path.name.startswith("lib_"):
+            admitted.append(path)
+    return sorted(path for path in admitted if path.is_dir())
 
 
 def configured_files(library_dir: Path, suffix: str) -> list[Path]:
@@ -559,6 +571,48 @@ def classify(library: str, header: str | None, source: str | None, name: str) ->
         return "tooling/event-protocol"
     if library == "lib_util":
         return "c/byte-utility"
+    if library == "lib_network":
+        return classify_network(name)
+    if library in {"lib_thread", "lib_sync"}:
+        return classify_threading(name)
+    if library == "lib_ipc":
+        return "systems/ipc"
+    if library == "lib_process":
+        return "systems/process-signal"
+    if library == "lib_filesystem":
+        return classify_unistd_like(name) or "systems/directories-patterns"
+    if library == "lib_io":
+        if name in {"p101_poll", "p101_select", "p101_pselect"}:
+            return "systems/io-multiplexing"
+        if name.startswith("p101_aio_") or name == "p101_lio_listio":
+            return "systems/async-io"
+        return classify_unistd_like(name) or classify_stdio(name, extension=True)
+    if library in {"lib_terminal", "lib_identity"}:
+        return "systems/users-terminals"
+    if library in {"lib_time", "lib_memory"}:
+        return "systems/resource-time-memory"
+    if library == "lib_diagnostics":
+        return "systems/logging-diagnostics"
+    if library == "lib_dynamic_linking":
+        return "systems/dynamic-loading"
+    if library == "lib_locale":
+        return "systems/localization-conversion"
+    if library == "lib_database":
+        return "systems/legacy-database"
+    if library == "lib_search":
+        return "systems/search-structures"
+    if library == "lib_cli":
+        return "c/cli-parsing"
+    if library == "lib_host":
+        return "systems/platform-admin"
+    if library == "lib_random":
+        return "c/random"
+    if library == "lib_math":
+        return "c/math-other"
+    if library == "lib_text":
+        if name.startswith("p101_reg"):
+            return "systems/text-patterns"
+        return classify_byte_text(name, extension=True)
 
     if library in {"lib_posix", "lib_posix_optional", "lib_posix_xsi", "lib_unix"}:
         c_extension_topics = {
@@ -734,7 +788,7 @@ def track_recommendations(domain_counts: Counter[str]) -> list[dict[str, Any]]:
             "track": "c-memory-runtime",
             "purpose": "Allocation, process termination, environment variables, sorting/searching helpers, and common stdlib extensions.",
             "prefixes": (),
-            "domains": ("c/stdlib", "c/stdlib-extensions"),
+            "domains": ("c/stdlib", "c/stdlib-extensions", "c/random"),
         },
         {
             "track": "c-memory-bytes",

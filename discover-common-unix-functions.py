@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Find common non-POSIX Unix functions worth considering for lib_unix.
+"""Find common non-POSIX Unix functions for the portable functional libraries.
 
 The intended workflow is:
 
@@ -12,7 +12,7 @@ The intended workflow is:
 This script does the documentation harvest, set math, existing-wrapper
 subtraction, and optional probe generation. It intentionally treats the result
 as a backlog, not truth: the generated probes should be compiled on the real
-target systems before a wrapper is added to lib_unix.
+target systems before a wrapper is assigned to its functional library.
 """
 
 from __future__ import annotations
@@ -81,10 +81,27 @@ class PosixLinkParser(HTMLParser):
 
 DEFAULT_WRAPPER_DIRS = (
     "libraries/lib_c",
-    "libraries/lib_posix",
-    "libraries/lib_posix_optional",
-    "libraries/lib_posix_xsi",
-    "libraries/lib_unix",
+    "libraries/lib_cli",
+    "libraries/lib_database",
+    "libraries/lib_diagnostics",
+    "libraries/lib_dynamic_linking",
+    "libraries/lib_filesystem",
+    "libraries/lib_host",
+    "libraries/lib_identity",
+    "libraries/lib_io",
+    "libraries/lib_ipc",
+    "libraries/lib_locale",
+    "libraries/lib_math",
+    "libraries/lib_memory",
+    "libraries/lib_network",
+    "libraries/lib_process",
+    "libraries/lib_random",
+    "libraries/lib_search",
+    "libraries/lib_sync",
+    "libraries/lib_terminal",
+    "libraries/lib_text",
+    "libraries/lib_thread",
+    "libraries/lib_time",
 )
 
 DEFAULT_EXCLUDED_SYMBOLS = frozenset(

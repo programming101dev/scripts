@@ -1,6 +1,8 @@
 #!/bin/sh
 # Copy scripts/CMakeLists.txt into each repo listed in repos.txt.
-# repos.txt format: <git-url>|<dest-path>|<lang>
+# repos.txt format: <git-url>|<dest-path>|<type>
+# c-bootstrap repositories are cloned but intentionally skipped until their
+# project contract has been populated.
 
 set -eu
 
@@ -84,7 +86,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     failures=$((failures + 1))
     continue
   fi
-  case "$repo_type" in c|cxx) ;; python) continue ;; *)
+  case "$repo_type" in c|cxx) ;; python|c-bootstrap) continue ;; *)
     printf 'FAIL: unsupported repo type %s: %s\n' "$repo_type" "$dest_field" >&2
     failures=$((failures + 1))
     continue ;;

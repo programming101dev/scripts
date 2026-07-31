@@ -221,6 +221,8 @@ run_logged_expect() {
 say "p101 stack check output: $out_dir"
 
 run_logged "finding-to-lesson curriculum completeness" "$log_dir/p101-lessons.log" ./p101 lessons check
+run_logged "executable lesson acceptance (quick)" "$log_dir/p101-lessons-acceptance.log" \
+  ./p101 lessons verify --quick -o "$out_dir/lesson-acceptance"
 
 if [ "$skip_repo_build" -eq 0 ]; then
   build_args=(-c "$cc" -x "$cxx" -f "$clang_format" -t "$clang_tidy" -k "$cppcheck")

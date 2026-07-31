@@ -33,8 +33,8 @@ Commands:
   check         Check an analysis with rule packs, or run the full workflow
   corpus        Run the p101-tool-playground lesson corpus
   lab           Build the p101-tool-playground lab book
-  lesson        Show the primary and related lessons for one finding ID
-  lessons       List, validate, or apply the finding-to-lesson catalog
+  lesson        Show, run, or verify one finding's teaching lesson
+  lessons       Check, list, verify, report coverage, or summarize progress
   contracts     Check p101 tool README contracts
   tool-audit    Run the broader p101 tool audit
   stack-check   Run the p101 stack smoke
@@ -206,7 +206,23 @@ case "$command_name" in
     exec ../playgrounds/lab.sh "$@"
     ;;
   lesson)
-    exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json show "$@"
+    case "${1:-}" in
+      run)
+        shift
+        exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json run "$@"
+        ;;
+      verify)
+        shift
+        exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json verify-one "$@"
+        ;;
+      show)
+        shift
+        exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json show "$@"
+        ;;
+      *)
+        exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json show "$@"
+        ;;
+    esac
     ;;
   lessons)
     exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json "$@"

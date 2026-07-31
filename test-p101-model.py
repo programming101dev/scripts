@@ -216,6 +216,29 @@ class ModelTests(unittest.TestCase):
             document["violations"][0]["id"], "P101-POLICY-RESOURCE-001"
         )
 
+    def test_resource_rule_pack_exercises_every_policy_diagnostic(self) -> None:
+        cases = {
+            "P101-FD-001": "P101-POLICY-RESOURCE-001",
+            "P101-ALLOC-001": "P101-POLICY-RESOURCE-002",
+            "P101-RESOURCE-001": "P101-POLICY-RESOURCE-003",
+        }
+        for finding_id, policy_id in cases.items():
+            with self.subTest(finding_id=finding_id):
+                finding = self.make_analysis(
+                    "rule-" + finding_id.lower(), finding_id
+                )
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    self.assertEqual(
+                        MODEL.check_rules(finding, ["resource-clean"], True),
+                        1,
+                    )
+                document = json.loads(output.getvalue())
+                self.assertEqual(
+                    [item["id"] for item in document["violations"]],
+                    [policy_id],
+                )
+
     def test_rule_pack_size_is_bounded(self) -> None:
         path = self.root / "oversized.json"
         path.write_text(

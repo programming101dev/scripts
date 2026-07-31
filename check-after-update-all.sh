@@ -14,12 +14,13 @@
 #   7. p101 tool contract documentation checks;
 #   8. finding-to-lesson curriculum completeness;
 #   9. strict source/module audits over every p101 tool;
-#  10. source-contract and instrumentation audits over wrapper libraries;
-#  11. closed-workspace public API candidate audit;
-#  12. every repository-owned unit suite and bounded fuzz target;
-#  13. fresh-template standalone instantiate/build/test;
-#  14. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor;
-#  15. the cross-tool behavior regression corpus.
+#  10. source-contract, instrumentation, and executable wrapper conformance;
+#  11. model-based wrapper lifecycle/fault/replay laboratory;
+#  12. closed-workspace public API candidate audit;
+#  13. every repository-owned unit suite and bounded fuzz target;
+#  14. fresh-template standalone instantiate/build/test;
+#  15. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor;
+#  16. the cross-tool behavior regression corpus.
 
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
@@ -234,6 +235,8 @@ run_logged "p101 causal-model verify and compare tests" "$log_dir/test-p101-mode
 run_logged "p101 shared runtime policy tests" "$log_dir/test-p101-runtime.log" ./test-p101-runtime.py
 run_logged "p101 finding-to-lesson tests" "$log_dir/test-p101-lessons.log" ./test-p101-lessons.py
 run_logged "p101 finding-to-lesson completeness" "$log_dir/check-p101-lessons.log" ./p101_lessons.py check
+run_logged "p101 executable lesson acceptance" "$log_dir/check-p101-lesson-acceptance.log" \
+  ./p101 lessons verify --full -o "$out_dir/lesson-acceptance"
 
 if [ "$skip_cmake" -eq 0 ]; then
   run_logged "shared CMakeLists regression harness" "$log_dir/test-cmake.log" ./test-cmake.sh -c "$cc" -x "$cxx" -k
@@ -260,14 +263,22 @@ else
 fi
 
 if [ "$skip_library_audit" -eq 0 ]; then
+  run_logged "functional wrapper-library ownership" "$log_dir/check-functional-library-split.log" ./check-functional-library-split.py
+  run_logged "workspace public API unit-test coverage" "$log_dir/check-wrapper-unit-tests.log" ./check-wrapper-unit-tests.py
   run_logged "p101 library source-contract audit" "$log_dir/check-p101-library-audit.log" ./check-p101-library-audit.sh -o "$out_dir/library-audit"
   run_logged "p101 wrapper instrumentation coverage" "$log_dir/check-p101-instrumentation.log" ./check-p101-instrumentation.py --receipt "$out_dir/instrumentation-receipt.json"
+  run_logged "p101 executable wrapper conformance" "$log_dir/check-wrapper-conformance.log" ./check-wrapper-conformance.py -o "$out_dir/wrapper-conformance"
+  run_logged "p101 model-based wrapper lifecycles" "$log_dir/check-wrapper-lifecycles.log" ./check-wrapper-lifecycles.py -c "$cc" --cases 2 --max-steps 6 -o "$out_dir/wrapper-lifecycles"
   run_logged "workspace-wide public API audit" "$log_dir/check-workspace-public-api.log" ./check-workspace-public-api.sh -o "$out_dir/workspace-api"
 else
   say "==> p101 library source-contract, instrumentation, and workspace API audits"
   say "    SKIP"
   printf '| SKIP | p101 library source-contract audit | --skip-library-audit |\n' >> "$summary"
+  printf '| SKIP | functional wrapper-library ownership | --skip-library-audit |\n' >> "$summary"
+  printf '| SKIP | workspace public API unit-test coverage | --skip-library-audit |\n' >> "$summary"
   printf '| SKIP | p101 wrapper instrumentation coverage | --skip-library-audit |\n' >> "$summary"
+  printf '| SKIP | p101 executable wrapper conformance | --skip-library-audit |\n' >> "$summary"
+  printf '| SKIP | p101 model-based wrapper lifecycles | --skip-library-audit |\n' >> "$summary"
   printf '| SKIP | workspace-wide public API audit | --skip-library-audit |\n' >> "$summary"
 fi
 

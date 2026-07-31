@@ -1,0 +1,94 @@
+{
+  "schema": "p101-wrapper-lifecycle-contract-v1",
+  "seed": 101,
+  "generated_cases_per_scenario": 8,
+  "maximum_steps": 12,
+  "maximum_fault_calls": 64,
+  "fault_modes": ["error", "eintr", "timeout"],
+  "scenarios": {
+    "allocation": {
+      "initial": "empty",
+      "terminal": "empty",
+      "fault_modes": ["error"],
+      "transitions": [
+        {"from": "empty", "operation": "acquire", "to": "live"},
+        {"from": "live", "operation": "replace", "to": "live"},
+        {"from": "live", "operation": "release", "to": "empty"}
+      ]
+    },
+    "descriptor": {
+      "initial": "empty",
+      "terminal": "empty",
+      "fault_modes": ["error", "eintr"],
+      "transitions": [
+        {"from": "empty", "operation": "open", "to": "one"},
+        {"from": "one", "operation": "duplicate", "to": "two"},
+        {"from": "two", "operation": "close", "to": "one"},
+        {"from": "one", "operation": "close", "to": "empty"}
+      ]
+    },
+    "stream": {
+      "initial": "empty",
+      "terminal": "empty",
+      "fault_modes": ["error", "eintr"],
+      "transitions": [
+        {"from": "empty", "operation": "open", "to": "live"},
+        {"from": "live", "operation": "close", "to": "empty"}
+      ]
+    },
+    "mapping": {
+      "initial": "empty",
+      "terminal": "empty",
+      "fault_modes": ["error"],
+      "transitions": [
+        {"from": "empty", "operation": "map", "to": "live"},
+        {"from": "live", "operation": "unmap", "to": "empty"}
+      ]
+    },
+    "mutex": {
+      "initial": "empty",
+      "terminal": "empty",
+      "fault_modes": ["error"],
+      "transitions": [
+        {"from": "empty", "operation": "initialize", "to": "ready"},
+        {"from": "ready", "operation": "lock", "to": "locked"},
+        {"from": "locked", "operation": "unlock", "to": "ready"},
+        {"from": "ready", "operation": "destroy", "to": "empty"}
+      ]
+    },
+    "process": {
+      "initial": "empty",
+      "terminal": "empty",
+      "fault_modes": ["error", "eintr", "timeout"],
+      "transitions": [
+        {"from": "empty", "operation": "fork", "to": "child"},
+        {"from": "child", "operation": "wait", "to": "empty"}
+      ]
+    },
+    "thread": {
+      "initial": "empty",
+      "terminal": "empty",
+      "fault_modes": ["error"],
+      "transitions": [
+        {"from": "empty", "operation": "create", "to": "running"},
+        {"from": "running", "operation": "join", "to": "empty"}
+      ]
+    },
+    "short-io": {
+      "initial": "empty",
+      "terminal": "empty",
+      "fault_modes": ["short"],
+      "transitions": [
+        {"from": "empty", "operation": "pipe", "to": "ready"},
+        {"from": "ready", "operation": "write", "to": "written"},
+        {"from": "written", "operation": "read", "to": "ready"},
+        {"from": "ready", "operation": "close", "to": "empty"}
+      ]
+    }
+  },
+  "blind_spots": [
+    "Generated schedules are deterministic evidence, not exhaustive proof.",
+    "The laboratory models p101-visible resources and cannot see direct libc or third-party operations.",
+    "Concurrency schedule exploration is bounded to synchronization wrapper state; kernel scheduler interleavings remain external."
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "schema": "p101-wrapper-conformance-contract-v1",
+  "public_api": {
+    "require_success_test": true,
+    "require_balanced_runtime_trace": true,
+    "require_fault_test_when_instrumented": true,
+    "require_declared_resource_instrumentation": true
+  },
+  "logging": {
+    "arguments_required": [],
+    "results_required": []
+  },
+  "lifecycle_contract": "wrapper-lifecycle-contract.json",
+  "blind_spots": [
+    "Third-party and direct libc calls do not emit p101 events.",
+    "Argument and result text is required only for wrappers explicitly listed by this contract.",
+    "Native and wrapper behavior is compared only by lifecycle scenarios with deterministic fixtures."
+  ]
+}

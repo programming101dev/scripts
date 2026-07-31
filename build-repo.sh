@@ -147,6 +147,11 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     continue
   fi
 
+  if [[ "$repo_type" == "c-bootstrap" ]]; then
+    say "  -> Bootstrap repository is present but not active; skipping."
+    continue
+  fi
+
   pushd "$dir" >/dev/null
 
   # A repo without change-compiler.sh should be skipped with a message,

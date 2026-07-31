@@ -83,11 +83,19 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     target_dir="$(trim_whitespace "${target_dir:-}")"
     repo_type="$(trim_whitespace "${repo_type:-}")"
 
-    if [[ -z "${repo_url}" || -z "${target_dir}" ]]; then
+    if [[ -z "${repo_url}" || -z "${target_dir}" || -z "${repo_type}" ]]; then
         echo "FAIL: malformed line: ${raw}" >&2
         failures=$((failures + 1))
         continue
     fi
+    case "${repo_type}" in
+        c|cxx|python|c-bootstrap) ;;
+        *)
+            echo "FAIL: unsupported repo type '${repo_type}': ${target_dir}" >&2
+            failures=$((failures + 1))
+            continue
+            ;;
+    esac
     processed=$((processed + 1))
 
     if [[ -n "${repo_type}" ]]; then
@@ -143,6 +151,13 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
                 echo
                 continue
             fi
+        elif [[ "${repo_type}" == "c-bootstrap" ]] &&
+             ! git -C "${target_dir}" rev-parse --verify HEAD >/dev/null 2>&1; then
+            # A newly-created GitHub repository may intentionally have no
+            # first commit yet. It still belongs in repos.txt so every
+            # workspace clones it, but there is nothing to fast-forward until
+            # its project contract is populated.
+            echo "  -> Empty bootstrap repository; no upstream branch yet."
         else
             echo "  ! No upstream tracking branch."
             failures=$((failures + 1))
