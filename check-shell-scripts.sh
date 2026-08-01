@@ -40,11 +40,16 @@ for script in "${scripts[@]}"; do
     echo "FAIL: syntax: $script" >&2
     syntax_failures=$((syntax_failures + 1))
   fi
-  # This file is deliberately source-compatible with Bash and Zsh and
-  # contains a Powerlevel10k Zsh array expansion ShellCheck cannot parse.
-  if [[ "$script" != "$workspace/setup/ip-prompt.sh" ]]; then
-    shellcheck_scripts+=("$script")
+  # ip-prompt.sh is deliberately source-compatible with both shells. Bash is
+  # its declared interpreter; when Zsh is installed, validate that side of the
+  # contract too.
+  if [[ "$script" == "$workspace/setup/ip-prompt.sh" ]] \
+     && command -v zsh >/dev/null 2>&1 \
+     && ! zsh -n "$script"; then
+    echo "FAIL: zsh syntax: $script" >&2
+    syntax_failures=$((syntax_failures + 1))
   fi
+  shellcheck_scripts+=("$script")
 done
 if [[ "$syntax_failures" -gt 0 ]]; then
   echo "Shell syntax check failed: $syntax_failures file(s)." >&2
