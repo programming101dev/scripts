@@ -287,6 +287,8 @@ any non-fallback ID lacks a real lesson file, prerequisites, native acceptance
 evidence, and a replayable repair oracle. `p101 lessons verify` materializes a
 broken/repaired protocol pair for every ID; `--quick` runs representative
 native evidence and `--full` runs every owning suite and playground issue case.
+Native checks use up to four isolated workers by default; pass `--jobs 1` for
+serial execution or a different bounded worker count for the host.
 `p101 lessons coverage` exposes evidence level and platform support. The
 mapping is curriculum policy in
 `playgrounds/lessons/manifest.json`; the tools continue to own the evidence and

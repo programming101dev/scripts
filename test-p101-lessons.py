@@ -8,6 +8,7 @@ import io
 import json
 import sys
 import tempfile
+import threading
 import unittest
 from argparse import Namespace
 from contextlib import redirect_stderr, redirect_stdout
@@ -166,6 +167,35 @@ class LessonCatalogTests(unittest.TestCase):
             )
             self.assertEqual(receipt["protocol_pairs"], 86)
             self.assertEqual(coverage["summary"]["uncovered_ids"], 0)
+
+    def test_native_cases_run_in_parallel_and_keep_catalog_order(self) -> None:
+        barrier = threading.Barrier(2)
+
+        def fake_run_case(
+            _catalog: object,
+            case_name: str,
+            _output: Path,
+            *,
+            repaired: bool,
+        ) -> dict[str, object]:
+            self.assertFalse(repaired)
+            barrier.wait(timeout=2)
+            return {"label": case_name, "status": "PASS"}
+
+        with patch.object(
+            p101_lessons, "_run_case", side_effect=fake_run_case
+        ):
+            results = p101_lessons._run_cases(
+                self.catalog,
+                ["first", "second"],
+                Path("/unused"),
+                2,
+            )
+
+        self.assertEqual(
+            [result["label"] for result in results],
+            ["first", "second"],
+        )
 
     def test_progress_honors_prerequisites_and_lesson_only_receipts(self) -> None:
         digest = p101_lessons.catalog_digest(self.catalog)

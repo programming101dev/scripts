@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -1034,6 +1035,68 @@ def _run_case(
     )
 
 
+def _run_profiles(
+    catalog: Catalog,
+    profiles: list[AcceptanceProfile],
+    output: Path,
+    jobs: int,
+) -> list[dict[str, Any]]:
+    representatives: list[AcceptanceProfile] = []
+    representative_by_key: dict[
+        tuple[tuple[str, ...], str], AcceptanceProfile
+    ] = {}
+    for profile in profiles:
+        key = (profile.command, profile.cwd)
+        if key not in representative_by_key:
+            representative_by_key[key] = profile
+            representatives.append(profile)
+    with ThreadPoolExecutor(max_workers=jobs) as executor:
+        executed = list(
+            executor.map(
+                lambda profile: _run_profile(catalog, profile, output),
+                representatives,
+            )
+        )
+    result_by_key = {
+        (profile.command, profile.cwd): result
+        for profile, result in zip(representatives, executed)
+    }
+    results: list[dict[str, Any]] = []
+    for profile in profiles:
+        key = (profile.command, profile.cwd)
+        original = result_by_key[key]
+        representative = representative_by_key[key]
+        if profile is representative:
+            results.append(original)
+        else:
+            results.append(
+                {
+                    **original,
+                    "label": "profile-" + profile.profile_id,
+                    "duration_ns": 0,
+                    "shared_with": original["label"],
+                }
+            )
+    return results
+
+
+def _run_cases(
+    catalog: Catalog,
+    case_names: list[str],
+    output: Path,
+    jobs: int,
+) -> list[dict[str, Any]]:
+    with ThreadPoolExecutor(max_workers=jobs) as executor:
+        return list(
+            executor.map(
+                lambda case_name: _run_case(
+                    catalog, case_name, output, repaired=False
+                ),
+                case_names,
+            )
+        )
+
+
 def _write_protocol_fixtures(
     catalog: Catalog,
     output: Path,
@@ -1318,28 +1381,14 @@ def command_verify_all(args: argparse.Namespace) -> int:
         finding_ids = sorted(catalog.by_finding_id)
         pairs = _write_protocol_fixtures(catalog, output, finding_ids)
         results: list[dict[str, Any]] = []
+        jobs = max(1, int(getattr(args, "jobs", 1)))
         if args.quick or args.full:
             profiles = [
                 profile
                 for profile in catalog.profiles
                 if args.full or profile.quick
             ]
-            shared_results: dict[tuple[tuple[str, ...], str], dict[str, Any]] = {}
-            for profile in profiles:
-                key = (profile.command, profile.cwd)
-                if key in shared_results:
-                    original = shared_results[key]
-                    results.append(
-                        {
-                            **original,
-                            "label": "profile-" + profile.profile_id,
-                            "shared_with": original["label"],
-                        }
-                    )
-                else:
-                    result = _run_profile(catalog, profile, output)
-                    shared_results[key] = result
-                    results.append(result)
+            results.extend(_run_profiles(catalog, profiles, output, jobs))
             if args.full:
                 case_names = sorted(
                     {
@@ -1350,12 +1399,17 @@ def command_verify_all(args: argparse.Namespace) -> int:
                 )
             else:
                 case_names = ["orientation", "fd-leak", "short-read"]
-            for case_name in case_names:
-                results.append(
-                    _run_case(catalog, case_name or "", output, repaired=False)
+            results.extend(
+                _run_cases(
+                    catalog,
+                    [case_name or "" for case_name in case_names],
+                    output,
+                    jobs,
                 )
+            )
         mode = "full" if args.full else ("quick" if args.quick else "structural")
         receipt = _receipt(catalog, mode, results, len(pairs))
+        receipt["jobs"] = jobs
         _write_json(output / "receipt.json", receipt)
         coverage = coverage_document(catalog, [output])
         _write_json(output / "coverage.json", coverage)
@@ -1592,6 +1646,13 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
         help="run every owning-tool suite and every native playground case",
     )
     verify.add_argument("-o", "--output", type=Path)
+    verify.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        default=min(4, max(1, os.cpu_count() or 1)),
+        help="maximum parallel native acceptance checks (default: up to 4)",
+    )
     verify.set_defaults(function=command_verify_all)
     coverage = subparsers.add_parser(
         "coverage",
