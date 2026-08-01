@@ -6,6 +6,7 @@ set -euo pipefail
 # Always operate from the directory this script lives in (repos.txt lives
 # here, and the relative dest paths in it are relative to this directory).
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+REFRESH_REPO_SH="${PWD}/refresh-repo.sh"
 
 # ----------------- defaults -----------------
 c_compiler=""
@@ -77,6 +78,7 @@ done
 
 [[ -n "$c_compiler"   ]] || { echo "Error: -c (C compiler) is required" >&2; usage; }
 [[ -n "$cxx_compiler" ]] || { echo "Error: -x (C++ compiler) is required" >&2; usage; }
+[[ -x "$REFRESH_REPO_SH" ]] || { echo "Error: refresh-repo.sh is missing or not executable" >&2; exit 2; }
 
 # ----------------- helpers -----------------
 say() { printf '%b\n' "$*"; }
@@ -101,30 +103,32 @@ run_repo_phase() {
       return "$status"
     fi
 
-    printf '\nFAILED: %s (exit %d).\n' "$description" "$status" >&2
-    printf 'Fix the issue, then press Enter to retry this phase; enter q to abort: ' >&2
-    if ! IFS= read -r answer; then
-      printf '\nInteractive input closed; aborting.\n' >&2
-      return "$status"
-    fi
-    case "$answer" in
-      q|Q|quit|QUIT)
-        printf 'Aborting at: %s\n' "$description" >&2
+    while true; do
+      printf '\nFAILED: %s (exit %d).\n' "$description" "$status" >&2
+      printf 'Fix the issue, then press Enter to retry this phase; enter q to abort: ' >&2
+      if ! IFS= read -r answer; then
+        printf '\nInteractive input closed; aborting.\n' >&2
         return "$status"
-        ;;
-      *)
-        printf 'Pulling repository updates before retry...\n' >&2
+      fi
+      case "$answer" in
+        q|Q|quit|QUIT)
+          printf 'Aborting at: %s\n' "$description" >&2
+          return "$status"
+          ;;
+      esac
+
+        printf 'Refreshing repository upstream before retry...\n' >&2
         set +e
-        git pull --ff-only --no-stat --no-edit
+        "${REFRESH_REPO_SH}" .
         pull_status=$?
         set -e
-        if [[ "$pull_status" -ne 0 ]]; then
-          printf 'Pull failed (exit %d); phase not retried.\n' "$pull_status" >&2
+        if [[ "$pull_status" -ne 0 && "$pull_status" -ne 1 ]]; then
+          printf 'Repository refresh failed (exit %d); still paused.\n' "$pull_status" >&2
           continue
         fi
         printf 'Retrying: %s\n\n' "$description" >&2
-        ;;
-    esac
+        break
+    done
   done
 }
 

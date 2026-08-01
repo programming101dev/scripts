@@ -11,6 +11,7 @@
       "source-responsibilities",
       "architecture-contract-tests",
       "shell-scripts",
+      "repository-refresh",
       "interactive-build-retry",
       "github-workflow-drift",
       "cmake-distribution",
@@ -113,12 +114,22 @@
       "guarantee": "Maintained shell scripts parse and pass the configured ShellCheck warning gate."
     },
     {
+      "id": "repository-refresh",
+      "title": "shared repository refresh contract",
+      "group": "distribution",
+      "required": true,
+      "command": ["./test-refresh-repo.sh"],
+      "depends_on": ["shell-scripts"],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "Repository refresh explicitly fetches the configured upstream, fast-forwards updates, preserves local commits, and refuses divergence."
+    },
+    {
       "id": "interactive-build-retry",
       "title": "interactive repository build retry",
       "group": "distribution",
       "required": true,
       "command": ["./test-build-repo-interactive.sh"],
-      "depends_on": ["shell-scripts"],
+      "depends_on": ["repository-refresh"],
       "resources": {"writes": ["/tmp"], "units": {}},
       "guarantee": "Interactive builds retry only the failed repository phase and preserve its exit status on abort."
     },

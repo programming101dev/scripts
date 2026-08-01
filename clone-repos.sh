@@ -15,6 +15,7 @@ esac
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 REPOS_FILE="repos.txt"
+REFRESH_REPO_SH="./refresh-repo.sh"
 GIT_RETRY_ATTEMPTS=5
 GIT_RETRY_DELAY_SECONDS=5
 
@@ -60,6 +61,10 @@ fi
 
 if ! command -v git >/dev/null 2>&1; then
     echo "Error: git not found in PATH." >&2
+    exit 1
+fi
+if [[ ! -x "${REFRESH_REPO_SH}" ]]; then
+    echo "Error: ${REFRESH_REPO_SH} is missing or not executable." >&2
     exit 1
 fi
 
@@ -130,39 +135,24 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
             continue
         fi
 
-        echo "  -> Fetching..."
-        if ! retry_git git -C "${target_dir}" fetch --tags --prune; then
-            echo "  ! Fetch failed."
-            failures=$((failures + 1))
-            echo
-            continue
-        fi
-
-        if git -C "${target_dir}" rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
-            echo "  -> Fast-forwarding to upstream..."
-            # We already fetched (with retries) above, so this is a purely
-            # local operation: merge --ff-only, no network, NO retry loop —
-            # a divergence failure is not transient and retrying it just
-            # wastes 25 seconds per repo.
-            if ! git -C "${target_dir}" merge --ff-only --quiet '@{u}'; then
-                echo "  ! Cannot fast-forward (local commits/changes diverge from upstream)."
+        if [[ "${repo_type}" == "c-bootstrap" ]] &&
+           ! git -C "${target_dir}" rev-parse --verify HEAD >/dev/null 2>&1; then
+            # A newly-created GitHub repository may intentionally have no
+            # first commit yet. It still belongs in repos.txt so every
+            # workspace clones it, but there is nothing to refresh until its
+            # project contract is populated.
+            echo "  -> Empty bootstrap repository; no upstream branch yet."
+        else
+            echo "  -> Refreshing configured upstream..."
+            refresh_status=0
+            "${REFRESH_REPO_SH}" "${target_dir}" || refresh_status=$?
+            if [[ "${refresh_status}" -ne 0 && "${refresh_status}" -ne 1 ]]; then
+                echo "  ! Repository refresh failed (exit ${refresh_status})."
                 echo "  ! Resolve manually in ${target_dir}."
                 failures=$((failures + 1))
                 echo
                 continue
             fi
-        elif [[ "${repo_type}" == "c-bootstrap" ]] &&
-             ! git -C "${target_dir}" rev-parse --verify HEAD >/dev/null 2>&1; then
-            # A newly-created GitHub repository may intentionally have no
-            # first commit yet. It still belongs in repos.txt so every
-            # workspace clones it, but there is nothing to fast-forward until
-            # its project contract is populated.
-            echo "  -> Empty bootstrap repository; no upstream branch yet."
-        else
-            echo "  ! No upstream tracking branch."
-            failures=$((failures + 1))
-            echo
-            continue
         fi
     else
         echo "  -> Cloning ${repo_url}"
