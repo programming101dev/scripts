@@ -8,6 +8,7 @@ import json
 import os
 import platform
 import random
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -20,23 +21,56 @@ CONTRACT_PATH = SCRIPT_DIR / "wrapper-lifecycle-contract.json"
 LAB_DIR = SCRIPT_DIR / "wrapper-lab"
 
 
-def built_directory(repo: Path) -> Path | None:
+def resolved_program(program: str) -> Path:
+    found = shutil.which(program)
+    return Path(found if found is not None else program).resolve()
+
+
+def cached_c_compiler(build: Path) -> Path | None:
+    cache = build / "CMakeCache.txt"
+    if not cache.is_file():
+        return None
+    for line in cache.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith("CMAKE_C_COMPILER:") and "=" in line:
+            value = line.partition("=")[2]
+            if value:
+                return resolved_program(value)
+    return None
+
+
+def built_directory(repo: Path, compiler: str | None = None) -> Path | None:
+    expected_compiler = resolved_program(compiler) if compiler is not None else None
+    candidates: list[Path] = []
     marker = repo / ".last-build-dir"
     if marker.is_file():
         candidate = repo / marker.read_text(encoding="utf-8").strip()
         if candidate.is_dir():
-            return candidate
-    return next((path for path in sorted(repo.glob("build-*")) if path.is_dir()), None)
+            candidates.append(candidate)
+    candidates.extend(
+        path
+        for path in sorted(repo.glob("build-*"))
+        if path.is_dir() and path not in candidates
+    )
+    if expected_compiler is None:
+        return candidates[0] if candidates else None
+    return next(
+        (
+            path
+            for path in candidates
+            if cached_c_compiler(path) == expected_compiler
+        ),
+        None,
+    )
 
 
-def p101_paths() -> tuple[list[Path], list[Path]]:
+def p101_paths(cc: str) -> tuple[list[Path], list[Path]]:
     includes: list[Path] = []
     links: list[Path] = []
     for repo in sorted((WORKSPACE / "libraries").glob("lib_*")):
         include = repo / "include"
         if include.is_dir():
             includes.append(include)
-        build = built_directory(repo)
+        build = built_directory(repo, cc)
         if build is not None:
             links.append(build)
     return includes, links
@@ -57,6 +91,23 @@ def sanitizer_link_flags(link_directories: list[Path]) -> list[str]:
                     flags.append(flag)
             break
     return flags
+
+
+def compiler_supported_link_flags(cc: str, flags: list[str]) -> list[str]:
+    """Keep only link flags accepted by the selected lifecycle compiler."""
+    supported: list[str] = []
+    for flag in flags:
+        result = subprocess.run(
+            [cc, "-Werror", flag, "-x", "c", "-", "-o", os.devnull],
+            input="int main(void) { return 0; }\n",
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            supported.append(flag)
+    return supported
 
 
 def find_program(repo: Path, name: str) -> Path:
@@ -91,8 +142,10 @@ def run_logged(command: list[str], log_path: Path, phase: str) -> None:
 
 
 def configure_driver(output: Path, cc: str) -> Path:
-    includes, links = p101_paths()
-    sanitizer_flags = sanitizer_link_flags(links)
+    includes, links = p101_paths(cc)
+    sanitizer_flags = compiler_supported_link_flags(
+        cc, sanitizer_link_flags(links)
+    )
     build = output / "build"
     command = [
         "cmake",

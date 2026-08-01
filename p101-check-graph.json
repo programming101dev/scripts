@@ -37,6 +37,7 @@
       "instrumentation",
       "wrapper-conformance-output-tests",
       "wrapper-conformance",
+      "wrapper-lifecycle-driver-tests",
       "wrapper-lifecycles",
       "workspace-api",
       "repository-tests",
@@ -376,12 +377,22 @@
       "guarantee": "Generated wrapper controls exercise the declared success and failure contract."
     },
     {
+      "id": "wrapper-lifecycle-driver-tests",
+      "title": "p101 wrapper lifecycle driver boundary tests",
+      "group": "library-audit",
+      "required": true,
+      "command": ["./test-wrapper-lifecycle-driver.py"],
+      "depends_on": ["wrapper-conformance"],
+      "resources": {"writes": [], "units": {"compiler": 1}},
+      "guarantee": "The lifecycle driver selects compiler-matched library builds and rejects unsupported inherited link flags."
+    },
+    {
       "id": "wrapper-lifecycles",
       "title": "p101 model-based wrapper lifecycles",
       "group": "library-audit",
       "required": true,
       "command": ["./check-wrapper-lifecycles.py", "-c", "{cc}", "--cases", "2", "--max-steps", "6", "-o", "{out}/wrapper-lifecycles"],
-      "depends_on": ["wrapper-conformance"],
+      "depends_on": ["wrapper-lifecycle-driver-tests"],
       "resources": {"writes": ["{out}/wrapper-lifecycles"], "units": {"compiler": 1}},
       "guarantee": "Generated wrapper operation histories preserve lifecycle invariants under injected faults."
     },
