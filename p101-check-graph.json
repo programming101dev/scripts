@@ -29,6 +29,7 @@
       "tool-contracts",
       "tool-audit",
       "functional-library-split",
+      "wrapper-errno-contract-tests",
       "wrapper-unit-tests",
       "library-audit",
       "instrumentation",
@@ -292,12 +293,22 @@
       "guarantee": "Every wrapper remains in its declared functional library."
     },
     {
+      "id": "wrapper-errno-contract-tests",
+      "title": "wrapper errno source contract tests",
+      "group": "library-audit",
+      "required": true,
+      "command": ["./test-wrapper-errno-contract.py"],
+      "depends_on": ["functional-library-split"],
+      "resources": {"writes": [], "units": {}},
+      "guarantee": "POSIX and platform manual parsing, source precedence, and fallback behavior pass deterministic fixtures."
+    },
+    {
       "id": "wrapper-unit-tests",
       "title": "workspace public API unit-test coverage",
       "group": "library-audit",
       "required": true,
       "command": ["./check-wrapper-unit-tests.py"],
-      "depends_on": ["functional-library-split"],
+      "depends_on": ["wrapper-errno-contract-tests"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Every public wrapper has an explicit unit-test manifest entry."
     },

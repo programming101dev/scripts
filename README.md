@@ -462,21 +462,56 @@ functions.
 Every accepted wrapper must also acquire a unit-test row. This is a
 workspace-wide contract, including `lib_c`, `lib_c_facts`, `lib_convert`,
 `lib_fsm`, and `lib_util` as well as the functional wrapper libraries.
-Regenerate the deterministic injected-failure cases and then validate the
+`wrapper-errno-contract.json` is the single source of truth for failure codes.
+It retains the POSIX.1-2024 `shall fail` and `may fail` sets separately, plus
+documented Linux, macOS, and FreeBSD overrides. A platform manual replaces the
+POSIX set when that manual exists; otherwise the portable POSIX set is used.
+References such as “the errors specified for socket() and malloc()” are
+resolved transitively and retained in the JSON. Every platform record names its
+`effective_source_kind` (`platform-manual` or `posix-fallback`) and exact
+`effective_source`. Archive- and SDK-backed manuals also retain a separate
+`effective_source_path`; this avoids manufacturing invalid URLs by appending an
+internal manual path to an archive URL. A test receipt therefore never leaves
+the selected authority or page implicit. The top-level `platform_coverage`
+summary reports manual overrides and POSIX fallbacks for both the complete
+function catalogue and the active wrapper inventory.
+
+The checked-in catalogue is refreshed from the Open Group function index and
+`<errno.h>` page, kernel.org Linux man-pages, the active Xcode SDK manuals, and
+the official FreeBSD manual archive. The refresh command deliberately consumes
+local source snapshots so ordinary builds and CI never depend on the network:
+
+```bash
+./refresh-wrapper-errno-contract.py \
+  --index /path/to/posix/idx/functions.html \
+  --errno-page /path/to/posix/basedefs/errno.h.html \
+  --page-dir /path/to/posix/functions \
+  --platform macos \
+  --man-root "$(xcrun --show-sdk-path)/usr/share/man" \
+  --platform-source "xcode-sdk://macosx-<version>/usr/share/man"
+```
+
+Run the same command with `--platform linux` or `--platform freebsd` and the
+corresponding manual root to update those layers without discarding the other
+two. Regenerate the deterministic injected-failure cases and validate the
 complete contract:
 
 ```bash
 ./generate-wrapper-unit-tests.py --clang clang
+./test-wrapper-errno-contract.py
 ./check-wrapper-unit-tests.py
 ```
 
-The generator assigns wrappers without an injectable failure boundary to an
-existing behavior test or the owning library's handwritten
-`test/test_behavior.c`. The check requires every public manifest API to be
-invoked by exactly one compiled test source; `test.sh` is the runtime receipt.
-The instrumentation audit independently compares public Clang definitions
-against those manifests, so adding a wrapper without adding its test row fails
-the stack gate.
+For each fault-capable wrapper, the generator injects every error in the active
+platform's effective set and verifies that the exact code reaches
+`p101_error`. An interface with no documented errno still receives one `EIO`
+injection smoke case; that case is labeled by the empty manual set rather than
+misrepresented as a documented failure. Wrappers without an injectable failure
+boundary are assigned to an existing behavior test or the owning library's
+handwritten `test/test_behavior.c`. The check requires every public manifest
+API to be invoked by exactly one compiled test source, validates all 1,099 JSON
+bindings, requires all three platform records, and compares every generated
+error array with the catalogue. `test.sh` is the runtime receipt.
 
 The executable 10x contract replays every library test suite with call and
 resource logging enabled:

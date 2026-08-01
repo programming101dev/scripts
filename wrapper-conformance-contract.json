@@ -11,6 +11,7 @@
     "results_required": []
   },
   "lifecycle_contract": "wrapper-lifecycle-contract.json",
+  "errno_contract": "wrapper-errno-contract.json",
   "blind_spots": [
     "Third-party and direct libc calls do not emit p101 events.",
     "Argument and result text is required only for wrappers explicitly listed by this contract.",

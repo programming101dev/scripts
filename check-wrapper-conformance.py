@@ -19,11 +19,18 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
+from wrapper_errno_contract import (
+    current_platform_key,
+    injected_error_cases,
+    load_contract,
+)
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 WORKSPACE = SCRIPT_DIR.parent
 CONTRACT_PATH = SCRIPT_DIR / "wrapper-conformance-contract.json"
 INSTRUMENTATION_PATH = SCRIPT_DIR / "instrumentation-contract.json"
+ERRNO_CONTRACT_PATH = SCRIPT_DIR / "wrapper-errno-contract.json"
 
 
 def rows(path: Path) -> list[dict[str, str]]:
@@ -110,6 +117,8 @@ def main() -> int:
     args = parser.parse_args()
 
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+    errno_contract = load_contract(ERRNO_CONTRACT_PATH)
+    platform_key = current_platform_key()
     if contract.get("schema") != "p101-wrapper-conformance-contract-v1":
         print("FAIL: unsupported wrapper conformance contract")
         return 2
@@ -160,6 +169,22 @@ def main() -> int:
             row["function"]: row["test_kind"]
             for row in rows(repo / "test" / "unit-test-manifest.tsv")
         }
+        errno_case_count = 0
+        errno_cases_by_wrapper: dict[str, int] = {}
+        for name, kind in tests.items():
+            if kind != "fault":
+                continue
+            binding = errno_contract["wrappers"][name]
+            function = binding.get("function")
+            wrapper_case_count = len(
+                injected_error_cases(
+                    errno_contract,
+                    function,
+                    platform_key,
+                )
+            )
+            errno_cases_by_wrapper[name] = wrapper_case_count
+            errno_case_count += wrapper_case_count
         call_log = args.output / f"{library}.calls.log"
         resource_log = args.output / f"{library}.resources.log"
         normalized = args.output / f"{library}.calls.tsv"
@@ -211,6 +236,15 @@ def main() -> int:
         missing_failure = sorted(
             name for name in api if tests.get(name) == "fault" and enters[name] == 0
         )
+        insufficient_errno_cases = sorted(
+            (
+                name,
+                errno_cases_by_wrapper[name],
+                enters[name],
+            )
+            for name in errno_cases_by_wrapper
+            if enters[name] < errno_cases_by_wrapper[name]
+        )
         missing_arguments = sorted((api & required_arguments) - arguments)
         missing_results = sorted((api & required_results) - results)
         for name in missing_calls:
@@ -221,6 +255,11 @@ def main() -> int:
             )
         for name in missing_failure:
             failures.append(f"{library}:{name}: fault test emitted no call")
+        for name, expected_count, actual_count in insufficient_errno_cases:
+            failures.append(
+                f"{library}:{name}: fault test emitted {actual_count} call(s), "
+                f"expected at least {expected_count} errno cases"
+            )
         for name in missing_arguments:
             failures.append(f"{library}:{name}: required arguments were not logged")
         for name in missing_results:
@@ -233,12 +272,14 @@ def main() -> int:
                 "invoked": len(trace_api - set(missing_calls)),
                 "balanced": len(trace_api - set(unbalanced)),
                 "fault_tests": sum(kind == "fault" for kind in tests.values()),
+                "errno_cases": errno_case_count,
                 "arguments_logged": len(api & arguments),
                 "results_logged": len(api & results),
                 "passed": not (
                     missing_calls
                     or unbalanced
                     or missing_failure
+                    or insufficient_errno_cases
                     or missing_arguments
                     or missing_results
                 ),
@@ -248,8 +289,10 @@ def main() -> int:
     receipt = {
         "schema": "p101-wrapper-conformance-receipt-v1",
         "contract": str(CONTRACT_PATH),
+        "errno_contract": str(ERRNO_CONTRACT_PATH),
         "libraries": receipts,
         "public_apis": sum(int(item["apis"]) for item in receipts),
+        "errno_cases": sum(int(item["errno_cases"]) for item in receipts),
         "failures": failures,
         "passed": not failures,
     }
@@ -258,7 +301,7 @@ def main() -> int:
     )
     print(
         f"wrapper conformance: {receipt['public_apis']} APIs, "
-        f"{len(receipts)} libraries"
+        f"{receipt['errno_cases']} errno cases, {len(receipts)} libraries"
     )
     if failures:
         for failure in failures:
