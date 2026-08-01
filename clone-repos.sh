@@ -3,12 +3,44 @@ set -euo pipefail
 
 # --help / -h -> description, exit 0 (P101 uniform CLI help)
 case " $* " in
-  *" --help "*|*" -h "*)
-    cat <<'P101_USAGE'
-clone-repos.sh — takes no command-line options; run with no arguments.
+    *" --help "*|*" -h "*)
+        cat <<'P101_USAGE'
+Usage: clone-repos.sh [--interactive]
+
+Clone missing repositories and refresh existing repositories from their
+configured upstreams.
+
+  -i, --interactive
+      Pause after a repository-refresh failure. Resolve the repository in
+      another terminal, then press Enter to retry that repository. Enter q to
+      abort. Local changes are never discarded or stashed automatically.
 P101_USAGE
-    exit 0 ;;
+        exit 0
+        ;;
 esac
+
+interactive=false
+refresh_aborted=false
+while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+        -i|--interactive)
+            interactive=true
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            printf 'Error: unknown option: %s\n' "$1" >&2
+            exit 2
+            ;;
+    esac
+done
+if [[ "$#" -ne 0 ]]; then
+    printf 'Error: unexpected arguments.\n' >&2
+    exit 2
+fi
 
 # Always operate from the directory this script lives in (repos.txt lives
 # here, and the relative dest paths in it are relative to this directory).
@@ -52,6 +84,40 @@ trim_whitespace() {
     value="${value%"${value##*[![:space:]]}"}"
 
     printf '%s' "${value}"
+}
+
+refresh_repository() {
+    local target_dir="$1"
+    local refresh_status
+    local answer
+
+    while true; do
+        refresh_status=0
+        "${REFRESH_REPO_SH}" "${target_dir}" || refresh_status=$?
+        if [[ "${refresh_status}" -eq 0 || "${refresh_status}" -eq 1 ]]; then
+            return 0
+        fi
+        if ! ${interactive}; then
+            return "${refresh_status}"
+        fi
+
+        printf '\nFAILED: refresh %s (exit %d).\n' \
+            "${target_dir}" "${refresh_status}" >&2
+        printf 'Resolve the repository, then press Enter to retry it; enter q to abort: ' >&2
+        if ! IFS= read -r answer; then
+            printf '\nInteractive input closed; aborting.\n' >&2
+            refresh_aborted=true
+            return "${refresh_status}"
+        fi
+        case "${answer}" in
+            q|Q|quit|QUIT)
+                printf 'Aborting at repository refresh: %s\n' "${target_dir}" >&2
+                refresh_aborted=true
+                return "${refresh_status}"
+                ;;
+        esac
+        printf 'Retrying repository refresh: %s\n\n' "${target_dir}" >&2
+    done
 }
 
 if [[ ! -f "${REPOS_FILE}" ]]; then
@@ -145,8 +211,11 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         else
             echo "  -> Refreshing configured upstream..."
             refresh_status=0
-            "${REFRESH_REPO_SH}" "${target_dir}" || refresh_status=$?
-            if [[ "${refresh_status}" -ne 0 && "${refresh_status}" -ne 1 ]]; then
+            refresh_repository "${target_dir}" || refresh_status=$?
+            if [[ "${refresh_status}" -ne 0 ]]; then
+                if ${refresh_aborted}; then
+                    exit "${refresh_status}"
+                fi
                 echo "  ! Repository refresh failed (exit ${refresh_status})."
                 echo "  ! Resolve manually in ${target_dir}."
                 failures=$((failures + 1))

@@ -97,6 +97,35 @@ P101_GIT_RETRY_ATTEMPTS=1 ./refresh-repo.sh "$consumer" \
 [[ "$(git -C "$consumer" rev-parse HEAD)" == "$consumer_head" ]]
 grep -Fq 'cannot fast-forward' "$sandbox/diverged.err"
 
+# Interactive orchestration retries the repository that failed instead of
+# aborting the whole update. Use a deterministic fake refresh helper here:
+# the first call fails, and the second succeeds after the operator presses
+# Enter. The clone driver must not mutate or stash the repository itself.
+mkdir "$sandbox/interactive-driver"
+cp ./clone-repos.sh "$sandbox/interactive-driver/"
+chmod +x "$sandbox/interactive-driver/clone-repos.sh"
+printf '%s|%s|c\n' "$remote" "$consumer" \
+    > "$sandbox/interactive-driver/repos.txt"
+cat > "$sandbox/interactive-driver/refresh-repo.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'refresh\n' >> "$P101_TEST_REFRESH_INVOCATIONS"
+if [[ -f "$P101_TEST_REFRESH_FAIL_ONCE" ]]; then
+    rm -f "$P101_TEST_REFRESH_FAIL_ONCE"
+    exit 3
+fi
+exit 0
+EOF
+chmod +x "$sandbox/interactive-driver/refresh-repo.sh"
+export P101_TEST_REFRESH_INVOCATIONS="$sandbox/interactive-refresh.txt"
+export P101_TEST_REFRESH_FAIL_ONCE="$sandbox/interactive-fail-once"
+touch "$P101_TEST_REFRESH_FAIL_ONCE"
+printf '\n' | "$sandbox/interactive-driver/clone-repos.sh" --interactive \
+    > "$sandbox/interactive.out" 2> "$sandbox/interactive.err"
+[[ "$(wc -l < "$P101_TEST_REFRESH_INVOCATIONS")" -eq 2 ]]
+grep -Fq 'FAILED: refresh' "$sandbox/interactive.err"
+grep -Fq 'Retrying repository refresh' "$sandbox/interactive.err"
+
 mkdir "$sandbox/snapshot"
 printf 'gitdir: /definitely/missing/p101-refresh-test\n' > "$sandbox/snapshot/.git"
 ./refresh-repo.sh --allow-snapshot "$sandbox/snapshot" > "$sandbox/snapshot.out"

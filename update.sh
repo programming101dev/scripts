@@ -435,8 +435,14 @@ run_or_echo "$CHECK_ENV_SH" \
   -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH" \
   -s "$sanitizers"
 
-# Clone or update repos listed in repos.txt
-run_or_echo "$CLONE_REPOS_SH"
+# Clone or update repos listed in repos.txt. Interactive mode applies to this
+# phase too: local edits or branch divergence must be resolved by the user, but
+# the update can then retry the same repository and continue the matrix.
+if $interactive; then
+  run_or_echo "$CLONE_REPOS_SH" --interactive
+else
+  run_or_echo "$CLONE_REPOS_SH"
+fi
 
 # ----------------- flags cache management -----------------
 update=false
