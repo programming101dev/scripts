@@ -91,6 +91,9 @@ jobs:
       - name: Check in FreeBSD VM
         uses: vmactions/freebsd-vm@v1
         with:
+          usesh: true
+          sync: rsync
+          copyback: true
           prepare: |
             pkg install -y bash git cmake llvm cppcheck python3 libxcrypt
             gcovr_pkg="$(pkg search -q -x '^py[0-9]+-gcovr$' | head -n 1 || true)"
@@ -102,12 +105,33 @@ jobs:
           run: |
             cd scripts
             export P101_QUIET=1
-            ./clone-repos.sh
-            ./check-compilers.sh
-            printf 'clang\n' > ci_c_compilers.txt
-            printf 'clang++\n' > ci_cxx_compilers.txt
-            ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt
-            bash ./check-after-update-all.sh -c clang -x clang++ -o ci-output
+            status=0
+            mkdir -p ci-output
+            ./clone-repos.sh || status=$?
+            if [ "$status" -eq 0 ]; then
+              ./check-compilers.sh || status=$?
+            fi
+            if [ "$status" -eq 0 ]; then
+              printf 'clang\n' > ci_c_compilers.txt
+              printf 'clang++\n' > ci_cxx_compilers.txt
+              ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt || status=$?
+            fi
+            if [ "$status" -eq 0 ]; then
+              bash ./check-after-update-all.sh -c clang -x clang++ -o ci-output || status=$?
+            fi
+            printf '%s\n' "$status" > ci-output/freebsd-exit-code
+            exit 0
+      - name: Enforce FreeBSD result
+        run: |
+          if [ ! -f scripts/ci-output/freebsd-exit-code ]; then
+            echo "FreeBSD VM did not return an exit-status receipt." >&2
+            exit 2
+          fi
+          status="$(cat scripts/ci-output/freebsd-exit-code)"
+          if [ "$status" -ne 0 ]; then
+            echo "FreeBSD checks failed with exit $status; see the preceding log tail and uploaded evidence." >&2
+          fi
+          exit "$status"
       - name: Publish CI evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

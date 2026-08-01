@@ -127,6 +127,7 @@ EOF
 printf 'p101 library audit output: %s\n' "$out_dir"
 failed=0
 found=0
+failure_logs=()
 
 while IFS='|' read -r _url relative_path language; do
   [ -n "${relative_path:-}" ] || continue
@@ -163,20 +164,30 @@ while IFS='|' read -r _url relative_path language; do
 
   if ! "$wrapper_audit" "${wrapper_args[@]}" "${paths[@]}" > "$repo_out/wrapper-audit.txt" 2>&1; then
     wrapper_status="FAIL"
+    failure_logs+=("$name wrapper boundary|$repo_out/wrapper-audit.txt")
     failed=1
   fi
 
   if ! (CDPATH='' cd "$repo" && "$error_contract" -j -i "$repo_out/source-facts.tsv" src include) > "$repo_out/error-contract.json" 2> "$repo_out/error-contract.stderr.txt"; then
     error_status="FAIL"
+    failure_logs+=("$name error contract|$repo_out/error-contract.json")
+    if [ -s "$repo_out/error-contract.stderr.txt" ]; then
+      failure_logs+=("$name error contract stderr|$repo_out/error-contract.stderr.txt")
+    fi
     failed=1
   fi
 
   if ! (CDPATH='' cd "$repo" && "$module_map" -L -i "$repo_out/source-facts.tsv" -o "$repo_out/module-map.md" src include) > "$repo_out/module-map.stdout.txt" 2> "$repo_out/module-map.stderr.txt"; then
     module_status="FAIL"
+    failure_logs+=("$name module structure|$repo_out/module-map.md")
+    if [ -s "$repo_out/module-map.stderr.txt" ]; then
+      failure_logs+=("$name module structure stderr|$repo_out/module-map.stderr.txt")
+    fi
     failed=1
   fi
   if ! (CDPATH='' cd "$repo" && "$module_map" -j -L -i "$repo_out/source-facts.tsv" -o "$repo_out/module-map.json" src include) >> "$repo_out/module-map.stdout.txt" 2>> "$repo_out/module-map.stderr.txt"; then
     module_status="FAIL"
+    failure_logs+=("$name module structure JSON|$repo_out/module-map.json")
     failed=1
   fi
 
@@ -190,6 +201,17 @@ if [ "$found" -eq 0 ]; then
 fi
 
 if [ "$failed" -ne 0 ]; then
+  printf '\nFailure details (last 80 lines per artifact):\n'
+  for failure_entry in "${failure_logs[@]}"; do
+    failure_label="${failure_entry%%|*}"
+    failure_log="${failure_entry#*|}"
+    printf '%s\n' "--- $failure_label: $failure_log ---"
+    if [ -f "$failure_log" ]; then
+      tail -n 80 "$failure_log"
+    else
+      printf 'missing failure artifact\n'
+    fi
+  done
   printf 'p101 library audit failed: %s\n' "$out_dir"
   printf 'Summary: %s\n' "$summary"
   exit 1

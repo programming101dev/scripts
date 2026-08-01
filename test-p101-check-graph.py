@@ -9,6 +9,8 @@ import json
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -98,6 +100,30 @@ class CheckGraphTests(unittest.TestCase):
             self.assertEqual(receipt["schema"], "p101-tool-run-receipt-v1")
             self.assertEqual(receipt["records"][0]["attempts"], 2)
             self.assertEqual(receipt["records"][0]["outcome"], "clean")
+
+    def test_noninteractive_failure_prints_bounded_log_tail(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            code = "print('actionable finding'); raise SystemExit(9)"
+            document = {
+                "schema": "p101-check-graph-v1",
+                "does_not_prove": "test receipt only",
+            }
+            nodes = [
+                {
+                    "id": "failure",
+                    "title": "failure",
+                    "required": True,
+                    "command": [sys.executable, "-c", code],
+                    "guarantee": "failure evidence is visible",
+                }
+            ]
+            console = StringIO()
+            with redirect_stdout(console):
+                status = MODULE.run_graph(document, nodes, output, {}, False)
+            self.assertEqual(status, 1)
+            self.assertIn("--- log tail ---", console.getvalue())
+            self.assertIn("actionable finding", console.getvalue())
 
 
 if __name__ == "__main__":
