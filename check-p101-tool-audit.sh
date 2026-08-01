@@ -98,6 +98,28 @@ find_built_tool() {
   command -v "$name" 2>/dev/null
 }
 
+find_compile_database() {
+  repo="$1"
+  marker="$repo/.last-runtime-build-dir"
+  if [ ! -f "$marker" ]; then
+    marker="$repo/.last-build-dir"
+  fi
+  if [ -f "$marker" ]; then
+    build_dir="$(cat "$marker")"
+    if [ -f "$repo/$build_dir/compile_commands.json" ]; then
+      printf '%s\n' "$repo/$build_dir/compile_commands.json"
+      return 0
+    fi
+  fi
+  for candidate in "$repo"/build-clang/compile_commands.json "$repo"/build/compile_commands.json "$repo"/build-*/compile_commands.json; do
+    if [ -f "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
 error_contract="$(find_built_tool "$programs_dir/p101-error-contract" p101-error-contract || true)"
 module_map="$(find_built_tool "$programs_dir/p101-module-map" p101-module-map || true)"
 
@@ -245,12 +267,21 @@ if [ "$skip_wrapper" -eq 0 ]; then
       facts="$out_dir/${name}-source-facts.tsv"
       inputs="$out_dir/${name}-source-inputs.json"
       allow_file="$tool_dir/.p101-wrapper-audit-allow"
+      compile_db="$(find_compile_database "$tool_dir" || true)"
       paths=()
       while IFS= read -r path; do
         paths+=("$path")
       done < <(tool_paths "$tool_dir")
 
-      wrapper_args=(-e --facts-output "$facts" --input-manifest "$inputs")
+      if [ -z "$compile_db" ]; then
+        say "==> strict wrapper audit: $name"
+        say "    FAIL (no compile database; build $tool_dir first)"
+        printf '| FAIL | strict wrapper audit: %s | no compile database |\n' "$name" >> "$summary"
+        failed=1
+        continue
+      fi
+
+      wrapper_args=(-e --compile-db "$compile_db" --compile-db-only --facts-output "$facts" --input-manifest "$inputs")
       if [ -f "$allow_file" ]; then
         wrapper_args+=(--allow-file "$allow_file")
       fi

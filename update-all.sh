@@ -142,9 +142,12 @@ esac
 
 # Pull the scripts repo ONCE up front so a self-update aborts cleanly here,
 # not partway through the compiler loop. Some CI runners copy the checked-out
-# files into a VM without the .git entry; that snapshot is still a valid input,
-# but it cannot self-update.
-if [ -e .git ]; then
+# files into a VM with missing or unusable .git metadata; that snapshot is still
+# a valid input, but it cannot self-update. Require Git itself to resolve this
+# directory as the repository root instead of trusting the presence of .git.
+scripts_root=$(pwd -P)
+git_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [ -n "$git_root" ] && [ "$(CDPATH='' cd -- "$git_root" && pwd -P)" = "$scripts_root" ]; then
   pull_rc=0
   ./pull.sh || pull_rc=$?
   if [ "$pull_rc" -eq 1 ]; then
@@ -155,7 +158,7 @@ if [ -e .git ]; then
     exit "$pull_rc"
   fi
 else
-  printf 'scripts is a source snapshot without Git metadata; skipping self-update.\n'
+  printf 'scripts is a source snapshot without usable Git metadata; skipping self-update.\n'
 fi
 
 # Derive the C++ compiler NAME that corresponds to a C compiler name.

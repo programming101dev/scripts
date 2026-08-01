@@ -75,13 +75,17 @@ EOF
 chmod +x "$sandbox/matrix/driver.sh"
 printf 'clang\n' > "$sandbox/matrix/c.txt"
 printf 'clang++\n' > "$sandbox/matrix/cxx.txt"
+# FreeBSD VM actions may copy the checkout's .git file while leaving its
+# referenced Git directory behind. Ensure that unusable metadata is treated as
+# a source snapshot rather than as a repository that can self-update.
+printf 'gitdir: /definitely/missing/p101-scripts-git-dir\n' > "$sandbox/matrix/.git"
 (
   cd "$sandbox/matrix"
   ./update-all.sh -u ./driver.sh -C c.txt -X cxx.txt \
     -f clang-format -t clang-tidy -k cppcheck -s address \
     --interactive --skip-install > update-all.stdout
 )
-grep -Fq 'source snapshot without Git metadata; skipping self-update' \
+grep -Fq 'source snapshot without usable Git metadata; skipping self-update' \
   "$sandbox/matrix/update-all.stdout"
 grep -Fxq -- '--interactive' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--skip-install' "$sandbox/matrix/driver-arguments.txt"
