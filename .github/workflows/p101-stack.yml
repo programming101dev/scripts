@@ -28,7 +28,7 @@ jobs:
       - name: Install tools
         run: |
           brew untap aws/tap || true
-          brew install cmake cppcheck llvm gcovr
+          brew install cmake cppcheck llvm gcovr shellcheck
           echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
       - name: Clone p101 repos
         run: cd scripts && ./clone-repos.sh
@@ -45,7 +45,7 @@ jobs:
         run: cd scripts && P101_QUIET=1 ./check-after-update-all.sh -c clang -x clang++ -o ci-output
       - name: Publish CI evidence
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: instrumentation-macos
           path: scripts/ci-output
@@ -59,7 +59,7 @@ jobs:
         with:
           path: scripts
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y cmake clang clang-tidy clang-format libclang-dev cppcheck gcovr libgdbm-dev libgdbm-compat-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake clang clang-tidy clang-format libclang-dev cppcheck gcovr libgdbm-dev libgdbm-compat-dev shellcheck
       - name: Clone p101 repos
         run: cd scripts && ./clone-repos.sh
       - name: Detect compilers
@@ -75,7 +75,7 @@ jobs:
         run: cd scripts && P101_QUIET=1 ./check-after-update-all.sh -c clang -x clang++ -o ci-output
       - name: Publish CI evidence
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: instrumentation-linux
           path: scripts/ci-output
@@ -134,7 +134,7 @@ jobs:
           exit "$status"
       - name: Publish CI evidence
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: instrumentation-freebsd
           path: scripts/ci-output

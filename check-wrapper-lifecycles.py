@@ -88,7 +88,7 @@ def configure_driver(output: Path, cc: str) -> Path:
     ]
     run_logged(command, output / "configure.log", "configure")
     run_logged(
-        ["cmake", "--build", str(build), "--parallel"],
+        ["cmake", "--build", str(build), "--parallel", "2"],
         output / "build.log",
         "build",
     )
