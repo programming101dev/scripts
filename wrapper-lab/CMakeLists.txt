@@ -7,6 +7,8 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 set(P101_PUBLIC_INCLUDE_DIRS "" CACHE STRING "p101 include directories")
 set(P101_PUBLIC_LINK_DIRS "" CACHE STRING "p101 library directories")
+set(P101_SANITIZER_LINK_FLAGS "" CACHE STRING
+        "Sanitizer flags required by the linked p101 libraries")
 separate_arguments(P101_PUBLIC_INCLUDE_DIRS_LIST NATIVE_COMMAND "${P101_PUBLIC_INCLUDE_DIRS}")
 separate_arguments(P101_PUBLIC_LINK_DIRS_LIST NATIVE_COMMAND "${P101_PUBLIC_LINK_DIRS}")
 
@@ -54,6 +56,10 @@ endif()
 target_link_libraries(p101-wrapper-lifecycle-driver PRIVATE
         ${P101_RESOLVED_LIBRARIES}
         pthread)
+if(P101_SANITIZER_LINK_FLAGS)
+    target_link_options(p101-wrapper-lifecycle-driver PRIVATE
+            ${P101_SANITIZER_LINK_FLAGS})
+endif()
 if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(p101-wrapper-lifecycle-driver PRIVATE
             -Wall -Wextra -Werror -pedantic-errors)

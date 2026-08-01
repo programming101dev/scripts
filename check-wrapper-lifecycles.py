@@ -42,6 +42,23 @@ def p101_paths() -> tuple[list[Path], list[Path]]:
     return includes, links
 
 
+def sanitizer_link_flags(link_directories: list[Path]) -> list[str]:
+    """Return the sanitizer runtimes required by the libraries under test."""
+    flags: list[str] = []
+    for directory in link_directories:
+        cache = directory / "CMakeCache.txt"
+        if not cache.is_file():
+            continue
+        for line in cache.read_text(encoding="utf-8", errors="replace").splitlines():
+            if not line.startswith("DETECTED_SANITIZERS:STRING="):
+                continue
+            for flag in line.partition("=")[2].split(";"):
+                if flag and flag not in flags:
+                    flags.append(flag)
+            break
+    return flags
+
+
 def find_program(repo: Path, name: str) -> Path:
     build = built_directory(repo)
     if build is not None:
@@ -75,6 +92,7 @@ def run_logged(command: list[str], log_path: Path, phase: str) -> None:
 
 def configure_driver(output: Path, cc: str) -> Path:
     includes, links = p101_paths()
+    sanitizer_flags = sanitizer_link_flags(links)
     build = output / "build"
     command = [
         "cmake",
@@ -85,6 +103,7 @@ def configure_driver(output: Path, cc: str) -> Path:
         f"-DCMAKE_C_COMPILER={cc}",
         f"-DP101_PUBLIC_INCLUDE_DIRS={' '.join(map(str, includes))}",
         f"-DP101_PUBLIC_LINK_DIRS={' '.join(map(str, links))}",
+        f"-DP101_SANITIZER_LINK_FLAGS={';'.join(sanitizer_flags)}",
     ]
     run_logged(command, output / "configure.log", "configure")
     run_logged(
