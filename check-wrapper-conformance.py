@@ -18,6 +18,7 @@ import subprocess
 import tempfile
 from collections import Counter
 from pathlib import Path
+from typing import cast
 
 from wrapper_errno_contract import (
     current_platform_key,
@@ -31,6 +32,7 @@ WORKSPACE = SCRIPT_DIR.parent
 CONTRACT_PATH = SCRIPT_DIR / "wrapper-conformance-contract.json"
 INSTRUMENTATION_PATH = SCRIPT_DIR / "instrumentation-contract.json"
 ERRNO_CONTRACT_PATH = SCRIPT_DIR / "wrapper-errno-contract.json"
+FAILURE_EXCERPT_LINES = 80
 
 
 def rows(path: Path) -> list[dict[str, str]]:
@@ -103,6 +105,14 @@ def call_evidence(path: Path) -> tuple[Counter[str], Counter[str], set[str], set
     return enters, exits, arguments, results
 
 
+def failure_excerpt(output: str) -> list[str]:
+    """Return a bounded, useful tail without discarding individual failures."""
+    lines = output.rstrip().splitlines()
+    if not lines:
+        return ["(test.sh produced no output)"]
+    return lines[-FAILURE_EXCERPT_LINES:]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run per-wrapper runtime conformance checks."
@@ -159,6 +169,7 @@ def main() -> int:
         (row["library"], row["function"]): row for row in capability_rows
     }
     failures: list[str] = []
+    failure_details: list[dict[str, object]] = []
     receipts: list[dict[str, object]] = []
     required_arguments = set(contract["logging"]["arguments_required"])
     required_results = set(contract["logging"]["results_required"])
@@ -213,6 +224,15 @@ def main() -> int:
         )
         if result.returncode != 0:
             failures.append(f"{library}: test.sh failed")
+            failure_details.append(
+                {
+                    "library": library,
+                    "phase": "test.sh",
+                    "exit_status": result.returncode,
+                    "log": str(args.output / f"{library}.test.log"),
+                    "excerpt": failure_excerpt(result.stdout),
+                }
+            )
             continue
         if not call_log.is_file():
             failures.append(f"{library}: tests emitted no call log")
@@ -294,6 +314,7 @@ def main() -> int:
         "public_apis": sum(int(item["apis"]) for item in receipts),
         "errno_cases": sum(int(item["errno_cases"]) for item in receipts),
         "failures": failures,
+        "failure_details": failure_details,
         "passed": not failures,
     }
     (args.output / "receipt.json").write_text(
@@ -306,6 +327,15 @@ def main() -> int:
     if failures:
         for failure in failures:
             print(f"FAIL: {failure}")
+        for detail in failure_details:
+            excerpt = cast(list[str], detail["excerpt"])
+            print(
+                f"\n--- {detail['library']} {detail['phase']} "
+                f"(exit {detail['exit_status']}; last {len(excerpt)} line(s)) ---"
+            )
+            for line in excerpt:
+                print(f"| {line}")
+            print(f"Full log: {detail['log']}")
         return 1
     print(f"wrapper conformance passed: {args.output / 'receipt.json'}")
     return 0

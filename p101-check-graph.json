@@ -35,6 +35,7 @@
       "wrapper-unit-tests",
       "library-audit",
       "instrumentation",
+      "wrapper-conformance-output-tests",
       "wrapper-conformance",
       "wrapper-lifecycles",
       "workspace-api",
@@ -355,12 +356,22 @@
       "guarantee": "Applicable wrappers declare tracing, fault, and lifecycle instrumentation."
     },
     {
+      "id": "wrapper-conformance-output-tests",
+      "title": "p101 wrapper conformance diagnostic tests",
+      "group": "library-audit",
+      "required": true,
+      "command": ["./test-wrapper-conformance-output.py"],
+      "depends_on": ["instrumentation"],
+      "resources": {"writes": [], "units": {}},
+      "guarantee": "Wrapper test failures retain a bounded diagnostic excerpt and explicit no-output evidence."
+    },
+    {
       "id": "wrapper-conformance",
       "title": "p101 executable wrapper conformance",
       "group": "library-audit",
       "required": true,
       "command": ["./check-wrapper-conformance.py", "-o", "{out}/wrapper-conformance"],
-      "depends_on": ["instrumentation"],
+      "depends_on": ["wrapper-conformance-output-tests"],
       "resources": {"writes": ["{out}/wrapper-conformance"], "units": {"compiler": 1}},
       "guarantee": "Generated wrapper controls exercise the declared success and failure contract."
     },
