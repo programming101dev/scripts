@@ -8,16 +8,15 @@
 #   4. module-map design notes for C p101 tools.
 #
 # Wrapper-audit findings are hard failures because direct/unmapped calls make
-# the observer/reporting tools silently under-report. Module-map notes are
-# teaching-design hints by default; use --fail-module-notes when doing a strict
-# cleanup ratchet.
+# the observer/reporting tools silently under-report. Module-map notes are hard
+# failures by default; --allow-module-notes is an explicit exploratory opt-out.
 
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 programs_dir="../programs"
 out_dir=""
-fail_module_notes=0
+fail_module_notes=1
 skip_contracts=0
 skip_wrapper=0
 skip_error_contract=0
@@ -34,7 +33,7 @@ build/update scripts first.
 Options:
   -p <dir>              Programs directory. Default: ../programs
   -o <dir>              Artifact directory. Default: /tmp/p101-tool-audit-<pid>
-  --fail-module-notes   Treat p101-module-map design notes as failures.
+  --allow-module-notes  Report p101-module-map design notes without failing.
   --skip-contracts      Skip README/tool-contract checks.
   --skip-wrapper        Skip strict p101-wrapper-audit checks.
   --skip-error-contract Skip p101-error-contract checks.
@@ -48,7 +47,7 @@ while [ "$#" -gt 0 ]; do
     -h|--help) usage; exit 0 ;;
     -p) programs_dir="${2:?}"; shift 2 ;;
     -o) out_dir="${2:?}"; shift 2 ;;
-    --fail-module-notes) fail_module_notes=1; shift ;;
+    --allow-module-notes) fail_module_notes=0; shift ;;
     --skip-contracts) skip_contracts=1; shift ;;
     --skip-wrapper) skip_wrapper=1; shift ;;
     --skip-error-contract) skip_error_contract=1; shift ;;
@@ -146,6 +145,9 @@ run_logged() {
     printf '| PASS | %s | [log](./logs/%s) |\n' "$title" "$(basename "$log")" >> "$summary"
   else
     say "    FAIL (see $log)"
+    say "    --- log tail ---"
+    tail -n 80 "$log" | sed 's/^/    | /'
+    say "    --- end log tail ---"
     printf '| FAIL | %s | [log](./logs/%s) |\n' "$title" "$(basename "$log")" >> "$summary"
     return 1
   fi
@@ -181,6 +183,9 @@ run_module_logged() {
       ;;
     *)
       say "    FAIL (exit $command_rc; see $log)"
+      say "    --- log tail ---"
+      tail -n 80 "$log" | sed 's/^/    | /'
+      say "    --- end log tail ---"
       printf '| FAIL | %s | [log](./logs/%s) |\n' "$title" "$(basename "$log")" >> "$summary"
       ;;
   esac

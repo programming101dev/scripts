@@ -116,7 +116,7 @@ current_version="./version.txt"
 # to signal "re-run so the new scripts are used" — handle that explicitly
 # instead of dying with a generic set -e failure.
 pull_rc=0
-./pull.sh || pull_rc=$?
+./pull.sh --allow-snapshot || pull_rc=$?
 if [ "$pull_rc" -eq 1 ]; then
   echo "The scripts repository was just updated. Please re-run: $0 $*" >&2
   exit 1

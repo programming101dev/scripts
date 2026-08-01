@@ -319,10 +319,10 @@ wrapper-audit checks over the C tools, and module-map design reports — run:
 ./p101 tool-audit
 ```
 
-By default, module-map design notes are reported but do not fail the audit. Use
-`--fail-module-notes` when intentionally ratcheting the p101 tools toward the
-current module-splitting rules. Each C tool is parsed once; module-map reuses
-the recorded P101FACT v2 snapshot, and a checked-in
+By default, module-map design notes fail the audit. Use
+`--allow-module-notes` only for an exploratory report that should not enforce
+the current module-splitting rules. Each C tool is parsed once; module-map
+reuses the recorded P101FACT v2 snapshot, and a checked-in
 `.p101-wrapper-audit-allow` file is treated as a scoped, stale-checked boundary
 ledger.
 

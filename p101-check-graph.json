@@ -276,7 +276,7 @@
       "title": "p101 tool source/module audit",
       "group": "tool-audit",
       "required": true,
-      "command": ["./check-p101-tool-audit.sh", "--skip-contracts", "--fail-module-notes", "-o", "{out}/tool-audit"],
+      "command": ["./check-p101-tool-audit.sh", "--skip-contracts", "-o", "{out}/tool-audit"],
       "depends_on": ["tool-contracts", "source-responsibilities"],
       "resources": {"writes": ["{out}/tool-audit"], "units": {"compiler": 1}},
       "guarantee": "Tool wrapper usage, module boundaries, error handling, and portability checks pass."

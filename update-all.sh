@@ -141,24 +141,16 @@ case "$driver" in
 esac
 
 # Pull the scripts repo ONCE up front so a self-update aborts cleanly here,
-# not partway through the compiler loop. Some CI runners copy the checked-out
-# files into a VM with missing or unusable .git metadata; that snapshot is still
-# a valid input, but it cannot self-update. Require Git itself to resolve this
-# directory as the repository root instead of trusting the presence of .git.
-scripts_root=$(pwd -P)
-git_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
-if [ -n "$git_root" ] && [ "$(CDPATH='' cd -- "$git_root" && pwd -P)" = "$scripts_root" ]; then
-  pull_rc=0
-  ./pull.sh || pull_rc=$?
-  if [ "$pull_rc" -eq 1 ]; then
-    printf 'The scripts repository was just updated. Please re-run: %s\n' "$0" >&2
-    exit 1
-  elif [ "$pull_rc" -ne 0 ]; then
-    printf 'Error: pull.sh failed (exit %d).\n' "$pull_rc" >&2
-    exit "$pull_rc"
-  fi
-else
-  printf 'scripts is a source snapshot without usable Git metadata; skipping self-update.\n'
+# not partway through the compiler loop. A CI VM source snapshot is also a
+# valid build input even though it cannot self-update.
+pull_rc=0
+./pull.sh --allow-snapshot || pull_rc=$?
+if [ "$pull_rc" -eq 1 ]; then
+  printf 'The scripts repository was just updated. Please re-run: %s\n' "$0" >&2
+  exit 1
+elif [ "$pull_rc" -ne 0 ]; then
+  printf 'Error: pull.sh failed (exit %d).\n' "$pull_rc" >&2
+  exit "$pull_rc"
 fi
 
 # Derive the C++ compiler NAME that corresponds to a C compiler name.
@@ -227,7 +219,8 @@ while read -r c <&3 || [ -n "$c" ]; do
 
   printf 'Updating repositories with: %s : %s\n' "$c" "$x"
   set -- "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" \
-    -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+    -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" \
+    --skip-self-update
   if [ "$skip_install" -eq 1 ]; then
     set -- "$@" --skip-install
   fi

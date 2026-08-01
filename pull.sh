@@ -1,22 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# --help / -h -> description, exit 0 (P101 uniform CLI help)
-case " $* " in
-  *" --help "*|*" -h "*)
+allow_snapshot=false
+case "${1:-}" in
+  -h|--help)
     cat <<'P101_USAGE'
-pull.sh — takes no command-line options; run with no arguments.
+Usage: pull.sh [--allow-snapshot]
+
+Fetch and fast-forward the repository containing this script.
+  --allow-snapshot  succeed without fetching when usable Git metadata was not
+                    copied with the source tree
 P101_USAGE
-    exit 0 ;;
+    exit 0
+    ;;
+  --allow-snapshot)
+    allow_snapshot=true
+    shift
+    ;;
 esac
+[[ "$#" -eq 0 ]] || { printf 'Error: unknown option: %s\n' "$1" >&2; exit 2; }
 
 # Always operate on the repo this script lives in, regardless of cwd.
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 dir_name=${PWD##*/}
 
-# Ensure we're in a git repo
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+# Ensure Git resolves this exact directory as the repository root. VM actions
+# can copy a .git indirection without copying the referenced metadata, and a
+# parent checkout must not make this snapshot look like its own repository.
+script_root="$(pwd -P)"
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+resolved_repo_root=""
+if [[ -n "$repo_root" ]]; then
+  resolved_repo_root="$(CDPATH='' cd -- "$repo_root" 2>/dev/null && pwd -P || true)"
+fi
+if [[ -z "$resolved_repo_root" || "$resolved_repo_root" != "$script_root" ]]; then
+  if $allow_snapshot; then
+    echo "$dir_name is a source snapshot without usable Git metadata; skipping self-update."
+    exit 0
+  fi
   echo "Error: $dir_name is not a git repository." >&2
   exit 2
 fi

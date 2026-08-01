@@ -22,6 +22,7 @@ no_flags=false
 standard=false
 skip_install=false
 interactive=false
+skip_self_update=false
 
 # Files and helper scripts expected in the current directory
 # CACHE_ROOT / FLAGS_VERSION_FILE are re-pointed for the --standard profile
@@ -90,6 +91,8 @@ Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clan
                        scripts. Useful for CI and smoke checks.
   --interactive        If a repository configure, build, or install phase
                        fails, pause so it can be fixed and retry that phase.
+  --skip-self-update   Do not run pull.sh. Used by update-all.sh after it has
+                       already handled the scripts repository once.
 
 Examples:
   ./update.sh -c clang -x clang++
@@ -207,6 +210,7 @@ LONG_COVERAGE=0
 LONG_PROFILE=0
 LONG_SKIP_INSTALL=0
 LONG_INTERACTIVE=0
+LONG_SKIP_SELF_UPDATE=0
 declare -a _argv=()
 for _a in "$@"; do
   if [[ "$_a" == "--dry-run" ]]; then
@@ -223,6 +227,8 @@ for _a in "$@"; do
     LONG_SKIP_INSTALL=1
   elif [[ "$_a" == "--interactive" ]]; then
     LONG_INTERACTIVE=1
+  elif [[ "$_a" == "--skip-self-update" ]]; then
+    LONG_SKIP_SELF_UPDATE=1
   else
     _argv+=("$_a")
   fi
@@ -258,6 +264,7 @@ shift $((OPTIND-1))
 [[ $LONG_PROFILE  -eq 1 ]] && export P101_PROFILE=1
 [[ $LONG_SKIP_INSTALL -eq 1 ]] && skip_install=true
 [[ $LONG_INTERACTIVE -eq 1 ]] && interactive=true
+[[ $LONG_SKIP_SELF_UPDATE -eq 1 ]] && skip_self_update=true
 
 if $no_flags && $standard; then
   die "--no-flags and --standard are mutually exclusive (one means no flags, the other a fixed standard set)."
@@ -329,8 +336,10 @@ $dry_run && note "  mode             = DRY RUN"
 # pull.sh exits 1 after a successful pull to signal "re-run so the new
 # scripts are used" — handle that explicitly instead of a bare set -e death.
 pull_rc=0
-if ! $dry_run; then
-  "$PULL_SH" || pull_rc=$?
+if $skip_self_update; then
+  :
+elif ! $dry_run; then
+  "$PULL_SH" --allow-snapshot || pull_rc=$?
 else
   printf '[dry-run] %s\n' "$PULL_SH"
 fi

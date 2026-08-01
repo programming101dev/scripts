@@ -67,7 +67,8 @@ grep -Fq 'Aborting at: build' "$sandbox/abort.stderr"
 
 mkdir -p "$sandbox/matrix"
 cp ./update-all.sh "$sandbox/matrix/update-all.sh"
-chmod +x "$sandbox/matrix/update-all.sh"
+cp ./pull.sh "$sandbox/matrix/pull.sh"
+chmod +x "$sandbox/matrix/update-all.sh" "$sandbox/matrix/pull.sh"
 cat > "$sandbox/matrix/driver.sh" <<'EOF'
 #!/bin/sh
 printf '%s\n' "$@" > driver-arguments.txt
@@ -87,6 +88,7 @@ printf 'gitdir: /definitely/missing/p101-scripts-git-dir\n' > "$sandbox/matrix/.
 )
 grep -Fq 'source snapshot without usable Git metadata; skipping self-update' \
   "$sandbox/matrix/update-all.stdout"
+grep -Fxq -- '--skip-self-update' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--interactive' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--skip-install' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- 'address' "$sandbox/matrix/driver-arguments.txt"
