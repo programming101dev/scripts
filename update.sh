@@ -90,7 +90,7 @@ Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clan
   --skip-install       Build repositories but do not run their install.sh
                        scripts. Useful for CI and smoke checks.
   --interactive        If a repository configure, build, or install phase
-                       fails, pause so it can be fixed and retry that phase.
+                       fails, pause, pull the pushed fix, and retry that phase.
   --skip-self-update   Do not run pull.sh. Used by update-all.sh after it has
                        already handled the scripts repository once.
 

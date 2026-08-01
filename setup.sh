@@ -30,7 +30,7 @@ usage()
     echo "  -s sanitizers     Specify the sanitizers to use (e.g. address,undefined)"
     echo "  --coverage        Opt-in: instrument the initial build for code coverage (gcov)"
     echo "  --profile         Opt-in: instrument the initial build for profiling (gprof)"
-    echo "  --interactive     Pause and retry a failed repository phase after you fix it"
+    echo "  --interactive     Pause, pull the pushed fix, and retry the failed phase"
     _cc="$(_p101_names supported_c_compilers.txt)"; _cxx="$(_p101_names supported_cxx_compilers.txt)"
     if [ -n "$_cc" ] || [ -n "$_cxx" ]; then
         echo ""

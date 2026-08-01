@@ -30,9 +30,9 @@ Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>
   -S  forward 'skip cache update' to install.sh (passes -S to install.sh)
   -I  skip install.sh after building repos
   -i, --interactive
-      Pause after a configure, build, or install failure. Fix the repository
-      in another terminal, then press Enter to retry that same phase. Enter
-      'q' to abort.
+      Pause after a configure, build, or install failure. Push the fix from
+      another terminal, then press Enter to pull it and retry that same phase.
+      Enter 'q' to abort.
 
 Example:
   $0 -c clang -x clang++ -f clang-format -t clang-tidy -k cppcheck -s address,undefined -S
@@ -85,6 +85,7 @@ hr()  { printf '%*s\n' "$(tput cols 2>/dev/null || echo 80)" '' | tr ' ' -; }
 run_repo_phase() {
   local description="$1"
   local status
+  local pull_status
   local answer
 
   shift
@@ -112,6 +113,15 @@ run_repo_phase() {
         return "$status"
         ;;
       *)
+        printf 'Pulling repository updates before retry...\n' >&2
+        set +e
+        git pull --ff-only --no-stat --no-edit
+        pull_status=$?
+        set -e
+        if [[ "$pull_status" -ne 0 ]]; then
+          printf 'Pull failed (exit %d); phase not retried.\n' "$pull_status" >&2
+          continue
+        fi
         printf 'Retrying: %s\n\n' "$description" >&2
         ;;
     esac

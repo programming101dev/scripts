@@ -18,6 +18,20 @@ mkdir -p "$sandbox/scripts" "$sandbox/repo"
 cp ./build-repo.sh "$sandbox/scripts/build-repo.sh"
 chmod +x "$sandbox/scripts/build-repo.sh"
 
+mkdir -p "$sandbox/bin"
+cat > "$sandbox/bin/git" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >> "$P101_TEST_GIT_LOG"
+if [[ -n "${P101_TEST_GIT_FAIL_ONCE_FILE:-}" && -f "$P101_TEST_GIT_FAIL_ONCE_FILE" ]]; then
+  rm -f "$P101_TEST_GIT_FAIL_ONCE_FILE"
+  exit 9
+fi
+EOF
+chmod +x "$sandbox/bin/git"
+export PATH="$sandbox/bin:$PATH"
+export P101_TEST_GIT_LOG="$sandbox/git-invocations.txt"
+
 cat > "$sandbox/scripts/repos.txt" <<EOF
 https://example.invalid/test.git|$sandbox/repo|c
 EOF
@@ -51,9 +65,24 @@ printf '\n' | "$sandbox/scripts/build-repo.sh" \
 
 [[ "$(wc -l < "$sandbox/repo/configure-invocations.txt")" -eq 1 ]]
 [[ "$(wc -l < "$sandbox/repo/build-invocations.txt")" -eq 2 ]]
+grep -Fxq 'pull --ff-only --no-stat --no-edit' "$P101_TEST_GIT_LOG"
+grep -Fq 'Pulling repository updates before retry' "$sandbox/retry.stderr"
 grep -Fq 'Retrying: build' "$sandbox/retry.stderr"
 
 : > "$sandbox/repo/build-invocations.txt"
+: > "$P101_TEST_GIT_LOG"
+touch "$sandbox/fail-pull-once"
+export P101_TEST_GIT_FAIL_ONCE_FILE="$sandbox/fail-pull-once"
+printf '\n\n' | "$sandbox/scripts/build-repo.sh" \
+  -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
+  --interactive -I > "$sandbox/pull-retry.stdout" 2> "$sandbox/pull-retry.stderr"
+unset P101_TEST_GIT_FAIL_ONCE_FILE
+[[ "$(wc -l < "$sandbox/repo/build-invocations.txt")" -eq 2 ]]
+[[ "$(wc -l < "$P101_TEST_GIT_LOG")" -eq 2 ]]
+grep -Fq 'Pull failed (exit 9); phase not retried' "$sandbox/pull-retry.stderr"
+
+: > "$sandbox/repo/build-invocations.txt"
+: > "$P101_TEST_GIT_LOG"
 touch "$sandbox/repo/always-fail"
 set +e
 printf 'q\n' | "$sandbox/scripts/build-repo.sh" \
@@ -63,6 +92,7 @@ status=$?
 set -e
 [[ "$status" -eq 7 ]]
 [[ "$(wc -l < "$sandbox/repo/build-invocations.txt")" -eq 1 ]]
+[[ ! -s "$P101_TEST_GIT_LOG" ]]
 grep -Fq 'Aborting at: build' "$sandbox/abort.stderr"
 
 mkdir -p "$sandbox/matrix"

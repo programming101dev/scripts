@@ -81,11 +81,13 @@ For an iterative portability pass, add `--interactive`:
 ```
 
 When a repository's configure, build, or install phase fails, the script leaves
-you at that repository/compiler boundary and waits. Fix the problem in another
-terminal, then press Enter to retry only the failed phase. Enter `q` to abort.
-Repositories that already passed are not rebuilt, and after the repaired
-repository succeeds the compiler matrix continues normally. The same option is
-available on `setup.sh`, `update.sh`, and `build-repo.sh`.
+you at that repository/compiler boundary and waits. Push the fix from another
+terminal, then press Enter; the script fast-forwards the repository with
+`git pull --ff-only` before retrying only the failed phase. A failed pull returns
+to the prompt without retrying stale code. Enter `q` to abort. Repositories that
+already passed are not rebuilt, and after the repaired repository succeeds the
+compiler matrix continues normally. The same option is available on `setup.sh`,
+`update.sh`, and `build-repo.sh`.
 
 `repos.txt` uses `c`, `cxx`, and `python` for active projects. A newly created,
 not-yet-populated C repository uses `c-bootstrap`: `clone-repos.sh` keeps it

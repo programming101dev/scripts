@@ -44,7 +44,7 @@ usage() {
   --coverage        Opt-in: instrument every pair for code coverage (gcov)
   --profile         Opt-in: instrument every pair for profiling (gprof)
   --skip-install    Build every pair but do not run repo install.sh scripts
-  --interactive     Pause and retry the failed repository phase after a fix"
+  --interactive     Pause, pull the pushed fix, and retry the failed phase"
     if [ -f "$c_list_file" ]; then
         printf '\nCompiler pairs this will build (from %s):\n' "$c_list_file"
         while IFS= read -r _l || [ -n "$_l" ]; do
