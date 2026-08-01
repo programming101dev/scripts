@@ -56,7 +56,23 @@ For every nontrivial feature, keep a replayable receipt:
 Tool output is evidence, not proof. It is useful because someone can rerun the
 same command over the same admitted inputs and inspect the result.
 
-## 4. Make blind spots explicit
+Machine-readable receipts use the shared outcome vocabulary where practical:
+`clean`, `findings`, `refused`, `incomplete`, `unsupported`, and `tool-error`.
+The C representation and `p101-tool-run-receipt-v1` writer live in
+`lib_tool_event`; the post-update graph uses the same vocabulary. Ordinary
+command-line exit statuses remain `0` for clean, `1` for findings, and `2` for
+refusal, incomplete evidence, unsupported execution, or tool failure.
+
+## 4. Govern boundaries and checks
+
+`p101-boundaries.json` names the owner, admitted input, output, refusal,
+evidence, and clean/refusal/binding-swap tests for each load-bearing shared
+boundary. `p101-check-graph.json` names the post-update checks, dependencies,
+resource effects, guarantees, and limitations. Their validators are release
+gates; adding an ungoverned verification entry point or silently moving an
+owner is a failure.
+
+## 5. Make blind spots explicit
 
 Every tool README should be honest about important blind spots. Common examples:
 
@@ -69,7 +85,7 @@ Every tool README should be honest about important blind spots. Common examples:
 This keeps the tools trustworthy. A bounded report with a visible limitation is
 better than a confident report that silently overclaims.
 
-## 5. Keep APIs small and local
+## 6. Keep APIs small and local
 
 For C code:
 
@@ -82,7 +98,7 @@ The module-map and wrapper-audit work should continue to use real parsers for C
 facts. Hand-rolled C parsing is acceptable only for deliberately narrow
 line-oriented formats, not for C syntax.
 
-## 6. Use the role lens lightly
+## 7. Use the role lens lightly
 
 Before substantial work, classify it as one or more of:
 

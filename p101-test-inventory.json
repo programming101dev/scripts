@@ -1,0 +1,54 @@
+{
+  "schema": "p101-test-inventory-v1",
+  "repository_manifest": "repos.txt",
+  "entry_points": {
+    "check.sh": {
+      "owner": "repository",
+      "oracle": "strict repository build and static-analysis pipeline",
+      "runner": "update-all.sh"
+    },
+    "test.sh": {
+      "owner": "repository",
+      "oracle": "repository-owned unit tests",
+      "runner": "check-repository-tests.sh"
+    },
+    "fuzz.sh": {
+      "owner": "repository",
+      "oracle": "bounded repository-owned fuzz target",
+      "runner": "check-repository-tests.sh"
+    }
+  },
+  "standalone_verification_exclusions": [
+    {
+      "path": "check-after-update-all.sh",
+      "owner": "scripts",
+      "oracle": "delegates to p101-check-graph.py",
+      "reason": "public compatibility entry point for the governed graph"
+    },
+    {
+      "path": "check-compilers.sh",
+      "owner": "scripts",
+      "oracle": "compiler discovery result",
+      "reason": "setup/update prerequisite rather than a post-update verification node"
+    },
+    {
+      "path": "check-env.sh",
+      "owner": "scripts",
+      "oracle": "required executable discovery",
+      "reason": "update prerequisite rather than a post-update verification node"
+    },
+    {
+      "path": "check-templates-standalone.sh",
+      "owner": "scripts",
+      "oracle": "fresh copied-template build and unit tests",
+      "reason": "owned transitively by check-p101-stack.sh"
+    },
+    {
+      "path": "check-c-facts-external-corpus.sh",
+      "owner": "scripts",
+      "oracle": "external corpus execution receipt",
+      "reason": "full opt-in corpus executor; the graph governs its deterministic manifest test"
+    }
+  ],
+  "does_not_prove": "Inventory coverage proves that discovered repository and scripts verification entry points have a declared owner and runner. It does not prove that each oracle is complete or independent."
+}

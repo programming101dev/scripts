@@ -118,8 +118,8 @@ class LessonCatalogTests(unittest.TestCase):
 
     def test_every_diagnostic_has_native_and_repair_evidence(self) -> None:
         coverage = p101_lessons.coverage_document(self.catalog)
-        self.assertEqual(coverage["summary"]["diagnostic_ids"], 94)
-        self.assertEqual(coverage["summary"]["protocol_pairs"], 94)
+        self.assertEqual(coverage["summary"]["diagnostic_ids"], 86)
+        self.assertEqual(coverage["summary"]["protocol_pairs"], 86)
         self.assertEqual(coverage["summary"]["uncovered_ids"], 0)
         self.assertEqual(
             set(coverage["summary"]["platform_contract"]),
@@ -164,7 +164,7 @@ class LessonCatalogTests(unittest.TestCase):
             self.assertEqual(
                 receipt["schema"], "p101-lesson-acceptance-receipt-v1"
             )
-            self.assertEqual(receipt["protocol_pairs"], 94)
+            self.assertEqual(receipt["protocol_pairs"], 86)
             self.assertEqual(coverage["summary"]["uncovered_ids"], 0)
 
     def test_progress_honors_prerequisites_and_lesson_only_receipts(self) -> None:

@@ -74,6 +74,19 @@ If you want to verify that everything compiles with all of the supported compile
 ./update-all.sh
 ```
 
+For an iterative portability pass, add `--interactive`:
+
+```bash
+./update-all.sh --interactive
+```
+
+When a repository's configure, build, or install phase fails, the script leaves
+you at that repository/compiler boundary and waits. Fix the problem in another
+terminal, then press Enter to retry only the failed phase. Enter `q` to abort.
+Repositories that already passed are not rebuilt, and after the repaired
+repository succeeds the compiler matrix continues normally. The same option is
+available on `setup.sh`, `update.sh`, and `build-repo.sh`.
+
 `repos.txt` uses `c`, `cxx`, and `python` for active projects. A newly created,
 not-yet-populated C repository uses `c-bootstrap`: `clone-repos.sh` keeps it
 present and updated, while build, distribution, test, and audit gates skip it.
@@ -87,10 +100,21 @@ After `update-all.sh` succeeds, run the post-build acceptance checks:
 ./check-after-update-all.sh
 ```
 
-This does not rebuild every repository again. It runs the shared CMake
-regression harness, tool and wrapper audits, fresh-template standalone checks,
-every repository-owned unit suite, bounded fuzz smoke tests where supported,
-the `p101-tool-playground` tour, and the p101 behavior regression corpus.
+This delegates to the governed graph in `p101-check-graph.json`. Every node
+declares its argv, dependencies, resource effects, guarantee, and limitation;
+the runner writes a log per node plus a `p101-tool-run-receipt-v1` receipt.
+Use `./p101-check-graph.py list` to inspect the graph,
+`./check-after-update-all.sh --only boundaries` for one node and its
+dependencies, or `--from <node>` to resume from a known boundary. With
+`--interactive`, a failure pauses and retries exactly that node after the fix.
+
+The graph includes the shared CMake regression harness, tool and wrapper
+audits, fresh-template standalone checks, every repository-owned unit suite,
+bounded fuzz smoke tests where supported, the playground tour, and the p101
+behavior regression corpus. `p101-boundaries.json` separately binds shared
+mechanisms to one owner and to clean, typed-refusal, and binding-swap tests.
+`p101-test-inventory.json` prevents a repository or scripts verification entry
+point from silently falling outside the runners.
 
 Three narrower checks enforce contracts that used to be implicit:
 
@@ -130,6 +154,19 @@ Every runtime fixture in that gate is captured once and analyzed from one
 `p101-run-model-v1`. The gate checks executable expectations and the shared
 resource, synchronization, trace, and correlated views.
 
+To stress `lib_c_facts` against pinned external code rather than only p101
+sources, run:
+
+```bash
+./check-c-facts-external-corpus.sh -o /tmp/p101-c-facts-external
+```
+
+This opt-in suite samples 10 mature C and 10 mature C++ projects, then exercises
+10 intentionally defective C cases, 10 intentionally defective C++ cases, and
+10 IOCCC entries. It stores upstream trees in a disposable cache and writes the
+exact source selection, raw facts, diagnostics, and result ledger to the output
+directory. See [the external corpus contract](docs/c-facts-external-corpus.md).
+
 To replay the source-contract audit over every active wrapper library:
 
 ```bash
@@ -138,12 +175,11 @@ To replay the source-contract audit over every active wrapper library:
 
 This uses each library's compile database, its optional checked-in
 `.p101-wrapper-audit-allow` boundary ledger, `p101-error-contract`, and
-`p101-module-map -L`. Native-wrapper libraries also carry a
-`wrapper-form-contract.json` that checks context/error parameters, native
-target calls, canonical signatures, balanced tracing, and fault form. The
-boundary pass records a hashed P101FACT v2 snapshot and admitted-input
-manifest; both downstream C policy tools reuse that snapshot. Reports are
-written under one artifact directory.
+`p101-module-map -L`. The boundary pass records a P101FACT v2 snapshot and
+admitted-input manifest; both downstream C policy tools reuse that snapshot.
+Runtime wrapper feature coverage is enforced by each split library's generated
+wrapper tests and `unit-test-manifest.tsv`. Reports are written under one
+artifact directory.
 
 For the student-facing tool workflow, use the dispatcher:
 

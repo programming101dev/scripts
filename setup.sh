@@ -12,6 +12,7 @@ clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
 sanitizers="address,leak,pointer_overflow,undefined"
+interactive=false
 
 # Function to display script usage
 # detected-compiler helpers (smarter --help; harmless if lists absent)
@@ -29,6 +30,7 @@ usage()
     echo "  -s sanitizers     Specify the sanitizers to use (e.g. address,undefined)"
     echo "  --coverage        Opt-in: instrument the initial build for code coverage (gcov)"
     echo "  --profile         Opt-in: instrument the initial build for profiling (gprof)"
+    echo "  --interactive     Pause and retry a failed repository phase after you fix it"
     _cc="$(_p101_names supported_c_compilers.txt)"; _cxx="$(_p101_names supported_cxx_compilers.txt)"
     if [ -n "$_cc" ] || [ -n "$_cxx" ]; then
         echo ""
@@ -56,6 +58,7 @@ for _a in "$@"; do
   case "$_a" in
     --coverage) export P101_COVERAGE=1 ;;
     --profile)  export P101_PROFILE=1 ;;
+    --interactive) interactive=true ;;
     *)          _setup_argv+=("$_a") ;;
   esac
 done
@@ -237,4 +240,8 @@ fi
 ./link-compilers.sh
 mkdir -p -- "$(dirname -- "$flags_version")"
 cp "$current_version" "$flags_version"
-./build-repo.sh -c "$CC_PATH" -x "$CXX_PATH" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
+build_repo_args=(-c "$CC_PATH" -x "$CXX_PATH" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers")
+if $interactive; then
+  build_repo_args+=(--interactive)
+fi
+./build-repo.sh "${build_repo_args[@]}"

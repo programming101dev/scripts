@@ -1,0 +1,2 @@
+repository	cflag
+spdlog	-DSPDLOG_COMPILED_LIB=1

@@ -72,12 +72,6 @@ wrapper_audit="$programs_dir/p101-wrapper-audit/p101-wrapper-audit"
 find_built_tool() {
   repo="$1"
   name="$2"
-  for build_dir in build-clang-22 build-clang build; do
-    if [ -x "$repo/$build_dir/$name" ]; then
-      printf '%s\n' "$repo/$build_dir/$name"
-      return 0
-    fi
-  done
   marker="$repo/.last-runtime-build-dir"
   if [ ! -f "$marker" ]; then
     marker="$repo/.last-build-dir"
@@ -89,6 +83,12 @@ find_built_tool() {
       return 0
     fi
   fi
+  for build_dir in build-clang build; do
+    if [ -x "$repo/$build_dir/$name" ]; then
+      printf '%s\n' "$repo/$build_dir/$name"
+      return 0
+    fi
+  done
   for candidate in "$repo"/build-*/"$name" "$repo"/build/"$name"; do
     if [ -x "$candidate" ]; then
       printf '%s\n' "$candidate"

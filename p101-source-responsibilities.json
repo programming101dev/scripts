@@ -1,0 +1,44 @@
+{
+  "schema": "p101-source-responsibilities-v1",
+  "owners": [
+    {
+      "id": "c-fact-parser",
+      "owner": "libraries/lib_c_facts",
+      "markers": ["p101_record_split", "p101_c_facts_with_compile_command"],
+      "consumer_roots": ["programs"],
+      "forbidden_definitions": ["p101_record_split", "p101_c_facts_with_compile_command"]
+    },
+    {
+      "id": "event-parser",
+      "owner": "libraries/lib_tool_event",
+      "markers": ["p101_tool_event_parse_line", "p101_tool_event_lifecycle_ingest"],
+      "consumer_roots": ["programs"],
+      "forbidden_definitions": ["p101_tool_event_parse_line", "p101_tool_event_lifecycle_ingest"]
+    },
+    {
+      "id": "tool-subprocess",
+      "owner": "libraries/lib_util",
+      "markers": ["p101_tool_run_capture"],
+      "consumer_roots": ["programs/p101-observe", "programs/p101-error-path-walk", "programs/p101-doctor"],
+      "forbidden_calls": ["system", "popen", "fork", "execvp"]
+    }
+  ],
+  "facades": [
+    {
+      "path": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "maximum_lines": 240,
+      "reason": "event representation must not absorb lifecycle or report policy"
+    },
+    {
+      "path": "libraries/lib_c_facts/include/p101_c_facts/facts.h",
+      "maximum_lines": 180,
+      "reason": "fact representation must remain separate from tool policy"
+    },
+    {
+      "path": "libraries/lib_util/include/p101_util/tool_run.h",
+      "maximum_lines": 100,
+      "reason": "subprocess mechanics should expose a narrow argv API"
+    }
+  ],
+  "does_not_prove": "These ratchets protect declared high-risk ownership boundaries and facade sizes. They do not prove that every duplicated mechanism or oversized responsibility was discovered."
+}

@@ -1,0 +1,125 @@
+{
+  "schema": "p101-boundary-register-v1",
+  "does_not_prove": "This register proves that the declared owner symbols and boundary tests remain present. It does not prove that every workspace boundary was discovered or that the named tests completely establish the documented semantics.",
+  "boundaries": [
+    {
+      "id": "boundary:c-fact-analysis",
+      "owner_repo": "libraries/lib_c_facts",
+      "owner_source": "libraries/lib_c_facts/include/p101_c_facts/compile_command.h",
+      "owner_symbol": "p101_c_facts_with_compile_command",
+      "input": "compile database plus source path",
+      "output": "validated compile-command observation",
+      "refusal": "p101_error",
+      "evidence": "P101FACT records and admitted-input manifest",
+      "collaborators": [
+        "p101-module-map owns module-design policy",
+        "p101-error-contract owns error-contract policy"
+      ],
+      "tests": {
+        "path": "libraries/lib_c_facts/test/test_analysis.c",
+        "clean": "test_analysis_and_compile_command",
+        "typed_refusal": "test_invalid_analysis_arguments",
+        "binding_swap": "test_clang_error_diagnostic_is_observable"
+      }
+    },
+    {
+      "id": "boundary:tool-event-record",
+      "owner_repo": "libraries/lib_tool_event",
+      "owner_source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "owner_symbol": "p101_tool_event_parse_line",
+      "input": "one bounded p101 event record",
+      "output": "typed p101_tool_event_record",
+      "refusal": "p101_tool_event_parse_status",
+      "evidence": "versioned plain-text event stream",
+      "collaborators": [
+        "lib_env emits records without owning analysis policy",
+        "tools consume records without private parsers"
+      ],
+      "tests": {
+        "path": "libraries/lib_tool_event/test/test_event_protocol.c",
+        "clean": "test_valid_parser_records",
+        "typed_refusal": "test_malformed_parser_records",
+        "binding_swap": "test_small_helpers"
+      }
+    },
+    {
+      "id": "boundary:resource-lifecycle-replay",
+      "owner_repo": "libraries/lib_tool_event",
+      "owner_source": "libraries/lib_tool_event/include/p101_tool_event/lifecycle.h",
+      "owner_symbol": "p101_tool_event_lifecycle_ingest",
+      "input": "validated p101 event record",
+      "output": "next lifecycle state and policy-free lifecycle facts",
+      "refusal": "p101_error",
+      "evidence": "replayable lifecycle entries and findings",
+      "collaborators": [
+        "p101-resource-tracker owns command-line policy",
+        "p101-report owns presentation and teaching advice"
+      ],
+      "tests": {
+        "path": "libraries/lib_tool_event/test/test_lifecycle.c",
+        "clean": "test_release_and_replace_findings",
+        "typed_refusal": "test_public_boundaries",
+        "binding_swap": "test_failure_propagation"
+      }
+    },
+    {
+      "id": "boundary:subprocess-execution",
+      "owner_repo": "libraries/lib_util",
+      "owner_source": "libraries/lib_util/include/p101_util/tool_run.h",
+      "owner_symbol": "p101_tool_run_capture",
+      "input": "argv vector and bounded execution options",
+      "output": "child exit status and redirected artifacts",
+      "refusal": "p101_error",
+      "evidence": "explicit argv and output files",
+      "collaborators": [
+        "tools construct argv but do not construct shell command strings"
+      ],
+      "tests": {
+        "path": "libraries/lib_util/test/test_lib_util.c",
+        "clean": "test_tool_run",
+        "typed_refusal": "missing_argv",
+        "binding_swap": "success_argv"
+      }
+    },
+    {
+      "id": "boundary:wrapper-observation",
+      "owner_repo": "libraries/lib_env",
+      "owner_source": "libraries/lib_env/include/p101_env/env.h",
+      "owner_symbol": "p101_env_set_resource_observer",
+      "input": "wrapper call and resource lifecycle event",
+      "output": "ordered observer notification",
+      "refusal": "p101_error or producer completion failure",
+      "evidence": "P101CALL, P101RESOURCE, and P101COMPLETE records",
+      "collaborators": [
+        "wrapper libraries describe operations",
+        "lib_tool_event owns record representation and replay"
+      ],
+      "tests": {
+        "path": "libraries/lib_env/test/test_env.c",
+        "clean": "test_generic_resource_round_trip",
+        "typed_refusal": "test_event_write_failure_is_sticky",
+        "binding_swap": "test_distinct_manual_streams_receive_completion"
+      }
+    },
+    {
+      "id": "boundary:fsm-transition",
+      "owner_repo": "libraries/lib_fsm",
+      "owner_source": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "owner_symbol": "p101_fsm_step",
+      "input": "validated machine state and one callback decision",
+      "output": "typed step result and emitted effects",
+      "refusal": "p101_fsm_refusal",
+      "evidence": "sequence-numbered p101_fsm_step_result",
+      "collaborators": [
+        "applications own effect execution",
+        "p101_fsm_run is only a convenience loop"
+      ],
+      "tests": {
+        "path": "libraries/lib_fsm/test/test_fsm.c",
+        "clean": "test_step_commit_and_terminal_result",
+        "typed_refusal": "test_typed_refusals",
+        "binding_swap": "test_run_is_step_loop"
+      }
+    }
+  ]
+}

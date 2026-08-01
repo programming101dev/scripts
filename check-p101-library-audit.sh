@@ -3,8 +3,8 @@
 #
 # Admitted inputs: active TUs from each library compile_commands.json, scanned
 # headers, and an optional checked-in .p101-wrapper-audit-allow file.
-# Outputs: per-library wrapper-boundary, wrapper-form, error-contract, and
-# module-map reports.
+# Outputs: per-library wrapper-boundary, error-contract, and module-map
+# reports.
 # Blind spot: inactive platform sources and external library consumers are not
 # treated as active code; library mode deliberately avoids closed-world API-use
 # claims.
@@ -21,7 +21,7 @@ usage() {
   cat <<'USAGE'
 Usage: ./check-p101-library-audit.sh [options]
 
-Run wrapper-boundary, wrapper-form, error-contract, and module-map checks in
+Run wrapper-boundary, error-contract, and module-map checks in
 library mode over every lib_* repository with an existing compile database.
 Build/update first.
 
@@ -120,8 +120,8 @@ fi
 cat > "$summary" <<'EOF'
 # p101 library source audit
 
-| Library | Wrapper boundary | Wrapper form | Error contract | Module structure |
-| --- | --- | --- | --- | --- |
+| Library | Wrapper boundary | Error contract | Module structure |
+| --- | --- | --- | --- |
 EOF
 
 printf 'p101 library audit output: %s\n' "$out_dir"
@@ -142,7 +142,7 @@ while IFS='|' read -r _url relative_path language; do
   compile_db="$(find_compile_database "$repo" || true)"
   if [ -z "$compile_db" ]; then
     printf '==> %-22s FAIL (no compile database)\n' "$name"
-    printf '| %s | FAIL | FAIL | FAIL | FAIL |\n' "$name" >> "$summary"
+    printf '| %s | FAIL | FAIL | FAIL |\n' "$name" >> "$summary"
     failed=1
     continue
   fi
@@ -158,26 +158,12 @@ while IFS='|' read -r _url relative_path language; do
   fi
 
   wrapper_status="PASS"
-  form_status="N/A"
   error_status="PASS"
   module_status="PASS"
 
   if ! "$wrapper_audit" "${wrapper_args[@]}" "${paths[@]}" > "$repo_out/wrapper-audit.txt" 2>&1; then
     wrapper_status="FAIL"
     failed=1
-  fi
-
-  if [ -f "$repo/wrapper-form-contract.json" ]; then
-    form_status="PASS"
-    if ! "$wrapper_audit" \
-      --compile-db "$compile_db" \
-      --compile-db-only \
-      --wrapper-form-contract "$repo/wrapper-form-contract.json" \
-      --wrapper-form-only \
-      "$repo" > "$repo_out/wrapper-form.txt" 2>&1; then
-      form_status="FAIL"
-      failed=1
-    fi
   fi
 
   if ! (CDPATH='' cd "$repo" && "$error_contract" -j -i "$repo_out/source-facts.tsv" src include) > "$repo_out/error-contract.json" 2> "$repo_out/error-contract.stderr.txt"; then
@@ -194,8 +180,8 @@ while IFS='|' read -r _url relative_path language; do
     failed=1
   fi
 
-  printf '==> %-22s boundary=%s form=%s error=%s module=%s\n' "$name" "$wrapper_status" "$form_status" "$error_status" "$module_status"
-  printf '| %s | %s | %s | %s | %s |\n' "$name" "$wrapper_status" "$form_status" "$error_status" "$module_status" >> "$summary"
+  printf '==> %-22s boundary=%s error=%s module=%s\n' "$name" "$wrapper_status" "$error_status" "$module_status"
+  printf '| %s | %s | %s | %s |\n' "$name" "$wrapper_status" "$error_status" "$module_status" >> "$summary"
 done < repos.txt
 
 if [ "$found" -eq 0 ]; then

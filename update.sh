@@ -21,6 +21,7 @@ dry_run=false
 no_flags=false
 standard=false
 skip_install=false
+interactive=false
 
 # Files and helper scripts expected in the current directory
 # CACHE_ROOT / FLAGS_VERSION_FILE are re-pointed for the --standard profile
@@ -87,6 +88,8 @@ Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clan
                        (-pg / gprof). Off by default. Combines with --coverage.
   --skip-install       Build repositories but do not run their install.sh
                        scripts. Useful for CI and smoke checks.
+  --interactive        If a repository configure, build, or install phase
+                       fails, pause so it can be fixed and retry that phase.
 
 Examples:
   ./update.sh -c clang -x clang++
@@ -203,6 +206,7 @@ LONG_STANDARD=0
 LONG_COVERAGE=0
 LONG_PROFILE=0
 LONG_SKIP_INSTALL=0
+LONG_INTERACTIVE=0
 declare -a _argv=()
 for _a in "$@"; do
   if [[ "$_a" == "--dry-run" ]]; then
@@ -217,6 +221,8 @@ for _a in "$@"; do
     LONG_PROFILE=1
   elif [[ "$_a" == "--skip-install" ]]; then
     LONG_SKIP_INSTALL=1
+  elif [[ "$_a" == "--interactive" ]]; then
+    LONG_INTERACTIVE=1
   else
     _argv+=("$_a")
   fi
@@ -251,6 +257,7 @@ shift $((OPTIND-1))
 [[ $LONG_COVERAGE -eq 1 ]] && export P101_COVERAGE=1
 [[ $LONG_PROFILE  -eq 1 ]] && export P101_PROFILE=1
 [[ $LONG_SKIP_INSTALL -eq 1 ]] && skip_install=true
+[[ $LONG_INTERACTIVE -eq 1 ]] && interactive=true
 
 if $no_flags && $standard; then
   die "--no-flags and --standard are mutually exclusive (one means no flags, the other a fixed standard set)."
@@ -606,6 +613,9 @@ build_repo_args=(
 )
 if $skip_install; then
   build_repo_args+=(-I)
+fi
+if $interactive; then
+  build_repo_args+=(--interactive)
 fi
 run_or_echo "$BUILD_REPO_SH" "${build_repo_args[@]}"
 

@@ -21,6 +21,7 @@ sanitizers_given=0
 no_flags=0
 standard=0
 skip_install=0
+interactive=0
 
 c_list_file="supported_c_compilers.txt"
 cxx_list_file="supported_cxx_compilers.txt"
@@ -42,7 +43,8 @@ usage() {
                     subset (flag-selection.standard.json), no sanitizers
   --coverage        Opt-in: instrument every pair for code coverage (gcov)
   --profile         Opt-in: instrument every pair for profiling (gprof)
-  --skip-install    Build every pair but do not run repo install.sh scripts"
+  --skip-install    Build every pair but do not run repo install.sh scripts
+  --interactive     Pause and retry the failed repository phase after a fix"
     if [ -f "$c_list_file" ]; then
         printf '\nCompiler pairs this will build (from %s):\n' "$c_list_file"
         while IFS= read -r _l || [ -n "$_l" ]; do
@@ -86,6 +88,7 @@ while [ "$#" -gt 0 ]; do
     -N|--no-flags) no_flags=1; shift ;;
     -S|--standard) standard=1; shift ;;
     -I|--skip-install) skip_install=1; shift ;;
+    -i|--interactive) interactive=1; shift ;;
     --coverage) export P101_COVERAGE=1; shift ;;
     --profile) export P101_PROFILE=1; shift ;;
     -h|--help) usage ;;
@@ -215,34 +218,22 @@ while read -r c <&3 || [ -n "$c" ]; do
   fi
 
   printf 'Updating repositories with: %s : %s\n' "$c" "$x"
-  if [ "$no_flags" -eq 1 ]; then
-    # --no-flags: no probed flags, no sanitizers (update.sh forces empty).
-    if [ "$skip_install" -eq 1 ]; then
-      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --skip-install --no-flags
-    else
-      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --no-flags
-    fi
-  elif [ "$standard" -eq 1 ]; then
-    # --standard: reasonable safe subset, no sanitizers (update.sh forces).
-    if [ "$skip_install" -eq 1 ]; then
-      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --skip-install --standard
-    else
-      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --standard
-    fi
-  elif [ "$sanitizers_given" -eq 1 ]; then
-    if [ "$skip_install" -eq 1 ]; then
-      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --skip-install -s "$sanitizers"
-    else
-      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
-    fi
-  else
-    # No -s: let update.sh keep whatever sanitizers.txt currently holds.
-    if [ "$skip_install" -eq 1 ]; then
-      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" --skip-install
-    else
-      "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-    fi
+  set -- "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" \
+    -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
+  if [ "$skip_install" -eq 1 ]; then
+    set -- "$@" --skip-install
   fi
+  if [ "$interactive" -eq 1 ]; then
+    set -- "$@" --interactive
+  fi
+  if [ "$no_flags" -eq 1 ]; then
+    set -- "$@" --no-flags
+  elif [ "$standard" -eq 1 ]; then
+    set -- "$@" --standard
+  elif [ "$sanitizers_given" -eq 1 ]; then
+    set -- "$@" -s "$sanitizers"
+  fi
+  "$@"
   pairs_run=$((pairs_run+1))
 done 3< "$c_list_file"
 
