@@ -74,6 +74,47 @@ compile_test() {
   fi
 }
 
+have_libclang_header() {
+  local include_dir pattern
+
+  if have llvm-config; then
+    include_dir="$(llvm-config --includedir 2>/dev/null || true)"
+    if [[ -n "$include_dir" && -f "$include_dir/clang-c/Index.h" ]]; then
+      return 0
+    fi
+  fi
+
+  if have brew; then
+    include_dir="$(brew --prefix llvm 2>/dev/null || true)"
+    if [[ -n "$include_dir" && -f "$include_dir/include/clang-c/Index.h" ]]; then
+      return 0
+    fi
+  fi
+
+  for pattern in \
+    /usr/include/clang-c/Index.h \
+    /usr/local/include/clang-c/Index.h \
+    /usr/lib/llvm-*/include/clang-c/Index.h \
+    /usr/local/llvm*/include/clang-c/Index.h \
+    /opt/homebrew/opt/llvm/include/clang-c/Index.h \
+    /usr/local/opt/llvm/include/clang-c/Index.h
+  do
+    if compgen -G "$pattern" >/dev/null; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+libclang_install_hint() {
+  case "$(uname -s)" in
+    Darwin) printf '%s' "brew install llvm" ;;
+    FreeBSD) printf '%s' "pkg install llvm" ;;
+    Linux) printf '%s' "sudo apt install libclang-dev" ;;
+    *) printf '%s' "install the libclang development package" ;;
+  esac
+}
+
 # Build the unique tools list, preserving order
 declare -a tools=()
 append_unique() {
@@ -119,6 +160,14 @@ if [[ -n "$cxx_compiler" ]] && have "$cxx_compiler"; then
     echo "broken: $cxx_compiler (cannot compile a trivial C++ program)"
     missing=$((missing+1))
   fi
+fi
+
+# lib_c_facts embeds libclang. A Clang driver alone does not provide the
+# public clang-c API headers on package-managed Linux systems, so detect this
+# before update-all spends time compiling the repositories that precede it.
+if ! have_libclang_header; then
+  echo "missing: clang-c/Index.h ($(libclang_install_hint))"
+  missing=$((missing+1))
 fi
 
 # Validate sanitizer names: a typo (e.g. "adress") would otherwise silently

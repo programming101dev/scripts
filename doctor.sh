@@ -242,7 +242,7 @@ else
   echo "verdict: MISSING a required tool/compiler (see ✗ above) — a build will not configure until fixed."
   case "$os" in
     Darwin) echo "         install hints: brew install cmake llvm cppcheck   (clang-tidy/clang-format ship with llvm)" ;;
-    Linux)  echo "         install hints: apt install cmake clang-tidy clang-format cppcheck" ;;
+    Linux)  echo "         install hints: apt install cmake clang-tidy clang-format libclang-dev cppcheck" ;;
     *)      echo "         install the missing tools with your platform package manager." ;;
   esac
   exit 1
