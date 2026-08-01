@@ -54,6 +54,25 @@ def find_program(repo: Path, name: str) -> Path:
     raise RuntimeError(f"build {repo.name} before running the lifecycle lab")
 
 
+def run_logged(command: list[str], log_path: Path, phase: str) -> None:
+    result = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+    log_path.write_text(result.stdout, encoding="utf-8")
+    if result.returncode != 0:
+        tail = "\n".join(result.stdout.splitlines()[-80:])
+        if tail:
+            print(tail)
+        raise RuntimeError(
+            f"lifecycle driver {phase} failed with exit {result.returncode}; "
+            f"see {log_path}"
+        )
+
+
 def configure_driver(output: Path, cc: str) -> Path:
     includes, links = p101_paths()
     build = output / "build"
@@ -67,13 +86,11 @@ def configure_driver(output: Path, cc: str) -> Path:
         f"-DP101_PUBLIC_INCLUDE_DIRS={' '.join(map(str, includes))}",
         f"-DP101_PUBLIC_LINK_DIRS={' '.join(map(str, links))}",
     ]
-    subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    subprocess.run(
+    run_logged(command, output / "configure.log", "configure")
+    run_logged(
         ["cmake", "--build", str(build), "--parallel"],
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
+        output / "build.log",
+        "build",
     )
     return build / "p101-wrapper-lifecycle-driver"
 
@@ -270,7 +287,7 @@ def main() -> int:
             WORKSPACE / "programs" / "p101-resource-tracker",
             "p101-resource-tracker",
         )
-    except (RuntimeError, subprocess.CalledProcessError) as exc:
+    except RuntimeError as exc:
         print(f"FAIL: {exc}")
         return 2
 

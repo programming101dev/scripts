@@ -20,6 +20,7 @@ set(P101_LIBRARIES
         p101_c
         p101_env
         p101_tool_event
+        p101_record
         p101_error
 )
 set(P101_RESOLVED_LIBRARIES "")
