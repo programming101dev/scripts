@@ -345,6 +345,23 @@ def main() -> int:
                             f"{required_step!r}"
                         )
 
+        for name in sorted(expected & actual.keys()):
+            binding = errno_wrappers[name]
+            function = binding.get("function")
+            if binding.get("role") != "native-wrapper" or function is None:
+                continue
+            documented_failure = any(
+                errno_functions[function]["platforms"][required_platform][
+                    "effective_errors"
+                ]
+                for required_platform in ("linux", "macos", "freebsd")
+            )
+            if documented_failure and actual[name].get("test_kind") != "fault":
+                failures.append(
+                    f"{library}:{name}: documented platform errors require "
+                    "an exhaustive fault test"
+                )
+
         missing = expected - actual.keys()
         extra = actual.keys() - expected
         for name in sorted(missing):
@@ -381,6 +398,27 @@ def main() -> int:
         f"documented/injected errno cases on "
         f"{platform_key or platform.system()}: {errno_case_total}"
     )
+    documented_wrappers = {
+        name
+        for name, binding in errno_wrappers.items()
+        if binding.get("role") == "native-wrapper"
+        and binding.get("function") in errno_functions
+        and any(
+            errno_functions[binding["function"]]["platforms"][
+                required_platform
+            ]["effective_errors"]
+            for required_platform in ("linux", "macos", "freebsd")
+        )
+    }
+    print(
+        "native wrappers with supported-platform documented faults: "
+        f"{len(documented_wrappers & fault_wrappers)}/"
+        f"{len(documented_wrappers)}"
+    )
+    print(
+        f"fault-capable wrappers: {len(fault_wrappers)}; "
+        f"behavior-only wrappers: {expected_total - len(fault_wrappers)}"
+    )
     for reported_platform in ("linux", "macos", "freebsd"):
         manual_count = sum(
             errno_functions[binding["function"]]["platforms"][
@@ -400,10 +438,28 @@ def main() -> int:
             )
             for name in fault_wrappers
         )
+        documented_cases = sum(
+            len(
+                errno_functions[binding["function"]]["platforms"][
+                    reported_platform
+                ]["effective_errors"]
+            )
+            for binding in native_bindings
+        )
+        documented_wrapper_count = sum(
+            bool(
+                errno_functions[binding["function"]]["platforms"][
+                    reported_platform
+                ]["effective_errors"]
+            )
+            for binding in native_bindings
+        )
         print(
             f"{reported_platform}: {manual_count} wrapper manual overrides, "
             f"{fallback_count} POSIX fallbacks; "
-            f"{projected_cases} fault cases"
+            f"{documented_cases} documented faults across "
+            f"{documented_wrapper_count} wrappers; "
+            f"{projected_cases} injected cases including smoke tests"
         )
     extra_errno_wrappers = errno_wrappers.keys() - {
         row["function"]

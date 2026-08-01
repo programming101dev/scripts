@@ -35,6 +35,21 @@ ALIASES = {
     "p101_semctl_arg": "semctl",
 }
 
+# Some manuals intentionally group several interfaces on one page but describe
+# an ERRORS list for only one sibling without carrying machine-readable scope
+# into each item. These reviewed exclusions prevent that prose ambiguity from
+# becoming a false wrapper obligation.
+PLATFORM_ERROR_OVERRIDES = {
+    ("freebsd", "getpgrp"): {
+        "errors": [],
+        "reason": "The shared getpgrp(2) page assigns ESRCH to getpgid(), not getpgrp().",
+    },
+    ("linux", "freelocale"): {
+        "errors": [],
+        "reason": "The shared newlocale(3) page ERRORS list applies to locale creation, not freelocale().",
+    },
+}
+
 
 def rows(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8") as stream:
@@ -88,14 +103,18 @@ class FunctionIndexParser(HTMLParser):
 
 
 class PosixErrorsParser(HTMLParser):
-    def __init__(self, errno_names: set[str]) -> None:
+    def __init__(self, function: str, errno_names: set[str]) -> None:
         super().__init__()
+        self.function = function
         self.errno_names = errno_names
         self.in_heading = False
         self.in_errors = False
         self.heading_text: list[str] = []
         self.in_error_term = False
         self.error_term: list[str] = []
+        self.in_paragraph = False
+        self.paragraph_text: list[str] = []
+        self.applies = True
         self.mode = "shall_fail"
         self.shall_fail: set[str] = set()
         self.may_fail: set[str] = set()
@@ -112,6 +131,10 @@ class PosixErrorsParser(HTMLParser):
             return
         if not self.in_errors:
             return
+        if tag == "p":
+            self.in_paragraph = True
+            self.paragraph_text = []
+            return
         if tag == "dt":
             self.in_error_term = True
             self.error_term = []
@@ -125,16 +148,30 @@ class PosixErrorsParser(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag == "dt" and self.in_error_term:
             text = " ".join(self.error_term)
-            for name in re.findall(r"\bE[A-Z0-9_]+\b", text):
-                if name not in self.errno_names:
-                    continue
-                target = (
-                    self.may_fail
-                    if self.mode == "may_fail"
-                    else self.shall_fail
-                )
-                target.add(name)
+            if self.applies:
+                for name in re.findall(r"\bE[A-Z0-9_]+\b", text):
+                    if name not in self.errno_names:
+                        continue
+                    target = (
+                        self.may_fail
+                        if self.mode == "may_fail"
+                        else self.shall_fail
+                    )
+                    target.add(name)
             self.in_error_term = False
+            return
+        if tag == "p" and self.in_paragraph:
+            text = " ".join(" ".join(self.paragraph_text).split())
+            lowered = text.lower()
+            if "shall fail" in lowered or "may fail" in lowered:
+                names = set(
+                    re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(\)", text)
+                )
+                self.applies = not names or self.function in names
+                self.mode = (
+                    "may_fail" if "may fail" in lowered else "shall_fail"
+                )
+            self.in_paragraph = False
             return
         if tag != "h4" or not self.in_heading:
             return
@@ -146,17 +183,14 @@ class PosixErrorsParser(HTMLParser):
         if self.in_heading:
             self.heading_text.append(data)
             return
+        if self.in_paragraph:
+            self.paragraph_text.append(data)
         if self.in_error_term:
             self.error_term.append(data)
             return
         if not self.in_errors:
             return
         self.error_text.append(data)
-        lowered = " ".join(data.lower().split())
-        if "may fail" in lowered:
-            self.mode = "may_fail"
-        elif "shall fail" in lowered:
-            self.mode = "shall_fail"
 
 
 def posix_index(path: Path) -> dict[str, str]:
@@ -193,7 +227,7 @@ def posix_record(
         raise FileNotFoundError(
             f"missing {page}; download {url} before generating the contract"
         )
-    parser = PosixErrorsParser(errno_names)
+    parser = PosixErrorsParser(function, errno_names)
     parser.feed(page.read_text(encoding="utf-8", errors="replace"))
     references: set[str] = set()
     error_text = " ".join(" ".join(parser.error_text).split())
@@ -239,49 +273,186 @@ def manual_candidates(root: Path, function: str) -> list[Path]:
     return candidates
 
 
-def roff_error_details(
-    text: str,
-    errno_names: set[str],
-) -> tuple[list[str], list[str]]:
-    in_errors = False
-    pending_term = False
-    inherit_references = False
-    found: set[str] = set()
-    references: set[str] = set()
+def roff_section(text: str, section: str) -> list[str]:
+    selected: list[str] = []
+    active = False
     for line in text.splitlines():
         heading = re.match(r"^\.(?:Sh|SH)\s+\"?([^\"].*?)\"?\s*$", line)
         if heading is not None:
-            in_errors = heading.group(1).strip().upper() == "ERRORS"
+            active = heading.group(1).strip().upper() == section
             continue
-        if not in_errors:
-            continue
-        normalized = " ".join(line.lower().split())
+        if active:
+            selected.append(line)
+    return selected
+
+
+def roff_interface_names(text: str) -> set[str]:
+    lines = roff_section(text, "NAME")
+    names = set(
+        re.findall(
+            r"^\.Nm\s+([A-Za-z_][A-Za-z0-9_]*)\b",
+            "\n".join(lines),
+            re.MULTILINE,
+        )
+    )
+    plain = " ".join(lines)
+    if r"\-" in plain:
+        plain = plain.split(r"\-", 1)[0]
+    names.update(
+        re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\b", plain)
+    )
+    return {
+        name
+        for name in names
+        if name not in {"Nm", "Nd", "BR", "B", "TH"}
+    }
+
+
+def roff_called_names(lines: list[str]) -> set[str]:
+    text = "\n".join(lines)
+    names = set(
+        re.findall(
+            r"^\.(?:Fn|Nm)\s+\"?([A-Za-z_][A-Za-z0-9_]*)",
+            text,
+            re.MULTILINE,
+        )
+    )
+    names.update(
+        re.findall(
+            r"^\.(?:BR|B)\s+\"?([A-Za-z_][A-Za-z0-9_]*)"
+            r"(?:\\fR)?\s*(?:\\?\(|\(\))",
+            text,
+            re.MULTILINE,
+        )
+    )
+    names.update(
+        re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(\)", text)
+    )
+    return names
+
+
+def roff_error_details(
+    text: str,
+    function: str,
+    errno_names: set[str],
+) -> tuple[list[str], list[str]]:
+    error_lines = roff_section(text, "ERRORS")
+    interface_names = roff_interface_names(text)
+    section_interface_mentions = (
+        roff_called_names(error_lines) & interface_names
+    )
+    section_applies = (
+        not section_interface_mentions
+        or function in section_interface_mentions
+    )
+    found: set[str] = set()
+    references: set[str] = set()
+    scope_lines: list[str] = []
+    list_scope: set[str] | None = None
+    pending_term = False
+    current_errors: set[str] = set()
+    current_description: list[str] = []
+
+    def flush_error() -> None:
+        nonlocal current_errors, current_description
+        if not current_errors:
+            return
+        description_names = (
+            roff_called_names(current_description) & interface_names
+        )
+        applies = (
+            list_scope is None
+            or not list_scope
+            or function in list_scope
+        )
         if (
-            "errors specified for" in normalized
-            or "errno values as described by" in normalized
-            or "errors described for" in normalized
+            applies
+            and description_names
+            and function not in description_names
         ):
-            inherit_references = True
-        if re.match(r"^\.(?:Pp|PP|LP)\b", line):
-            inherit_references = False
-        reference = re.search(r"^\.Xr\s+([A-Za-z_][A-Za-z0-9_]*)\s+[23]\b", line)
-        if reference is None:
-            reference = re.search(
-                r"^\.(?:BR|B)\s+([A-Za-z_][A-Za-z0-9_]*)\s+\([23]\)",
-                line,
-            )
-        if reference is not None and inherit_references:
-            references.add(reference.group(1))
-        is_term = re.match(r"^\.(?:It|IP|TP)\b", line) is not None
-        if not is_term and not pending_term:
-            continue
-        line_names = re.findall(r"\bE[A-Z0-9_]+\b", line)
-        for name in line_names:
-            if name in errno_names:
-                found.add(name)
-        pending_term = is_term and not line_names
-        if not is_term and line_names:
+            applies = False
+        if applies and section_applies:
+            found.update(current_errors)
+        current_errors = set()
+        current_description = []
+
+    for line in error_lines:
+        if re.match(r"^\.(?:Pp|PP|LP|P)\b", line):
+            flush_error()
+            scope_lines = []
+            list_scope = None
             pending_term = False
+            continue
+        if re.match(r"^\.Bl\b", line):
+            list_scope = roff_called_names(scope_lines) & interface_names
+            continue
+        if re.match(r"^\.El\b", line):
+            flush_error()
+            scope_lines = []
+            list_scope = None
+            pending_term = False
+            continue
+        is_term = re.match(r"^\.(?:It|IP|TP)\b", line) is not None
+        if is_term:
+            flush_error()
+            if list_scope is None:
+                list_scope = roff_called_names(scope_lines) & interface_names
+            line_errors = {
+                name
+                for name in re.findall(r"\bE[A-Z0-9_]+\b", line)
+                if name in errno_names
+            }
+            current_errors = line_errors
+            pending_term = not line_errors
+            continue
+        if pending_term:
+            line_errors = {
+                name
+                for name in re.findall(r"\bE[A-Z0-9_]+\b", line)
+                if name in errno_names
+            }
+            if line_errors:
+                current_errors.update(line_errors)
+                pending_term = False
+                continue
+        if current_errors:
+            current_description.append(line)
+        elif list_scope is None:
+            scope_lines.append(line)
+    flush_error()
+
+    paragraphs = re.split(
+        r"^\.(?:Pp|PP|LP|P)\b.*$",
+        "\n".join(error_lines),
+        flags=re.MULTILINE,
+    )
+    triggers = (
+        "errors specified for",
+        "errno values as described by",
+        "errors described for",
+    )
+    for paragraph in paragraphs:
+        normalized = " ".join(paragraph.lower().split())
+        if not any(trigger in normalized for trigger in triggers):
+            continue
+        lines = paragraph.splitlines()
+        mentioned = roff_called_names(lines) & interface_names
+        if not section_applies or (mentioned and function not in mentioned):
+            continue
+        references.update(
+            re.findall(
+                r"^\.Xr\s+([A-Za-z_][A-Za-z0-9_]*)\s+[23]\b",
+                paragraph,
+                re.MULTILINE,
+            )
+        )
+        references.update(
+            re.findall(
+                r"^\.(?:BR|B)\s+([A-Za-z_][A-Za-z0-9_]*)\s+\([23]\)",
+                paragraph,
+                re.MULTILINE,
+            )
+        )
     return sorted(found), sorted(references)
 
 
@@ -307,7 +478,7 @@ def platform_record(
         if target.is_file():
             page = target
             text = read_manual(page)
-    errors, references = roff_error_details(text, errno_names)
+    errors, references = roff_error_details(text, function, errno_names)
     return {
         "status": "documented",
         "source": source_prefix,
@@ -441,14 +612,22 @@ def main() -> int:
                 "--platform requires --man-root and --platform-source"
             )
         for function in functions:
-            records_by_function[function]["platforms"][args.platform] = (
-                platform_record(
-                    args.man_root,
-                    function,
-                    errno_names,
-                    args.platform_source,
-                )
+            refreshed = platform_record(
+                args.man_root,
+                function,
+                errno_names,
+                args.platform_source,
             )
+            override = PLATFORM_ERROR_OVERRIDES.get(
+                (args.platform, function)
+            )
+            if override is not None and refreshed["status"] == "documented":
+                refreshed["errors"] = override["errors"]
+                refreshed["references"] = []
+                refreshed["reviewed_override"] = override["reason"]
+            records_by_function[function]["platforms"][
+                args.platform
+            ] = refreshed
 
     for function in functions:
         posix = records_by_function[function]["posix"]

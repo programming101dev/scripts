@@ -37,7 +37,10 @@ def check(condition: bool, message: str) -> None:
 
 
 def test_posix_parser(refresh) -> None:
-    parser = refresh.PosixErrorsParser({"EACCES", "EAGAIN", "EINTR"})
+    parser = refresh.PosixErrorsParser(
+        "sample",
+        {"EACCES", "EAGAIN", "EINTR"},
+    )
     parser.feed(
         """
         <h4>ERRORS</h4>
@@ -53,6 +56,19 @@ def test_posix_parser(refresh) -> None:
     check(parser.may_fail == {"EAGAIN"}, "POSIX may-fail parsing drifted")
     check("EINTR" not in parser.shall_fail, "negated prose became an errno")
     check("P101LINK_socket" in " ".join(parser.error_text), "reference lost")
+
+    parser = refresh.PosixErrorsParser("hdestroy", {"ENOMEM"})
+    parser.feed(
+        """
+        <h4>ERRORS</h4>
+        <p>The <i>hcreate</i>() and <i>hsearch</i>() functions may fail if:</p>
+        <dl><dt>[ENOMEM]</dt><dd>No memory.</dd></dl>
+        """
+    )
+    check(
+        not parser.may_fail,
+        "a grouped POSIX page assigned a sibling function's errno",
+    )
 
 
 def test_roff_parser(refresh) -> None:
@@ -71,6 +87,7 @@ also apply.
 .SH SEE ALSO
 .BR close (2)
 """,
+        "sample",
         {"EACCES", "EAGAIN", "EINTR"},
     )
     check(errors == ["EACCES", "EAGAIN"], "Linux roff term parsing drifted")
@@ -83,9 +100,57 @@ also apply.
 Interrupted.
 .Sh SEE ALSO
 """,
+        "sample",
         {"EINTR"},
     )
     check(errors == ["EINTR"], "BSD roff term parsing drifted")
+
+    errors, _references = refresh.roff_error_details(
+        """
+.Sh NAME
+.Nm hdestroy
+.Nm hcreate
+.Nm hsearch
+.Sh ERRORS
+The
+.Fn hcreate
+and
+.Fn hsearch
+functions may fail if:
+.Bl -tag -width Er
+.It Bq Er ENOMEM
+No memory.
+.El
+""",
+        "hdestroy",
+        {"ENOMEM"},
+    )
+    check(
+        not errors,
+        "a grouped BSD manual assigned a sibling function's errno",
+    )
+
+    errors, _references = refresh.roff_error_details(
+        """
+.SH NAME
+sync, syncfs \\- commit filesystem caches to disk
+.SH ERRORS
+.BR sync ()
+is always successful.
+.P
+.BR syncfs ()
+can fail:
+.TP
+.B EBADF
+Bad descriptor.
+""",
+        "sync",
+        {"EBADF"},
+    )
+    check(
+        not errors,
+        "a grouped Linux manual assigned syncfs errors to sync",
+    )
 
 
 def test_manual_locator(refresh) -> None:

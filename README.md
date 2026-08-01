@@ -508,10 +508,18 @@ platform's effective set and verifies that the exact code reaches
 injection smoke case; that case is labeled by the empty manual set rather than
 misrepresented as a documented failure. Wrappers without an injectable failure
 boundary are assigned to an existing behavior test or the owning library's
-handwritten `test/test_behavior.c`. The check requires every public manifest
-API to be invoked by exactly one compiled test source, validates all 1,099 JSON
+handwritten `test/test_behavior.c`.
+
+There is no behavior-test exemption for a native interface with a documented
+failure on any supported platform. Such a wrapper must expose the injectable
+error boundary and must have a generated fault test. The static check validates
+the Linux, macOS, and FreeBSD arrays on every host, so a missing FreeBSD case is
+caught on macOS rather than deferred to FreeBSD CI. The runtime suite then
+executes the selected host array. The check requires every public manifest API
+to be invoked by exactly one compiled test source, validates all 1,099 JSON
 bindings, requires all three platform records, and compares every generated
-error array with the catalogue. `test.sh` is the runtime receipt.
+error array with the catalogue. `test.sh` and the three-platform CI matrix are
+the executable receipts.
 
 The executable 10x contract replays every library test suite with call and
 resource logging enabled:

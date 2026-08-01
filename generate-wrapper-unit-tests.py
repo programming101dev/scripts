@@ -47,7 +47,6 @@ WORKSPACE = SCRIPT_DIR.parent
 LIBRARIES = WORKSPACE / "libraries"
 ERRNO_CONTRACT_PATH = SCRIPT_DIR / "wrapper-errno-contract.json"
 REPOS_PATH = SCRIPT_DIR / "repos.txt"
-BEHAVIOR_ONLY = {"p101_vdprintf"}
 AGGREGATE_TYPEDEFS = {"datum", "ENTRY"}
 
 
@@ -235,14 +234,6 @@ def return_type(declaration: dict[str, Any]) -> str:
     return qualified[:marker].strip()
 
 
-def requires_handwritten_test(declaration: dict[str, Any]) -> bool:
-    return any(
-        child.get("kind") == "ParmVarDecl"
-        and "va_list" in child.get("type", {}).get("qualType", "")
-        for child in declaration.get("inner", [])
-    )
-
-
 def argument_expression(parameter: dict[str, Any]) -> str:
     type_info = parameter["type"]
     qualified = type_info["qualType"]
@@ -253,7 +244,7 @@ def argument_expression(parameter: dict[str, Any]) -> str:
     if "p101_error" in qualified and "*" in qualified:
         return "err"
     if "va_list" in qualified:
-        raise RuntimeError("va_list wrappers require handwritten behavior tests")
+        return "arguments"
     if "*" in qualified or "[" in qualified:
         return "NULL"
     if qualified in AGGREGATE_TYPEDEFS:
@@ -274,6 +265,17 @@ def fault_test(
         for child in declaration.get("inner", [])
         if child.get("kind") == "ParmVarDecl"
     ]
+    has_va_list = any(
+        "va_list" in parameter.get("type", {}).get("qualType", "")
+        for parameter in parameters
+    )
+    argument_setup = (
+        "    va_list arguments;\n"
+        "\n"
+        "    memset(&arguments, 0, sizeof(arguments));\n"
+        if has_va_list
+        else ""
+    )
     arguments = ", ".join(argument_expression(parameter) for parameter in parameters)
     result_type = return_type(declaration)
     if result_type == "void":
@@ -290,6 +292,7 @@ def fault_test(
     return f"""/* P101_TEST_CASE({name}) */
 static void test_{name}(struct p101_env *env, struct p101_error *err)
 {{
+{argument_setup}\
 #ifdef __linux__
     static const int errors[] = {{{arrays["linux"]}}};
 #elif defined(__APPLE__)
@@ -339,8 +342,10 @@ int main(void)
 {includes}
 #include <p101_env/env.h>
 #include <p101_error/error.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static int failures;
 
@@ -463,8 +468,7 @@ def write_outputs(clang: str, clang_format: str) -> None:
             name
             for name, declaration in declarations.items()
             if referenced_names(declaration) & fault_calls
-            and not requires_handwritten_test(declaration)
-        } - BEHAVIOR_ONLY
+        }
         fault_names = sorted(admitted & faultable)
         behavior_names = sorted(admitted - faultable)
         test_dir = repo / "test"

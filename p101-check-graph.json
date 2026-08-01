@@ -310,7 +310,7 @@
       "command": ["./check-wrapper-unit-tests.py"],
       "depends_on": ["wrapper-errno-contract-tests"],
       "resources": {"writes": [], "units": {}},
-      "guarantee": "Every public wrapper has an explicit unit-test manifest entry."
+      "guarantee": "Every public wrapper has exactly one compiled test, and every documented Linux, macOS, and FreeBSD fault has an exact generated propagation case."
     },
     {
       "id": "library-audit",
