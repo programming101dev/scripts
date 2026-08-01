@@ -16,14 +16,22 @@ command -v shellcheck >/dev/null 2>&1 || {
 
 workspace="$(CDPATH='' cd .. && pwd -P)"
 scripts=()
-while IFS= read -r -d '' script; do
-  scripts+=("$script")
+while IFS= read -r -d '' git_metadata; do
+  repository_candidate="${git_metadata%/.git}"
+  repository_root="$(git -C "$repository_candidate" rev-parse --show-toplevel 2>/dev/null || true)"
+  [[ -n "$repository_root" ]] || continue
+
+  while IFS= read -r -d '' relative_script; do
+    scripts+=("$repository_root/$relative_script")
+  done < <(git -C "$repository_root" ls-files -z -- '*.sh')
 done < <(
   find "$workspace" \
-    \( -type d \( -name .git -o -name '.flags*' -o -name 'build*' -o -name .p101-script-backups \) -prune \) -o \
-    -type f -name '*.sh' -print0
+    \( -type d \( -name '.flags*' -o -name 'build*' -o -name .p101-script-backups \) -prune \) -o \
+    \( -name .git -print0 -prune \)
 )
-if [[ -f "$workspace/scripts/p101" ]]; then
+# p101 is a tracked shell entry point without a .sh suffix.
+if [[ -f "$workspace/scripts/p101" ]] \
+   && git -C "$workspace/scripts" ls-files --error-unmatch p101 >/dev/null 2>&1; then
   scripts+=("$workspace/scripts/p101")
 fi
 [[ ${#scripts[@]} -gt 0 ]] || { echo "FAIL: no shell scripts found." >&2; exit 1; }
