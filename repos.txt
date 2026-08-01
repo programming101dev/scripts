@@ -2,9 +2,9 @@ https://github.com/programming101dev/lib_error.git|../libraries/lib_error|c
 https://github.com/programming101dev/lib_tool_event.git|../libraries/lib_tool_event|c
 https://github.com/programming101dev/lib_env.git|../libraries/lib_env|c
 https://github.com/programming101dev/lib_c.git|../libraries/lib_c|c
-https://github.com/programming101dev/lib_c_facts.git|../libraries/lib_c_facts|c
 https://github.com/programming101dev/lib_io.git|../libraries/lib_io|c
 https://github.com/programming101dev/lib_filesystem.git|../libraries/lib_filesystem|c
+https://github.com/programming101dev/lib_c_facts.git|../libraries/lib_c_facts|c
 https://github.com/programming101dev/lib_memory.git|../libraries/lib_memory|c
 https://github.com/programming101dev/lib_process.git|../libraries/lib_process|c
 https://github.com/programming101dev/lib_thread.git|../libraries/lib_thread|c

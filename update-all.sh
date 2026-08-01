@@ -141,16 +141,21 @@ case "$driver" in
 esac
 
 # Pull the scripts repo ONCE up front so a self-update aborts cleanly here,
-# not partway through the compiler loop. pull.sh exits 1 after a successful
-# pull to signal "re-run with the new scripts".
-pull_rc=0
-./pull.sh || pull_rc=$?
-if [ "$pull_rc" -eq 1 ]; then
-  printf 'The scripts repository was just updated. Please re-run: %s\n' "$0" >&2
-  exit 1
-elif [ "$pull_rc" -ne 0 ]; then
-  printf 'Error: pull.sh failed (exit %d).\n' "$pull_rc" >&2
-  exit "$pull_rc"
+# not partway through the compiler loop. Some CI runners copy the checked-out
+# files into a VM without the .git entry; that snapshot is still a valid input,
+# but it cannot self-update.
+if [ -e .git ]; then
+  pull_rc=0
+  ./pull.sh || pull_rc=$?
+  if [ "$pull_rc" -eq 1 ]; then
+    printf 'The scripts repository was just updated. Please re-run: %s\n' "$0" >&2
+    exit 1
+  elif [ "$pull_rc" -ne 0 ]; then
+    printf 'Error: pull.sh failed (exit %d).\n' "$pull_rc" >&2
+    exit "$pull_rc"
+  fi
+else
+  printf 'scripts is a source snapshot without Git metadata; skipping self-update.\n'
 fi
 
 # Derive the C++ compiler NAME that corresponds to a C compiler name.

@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -73,6 +74,50 @@ class ArchitectureContractTests(unittest.TestCase):
             RESPONSIBILITY_MODULE.ResponsibilityError, "bypasses tool-subprocess"
         ):
             RESPONSIBILITY_MODULE.validate(document)
+
+    def test_repository_build_order_respects_library_dependencies(self) -> None:
+        repositories: list[Path] = []
+        for raw_line in (SCRIPT_DIR / "repos.txt").read_text(
+            encoding="utf-8"
+        ).splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            fields = line.split("|")
+            self.assertGreaterEqual(len(fields), 2)
+            repositories.append((SCRIPT_DIR / fields[1]).resolve())
+
+        position = {repository: index for index, repository in enumerate(repositories)}
+        target_owner: dict[str, Path] = {}
+        for repository in repositories:
+            config = repository / "config.cmake"
+            if not config.is_file():
+                continue
+            text = config.read_text(encoding="utf-8")
+            match = re.search(r"set\(LIBRARY_TARGETS\s+([^)]*)\)", text, re.DOTALL)
+            if match is not None:
+                for target in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", match.group(1)):
+                    target_owner[target] = repository
+
+        violations: list[str] = []
+        for repository in repositories:
+            config = repository / "config.cmake"
+            if not config.is_file():
+                continue
+            text = config.read_text(encoding="utf-8")
+            for match in re.finditer(
+                r"set\([^\s()]+_LINK_LIBRARIES\s+([^)]*)\)", text, re.DOTALL
+            ):
+                for dependency in re.findall(
+                    r"[A-Za-z_][A-Za-z0-9_]*", match.group(1)
+                ):
+                    owner = target_owner.get(dependency)
+                    if owner is not None and position[owner] > position[repository]:
+                        violations.append(
+                            f"{repository.name} precedes {owner.name} ({dependency})"
+                        )
+
+        self.assertEqual(violations, [])
 
 
 if __name__ == "__main__":

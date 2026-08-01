@@ -68,23 +68,21 @@ grep -Fq 'Aborting at: build' "$sandbox/abort.stderr"
 mkdir -p "$sandbox/matrix"
 cp ./update-all.sh "$sandbox/matrix/update-all.sh"
 chmod +x "$sandbox/matrix/update-all.sh"
-cat > "$sandbox/matrix/pull.sh" <<'EOF'
-#!/bin/sh
-exit 0
-EOF
 cat > "$sandbox/matrix/driver.sh" <<'EOF'
 #!/bin/sh
 printf '%s\n' "$@" > driver-arguments.txt
 EOF
-chmod +x "$sandbox/matrix/pull.sh" "$sandbox/matrix/driver.sh"
+chmod +x "$sandbox/matrix/driver.sh"
 printf 'clang\n' > "$sandbox/matrix/c.txt"
 printf 'clang++\n' > "$sandbox/matrix/cxx.txt"
 (
   cd "$sandbox/matrix"
   ./update-all.sh -u ./driver.sh -C c.txt -X cxx.txt \
     -f clang-format -t clang-tidy -k cppcheck -s address \
-    --interactive --skip-install >/dev/null
+    --interactive --skip-install > update-all.stdout
 )
+grep -Fq 'source snapshot without Git metadata; skipping self-update' \
+  "$sandbox/matrix/update-all.stdout"
 grep -Fxq -- '--interactive' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--skip-install' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- 'address' "$sandbox/matrix/driver-arguments.txt"
