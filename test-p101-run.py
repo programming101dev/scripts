@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -46,6 +47,7 @@ done
             args_file = root / "observe.args"
             result = subprocess.run(
                 [
+                    sys.executable,
                     str(RUN),
                     "-o",
                     str(output),
@@ -91,6 +93,7 @@ done
             )
             result = subprocess.run(
                 [
+                    sys.executable,
                     str(RUN),
                     "-o",
                     str(root / "result"),
@@ -116,6 +119,7 @@ done
             analyze = executable(root / "analyze", f"touch {marker}\n")
             result = subprocess.run(
                 [
+                    sys.executable,
                     str(RUN),
                     "-o",
                     str(root / "result"),
