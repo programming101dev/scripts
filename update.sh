@@ -46,6 +46,7 @@ LINK_CMAKE_SH="./link-cmake.sh"
 BUILD_REPO_SH="./build-repo.sh"
 COPY_SCRIPTS_SH="./copy-scripts.sh"
 COPY_PLAYGROUND_TRACK_SCRIPTS_SH="./copy-playground-track-scripts.sh"
+REMOVE_RETIRED_REPOS_SH="./remove-retired-repos.sh"
 
 # ----------------- messaging helpers -----------------
 die() { printf "Error: %s\n" "$*" >&2; exit 2; }
@@ -311,7 +312,7 @@ fi
 [[ -n "$cxx_compiler" ]] || { printf "Error: -x (C++ compiler) is required\n" >&2; usage; }
 
 # ----------------- sanity: required helper scripts present -----------------
-for f in "$PULL_SH" "$CHECK_ENV_SH" "$CLONE_REPOS_SH" "$CHECK_COMPILERS_SH" "$GENERATE_FLAGS_SH" "$LINK_FLAGS_SH" "$LINK_COMPILERS_SH" "$LINK_CMAKE_SH" "$BUILD_REPO_SH"; do
+for f in "$PULL_SH" "$CHECK_ENV_SH" "$CLONE_REPOS_SH" "$CHECK_COMPILERS_SH" "$GENERATE_FLAGS_SH" "$LINK_FLAGS_SH" "$LINK_COMPILERS_SH" "$LINK_CMAKE_SH" "$BUILD_REPO_SH" "$REMOVE_RETIRED_REPOS_SH"; do
   [[ -x "$f" ]] || die "required helper script missing or not executable: $f"
 done
 
@@ -442,6 +443,11 @@ if $interactive; then
   run_or_echo "$CLONE_REPOS_SH" --interactive
 else
   run_or_echo "$CLONE_REPOS_SH"
+fi
+if $interactive; then
+  run_or_echo "$REMOVE_RETIRED_REPOS_SH" --apply --yes --interactive
+else
+  run_or_echo "$REMOVE_RETIRED_REPOS_SH" --apply --yes
 fi
 
 # ----------------- flags cache management -----------------
