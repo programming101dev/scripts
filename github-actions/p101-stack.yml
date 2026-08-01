@@ -95,7 +95,7 @@ jobs:
           sync: rsync
           copyback: true
           prepare: |
-            pkg install -y bash git cmake llvm cppcheck python3 libxcrypt
+            pkg install -y bash git cmake llvm cppcheck python3 libxcrypt hs-ShellCheck
             gcovr_pkg="$(pkg search -q -x '^py[0-9]+-gcovr$' | head -n 1 || true)"
             if [ -n "$gcovr_pkg" ]; then
               pkg install -y "$gcovr_pkg"
