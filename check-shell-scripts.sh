@@ -15,24 +15,70 @@ command -v shellcheck >/dev/null 2>&1 || {
 }
 
 workspace="$(CDPATH='' cd .. && pwd -P)"
+repos_file="$workspace/scripts/repos.txt"
 scripts=()
-while IFS= read -r -d '' git_metadata; do
-  repository_candidate="${git_metadata%/.git}"
-  repository_root="$(git -C "$repository_candidate" rev-parse --show-toplevel 2>/dev/null || true)"
-  [[ -n "$repository_root" ]] || continue
+discovery_failures=0
 
+append_repository_scripts() {
+  local repository_candidate="$1"
+  local repository_root
+  local requested_root
+  local relative_script
+
+  requested_root="$(CDPATH='' cd -- "$repository_candidate" 2>/dev/null && pwd -P || true)"
+  repository_root="$(git -C "$repository_candidate" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -z "$requested_root" || -z "$repository_root" || "$requested_root" != "$repository_root" ]]; then
+    echo "FAIL: configured repository is missing or invalid: $repository_candidate" >&2
+    discovery_failures=$((discovery_failures + 1))
+    return
+  fi
   while IFS= read -r -d '' relative_script; do
     scripts+=("$repository_root/$relative_script")
   done < <(git -C "$repository_root" ls-files -z -- '*.sh')
-done < <(
-  find "$workspace" \
-    \( -type d \( -name '.flags*' -o -name 'build*' -o -name .p101-script-backups \) -prune \) -o \
-    \( -name .git -print0 -prune \)
-)
+}
+
+trim_whitespace() {
+  local value="$1"
+
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+[[ -f "$repos_file" ]] || {
+  echo "FAIL: repository manifest not found: $repos_file" >&2
+  exit 1
+}
+
+# The manifest is the workspace ownership boundary. Old repositories may remain
+# on a developer machine after a library split; they are not maintained inputs
+# once repos.txt stops naming them.
+append_repository_scripts "$workspace/scripts"
+if [[ -e "$workspace/setup/.git" ]]; then
+  append_repository_scripts "$workspace/setup"
+fi
+while IFS= read -r manifest_line || [[ -n "$manifest_line" ]]; do
+  manifest_line="${manifest_line%%#*}"
+  manifest_line="$(trim_whitespace "$manifest_line")"
+  [[ -n "$manifest_line" ]] || continue
+  IFS='|' read -r _repository_url repository_path _repository_type <<< "$manifest_line"
+  repository_path="$(trim_whitespace "${repository_path:-}")"
+  [[ -n "$repository_path" ]] || {
+    echo "FAIL: malformed repository manifest entry: $manifest_line" >&2
+    discovery_failures=$((discovery_failures + 1))
+    continue
+  }
+  append_repository_scripts "$workspace/scripts/$repository_path"
+done < "$repos_file"
+
 # p101 is a tracked shell entry point without a .sh suffix.
 if [[ -f "$workspace/scripts/p101" ]] \
    && git -C "$workspace/scripts" ls-files --error-unmatch p101 >/dev/null 2>&1; then
   scripts+=("$workspace/scripts/p101")
+fi
+if [[ "$discovery_failures" -gt 0 ]]; then
+  echo "Shell-script discovery failed: $discovery_failures problem(s)." >&2
+  exit 1
 fi
 [[ ${#scripts[@]} -gt 0 ]] || { echo "FAIL: no shell scripts found." >&2; exit 1; }
 
