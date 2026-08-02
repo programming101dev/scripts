@@ -18,9 +18,9 @@ repositories that have not yet been added to that manifest. Repositories with a
 fuzz target also receive a bounded fuzz run when a fuzzer-capable compiler is
 available. A missing test suite is reported as NO TEST rather than silently
 treated as tested.
-When -c/-x is supplied, fuzzing is attempted only with that compiler. This
-keeps fuzz executables and sanitizer-instrumented p101 libraries on the same
-runtime.
+When -c/-x is supplied, unit tests and fuzzing use those compilers. This keeps
+test executables, fuzz executables, and sanitizer-instrumented p101 libraries
+on the same runtime.
 USAGE
 }
 
@@ -77,7 +77,7 @@ while IFS='|' read -r _url relative language || [ -n "${relative:-}" ]; do
     has_unit_suite=1
   fi
   if [ "$has_unit_suite" -eq 1 ] && [ -x "$repo/test.sh" ]; then
-    if (CDPATH='' cd "$repo" && ./test.sh) > "$out_dir/$name-test.log" 2>&1; then
+    if (CDPATH='' cd "$repo" && P101_TEST_CC="$c_compiler" P101_TEST_CXX="$cxx_compiler" ./test.sh) > "$out_dir/$name-test.log" 2>&1; then
       unit="PASS"
     else
       unit="FAIL"

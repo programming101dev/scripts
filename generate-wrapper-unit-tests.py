@@ -245,6 +245,8 @@ def argument_expression(parameter: dict[str, Any]) -> str:
         return "err"
     if "va_list" in qualified:
         return "arguments"
+    if name in {"format", "fmt"} and "*" in qualified:
+        return 'L"p101"' if "wchar_t" in qualified else '"p101"'
     if "*" in qualified or "[" in qualified:
         return "NULL"
     if qualified in AGGREGATE_TYPEDEFS:
