@@ -21,20 +21,49 @@ discovery_failures=0
 
 append_repository_scripts() {
   local repository_candidate="$1"
+  local allow_source_snapshot="${2:-false}"
   local repository_root
   local requested_root
   local relative_script
 
   requested_root="$(CDPATH='' cd -- "$repository_candidate" 2>/dev/null && pwd -P || true)"
   repository_root="$(git -C "$repository_candidate" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$requested_root" && -n "$repository_root" && "$requested_root" == "$repository_root" ]]; then
+    while IFS= read -r -d '' relative_script; do
+      scripts+=("$repository_root/$relative_script")
+    done < <(git -C "$repository_root" ls-files -z -- '*.sh')
+    return
+  fi
+
+  # vmactions/freebsd-vm copies the checked-out scripts repository into the VM
+  # without its .git directory. Only this owning repository may use snapshot
+  # discovery; every manifest repository must still prove its Git boundary.
+  if [[ "$allow_source_snapshot" == true \
+        && -n "$requested_root" \
+        && -f "$requested_root/repos.txt" \
+        && -f "$requested_root/check-after-update-all.sh" ]]; then
+    while IFS= read -r -d '' relative_script; do
+      scripts+=("$relative_script")
+    done < <(
+      find "$requested_root" \
+        \( -type d \( \
+          -name .git -o \
+          -name .flags -o \
+          -name .compiler-links -o \
+          -name .p101-script-backups -o \
+          -name ci-output -o \
+          -name 'build*' \
+        \) -prune \) -o \
+        \( -type f -name '*.sh' -print0 \)
+    )
+    return
+  fi
+
   if [[ -z "$requested_root" || -z "$repository_root" || "$requested_root" != "$repository_root" ]]; then
     echo "FAIL: configured repository is missing or invalid: $repository_candidate" >&2
     discovery_failures=$((discovery_failures + 1))
     return
   fi
-  while IFS= read -r -d '' relative_script; do
-    scripts+=("$repository_root/$relative_script")
-  done < <(git -C "$repository_root" ls-files -z -- '*.sh')
 }
 
 trim_whitespace() {
@@ -53,7 +82,7 @@ trim_whitespace() {
 # The manifest is the workspace ownership boundary. Old repositories may remain
 # on a developer machine after a library split; they are not maintained inputs
 # once repos.txt stops naming them.
-append_repository_scripts "$workspace/scripts"
+append_repository_scripts "$workspace/scripts" true
 if [[ -e "$workspace/setup/.git" ]]; then
   append_repository_scripts "$workspace/setup"
 fi
@@ -72,9 +101,15 @@ while IFS= read -r manifest_line || [[ -n "$manifest_line" ]]; do
 done < "$repos_file"
 
 # p101 is a tracked shell entry point without a .sh suffix.
-if [[ -f "$workspace/scripts/p101" ]] \
-   && git -C "$workspace/scripts" ls-files --error-unmatch p101 >/dev/null 2>&1; then
-  scripts+=("$workspace/scripts/p101")
+if [[ -f "$workspace/scripts/p101" ]]; then
+  scripts_repository_root="$(git -C "$workspace/scripts" rev-parse --show-toplevel 2>/dev/null || true)"
+  if { [[ "$scripts_repository_root" == "$workspace/scripts" ]] \
+       && git -C "$workspace/scripts" ls-files --error-unmatch p101 >/dev/null 2>&1; } \
+     || { [[ -z "$scripts_repository_root" ]] \
+          && [[ -f "$workspace/scripts/repos.txt" ]] \
+          && [[ -f "$workspace/scripts/check-after-update-all.sh" ]]; }; then
+    scripts+=("$workspace/scripts/p101")
+  fi
 fi
 if [[ "$discovery_failures" -gt 0 ]]; then
   echo "Shell-script discovery failed: $discovery_failures problem(s)." >&2
