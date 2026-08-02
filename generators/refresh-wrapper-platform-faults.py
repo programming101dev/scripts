@@ -25,7 +25,9 @@ from typing import Any
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 WORKSPACE = SCRIPTS_ROOT.parent
-CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-errno-contract.json"
+CONTRACT_PATH = (
+    SCRIPTS_ROOT / "contracts" / "wrapper-platform-faults.json"
+)
 INSTRUMENTATION_PATH = SCRIPTS_ROOT / "contracts" / "instrumentation-contract.json"
 POSIX_BASE = "https://pubs.opengroup.org/onlinepubs/9799919799"
 POSIX_INDEX_URL = f"{POSIX_BASE}/idx/functions.html"
@@ -50,6 +52,295 @@ PLATFORM_ERROR_OVERRIDES = {
         "errors": [],
         "reason": "The shared newlocale(3) page ERRORS list applies to locale creation, not freelocale().",
     },
+}
+
+# These interfaces report failures in their own return-code domains rather
+# than through errno.  The lists below are reviewed extractions from the same
+# POSIX and platform manuals admitted by this generator.  They are deliberately
+# kept separate from errno: generated tests must assert P101_ERROR_SYSTEM and
+# the native return code, not manufacture an errno failure.
+SYSTEM_FAULT_CODES = {
+    "getaddrinfo": {
+        "coverage_kind": "exhaustive-symbolic",
+        "posix": [
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NONAME",
+            "EAI_SERVICE",
+            "EAI_SOCKTYPE",
+            "EAI_SYSTEM",
+        ],
+        "linux": [
+            "EAI_ADDRFAMILY",
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NODATA",
+            "EAI_NONAME",
+            "EAI_SERVICE",
+            "EAI_SOCKTYPE",
+            "EAI_SYSTEM",
+        ],
+        "macos": [
+            "EAI_ADDRFAMILY",
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_BADHINTS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NODATA",
+            "EAI_NONAME",
+            "EAI_OVERFLOW",
+            "EAI_PROTOCOL",
+            "EAI_SERVICE",
+            "EAI_SOCKTYPE",
+            "EAI_SYSTEM",
+        ],
+        "freebsd": [
+            "EAI_ADDRFAMILY",
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_BADHINTS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NODATA",
+            "EAI_NONAME",
+            "EAI_OVERFLOW",
+            "EAI_PROTOCOL",
+            "EAI_SERVICE",
+            "EAI_SOCKTYPE",
+            "EAI_SYSTEM",
+        ],
+    },
+    "getnameinfo": {
+        "coverage_kind": "exhaustive-symbolic",
+        "posix": [
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NONAME",
+            "EAI_OVERFLOW",
+            "EAI_SYSTEM",
+        ],
+        "linux": [
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NONAME",
+            "EAI_OVERFLOW",
+            "EAI_SYSTEM",
+        ],
+        "macos": [
+            "EAI_ADDRFAMILY",
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_BADHINTS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NODATA",
+            "EAI_NONAME",
+            "EAI_OVERFLOW",
+            "EAI_PROTOCOL",
+            "EAI_SERVICE",
+            "EAI_SOCKTYPE",
+            "EAI_SYSTEM",
+        ],
+        "freebsd": [
+            "EAI_ADDRFAMILY",
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_BADHINTS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NODATA",
+            "EAI_NONAME",
+            "EAI_OVERFLOW",
+            "EAI_PROTOCOL",
+            "EAI_SERVICE",
+            "EAI_SOCKTYPE",
+            "EAI_SYSTEM",
+        ],
+    },
+    "regcomp": {
+        "coverage_kind": "exhaustive-symbolic",
+        "posix": [
+            "REG_BADBR",
+            "REG_BADPAT",
+            "REG_BADRPT",
+            "REG_EBRACE",
+            "REG_EBRACK",
+            "REG_ECOLLATE",
+            "REG_ECTYPE",
+            "REG_EESCAPE",
+            "REG_EPAREN",
+            "REG_ERANGE",
+            "REG_ESPACE",
+            "REG_ESUBREG",
+        ],
+        "linux": [
+            "REG_BADBR",
+            "REG_BADPAT",
+            "REG_BADRPT",
+            "REG_EBRACE",
+            "REG_EBRACK",
+            "REG_ECOLLATE",
+            "REG_ECTYPE",
+            "REG_EEND",
+            "REG_EESCAPE",
+            "REG_EPAREN",
+            "REG_ERANGE",
+            "REG_ESIZE",
+            "REG_ESPACE",
+            "REG_ESUBREG",
+        ],
+        "macos": [
+            "REG_ASSERT",
+            "REG_BADBR",
+            "REG_BADMAX",
+            "REG_BADPAT",
+            "REG_BADRPT",
+            "REG_EBRACE",
+            "REG_EBRACK",
+            "REG_ECOLLATE",
+            "REG_ECTYPE",
+            "REG_EESCAPE",
+            "REG_EMPTY",
+            "REG_EPAREN",
+            "REG_ERANGE",
+            "REG_ESPACE",
+            "REG_ESUBREG",
+            "REG_ILLSEQ",
+            "REG_INVARG",
+        ],
+        "freebsd": [
+            "REG_ASSERT",
+            "REG_BADBR",
+            "REG_BADPAT",
+            "REG_BADRPT",
+            "REG_EBRACE",
+            "REG_EBRACK",
+            "REG_ECOLLATE",
+            "REG_ECTYPE",
+            "REG_EESCAPE",
+            "REG_EMPTY",
+            "REG_EPAREN",
+            "REG_ERANGE",
+            "REG_ESPACE",
+            "REG_ESUBREG",
+            "REG_ILLSEQ",
+            "REG_INVARG",
+        ],
+    },
+    "regexec": {
+        "coverage_kind": "platform-documented-plus-smoke",
+        "posix": [],
+        "linux": [],
+        "macos": [
+            "REG_ASSERT",
+            "REG_BADBR",
+            "REG_BADMAX",
+            "REG_BADPAT",
+            "REG_BADRPT",
+            "REG_EBRACE",
+            "REG_EBRACK",
+            "REG_ECOLLATE",
+            "REG_ECTYPE",
+            "REG_EESCAPE",
+            "REG_EMPTY",
+            "REG_EPAREN",
+            "REG_ERANGE",
+            "REG_ESPACE",
+            "REG_ESUBREG",
+            "REG_ILLSEQ",
+            "REG_INVARG",
+        ],
+        "freebsd": [
+            "REG_ASSERT",
+            "REG_BADBR",
+            "REG_BADPAT",
+            "REG_BADRPT",
+            "REG_EBRACE",
+            "REG_EBRACK",
+            "REG_ECOLLATE",
+            "REG_ECTYPE",
+            "REG_EESCAPE",
+            "REG_EMPTY",
+            "REG_EPAREN",
+            "REG_ERANGE",
+            "REG_ESPACE",
+            "REG_ESUBREG",
+            "REG_ILLSEQ",
+            "REG_INVARG",
+        ],
+    },
+    "glob": {
+        "coverage_kind": "exhaustive-symbolic",
+        "posix": ["GLOB_ABORTED", "GLOB_NOSPACE"],
+        "linux": ["GLOB_ABORTED", "GLOB_NOSPACE"],
+        "macos": ["GLOB_ABORTED", "GLOB_NOSPACE"],
+        "freebsd": ["GLOB_ABORTED", "GLOB_NOSPACE"],
+    },
+    "wordexp": {
+        "coverage_kind": "exhaustive-symbolic",
+        "posix": [
+            "WRDE_BADCHAR",
+            "WRDE_BADVAL",
+            "WRDE_CMDSUB",
+            "WRDE_NOSPACE",
+            "WRDE_SYNTAX",
+        ],
+        "linux": [
+            "WRDE_BADCHAR",
+            "WRDE_BADVAL",
+            "WRDE_CMDSUB",
+            "WRDE_NOSPACE",
+            "WRDE_SYNTAX",
+        ],
+        "macos": [
+            "WRDE_BADCHAR",
+            "WRDE_BADVAL",
+            "WRDE_CMDSUB",
+            "WRDE_NOSPACE",
+            "WRDE_SYNTAX",
+        ],
+        "freebsd": [
+            "WRDE_BADCHAR",
+            "WRDE_BADVAL",
+            "WRDE_CMDSUB",
+            "WRDE_NOSPACE",
+            "WRDE_SYNTAX",
+        ],
+    },
+    "fmtmsg": {
+        "coverage_kind": "exhaustive-symbolic",
+        "posix": ["MM_NOCON", "MM_NOMSG", "MM_NOTOK"],
+        "linux": ["MM_NOCON", "MM_NOMSG", "MM_NOTOK"],
+        "macos": ["MM_NOCON", "MM_NOMSG", "MM_NOTOK"],
+        "freebsd": ["MM_NOCON", "MM_NOMSG", "MM_NOTOK"],
+    },
+}
+
+# These APIs document a failure channel but not a finite portable code set.
+# A representative code checks the complete wrapper failure class; the receipt
+# keeps this distinct from exhaustive symbolic-code coverage.
+UNBOUNDED_SYSTEM_FAULTS = {
+    "dlclose": "dynamic-loader diagnostic",
+    "dlopen": "dynamic-loader diagnostic",
+    "dlsym": "dynamic-loader diagnostic",
+    "fnmatch": "implementation-defined non-match error",
 }
 
 
@@ -553,7 +844,7 @@ def curl_config(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Refresh the wrapper errno source-of-truth catalogue."
+        description="Refresh the wrapper platform-fault source of truth."
     )
     parser.add_argument("--index", type=Path, required=True)
     parser.add_argument("--errno-page", type=Path, required=True)
@@ -707,8 +998,62 @@ def main() -> int:
             "posix_fallback_wrappers": len(native_wrapper_functions)
             - manual_wrapper_count,
         }
+    system_faults: dict[str, Any] = {}
+    for function, specification in sorted(SYSTEM_FAULT_CODES.items()):
+        function_record = records_by_function[function]
+        posix_record_value = function_record["posix"]
+        platform_values: dict[str, Any] = {}
+        for platform_name in ("linux", "macos", "freebsd"):
+            platform_record_value = function_record["platforms"][
+                platform_name
+            ]
+            platform_values[platform_name] = {
+                "codes": specification[platform_name],
+                "source": platform_record_value["effective_source"],
+                "source_kind": platform_record_value[
+                    "effective_source_kind"
+                ],
+                "source_path": platform_record_value[
+                    "effective_source_path"
+                ],
+            }
+        system_faults[function] = {
+            "coverage_kind": specification["coverage_kind"],
+            "posix": {
+                "codes": specification["posix"],
+                "source": posix_record_value["source"],
+            },
+            "platforms": platform_values,
+        }
+    for function, description in sorted(UNBOUNDED_SYSTEM_FAULTS.items()):
+        function_record = records_by_function[function]
+        posix_record_value = function_record["posix"]
+        platform_values = {}
+        for platform_name in ("linux", "macos", "freebsd"):
+            platform_record_value = function_record["platforms"][
+                platform_name
+            ]
+            platform_values[platform_name] = {
+                "codes": ["EINVAL"],
+                "source": platform_record_value["effective_source"],
+                "source_kind": platform_record_value[
+                    "effective_source_kind"
+                ],
+                "source_path": platform_record_value[
+                    "effective_source_path"
+                ],
+            }
+        system_faults[function] = {
+            "coverage_kind": "representative-unbounded-class",
+            "description": description,
+            "posix": {
+                "codes": ["EINVAL"],
+                "source": posix_record_value["source"],
+            },
+            "platforms": platform_values,
+        }
     contract = {
-        "schema": "p101-wrapper-errno-contract-v1",
+        "schema": "p101-wrapper-platform-faults-v1",
         "standard": {
             "name": "POSIX.1-2024",
             "function_index": POSIX_INDEX_URL,
@@ -720,6 +1065,7 @@ def main() -> int:
         ),
         "platform_coverage": platform_coverage,
         "errno_names": sorted(errno_names),
+        "system_faults": system_faults,
         "functions": records_by_function,
         "wrappers": wrappers,
     }
@@ -728,7 +1074,7 @@ def main() -> int:
         encoding="utf-8",
     )
     print(
-        f"wrapper errno contract: {len(wrappers)} APIs, "
+        f"wrapper platform-fault contract: {len(wrappers)} APIs, "
         f"{len(functions)} catalogued functions"
     )
     return 0

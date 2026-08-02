@@ -1,6 +1,9 @@
 {
   "schema": "p101-check-graph-v1",
-  "default_jobs": 1,
+  "default_jobs": 4,
+  "resource_capacities": {
+    "compiler": 2
+  },
   "does_not_prove": "Passing this graph proves that the declared commands completed over the selected local inputs. It does not prove undeclared behavior, complete instrumentation, third-party code, or platforms that were not executed.",
   "coverage": {
     "required_nodes": [
@@ -11,6 +14,7 @@
       "boundary-tests",
       "test-inventory",
       "source-responsibilities",
+      "facts-cache-tests",
       "architecture-contract-tests",
       "shell-scripts",
       "repository-refresh",
@@ -33,7 +37,11 @@
       "tool-contracts",
       "tool-audit",
       "functional-library-split",
-      "wrapper-errno-contract-tests",
+      "wrapper-platform-faults-tests",
+      "wrapper-failure-contract-tests",
+      "wrapper-failure-contract",
+      "wrapper-fault-semantics-tests",
+      "wrapper-fault-semantics",
       "wrapper-unit-tests",
       "library-audit",
       "instrumentation",
@@ -42,6 +50,7 @@
       "wrapper-lifecycle-driver-tests",
       "wrapper-lifecycles",
       "workspace-api",
+      "repository-tests-runner-tests",
       "repository-tests",
       "stack",
       "regression-corpus"
@@ -63,6 +72,7 @@
       "title": "workspace exact-revision lock",
       "group": "architecture",
       "required": true,
+      "cacheable": false,
       "command": ["./workspace/repos-lock.py", "verify", "--receipt", "{out}/workspace-lock-receipt.json"],
       "depends_on": ["repository-lock-tests"],
       "resources": {"writes": ["{out}/workspace-lock-receipt.json"], "units": {}},
@@ -319,13 +329,23 @@
       "guarantee": "Every p101 tool documents admitted inputs, exit behavior, evidence, and blind spots."
     },
     {
+      "id": "facts-cache-tests",
+      "title": "content-addressed C-facts cache",
+      "group": "architecture",
+      "required": true,
+      "command": ["./tests/test-p101-facts-cache.py"],
+      "depends_on": ["source-responsibilities"],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "C-fact acquisition artifacts are restored only for matching producers, compile databases, source trees, and shared headers."
+    },
+    {
       "id": "tool-audit",
       "title": "p101 tool source/module audit",
       "group": "tool-audit",
       "required": true,
-      "command": ["./checks/check-p101-tool-audit.sh", "--skip-contracts", "-o", "{out}/tool-audit"],
-      "depends_on": ["tool-contracts", "source-responsibilities"],
-      "resources": {"writes": ["{out}/tool-audit"], "units": {"compiler": 1}},
+      "command": ["./checks/check-p101-tool-audit.sh", "--skip-contracts", "--facts-cache", "{out}/c-facts-cache", "-o", "{out}/tool-audit"],
+      "depends_on": ["tool-contracts", "facts-cache-tests"],
+      "resources": {"writes": ["{out}/tool-audit", "{out}/c-facts-cache"], "units": {"compiler": 1}},
       "guarantee": "Tool wrapper usage, module boundaries, error handling, and portability checks pass."
     },
     {
@@ -339,14 +359,61 @@
       "guarantee": "Every wrapper remains in its declared functional library."
     },
     {
-      "id": "wrapper-errno-contract-tests",
-      "title": "wrapper errno source contract tests",
+      "id": "wrapper-platform-faults-tests",
+      "title": "wrapper platform-fault source contract tests",
       "group": "library-audit",
       "required": true,
-      "command": ["./tests/test-wrapper-errno-contract.py"],
+      "command": ["./tests/test-wrapper-platform-faults.py"],
       "depends_on": ["functional-library-split"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "POSIX and platform manual parsing, source precedence, and fallback behavior pass deterministic fixtures."
+    },
+    {
+      "id": "wrapper-failure-contract-tests",
+      "title": "wrapper failure-semantics generator tests",
+      "group": "library-audit",
+      "required": true,
+      "command": ["./tests/test-wrapper-failure-contract.py"],
+      "depends_on": ["wrapper-platform-faults-tests"],
+      "resources": {"writes": [], "units": {}},
+      "guarantee": "Nested failure expressions, function-pointer return declarations, and the checked failure-contract schema pass deterministic regression fixtures."
+    },
+    {
+      "id": "wrapper-failure-contract",
+      "title": "generated wrapper failure-semantics contract",
+      "group": "library-audit",
+      "required": true,
+      "command": [
+        "./generators/generate-wrapper-unit-tests.py",
+        "--check",
+        "--clang",
+        "clang",
+        "--clang-format",
+        "clang-format"
+      ],
+      "depends_on": ["wrapper-failure-contract-tests"],
+      "resources": {"writes": [], "units": {"compiler": 1}},
+      "guarantee": "Every injectable wrapper checks faults before observable work and its generated return, errno, output-canary, and resource-event assertions match the Clang-derived source contract."
+    },
+    {
+      "id": "wrapper-fault-semantics-tests",
+      "title": "wrapper fault phase/disposition negative controls",
+      "group": "library-audit",
+      "required": true,
+      "command": ["./tests/test-wrapper-fault-semantics.py"],
+      "depends_on": ["wrapper-failure-contract-tests"],
+      "resources": {"writes": [], "units": {}},
+      "guarantee": "Phase, disposition, retry policy, and supported-wrapper drift are rejected by executable negative controls."
+    },
+    {
+      "id": "wrapper-fault-semantics",
+      "title": "wrapper fault phase/disposition contract",
+      "group": "library-audit",
+      "required": true,
+      "command": ["./checks/check-wrapper-fault-semantics.py"],
+      "depends_on": ["wrapper-failure-contract", "wrapper-fault-semantics-tests"],
+      "resources": {"writes": [], "units": {}},
+      "guarantee": "Early failures, known partial progress, and uncertain after-dispatch outcomes retain explicit retry semantics and native evidence."
     },
     {
       "id": "wrapper-unit-tests",
@@ -354,18 +421,18 @@
       "group": "library-audit",
       "required": true,
       "command": ["./checks/check-wrapper-unit-tests.py"],
-      "depends_on": ["wrapper-errno-contract-tests"],
+      "depends_on": ["wrapper-failure-contract", "wrapper-fault-semantics"],
       "resources": {"writes": [], "units": {}},
-      "guarantee": "Every public wrapper has exactly one compiled test, and every documented Linux, macOS, and FreeBSD fault has an exact generated propagation case."
+      "guarantee": "Every public wrapper has exactly one compiled test, and every documented Linux, macOS, and FreeBSD fault has exact generated error-object, return-value, errno, output, and resource-effect assertions."
     },
     {
       "id": "library-audit",
       "title": "p101 library source-contract audit",
       "group": "library-audit",
       "required": true,
-      "command": ["./checks/check-p101-library-audit.sh", "-o", "{out}/library-audit"],
-      "depends_on": ["wrapper-unit-tests", "source-responsibilities"],
-      "resources": {"writes": ["{out}/library-audit"], "units": {"compiler": 1}},
+      "command": ["./checks/check-p101-library-audit.sh", "--facts-cache", "{out}/c-facts-cache", "-o", "{out}/library-audit"],
+      "depends_on": ["wrapper-unit-tests", "facts-cache-tests"],
+      "resources": {"writes": ["{out}/library-audit", "{out}/c-facts-cache"], "units": {"compiler": 1}},
       "guarantee": "Library wrapper, error, module, and portability contracts pass."
     },
     {
@@ -373,9 +440,9 @@
       "title": "p101 wrapper instrumentation coverage",
       "group": "library-audit",
       "required": true,
-      "command": ["./checks/check-p101-instrumentation.py", "--receipt", "{out}/instrumentation-receipt.json"],
+      "command": ["./checks/check-p101-instrumentation.py", "--facts-cache", "{out}/c-facts-cache", "--receipt", "{out}/instrumentation-receipt.json"],
       "depends_on": ["library-audit"],
-      "resources": {"writes": ["{out}/instrumentation-receipt.json"], "units": {}},
+      "resources": {"writes": ["{out}/instrumentation-receipt.json", "{out}/c-facts-cache"], "units": {}},
       "guarantee": "Applicable wrappers declare tracing, fault, and lifecycle instrumentation."
     },
     {
@@ -386,7 +453,7 @@
       "command": ["./tests/test-wrapper-conformance-output.py"],
       "depends_on": ["instrumentation"],
       "resources": {"writes": [], "units": {}},
-      "guarantee": "Wrapper test failures print complete diagnostic output and retain explicit no-output evidence."
+      "guarantee": "Wrapper test failures print complete diagnostics, malformed and duplicate outcome records are rejected, and missing, unexpected, or failed symbolic pairs are caught."
     },
     {
       "id": "wrapper-conformance",
@@ -396,7 +463,7 @@
       "command": ["./checks/check-wrapper-conformance.py", "-o", "{out}/wrapper-conformance"],
       "depends_on": ["wrapper-conformance-output-tests"],
       "resources": {"writes": ["{out}/wrapper-conformance"], "units": {"compiler": 1}},
-      "guarantee": "Generated wrapper controls exercise the declared success and failure contract."
+      "guarantee": "Every public API is invoked with balanced tracing, and every expected platform fault has one direct passing symbolic outcome receipt."
     },
     {
       "id": "wrapper-lifecycle-driver-tests",
@@ -423,18 +490,29 @@
       "title": "workspace-wide public API audit",
       "group": "library-audit",
       "required": true,
-      "command": ["./checks/check-workspace-public-api.sh", "-o", "{out}/workspace-api"],
+      "command": ["./checks/check-workspace-public-api.sh", "--facts-cache", "{out}/c-facts-cache", "-o", "{out}/workspace-api"],
       "depends_on": ["library-audit"],
-      "resources": {"writes": ["{out}/workspace-api"], "units": {"compiler": 1}},
+      "resources": {"writes": ["{out}/workspace-api", "{out}/c-facts-cache"], "units": {"compiler": 1}},
       "guarantee": "Workspace consumers do not justify unnecessary public library declarations."
+    },
+    {
+      "id": "repository-tests-runner-tests",
+      "title": "bounded repository test orchestration",
+      "group": "repository-tests",
+      "required": true,
+      "command": ["./tests/test-repository-tests-parallel.sh"],
+      "depends_on": ["workspace-api"],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "Repository test workers overlap safely while preserving deterministic results and complete diagnostics."
     },
     {
       "id": "repository-tests",
       "title": "standalone repository unit and fuzz checks",
       "group": "repository-tests",
       "required": true,
+      "cacheable": false,
       "command": ["./checks/check-repository-tests.sh", "-c", "{cc}", "-x", "{cxx}", "-o", "{out}/repository-tests", "--fuzz-secs", "{fuzz_secs}"],
-      "depends_on": ["cmake-regression", "tool-audit", "wrapper-lifecycles", "workspace-api"],
+      "depends_on": ["cmake-regression", "tool-audit", "wrapper-lifecycles", "repository-tests-runner-tests"],
       "resources": {"writes": ["{out}/repository-tests"], "units": {"compiler": 1}},
       "guarantee": "Every declared repository unit suite and available bounded fuzz target executes."
     },
@@ -443,6 +521,7 @@
       "title": "template/playground stack checks",
       "group": "stack",
       "required": true,
+      "cacheable": false,
       "command": ["./checks/check-p101-stack.sh", "--skip-repo-build", "-c", "{cc}", "-x", "{cxx}", "-o", "{out}/stack", "-n", "{fault_count}", "--fuzz-secs", "{fuzz_secs}", "{template_no_tests}", "{playground_quality}", "{playground_coverage}", "{playground_fuzz}"],
       "depends_on": ["repository-tests", "lesson-acceptance"],
       "resources": {"writes": ["{out}/stack"], "units": {"compiler": 1}},

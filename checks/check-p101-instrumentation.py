@@ -12,6 +12,7 @@ import argparse
 import csv
 import hashlib
 import json
+import os
 import platform
 import subprocess
 import tempfile
@@ -45,6 +46,12 @@ def main() -> int:
     scripts_root = Path(__file__).resolve().parents[1]
     parser.add_argument("--workspace", type=Path, default=scripts_root.parent)
     parser.add_argument("--contract", type=Path, default=scripts_root / "contracts" / "instrumentation-contract.json")
+    parser.add_argument(
+        "--facts-cache",
+        type=Path,
+        default=Path(os.environ["P101_C_FACTS_CACHE_DIR"]) if os.environ.get("P101_C_FACTS_CACHE_DIR") else None,
+        help="reuse content-addressed fact/instrumentation acquisition evidence",
+    )
     parser.add_argument("--receipt", type=Path, help="write a machine-readable receipt for this platform")
     parser.add_argument("--merge-receipts", nargs="+", type=Path, help="verify and merge platform receipts instead of auditing this host")
     parser.add_argument("--require-platform", action="append", default=[], help="platform name required by --merge-receipts")
@@ -57,6 +64,7 @@ def main() -> int:
 
     workspace = args.workspace.resolve()
     audit = workspace / "programs" / "p101-wrapper-audit" / "p101-wrapper-audit"
+    facts_cache_tool = workspace / "scripts" / "checks" / "p101-facts-cache.py"
     contract = json.loads(args.contract.read_text(encoding="utf-8"))
     if contract.get("schema") != "p101-instrumentation-contract-v2":
         print("FAIL: instrumentation contract must use schema p101-instrumentation-contract-v2")
@@ -89,22 +97,76 @@ def main() -> int:
                 failures.append(f"{repo.name}: no compile database")
                 continue
             output = Path(temp) / f"{repo.name}.json"
-            command = [
+            facts = Path(temp) / f"{repo.name}.tsv"
+            paths = [repo / "src"]
+            if args.facts_cache is not None and (repo / "include").is_dir():
+                paths.append(repo / "include")
+            cache_command = [
+                str(facts_cache_tool),
+                "--cache",
+                str(args.facts_cache) if args.facts_cache is not None else "",
+                "--namespace",
+                "library-full",
+                "--producer",
                 str(audit),
                 "--compile-db",
                 str(database),
-                "--compile-db-only",
-                "--instrumentation-output",
-                str(output),
+                "--dependency-root",
+                str(workspace / "libraries"),
             ]
-            allow = repo / ".p101-wrapper-audit-allow"
-            if allow.is_file():
-                command.extend(["--allow-file", str(allow)])
-            command.append(str(repo / "src"))
-            result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, check=False)
-            if result.returncode > 1 or not output.is_file():
-                failures.append(f"{repo.name}: coverage extraction failed: {result.stderr.strip()}")
-                continue
+            for path in paths:
+                cache_command.extend(["--path", str(path)])
+            restored = False
+            if args.facts_cache is not None:
+                restore = subprocess.run(
+                    [str(facts_cache_tool), "restore", *cache_command[1:], "--artifact", f"instrumentation={output}"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    check=False,
+                )
+                if restore.returncode > 1:
+                    failures.append(f"{repo.name}: fact cache restore failed: {restore.stderr.strip()}")
+                    continue
+                restored = restore.returncode == 0
+            if not restored:
+                command = [
+                    str(audit),
+                    "--compile-db",
+                    str(database),
+                    "--compile-db-only",
+                    "--instrumentation-output",
+                    str(output),
+                ]
+                if args.facts_cache is not None:
+                    command.extend(["--facts-output", str(facts)])
+                allow = repo / ".p101-wrapper-audit-allow"
+                if allow.is_file():
+                    command.extend(["--allow-file", str(allow)])
+                command.extend(str(path) for path in paths)
+                result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, check=False)
+                if result.returncode > 1 or not output.is_file():
+                    failures.append(f"{repo.name}: coverage extraction failed: {result.stderr.strip()}")
+                    continue
+                if args.facts_cache is not None:
+                    stored = subprocess.run(
+                        [
+                            str(facts_cache_tool),
+                            "store",
+                            *cache_command[1:],
+                            "--artifact",
+                            f"facts={facts}",
+                            "--artifact",
+                            f"instrumentation={output}",
+                        ],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        check=False,
+                    )
+                    if stored.returncode != 0:
+                        failures.append(f"{repo.name}: fact cache store failed: {stored.stderr.strip()}")
+                        continue
             for record in json.loads(output.read_text(encoding="utf-8"))["functions"]:
                 if not bool(record.get("public")):
                     continue

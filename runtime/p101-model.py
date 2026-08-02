@@ -75,9 +75,9 @@ def validate_model(directory: Path) -> dict[str, Any]:
     model = load_json(directory / "run-model.json")
     if model.get("schema") != "p101-run-model-v1":
         raise ModelError("run-model.json does not use p101-run-model-v1")
-    if model.get("event_schema") != "p101-tool-event-format-v4":
-        raise ModelError("run-model.json does not admit event protocol v4")
-    if model.get("identity_policy") != "pid-context-event-sequence-kind":
+    if model.get("event_schema") != "p101-tool-event-format-v5":
+        raise ModelError("run-model.json does not admit event protocol v5")
+    if model.get("identity_policy") != "run-pid-context-event-sequence-kind":
         raise ModelError("run-model.json has an unknown identity policy")
     if (
         model.get("ordering")
@@ -89,7 +89,7 @@ def validate_model(directory: Path) -> dict[str, Any]:
     if not isinstance(nodes, list) or not isinstance(edges, list):
         raise ModelError("run model nodes and edges must be arrays")
     node_ids: set[str] = set()
-    observation_ids: set[tuple[int, int, int]] = set()
+    observation_ids: set[tuple[str, int, int, int]] = set()
     node_by_id: dict[str, dict[str, Any]] = {}
     domain_counts = Counter()
     for index, node in enumerate(nodes):
@@ -97,6 +97,7 @@ def validate_model(directory: Path) -> dict[str, Any]:
             raise ModelError(f"node {index} has no string id")
         domain = node.get("domain")
         kind = node.get("kind")
+        run_id = node.get("run_id")
         pid = node.get("pid")
         context = node.get("context")
         sequence = node.get("sequence")
@@ -104,6 +105,8 @@ def validate_model(directory: Path) -> dict[str, Any]:
             raise ModelError(f"node {index} has an unknown domain")
         if not isinstance(kind, str):
             raise ModelError(f"node {index} has no string kind")
+        if not isinstance(run_id, str) or not run_id:
+            raise ModelError(f"node {index} has no run identity")
         if (
             not isinstance(pid, int)
             or isinstance(pid, bool)
@@ -206,12 +209,12 @@ def validate_model(directory: Path) -> dict[str, Any]:
         node_id = node["id"]
         if node_id in node_ids:
             raise ModelError(f"duplicate node id: {node_id}")
-        expected_id = f"{domain}:{pid}:{context}:{sequence}:{kind}"
+        expected_id = f"{domain}:{run_id}:{pid}:{context}:{sequence}:{kind}"
         if node_id != expected_id:
             raise ModelError(
                 f"node {index} id does not match its observation identity"
             )
-        observation_id = (pid, context, sequence)
+        observation_id = (run_id, pid, context, sequence)
         if observation_id in observation_ids:
             raise ModelError(
                 f"duplicate observation identity: {pid}:{context}:{sequence}"

@@ -26,7 +26,7 @@ owns the larger quality, runtime, fault-walk, HTML, and bundle workflow.
 
 - `p101 observe` captures stdout, stderr, resource events, call events, the
   manifest, and the run receipt. Capture does not make policy judgments.
-- `lib_tool_event` owns event protocol v4, parsing, and construction of the
+- `lib_tool_event` owns event protocol v5, parsing, and construction of the
   policy-free `p101-run-model-v1`. Its `p101-event-model` frontend is the only
   event-log parser launched by `p101 analyze`.
 - `p101_runtime.py` owns the resource, synchronization, and trace policy

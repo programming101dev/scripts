@@ -1,0 +1,20 @@
+# Repository|Expected seconds
+#
+# Scheduling hints only: results remain in repos.txt order and every repository
+# still runs. Refresh these coarse values from check-repository-tests.sh's
+# summary when a suite's cost changes materially.
+p101-doctor|110
+p101-error-contract|14
+p101-observe|12
+p101-report|12
+p101-error-path-walk|11
+p101-wrapper-audit|5
+p101-resource-tracker|4
+p101-module-map|4
+lib_tool_event|4
+lib_process|3
+lib_c_facts|2
+lib_convert|2
+p101-trace|2
+p101-sync-check|2
+p101-mutation-check|2

@@ -6,7 +6,7 @@ between captured evidence and tool-specific judgments.
 
 ## Admitted inputs
 
-The model admits only validated event protocol v4 records from `resources.log`
+The model admits only validated event protocol v5 records from `resources.log`
 and `calls.log`. `p101-event-model` uses the authoritative `lib_tool_event`
 parser; no runtime policy module parses TSV.
 

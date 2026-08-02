@@ -21,6 +21,7 @@ skip_contracts=0
 skip_wrapper=0
 skip_error_contract=0
 skip_module_map=0
+facts_cache="${P101_C_FACTS_CACHE_DIR:-}"
 
 usage() {
   cat <<'USAGE'
@@ -33,6 +34,7 @@ build/update scripts first.
 Options:
   -p <dir>              Programs directory. Default: ../programs
   -o <dir>              Artifact directory. Default: /tmp/p101-tool-audit-<pid>
+  --facts-cache <dir>   Publish content-addressed Clang fact evidence.
   --allow-module-notes  Report p101-module-map design notes without failing.
   --skip-contracts      Skip README/tool-contract checks.
   --skip-wrapper        Skip strict p101-wrapper-audit checks.
@@ -47,6 +49,7 @@ while [ "$#" -gt 0 ]; do
     -h|--help) usage; exit 0 ;;
     -p) programs_dir="${2:?}"; shift 2 ;;
     -o) out_dir="${2:?}"; shift 2 ;;
+    --facts-cache) facts_cache="${2:?}"; shift 2 ;;
     --allow-module-notes) fail_module_notes=0; shift ;;
     --skip-contracts) skip_contracts=1; shift ;;
     --skip-wrapper) skip_wrapper=1; shift ;;
@@ -67,6 +70,7 @@ summary="$out_dir/summary.md"
 programs_dir="$(CDPATH='' cd "$programs_dir" && pwd)"
 workspace_dir="$(CDPATH='' cd "$programs_dir/.." && pwd)"
 wrapper_audit="$programs_dir/p101-wrapper-audit/p101-wrapper-audit"
+facts_cache_tool="$workspace_dir/scripts/checks/p101-facts-cache.py"
 
 find_built_tool() {
   repo="$1"
@@ -292,6 +296,25 @@ if [ "$skip_wrapper" -eq 0 ]; then
       fi
 
       if run_logged "strict wrapper audit: $name" "$log" "$wrapper_audit" "${wrapper_args[@]}" "${paths[@]}"; then
+        if [ -n "$facts_cache" ]; then
+          cache_args=(
+            store
+            --cache "$facts_cache"
+            --namespace tool-full
+            --producer "$wrapper_audit"
+            --compile-db "$compile_db"
+            --dependency-root "$workspace_dir/libraries"
+            --artifact "facts=$facts"
+          )
+          for path in "${paths[@]}"; do
+            cache_args+=(--path "$path")
+          done
+          if ! "$facts_cache_tool" "${cache_args[@]}" >> "$log" 2>&1; then
+            say "    FAIL: $name could not publish its C-fact cache entry"
+            printf '| FAIL | C-fact cache publication: %s | [log](./logs/%s) |\n' "$name" "$(basename "$log")" >> "$summary"
+            failed=1
+          fi
+        fi
         missed="$(metric_value missed_wrappers "$log")"
         external="$(metric_value external_calls "$log")"
         if [ "${missed:-0}" != "0" ] || [ "${external:-0}" != "0" ]; then

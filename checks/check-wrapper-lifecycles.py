@@ -207,6 +207,47 @@ def generated_replays(specification: dict[str, Any], count: int, maximum: int, s
     return replays
 
 
+def replay_trace(
+    specification: dict[str, Any], replay: list[str]
+) -> list[dict[str, object]]:
+    """Return the deterministic state trace, refusing invalid counterexamples."""
+    state = specification["initial"]
+    trace: list[dict[str, object]] = []
+    for index, operation in enumerate(replay, start=1):
+        choices = [
+            item
+            for item in specification["transitions"]
+            if item["from"] == state and item["operation"] == operation
+        ]
+        if len(choices) != 1:
+            raise ValueError(
+                f"step {index} cannot apply {operation!r} from state {state!r}"
+            )
+        transition = choices[0]
+        trace.append(
+            {
+                "step": index,
+                "from": state,
+                "operation": operation,
+                "to": transition["to"],
+            }
+        )
+        state = transition["to"]
+    if state != specification["terminal"]:
+        raise ValueError(
+            f"replay ended in {state!r}, expected {specification['terminal']!r}"
+        )
+    return trace
+
+
+def first_line(*texts: str) -> str:
+    for text in texts:
+        for line in text.splitlines():
+            if line.strip():
+                return line.strip()
+    return "subprocess returned a nonzero status without a diagnostic"
+
+
 def run_case(
     driver: Path,
     event_model: Path,
@@ -216,6 +257,7 @@ def run_case(
     replay: list[str],
     mode: str,
     fault_index: int,
+    fault_name: str | None,
 ) -> tuple[bool, dict[str, object]]:
     case_name = f"{scenario}-{mode}-{fault_index}-{'-'.join(replay)}"
     case_dir = output / "cases" / case_name[:180]
@@ -249,7 +291,11 @@ def run_case(
         environment["P101_FAULT_MODE"] = mode
         environment["P101_FAULT_REPEAT"] = "1"
         if mode == "short":
-            environment["P101_FAULT_NAME"] = "p101_write"
+            if fault_name is None:
+                raise ValueError(
+                    f"{scenario}: short fault mode requires fault_name"
+                )
+            environment["P101_FAULT_NAME"] = fault_name
             environment["P101_FAULT_AMOUNT"] = "2"
     result = subprocess.run(
         [str(driver), scenario, ",".join(replay)],
@@ -276,6 +322,9 @@ def run_case(
         text=True,
         check=False,
     )
+    (case_dir / "event-model-report.txt").write_text(
+        model_result.stdout + model_result.stderr, encoding="utf-8"
+    )
     resource_result = subprocess.run(
         [str(resource_tracker), "-q", str(resources)],
         stdout=subprocess.PIPE,
@@ -297,6 +346,7 @@ def run_case(
         "replay": replay,
         "fault_mode": mode,
         "fault_index": fault_index,
+        "fault_name": fault_name,
         "fault_hit": fault_hit,
         "driver_status": result.returncode,
         "event_model_status": model_result.returncode,
@@ -304,6 +354,25 @@ def run_case(
         "case_directory": str(case_dir),
         "passed": passed,
     }
+    if not passed:
+        receipt["outcome"] = "findings"
+        receipt["failure_reason"] = "findings-present"
+        if result.returncode != 0:
+            receipt["reason_code"] = "driver-failed"
+            receipt["failed_stage"] = "driver"
+            receipt["first_diagnostic"] = first_line(result.stderr, result.stdout)
+        elif model_result.returncode != 0:
+            receipt["reason_code"] = "event-model-failed"
+            receipt["failed_stage"] = "event-model"
+            receipt["first_diagnostic"] = first_line(
+                model_result.stderr, model_result.stdout
+            )
+        else:
+            receipt["reason_code"] = "resource-analysis-failed"
+            receipt["failed_stage"] = "resource-tracker"
+            receipt["first_diagnostic"] = first_line(
+                resource_result.stderr, resource_result.stdout
+            )
     return passed, receipt
 
 
@@ -313,6 +382,7 @@ def minimize_failure(
     resource_tracker: Path,
     output: Path,
     receipt: dict[str, object],
+    specification: dict[str, Any],
 ) -> list[str]:
     replay = list(receipt["replay"])
     changed = True
@@ -320,6 +390,10 @@ def minimize_failure(
         changed = False
         for index in range(len(replay)):
             candidate = replay[:index] + replay[index + 1 :]
+            try:
+                replay_trace(specification, candidate)
+            except ValueError:
+                continue
             passed, _ = run_case(
                 driver,
                 event_model,
@@ -329,6 +403,11 @@ def minimize_failure(
                 candidate,
                 str(receipt["fault_mode"]),
                 int(receipt["fault_index"]),
+                (
+                    str(receipt["fault_name"])
+                    if receipt.get("fault_name") is not None
+                    else None
+                ),
             )
             if not passed:
                 replay = candidate
@@ -371,8 +450,19 @@ def main() -> int:
     for scenario_index, (scenario, specification) in enumerate(contract["scenarios"].items()):
         replays = generated_replays(specification, count, maximum, seed + scenario_index)
         modes = specification.get("fault_modes", contract["fault_modes"])
+        fault_name = specification.get("fault_name")
         for replay in replays:
-            passed, receipt = run_case(driver, event_model, resource_tracker, args.output, scenario, replay, "none", 0)
+            passed, receipt = run_case(
+                driver,
+                event_model,
+                resource_tracker,
+                args.output,
+                scenario,
+                replay,
+                "none",
+                0,
+                None,
+            )
             receipts.append(receipt)
             if not passed:
                 failures.append(receipt)
@@ -381,7 +471,17 @@ def main() -> int:
             exhausted = False
             mode_failed = False
             for fault_index in range(1, maximum_fault_calls + 1):
-                passed, receipt = run_case(driver, event_model, resource_tracker, args.output, scenario, fault_replay, mode, fault_index)
+                passed, receipt = run_case(
+                    driver,
+                    event_model,
+                    resource_tracker,
+                    args.output,
+                    scenario,
+                    fault_replay,
+                    mode,
+                    fault_index,
+                    fault_name,
+                )
                 receipts.append(receipt)
                 if not passed:
                     failures.append(receipt)
@@ -392,13 +492,41 @@ def main() -> int:
                     break
             if not exhausted and not mode_failed:
                 receipt["passed"] = False
-                receipt["reason"] = "fault schedule did not exhaust"
+                receipt["outcome"] = "tool-error"
+                receipt["failure_reason"] = "tool-error"
+                receipt["reason_code"] = "fault-schedule-not-exhausted"
+                receipt["failed_stage"] = "fault-schedule"
+                receipt["first_diagnostic"] = (
+                    f"fault mode {mode} did not exhaust within "
+                    f"{maximum_fault_calls} calls"
+                )
                 failures.append(receipt)
 
     for failure in failures:
-        failure["minimized_replay"] = minimize_failure(driver, event_model, resource_tracker, args.output, failure)
+        specification = contract["scenarios"][str(failure["scenario"])]
+        minimized = minimize_failure(
+            driver,
+            event_model,
+            resource_tracker,
+            args.output,
+            failure,
+            specification,
+        )
+        failure["counterexample"] = {
+            "operations": minimized,
+            "transitions": replay_trace(specification, minimized),
+        }
+    first_failure = failures[0] if failures else None
     final = {
-        "schema": "p101-wrapper-lifecycle-receipt-v1",
+        "schema": "p101-wrapper-lifecycle-receipt-v2",
+        "outcome": first_failure["outcome"] if first_failure else "clean",
+        "failure": {
+            "reason": first_failure["failure_reason"] if first_failure else "none",
+            "stage": first_failure["failed_stage"] if first_failure else "",
+            "first_diagnostic": (
+                first_failure["first_diagnostic"] if first_failure else ""
+            ),
+        },
         "platform": platform.system(),
         "machine": platform.machine(),
         "compiler": args.compiler,
@@ -417,8 +545,16 @@ def main() -> int:
             print(
                 "FAIL: "
                 f"{failure['scenario']} {failure['fault_mode']} "
-                f"{failure['fault_index']} replay={failure['minimized_replay']}"
+                f"{failure['fault_index']} "
+                f"reason={failure['reason_code']} "
+                f"replay={failure['counterexample']['operations']}"
             )
+            for transition in failure["counterexample"]["transitions"]:
+                print(
+                    "  "
+                    f"{transition['step']}: {transition['from']} "
+                    f"--{transition['operation']}--> {transition['to']}"
+                )
         return 1
     print(f"wrapper lifecycle laboratory passed: {receipt_path}")
     return 0

@@ -69,6 +69,41 @@ class LifecycleDriverTests(unittest.TestCase):
 
         self.assertEqual(supported, ["-Wall"])
 
+    def test_replay_trace_is_stable_and_typed(self) -> None:
+        specification = {
+            "initial": "empty",
+            "terminal": "empty",
+            "transitions": [
+                {"from": "empty", "operation": "open", "to": "live"},
+                {"from": "live", "operation": "close", "to": "empty"},
+            ],
+        }
+
+        trace = self.module.replay_trace(specification, ["open", "close"])
+
+        self.assertEqual(
+            trace,
+            [
+                {"step": 1, "from": "empty", "operation": "open", "to": "live"},
+                {"step": 2, "from": "live", "operation": "close", "to": "empty"},
+            ],
+        )
+
+    def test_replay_trace_rejects_invalid_counterexamples(self) -> None:
+        specification = {
+            "initial": "empty",
+            "terminal": "empty",
+            "transitions": [
+                {"from": "empty", "operation": "open", "to": "live"},
+                {"from": "live", "operation": "close", "to": "empty"},
+            ],
+        }
+
+        with self.assertRaisesRegex(ValueError, "cannot apply"):
+            self.module.replay_trace(specification, ["close"])
+        with self.assertRaisesRegex(ValueError, "ended in"):
+            self.module.replay_trace(specification, ["open"])
+
 
 if __name__ == "__main__":
     unittest.main()

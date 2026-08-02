@@ -16,6 +16,7 @@ CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 libraries_dir="../libraries"
 programs_dir="../programs"
 out_dir=""
+facts_cache="${P101_C_FACTS_CACHE_DIR:-}"
 
 usage() {
   cat <<'USAGE'
@@ -29,6 +30,8 @@ Options:
   -l <dir>   Libraries directory. Default: ../libraries
   -p <dir>   Programs directory. Default: ../programs
   -o <dir>   Artifact directory. Default: /tmp/p101-library-audit-<pid>
+  --facts-cache <dir>
+             Publish content-addressed fact and instrumentation evidence.
   -h         Show this help.
 USAGE
 }
@@ -39,6 +42,7 @@ while [ "$#" -gt 0 ]; do
     -l) libraries_dir="${2:?}"; shift 2 ;;
     -p) programs_dir="${2:?}"; shift 2 ;;
     -o) out_dir="${2:?}"; shift 2 ;;
+    --facts-cache) facts_cache="${2:?}"; shift 2 ;;
     *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
   esac
 done
@@ -109,6 +113,7 @@ find_compile_database() {
 }
 
 wrapper_audit="$programs_dir/p101-wrapper-audit/p101-wrapper-audit"
+facts_cache_tool="$PWD/checks/p101-facts-cache.py"
 error_contract="$(find_built_tool "$programs_dir/p101-error-contract" p101-error-contract || true)"
 module_map="$(find_built_tool "$programs_dir/p101-module-map" p101-module-map || true)"
 
@@ -153,7 +158,7 @@ while IFS='|' read -r _url relative_path language; do
     paths+=("$repo/include")
   fi
 
-  wrapper_args=(--compile-db "$compile_db" --compile-db-only --facts-output "$repo_out/source-facts.tsv" --input-manifest "$repo_out/source-inputs.json")
+  wrapper_args=(--compile-db "$compile_db" --compile-db-only --facts-output "$repo_out/source-facts.tsv" --input-manifest "$repo_out/source-inputs.json" --instrumentation-output "$repo_out/instrumentation.json")
   if [ -f "$repo/.p101-wrapper-audit-allow" ]; then
     wrapper_args+=(--allow-file "$repo/.p101-wrapper-audit-allow")
   fi
@@ -166,6 +171,25 @@ while IFS='|' read -r _url relative_path language; do
     wrapper_status="FAIL"
     failure_logs+=("$name wrapper boundary|$repo_out/wrapper-audit.txt")
     failed=1
+  elif [ -n "$facts_cache" ]; then
+    cache_args=(
+      store
+      --cache "$facts_cache"
+      --namespace library-full
+      --producer "$wrapper_audit"
+      --compile-db "$compile_db"
+      --dependency-root "$libraries_dir"
+      --artifact "facts=$repo_out/source-facts.tsv"
+      --artifact "instrumentation=$repo_out/instrumentation.json"
+    )
+    for path in "${paths[@]}"; do
+      cache_args+=(--path "$path")
+    done
+    if ! "$facts_cache_tool" "${cache_args[@]}" >> "$repo_out/wrapper-audit.txt" 2>&1; then
+      wrapper_status="FAIL"
+      failure_logs+=("$name fact cache|$repo_out/wrapper-audit.txt")
+      failed=1
+    fi
   fi
 
   if ! (CDPATH='' cd "$repo" && "$error_contract" -j -i "$repo_out/source-facts.tsv" src include) > "$repo_out/error-contract.json" 2> "$repo_out/error-contract.stderr.txt"; then

@@ -58,8 +58,9 @@ same command over the same admitted inputs and inspect the result.
 
 Machine-readable receipts use the shared outcome vocabulary where practical:
 `clean`, `findings`, `refused`, `incomplete`, `unsupported`, and `tool-error`.
-The C representation and `p101-tool-run-receipt-v1` writer live in
-`lib_tool_event`; the post-update graph uses the same vocabulary. Ordinary
+The C representation and `p101-tool-run-receipt-v2` writer live in
+`lib_tool_event`; the post-update graph uses the same vocabulary and records a
+typed failure reason, failed stage, and first diagnostic. Ordinary
 command-line exit statuses remain `0` for clean, `1` for findings, and `2` for
 refusal, incomplete evidence, unsupported execution, or tool failure.
 

@@ -810,7 +810,7 @@ def analyze_trace(model: dict[str, Any]) -> tuple[PolicyResult, str]:
             )
 
     lines = [
-        "event_schema=p101-tool-event-format-v4 "
+        "event_schema=p101-tool-event-format-v5 "
         "event_id_policy=wire-sequence-with-derived-input-order",
         f"records={len(_call_nodes(model))} execution_contexts={len(metrics)}",
     ]

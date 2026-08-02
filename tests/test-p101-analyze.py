@@ -48,9 +48,10 @@ if mutate_tool:
 output = Path(sys.argv[sys.argv.index("-o") + 1])
 if os.environ.get("P101_FAKE_FINDING"):
     nodes = [{
-        "id": "resource:1:1:1:fd-open",
+        "id": "resource:test-run:1:1:1:fd-open",
         "domain": "resource",
         "kind": "fd-open",
+        "run_id": "test-run",
         "pid": 1,
         "context": 1,
         "sequence": 1,
@@ -64,8 +65,8 @@ else:
     nodes = []
 output.write_text(__import__("json").dumps({
     "schema": "p101-run-model-v1",
-    "event_schema": "p101-tool-event-format-v4",
-    "identity_policy": "pid-context-event-sequence-kind",
+    "event_schema": "p101-tool-event-format-v5",
+    "identity_policy": "run-pid-context-event-sequence-kind",
     "ordering": "causal-edges-with-per-context-sequence-and-observed-timestamps",
     "summary": {"call_nodes": 0, "resource_nodes": len(nodes)},
     "nodes": nodes,
@@ -114,8 +115,8 @@ class AnalyzeTests(unittest.TestCase):
             "p101-observe receipt",
             "schema=p101-run-receipt-v1",
             "run_id=test-run",
-            "event_schema=p101-tool-event-format-v4",
-            "event_log_version=4",
+            "event_schema=p101-tool-event-format-v5",
+            "event_log_version=5",
             "ordering=per-context-sequence",
             "durability=buffered-until-close",
             "fingerprint=fnv1a64",

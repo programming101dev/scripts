@@ -6,13 +6,15 @@ CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 out_dir=""
 fail_findings=0
 allow_incomplete=0
+facts_cache="${P101_C_FACTS_CACHE_DIR:-}"
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -h|--help)
-      echo "Usage: ./check-workspace-public-api.sh [-o <dir>] [--fail-findings] [--allow-incomplete]"
+      echo "Usage: ./check-workspace-public-api.sh [-o <dir>] [--facts-cache <dir>] [--fail-findings] [--allow-incomplete]"
       exit 0
       ;;
     -o) out_dir="${2:?}"; shift 2 ;;
+    --facts-cache) facts_cache="${2:?}"; shift 2 ;;
     --fail-findings) fail_findings=1; shift ;;
     --allow-incomplete) allow_incomplete=1; shift ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
@@ -23,6 +25,7 @@ workspace="$(CDPATH='' cd .. && pwd -P)"
 [ -n "$out_dir" ] || out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-workspace-api.XXXXXX")"
 out_dir="$(mkdir -p "$out_dir/facts" && CDPATH='' cd -P "$out_dir" && pwd -P)"
 audit="$workspace/programs/p101-wrapper-audit/p101-wrapper-audit"
+facts_cache_tool="$workspace/scripts/checks/p101-facts-cache.py"
 scope_exclusions="$workspace/scripts/contracts/workspace-public-api-excludes.txt"
 
 scope_exclusion_reason() {
@@ -97,17 +100,46 @@ while IFS='|' read -r _url relative _language || [ -n "${relative:-}" ]; do
     # Libraries own public headers, including declarations that no current
     # translation unit happens to reference. Parse those interfaces directly.
     paths=("$repo/src" "$repo/include")
+    cache_namespace="library-full"
   else
     # Consumers contribute only facts reachable from compiled translation
     # units. This preserves the language/defines from the compile database and
     # avoids treating unrelated test headers as standalone C.
     args+=(--active-headers-only)
     paths=("$repo")
+    cache_namespace="consumer-active"
   fi
-  set +e
-  "$audit" "${args[@]}" "${paths[@]}" > "$out_dir/facts/$name.audit.txt" 2>&1
-  rc=$?
-  set -e
+  cache_args=(
+    --cache "$facts_cache"
+    --namespace "$cache_namespace"
+    --producer "$audit"
+    --compile-db "$db"
+    --dependency-root "$workspace/libraries"
+    --artifact "facts=$facts"
+  )
+  for path in "${paths[@]}"; do
+    cache_args+=(--path "$path")
+  done
+  rc=1
+  if [ -n "$facts_cache" ]; then
+    set +e
+    "$facts_cache_tool" restore "${cache_args[@]}" > "$out_dir/facts/$name.audit.txt" 2>&1
+    rc=$?
+    set -e
+    [ "$rc" -le 1 ] || { cat "$out_dir/facts/$name.audit.txt" >&2; exit 2; }
+  fi
+  if [ "$rc" -ne 0 ]; then
+    set +e
+    "$audit" "${args[@]}" "${paths[@]}" > "$out_dir/facts/$name.audit.txt" 2>&1
+    rc=$?
+    set -e
+    if [ "$rc" -le 1 ] && [ -s "$facts" ] && [ -n "$facts_cache" ]; then
+      "$facts_cache_tool" store "${cache_args[@]}" >> "$out_dir/facts/$name.audit.txt" 2>&1 || {
+        cat "$out_dir/facts/$name.audit.txt" >&2
+        exit 2
+      }
+    fi
+  fi
   [ "$rc" -le 1 ] && [ -s "$facts" ] || { echo "Fact extraction failed for $name" >&2; exit 2; }
   # Qualify modules by repository. Local includes stay in that repository;
   # p101_<library>/... includes resolve to the corresponding lib_<library>

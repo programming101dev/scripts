@@ -1,6 +1,32 @@
 {
   "schema": "p101-boundary-register-v1",
   "does_not_prove": "This register proves that the declared owner symbols and boundary tests remain present. It does not prove that every workspace boundary was discovered or that the named tests completely establish the documented semantics.",
+  "test_matrix": {
+    "success": {
+      "path": "libraries/lib_tool_event/test/test_event_protocol.c",
+      "marker": "test_valid_parser_records"
+    },
+    "typed_refusal": {
+      "path": "libraries/lib_tool_event/test/test_event_protocol.c",
+      "marker": "test_malformed_parser_records"
+    },
+    "stale_version": {
+      "path": "libraries/lib_tool_event/test/test_event_protocol.c",
+      "marker": "P101_TOOL_EVENT_PARSE_BAD_VERSION"
+    },
+    "identity_mismatch": {
+      "path": "libraries/lib_tool_event/test/test_health.c",
+      "marker": "mixed_run_ids"
+    },
+    "resource_limit": {
+      "path": "libraries/lib_tool_event/test/test_event_protocol.c",
+      "marker": "123456789"
+    },
+    "binding_swap": {
+      "path": "libraries/lib_tool_event/test/test_event_protocol.c",
+      "marker": "p101_tool_event_test_parse_unknown_payload"
+    }
+  },
   "boundaries": [
     {
       "id": "boundary:c-fact-analysis",

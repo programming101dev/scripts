@@ -1,9 +1,10 @@
 {
-  "schema": "p101-wrapper-conformance-contract-v1",
+  "schema": "p101-wrapper-conformance-contract-v2",
   "public_api": {
-    "require_success_test": true,
+    "require_unit_invocation": true,
     "require_balanced_runtime_trace": true,
     "require_fault_test_when_instrumented": true,
+    "require_direct_fault_outcome_receipt": true,
     "require_declared_resource_instrumentation": true
   },
   "logging": {
@@ -11,10 +12,11 @@
     "results_required": []
   },
   "lifecycle_contract": "wrapper-lifecycle-contract.json",
-  "errno_contract": "wrapper-errno-contract.json",
+  "platform_fault_contract": "wrapper-platform-faults.json",
   "blind_spots": [
     "Third-party and direct libc calls do not emit p101 events.",
     "Argument and result text is required only for wrappers explicitly listed by this contract.",
+    "A passing non-injected behavior test is not automatically called proof of a native success outcome.",
     "Native and wrapper behavior is compared only by lifecycle scenarios with deterministic fixtures."
   ]
 }

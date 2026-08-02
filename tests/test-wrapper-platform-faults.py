@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression tests for errno-manual parsing and platform precedence."""
+"""Regression tests for platform fault parsing, domains, and precedence."""
 
 from __future__ import annotations
 
@@ -11,16 +11,16 @@ from pathlib import Path
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 
-from wrapper_errno_contract import (
-    effective_error_selection,
-    injected_error_cases,
+from wrapper_fault_contract import (
+    effective_fault_selection,
+    injected_fault_cases,
 )
 
 
 def load_refresh_module():
-    path = SCRIPTS_ROOT / "generators" / "refresh-wrapper-errno-contract.py"
+    path = SCRIPTS_ROOT / "generators" / "refresh-wrapper-platform-faults.py"
     spec = importlib.util.spec_from_file_location(
-        "refresh_wrapper_errno_contract",
+        "refresh_wrapper_platform_faults",
         path,
     )
     if spec is None or spec.loader is None:
@@ -203,27 +203,87 @@ def test_platform_precedence() -> None:
             },
         }
     }
-    errors, kind, source = effective_error_selection(
+    errors, domain, kind, source, coverage = effective_fault_selection(
         contract,
         "open",
         "linux",
     )
     check(errors == ["EACCES"], "platform manual did not override POSIX")
+    check(domain == "errno", "errno domain was lost")
     check(kind == "platform-manual", "platform source kind is wrong")
     check(source == "linux://open", "platform source is wrong")
+    check(coverage == "exhaustive-symbolic", "coverage kind is wrong")
 
-    errors, kind, source = effective_error_selection(
+    errors, domain, kind, source, coverage = effective_fault_selection(
         contract,
         "open",
         "freebsd",
     )
     check(errors == ["EACCES", "EINTR"], "POSIX fallback was not selected")
+    check(domain == "errno", "fallback errno domain was lost")
     check(kind == "posix-fallback", "fallback source kind is wrong")
     check(source == "posix://open", "fallback source is wrong")
+    check(coverage == "exhaustive-symbolic", "fallback coverage is wrong")
     check(
-        injected_error_cases(contract, "voidish", "linux") == ["EIO"],
+        injected_fault_cases(contract, "voidish", "linux") == ["EIO"],
         "empty documented set must retain one instrumentation smoke case",
     )
+
+
+def test_system_fault_selection() -> None:
+    contract = {
+        "functions": {},
+        "system_faults": {
+            "getaddrinfo": {
+                "coverage_kind": "exhaustive-symbolic",
+                "posix": {
+                    "codes": ["EAI_AGAIN", "EAI_FAIL"],
+                    "source": "posix://getaddrinfo",
+                },
+                "platforms": {
+                    "linux": {
+                        "codes": ["EAI_AGAIN", "EAI_NONAME"],
+                        "source_kind": "platform-manual",
+                        "source": "linux://getaddrinfo",
+                    },
+                    "macos": {
+                        "codes": ["EAI_AGAIN"],
+                        "source_kind": "platform-manual",
+                        "source": "macos://getaddrinfo",
+                    },
+                    "freebsd": {
+                        "codes": ["EAI_FAIL"],
+                        "source_kind": "platform-manual",
+                        "source": "freebsd://getaddrinfo",
+                    },
+                },
+            }
+        },
+    }
+    codes, domain, kind, source, coverage = effective_fault_selection(
+        contract,
+        "getaddrinfo",
+        "linux",
+    )
+    check(
+        codes == ["EAI_AGAIN", "EAI_NONAME"],
+        "platform system-error codes were not selected",
+    )
+    check(domain == "system", "system error domain was lost")
+    check(kind == "platform-manual", "system source kind is wrong")
+    check(source == "linux://getaddrinfo", "system source is wrong")
+    check(coverage == "exhaustive-symbolic", "system coverage is wrong")
+
+    codes, domain, kind, source, coverage = effective_fault_selection(
+        contract,
+        "getaddrinfo",
+        None,
+    )
+    check(codes == ["EAI_AGAIN", "EAI_FAIL"], "POSIX system fallback drifted")
+    check(domain == "system", "fallback system domain was lost")
+    check(kind == "posix-fallback", "system fallback kind is wrong")
+    check(source == "posix://getaddrinfo", "system fallback source is wrong")
+    check(coverage == "exhaustive-symbolic", "fallback coverage is wrong")
 
 
 def main() -> int:
@@ -233,10 +293,11 @@ def main() -> int:
         lambda: test_roff_parser(refresh),
         lambda: test_manual_locator(refresh),
         test_platform_precedence,
+        test_system_fault_selection,
     )
     for test in tests:
         test()
-    print(f"wrapper errno contract tests: {len(tests)} passed")
+    print(f"wrapper platform-fault contract tests: {len(tests)} passed")
     return 0
 
 

@@ -13,6 +13,14 @@ SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = SCRIPTS_ROOT.parent
 DEFAULT_REGISTER = SCRIPTS_ROOT / "contracts" / "p101-boundaries.json"
 REQUIRED_TESTS = {"clean", "typed_refusal", "binding_swap"}
+REQUIRED_MATRIX_CASES = {
+    "success",
+    "typed_refusal",
+    "stale_version",
+    "identity_mismatch",
+    "resource_limit",
+    "binding_swap",
+}
 
 
 class BoundaryError(ValueError):
@@ -45,6 +53,20 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
     if document.get("schema") != "p101-boundary-register-v1":
         raise BoundaryError("unexpected boundary-register schema")
     require_text(document, "does_not_prove", "register")
+    matrix = document.get("test_matrix")
+    if not isinstance(matrix, dict) or set(matrix) != REQUIRED_MATRIX_CASES:
+        raise BoundaryError(
+            f"register test_matrix must contain {sorted(REQUIRED_MATRIX_CASES)}"
+        )
+    for case in sorted(REQUIRED_MATRIX_CASES):
+        row = matrix[case]
+        context = f"test_matrix {case}"
+        if not isinstance(row, dict) or set(row) != {"path", "marker"}:
+            raise BoundaryError(f"{context} must contain path and marker")
+        path = require_text(row, "path", context)
+        marker = require_text(row, "marker", context)
+        if marker not in read_workspace_file(path, context):
+            raise BoundaryError(f"{context} marker {marker!r} is absent from {path}")
     boundaries = document.get("boundaries")
     if not isinstance(boundaries, list) or not boundaries:
         raise BoundaryError("register has no boundaries")
@@ -94,7 +116,11 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
                     f"{context} {kind} marker {marker!r} is absent from {test_path}"
                 )
 
-    return {"boundaries": len(boundaries), "owners": len(owners)}
+    return {
+        "boundaries": len(boundaries),
+        "owners": len(owners),
+        "matrix_cases": len(matrix),
+    }
 
 
 def main() -> int:
@@ -107,7 +133,8 @@ def main() -> int:
     report = validate(document)
     print(
         "p101 boundary register: "
-        f"{report['boundaries']} boundaries, {report['owners']} unique owners"
+        f"{report['boundaries']} boundaries, {report['owners']} unique owners, "
+        f"{report['matrix_cases']} boundary cases"
     )
     return 0
 

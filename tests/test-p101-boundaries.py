@@ -29,6 +29,7 @@ class BoundaryTests(unittest.TestCase):
     def test_current_register(self) -> None:
         report = MODULE.validate(copy.deepcopy(self.document))
         self.assertGreaterEqual(report["boundaries"], 6)
+        self.assertEqual(report["matrix_cases"], 6)
 
     def test_duplicate_owner_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)
@@ -51,6 +52,18 @@ class BoundaryTests(unittest.TestCase):
         document = copy.deepcopy(self.document)
         document["does_not_prove"] = ""
         with self.assertRaisesRegex(MODULE.BoundaryError, "does_not_prove"):
+            MODULE.validate(document)
+
+    def test_missing_matrix_case_is_rejected(self) -> None:
+        document = copy.deepcopy(self.document)
+        del document["test_matrix"]["stale_version"]
+        with self.assertRaisesRegex(MODULE.BoundaryError, "test_matrix"):
+            MODULE.validate(document)
+
+    def test_missing_matrix_marker_is_rejected(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["test_matrix"]["identity_mismatch"]["marker"] = "not_present"
+        with self.assertRaisesRegex(MODULE.BoundaryError, "identity_mismatch marker"):
             MODULE.validate(document)
 
 

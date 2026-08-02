@@ -24,10 +24,10 @@ Tools include `<p101_tool_event/event.h>` directly. They must not reach through
 ## Contract
 
 Admitted input is a byte stream containing p101 event records, optionally
-mixed with unrelated program output. Version 4 is the sole emitted and
+mixed with unrelated program output. Version 5 is the sole emitted and
 accepted version. All other formats are rejected.
 
-Version 4 includes an execution-context ID, sequence number, monotonic and wall
+Version 5 includes a capture run identity, execution-context ID, sequence number, monotonic and wall
 timestamps, and a completion count. `lib_env` serializes sequence assignment
 with record publication for one environment.
 

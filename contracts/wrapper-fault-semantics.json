@@ -1,0 +1,55 @@
+{
+  "schema": "p101-wrapper-fault-semantics-v1",
+  "modes": {
+    "error": {
+      "kind": "P101_ENV_FAULT_ERROR",
+      "phase": "before-call",
+      "disposition": "retry-safe",
+      "operation_effect": "not-dispatched",
+      "retry_rule": "retry-may-be-considered-by-caller",
+      "supported_wrappers": "all-fault-capable"
+    },
+    "eintr": {
+      "kind": "P101_ENV_FAULT_ERROR",
+      "phase": "before-call",
+      "disposition": "retry-safe",
+      "operation_effect": "not-dispatched",
+      "retry_rule": "retry-may-be-considered-by-caller",
+      "supported_wrappers": "all-fault-capable"
+    },
+    "timeout": {
+      "kind": "P101_ENV_FAULT_ERROR",
+      "phase": "before-call",
+      "disposition": "retry-safe",
+      "operation_effect": "not-dispatched",
+      "retry_rule": "retry-may-be-considered-by-caller",
+      "supported_wrappers": "all-fault-capable"
+    },
+    "short": {
+      "kind": "P101_ENV_FAULT_SHORT",
+      "phase": "after-partial-progress",
+      "disposition": "progress-known",
+      "operation_effect": "bounded-operation-completed",
+      "retry_rule": "retry-only-the-known-remainder",
+      "supported_wrappers": ["p101_pread", "p101_pwrite", "p101_read", "p101_write"]
+    },
+    "uncertain": {
+      "kind": "P101_ENV_FAULT_UNCERTAIN",
+      "phase": "after-dispatch",
+      "disposition": "outcome-uncertain",
+      "operation_effect": "operation-completed-successfully-but-result-hidden",
+      "retry_rule": "automatic-retry-forbidden",
+      "supported_wrappers": ["p101_pread", "p101_pwrite", "p101_read", "p101_write"]
+    }
+  },
+  "evidence": {
+    "early-failure": "generated wrapper failure tests",
+    "short-progress": "wrapper lifecycle laboratory short-I/O scenarios",
+    "uncertain-outcome": "lib_io behavior test observes a completed write after the wrapper reports ETIMEDOUT"
+  },
+  "blind_spots": [
+    "After-dispatch uncertainty is currently modeled only for read, write, pread, and pwrite.",
+    "The contract describes p101 wrapper-visible behavior; it cannot observe direct libc or third-party calls.",
+    "Retry safety remains an application policy decision even when a fault is classified as retry-safe."
+  ]
+}

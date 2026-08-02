@@ -24,9 +24,10 @@ def node(
     **values: object,
 ) -> dict[str, object]:
     value: dict[str, object] = {
-        "id": f"{domain}:{pid}:{context}:{sequence}:{kind}",
+        "id": f"{domain}:test-run:{pid}:{context}:{sequence}:{kind}",
         "domain": domain,
         "kind": kind,
+        "run_id": "test-run",
         "pid": pid,
         "context": context,
         "sequence": sequence,
@@ -41,8 +42,8 @@ def node(
 def model(*nodes: dict[str, object]) -> dict[str, object]:
     return {
         "schema": "p101-run-model-v1",
-        "event_schema": "p101-tool-event-format-v4",
-        "identity_policy": "pid-context-event-sequence-kind",
+        "event_schema": "p101-tool-event-format-v5",
+        "identity_policy": "run-pid-context-event-sequence-kind",
         "ordering": "causal-edges-with-per-context-sequence-and-observed-timestamps",
         "summary": {
             "call_nodes": sum(item["domain"] == "call" for item in nodes),

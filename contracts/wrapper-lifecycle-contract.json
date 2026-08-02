@@ -74,12 +74,49 @@
         {"from": "running", "operation": "join", "to": "empty"}
       ]
     },
-    "short-io": {
+    "short-write": {
       "initial": "empty",
       "terminal": "empty",
       "fault_modes": ["short"],
+      "fault_name": "p101_write",
       "transitions": [
         {"from": "empty", "operation": "pipe", "to": "ready"},
+        {"from": "ready", "operation": "write", "to": "written"},
+        {"from": "written", "operation": "read", "to": "ready"},
+        {"from": "ready", "operation": "close", "to": "empty"}
+      ]
+    },
+    "short-read": {
+      "initial": "empty",
+      "terminal": "empty",
+      "fault_modes": ["short"],
+      "fault_name": "p101_read",
+      "transitions": [
+        {"from": "empty", "operation": "pipe", "to": "ready"},
+        {"from": "ready", "operation": "write", "to": "written"},
+        {"from": "written", "operation": "read", "to": "ready"},
+        {"from": "ready", "operation": "close", "to": "empty"}
+      ]
+    },
+    "positioned-short-write": {
+      "initial": "empty",
+      "terminal": "empty",
+      "fault_modes": ["short"],
+      "fault_name": "p101_pwrite",
+      "transitions": [
+        {"from": "empty", "operation": "open", "to": "ready"},
+        {"from": "ready", "operation": "write", "to": "written"},
+        {"from": "written", "operation": "read", "to": "ready"},
+        {"from": "ready", "operation": "close", "to": "empty"}
+      ]
+    },
+    "positioned-short-read": {
+      "initial": "empty",
+      "terminal": "empty",
+      "fault_modes": ["short"],
+      "fault_name": "p101_pread",
+      "transitions": [
+        {"from": "empty", "operation": "open", "to": "ready"},
         {"from": "ready", "operation": "write", "to": "written"},
         {"from": "written", "operation": "read", "to": "ready"},
         {"from": "ready", "operation": "close", "to": "empty"}

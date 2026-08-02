@@ -168,11 +168,24 @@ After `update-all.sh` succeeds, run the post-build acceptance checks:
 
 This delegates to the governed graph in `contracts/p101-check-graph.json`. Every node
 declares its argv, dependencies, resource effects, guarantee, and limitation;
-the runner writes a log per node plus a `p101-tool-run-receipt-v1` receipt.
+the runner writes a log per node plus a `p101-tool-run-receipt-v3` receipt with
+a typed failure reason, failing stage, and first actionable diagnostic.
+It also writes `profile.md`, which records every node's elapsed time, result,
+log size, and contribution to the end-to-end governed runtime. The default
+functional run schedules independent nodes concurrently, bounded by `--jobs`,
+declared resource capacities, and overlapping output paths.
 Use `./checks/p101-check-graph.py list` to inspect the graph,
 `./check-after-update-all.sh --only boundaries` for one node and its
-dependencies, or `--from <node>` to resume from a known boundary. With
-`--interactive`, a failure pauses and retries exactly that node after the fix.
+dependencies, or `--resume` to reuse a node only when its prior receipt has the
+same command, graph declaration, tool identity, semantic environment, complete
+workspace source identity, and declared outputs. Restored cache entries are
+subject to the same identity and output checks. This first cache intentionally
+uses coarse workspace-wide invalidation in exchange for a simple exact
+contract. `--from <node>` requires that receipt and validates every omitted
+prerequisite; it is not an unchecked skip. `--measure` disables reuse and runs
+sequentially so timings are comparable. This is wall-clock child-command
+profiling, not CPU sampling inside those commands. With `--interactive`, a
+failure pauses and retries exactly that node after the fix.
 
 The graph includes the shared CMake regression harness, tool and wrapper
 audits, fresh-template standalone checks, every repository-owned unit suite,
@@ -188,7 +201,14 @@ Three narrower checks enforce contracts that used to be implicit:
 ./checks/check-p101-instrumentation.py
 ./checks/check-repository-tests.sh
 ./checks/check-workspace-public-api.sh
+./checks/check-wrapper-fault-semantics.py
 ```
+
+The fault-semantics contract distinguishes failures before dispatch
+(`retry-safe`), bounded I/O with known progress (`progress-known`), and a
+completed I/O whose result is hidden (`outcome-uncertain`). The last case is
+limited to `read`, `write`, `pread`, and `pwrite`; it exists to test that an
+application does not turn a timeout into an unsafe automatic retry.
 
 The workspace API audit requires a compile database from every C/C++ repository
 in `repos.txt`; run `update-all.sh` first. This prevents a missing consumer build
@@ -203,7 +223,22 @@ The instrumentation check compares Clang-derived wrapper facts with
 point, tracing must be balanced, and resource-owning wrappers listed in the
 manifest must emit the corresponding lifecycle event. The repository test
 check reports `NO TEST` and `NO FUZZ TARGET` explicitly instead of treating
-absence as success. The workspace API check combines facts from all built
+absence as success. It uses two bounded workers by default and schedules the
+coarse costs in `contracts/repository-test-costs.tsv` longest-first, while its
+terminal and Markdown results remain in `repos.txt` order. Use `-j 1` for a
+serial diagnostic run or `-j N`/`P101_JOBS=N` to choose another bound.
+
+The governed graph shares a content-addressed C-fact acquisition cache between
+the library audit, instrumentation audit, tool audit, and workspace API audit.
+The key admits the selected fact producer (including its native executable),
+compile database, platform, selected source trees, and all sibling public
+headers. Cache entries contain evidence only; each consumer still applies its
+own policy. A missing key is a normal cache miss, while a corrupt artifact is a
+hard error. Direct use is available through `checks/p101-facts-cache.py`, and
+`--facts-cache DIR` exposes the integration boundary on the individual audits.
+The cache cannot make inactive translation units or undeclared inputs visible.
+
+The workspace API check combines facts from all built
 libraries, programs, templates, playgrounds, and examples so public functions,
 types, and macros unused by every checked-in consumer become review candidates.
 Those candidates are deterministic evidence, not proof that a general-purpose
@@ -274,7 +309,7 @@ For the common one-shot workflow, compose the two explicit stages:
 ```
 
 `p101 analyze` admits a `p101-observe` capture whose
-`p101-run-receipt-v1` receipt names event protocol v4 and whose bounded
+`p101-run-receipt-v1` receipt names event protocol v5 and whose bounded
 artifact fingerprints still match. It verifies the capture before and after
 analysis, builds one policy-free model from one private fingerprint-checked
 snapshot of the event logs, never writes inside the capture, runs the resource,
@@ -530,7 +565,8 @@ functions.
 Every accepted wrapper must also acquire a unit-test row. This is a
 workspace-wide contract, including `lib_c`, `lib_c_facts`, `lib_convert`,
 `lib_fsm`, and `lib_util` as well as the functional wrapper libraries.
-`wrapper-errno-contract.json` is the single source of truth for failure codes.
+`wrapper-platform-faults.json` is the single source of truth for platform
+failure outcomes.
 It retains the POSIX.1-2024 `shall fail` and `may fail` sets separately, plus
 documented Linux, macOS, and FreeBSD overrides. A platform manual replaces the
 POSIX set when that manual exists; otherwise the portable POSIX set is used.
@@ -550,7 +586,7 @@ the official FreeBSD manual archive. The refresh command deliberately consumes
 local source snapshots so ordinary builds and CI never depend on the network:
 
 ```bash
-./generators/refresh-wrapper-errno-contract.py \
+./generators/refresh-wrapper-platform-faults.py \
   --index /path/to/posix/idx/functions.html \
   --errno-page /path/to/posix/basedefs/errno.h.html \
   --page-dir /path/to/posix/functions \
@@ -566,17 +602,23 @@ complete contract:
 
 ```bash
 ./generators/generate-wrapper-unit-tests.py --clang clang
-./tests/test-wrapper-errno-contract.py
+./generators/generate-wrapper-unit-tests.py --check --clang clang
+./tests/test-wrapper-platform-faults.py
 ./checks/check-wrapper-unit-tests.py
 ```
 
-For each fault-capable wrapper, the generator injects every error in the active
-platform's effective set and verifies that the exact code reaches
-`p101_error`. An interface with no documented errno still receives one `EIO`
-injection smoke case; that case is labeled by the empty manual set rather than
-misrepresented as a documented failure. Wrappers without an injectable failure
-boundary are assigned to an existing behavior test or the owning library's
-handwritten `test/test_behavior.c`.
+For each fault-capable wrapper, the generator injects every documented fault
+code in the active platform's effective set and verifies that the exact code
+and error domain reach `p101_error`. `wrapper-failure-contract.json` adds the
+other half of the contract: the exact failure return, preserved caller
+`errno`, a fault boundary before observable work, unchanged portable
+writable-argument canaries, and no descriptor/allocation/generic-resource
+event. The generated executable tests assert those obligations for every
+injected fault. An injectable interface with no finite documented fault code
+still receives one `EIO` injection smoke case; that case is labeled by the
+empty manual set rather than misrepresented as a documented failure. APIs
+without an injectable failure boundary are assigned to an existing behavior
+test or the owning library's handwritten `test/test_behavior.c`.
 
 There is no behavior-test exemption for a native interface with a documented
 failure on any supported platform. Such a wrapper must expose the injectable
@@ -584,10 +626,19 @@ error boundary and must have a generated fault test. The static check validates
 the Linux, macOS, and FreeBSD arrays on every host, so a missing FreeBSD case is
 caught on macOS rather than deferred to FreeBSD CI. The runtime suite then
 executes the selected host array. The check requires every public manifest API
-to be invoked by exactly one compiled test source, validates all 1,099 JSON
-bindings, requires all three platform records, and compares every generated
-error array with the catalogue. `test.sh` and the three-platform CI matrix are
-the executable receipts.
+to be invoked by exactly one compiled test source, validates all 1,104 JSON
+bindings, requires all three platform records, compares every generated error
+array with the catalogue, and rejects generated-test or failure-contract drift.
+`test.sh` and the three-platform CI matrix are the executable receipts.
+
+This is exhaustive over finite symbolic outcomes admitted by the Linux, macOS,
+FreeBSD, and POSIX manual sources. Interfaces whose native failure channel is
+unbounded text or implementation-defined values are explicitly classified as
+representative classes rather than falsely called exhaustive. Fault injection
+proves the wrapper's deterministic failure semantics; it does not prove that a
+particular kernel can naturally produce every documented failure on demand.
+Platform-native integration fixtures remain the evidence for real syscall
+behavior.
 
 The executable 10x contract replays every library test suite with call and
 resource logging enabled:
@@ -598,9 +649,25 @@ resource logging enabled:
 
 It combines `api-manifest.tsv`, `unit-test-manifest.tsv`, and the
 Clang-derived capability receipt, then requires every env-aware public API to
-appear with balanced runtime ENTER/EXIT records. Fault-capable APIs must be
-wired to their deterministic failure tests. Optional argument/result logging
-is admitted by `wrapper-conformance-contract.json`.
+appear with balanced runtime ENTER/EXIT records. Generated fault tests append
+one plain-text `P101WRAPPER	1	FAULT	...` record for every executed symbolic
+outcome. Each record names the platform, library, wrapper, error domain,
+symbolic code, numeric value, and PASS/FAIL result. Conformance computes the
+expected set from `wrapper-platform-faults.json` and rejects malformed,
+duplicate, missing, unexpected, or failed records instead of inferring
+coverage only from aggregate call counts. The v3 JSON receipt points to every
+per-library outcome log and reports expected versus directly observed cases.
+It also reports non-injected invocation coverage separately. Those calls are
+useful fixture evidence, but the receipt deliberately does not relabel them as
+native success without an explicit success assertion.
+
+Optional argument/result logging is admitted by
+`wrapper-conformance-contract.json`. A passing behavior test proves that its
+declared invocation and assertions ran; it is not automatically evidence that
+the underlying native function returned through its success path. Native
+success semantics require deterministic fixtures and remain in the lifecycle
+layer below. This distinction keeps the receipt useful without overstating
+what generic fixtures can safely prove.
 
 The 11x lifecycle layer exercises interactions rather than isolated calls:
 
@@ -610,8 +677,11 @@ The 11x lifecycle layer exercises interactions rather than isolated calls:
 
 `wrapper-lifecycle-contract.json` defines deterministic state machines for
 allocation, descriptors, streams, mappings, mutexes, processes, threads, and
-short I/O. The runner generates replay sequences, walks error/EINTR/timeout
-and short-I/O disruptions to exhaustion, validates the v4 event stream through
+short and positioned I/O. Separate short-read, short-write,
+positioned-short-read, and positioned-short-write scenarios cover every wrapper
+that accepts a `P101_ENV_FAULT_SHORT` action. The runner generates replay
+sequences, walks error/EINTR/timeout and short-I/O disruptions to exhaustion,
+validates the v5 event stream through
 `lib_tool_event`, rejects resource leaks with `p101-resource-tracker`, and
 shrinks any failure to a replayable minimal sequence. Its JSON receipt records
 the seed, compiler, platform, replay, and fault index.

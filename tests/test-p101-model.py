@@ -39,15 +39,16 @@ class ModelTests(unittest.TestCase):
         directory.mkdir()
         model = {
             "schema": "p101-run-model-v1",
-            "event_schema": "p101-tool-event-format-v4",
-            "identity_policy": "pid-context-event-sequence-kind",
+            "event_schema": "p101-tool-event-format-v5",
+            "identity_policy": "run-pid-context-event-sequence-kind",
             "ordering": "causal-edges-with-per-context-sequence-and-observed-timestamps",
             "summary": {"call_nodes": 2, "resource_nodes": 0},
             "nodes": [
                 {
-                    "id": "call:1:1:1:call-enter",
+                    "id": "call:test-run:1:1:1:call-enter",
                     "domain": "call",
                     "kind": "call-enter",
+                    "run_id": "test-run",
                     "pid": 1,
                     "context": 1,
                     "sequence": 1,
@@ -59,9 +60,10 @@ class ModelTests(unittest.TestCase):
                     "source": {"file": "student.c", "line": 7, "function": "demo"},
                 },
                 {
-                    "id": "call:1:1:2:call-exit",
+                    "id": "call:test-run:1:1:2:call-exit",
                     "domain": "call",
                     "kind": "call-exit",
+                    "run_id": "test-run",
                     "pid": 1,
                     "context": 1,
                     "sequence": 2,
@@ -76,8 +78,8 @@ class ModelTests(unittest.TestCase):
             "edges": [
                 {
                     "kind": "call-return",
-                    "from": "call:1:1:1:call-enter",
-                    "to": "call:1:1:2:call-exit",
+                    "from": "call:test-run:1:1:1:call-enter",
+                    "to": "call:test-run:1:1:2:call-exit",
                 }
             ],
         }

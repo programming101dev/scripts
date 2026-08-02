@@ -40,6 +40,11 @@ struct model {
   int pipe_fds[2];
   bool pipe_ready;
   bool pipe_written;
+  size_t pipe_bytes;
+  FILE *positioned_stream;
+  int positioned_fd;
+  bool positioned_written;
+  size_t positioned_bytes;
 };
 
 static void reset_error(struct p101_error *err);
@@ -63,6 +68,12 @@ static bool run_thread(const struct p101_env *env, struct p101_error *err,
                        const char *operation, struct model *model);
 static bool run_short_io(const struct p101_env *env, struct p101_error *err,
                          const char *operation, struct model *model);
+static bool run_positioned_short_io(const struct p101_env *env,
+                                    struct p101_error *err,
+                                    const char *operation,
+                                    struct model *model);
+static bool io_count_is_expected(const char *call_name, ssize_t actual,
+                                 size_t full_count);
 static void *thread_worker(void *argument);
 static void cleanup_model(const struct p101_env *env, struct p101_error *err,
                           struct model *model);
@@ -71,7 +82,9 @@ static bool model_is_clean(const struct model *model);
 int main(int argc, char *argv[]) {
   struct p101_error *err;
   struct p101_env *env;
-  struct model model = {.descriptors = {-1, -1}, .pipe_fds = {-1, -1}};
+  struct model model = {.descriptors = {-1, -1},
+                        .pipe_fds = {-1, -1},
+                        .positioned_fd = -1};
   char replay[REPLAY_LENGTH];
   char *save;
   char *operation;
@@ -150,8 +163,12 @@ static bool run_operation(const struct p101_env *env, struct p101_error *err,
     valid = run_process(env, err, operation, model);
   } else if (strcmp(scenario, "thread") == 0) {
     valid = run_thread(env, err, operation, model);
-  } else if (strcmp(scenario, "short-io") == 0) {
+  } else if (strcmp(scenario, "short-read") == 0 ||
+             strcmp(scenario, "short-write") == 0) {
     valid = run_short_io(env, err, operation, model);
+  } else if (strcmp(scenario, "positioned-short-read") == 0 ||
+             strcmp(scenario, "positioned-short-write") == 0) {
+    valid = run_positioned_short_io(env, err, operation, model);
   } else {
     return false;
   }
@@ -187,8 +204,14 @@ static bool operation_is_known(const char *scenario, const char *operation) {
   if (strcmp(scenario, "thread") == 0) {
     return strcmp(operation, "create") == 0 || strcmp(operation, "join") == 0;
   }
-  if (strcmp(scenario, "short-io") == 0) {
+  if (strcmp(scenario, "short-read") == 0 ||
+      strcmp(scenario, "short-write") == 0) {
     return strcmp(operation, "pipe") == 0 || strcmp(operation, "write") == 0 ||
+           strcmp(operation, "read") == 0 || strcmp(operation, "close") == 0;
+  }
+  if (strcmp(scenario, "positioned-short-read") == 0 ||
+      strcmp(scenario, "positioned-short-write") == 0) {
+    return strcmp(operation, "open") == 0 || strcmp(operation, "write") == 0 ||
            strcmp(operation, "read") == 0 || strcmp(operation, "close") == 0;
   }
   return false;
@@ -391,8 +414,11 @@ static bool run_short_io(const struct p101_env *env, struct p101_error *err,
       !model->pipe_written) {
     ssize_t written =
         p101_write(env, err, model->pipe_fds[1], message, sizeof(message));
-    if (written > 0) {
+    if (io_count_is_expected("p101_write", written, sizeof(message))) {
       model->pipe_written = true;
+      model->pipe_bytes = (size_t)written;
+    } else if (!p101_error_has_error(err)) {
+      return false;
     }
     return true;
   }
@@ -400,8 +426,11 @@ static bool run_short_io(const struct p101_env *env, struct p101_error *err,
       model->pipe_written) {
     ssize_t read_count =
         p101_read(env, err, model->pipe_fds[0], buffer, sizeof(buffer));
-    if (read_count > 0) {
+    if (io_count_is_expected("p101_read", read_count, model->pipe_bytes)) {
       model->pipe_written = false;
+      model->pipe_bytes = 0U;
+    } else if (!p101_error_has_error(err)) {
+      return false;
     }
     return true;
   }
@@ -425,6 +454,77 @@ static bool run_short_io(const struct p101_env *env, struct p101_error *err,
     return true;
   }
   return false;
+}
+
+static bool run_positioned_short_io(const struct p101_env *env,
+                                    struct p101_error *err,
+                                    const char *operation,
+                                    struct model *model) {
+  static const char message[] = "abcdef";
+  char buffer[BUFFER_LENGTH];
+
+  if (strcmp(operation, "open") == 0 && model->positioned_stream == NULL) {
+    model->positioned_stream = p101_tmpfile(env, err);
+    if (model->positioned_stream != NULL) {
+      model->positioned_fd =
+          p101_fileno(env, err, model->positioned_stream);
+      if (model->positioned_fd < 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (strcmp(operation, "write") == 0 && model->positioned_stream != NULL &&
+      !model->positioned_written) {
+    ssize_t written = p101_pwrite(env, err, model->positioned_fd, message,
+                                  sizeof(message), 0);
+    if (io_count_is_expected("p101_pwrite", written, sizeof(message))) {
+      model->positioned_written = true;
+      model->positioned_bytes = (size_t)written;
+    } else if (!p101_error_has_error(err)) {
+      return false;
+    }
+    return true;
+  }
+  if (strcmp(operation, "read") == 0 && model->positioned_stream != NULL &&
+      model->positioned_written) {
+    ssize_t read_count = p101_pread(env, err, model->positioned_fd, buffer,
+                                   sizeof(buffer), 0);
+    if (io_count_is_expected("p101_pread", read_count,
+                             model->positioned_bytes)) {
+      model->positioned_written = false;
+      model->positioned_bytes = 0U;
+    } else if (!p101_error_has_error(err)) {
+      return false;
+    }
+    return true;
+  }
+  if (strcmp(operation, "close") == 0 && model->positioned_stream != NULL &&
+      !model->positioned_written) {
+    if (p101_fclose(env, err, model->positioned_stream) == 0) {
+      model->positioned_stream = NULL;
+      model->positioned_fd = -1;
+      model->positioned_bytes = 0U;
+    }
+    return true;
+  }
+  return false;
+}
+
+static bool io_count_is_expected(const char *call_name, ssize_t actual,
+                                 size_t full_count) {
+  const char *mode = getenv("P101_FAULT_MODE");
+  const char *target = getenv("P101_FAULT_NAME");
+  const char *amount_text = getenv("P101_FAULT_AMOUNT");
+
+  if (mode != NULL && target != NULL && amount_text != NULL &&
+      strcmp(mode, "short") == 0 && strcmp(target, call_name) == 0) {
+    char *end = NULL;
+    unsigned long amount = strtoul(amount_text, &end, 10);
+    return end != amount_text && *end == '\0' && actual >= 0 &&
+           (size_t)actual == amount;
+  }
+  return actual >= 0 && (size_t)actual == full_count;
 }
 
 static void cleanup_model(const struct p101_env *env, struct p101_error *err,
@@ -478,6 +578,15 @@ static void cleanup_model(const struct p101_env *env, struct p101_error *err,
   }
   model->pipe_ready = false;
   model->pipe_written = false;
+  model->pipe_bytes = 0U;
+  reset_error(err);
+  if (model->positioned_stream != NULL &&
+      p101_fclose(env, err, model->positioned_stream) == 0) {
+    model->positioned_stream = NULL;
+    model->positioned_fd = -1;
+  }
+  model->positioned_written = false;
+  model->positioned_bytes = 0U;
 }
 
 static bool model_is_clean(const struct model *model) {
@@ -485,5 +594,6 @@ static bool model_is_clean(const struct model *model) {
          model->stream == NULL && model->mapping == NULL &&
          !model->mutex_initialized && !model->mutex_locked &&
          !model->child_live && !model->thread_live && !model->pipe_ready &&
-         model->pipe_fds[0] < 0 && model->pipe_fds[1] < 0;
+         model->pipe_fds[0] < 0 && model->pipe_fds[1] < 0 &&
+         model->positioned_stream == NULL && model->positioned_fd < 0;
 }

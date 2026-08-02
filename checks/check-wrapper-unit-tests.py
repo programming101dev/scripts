@@ -13,16 +13,23 @@ from pathlib import Path
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 
-from wrapper_errno_contract import (  # noqa: E402
+from wrapper_fault_contract import (  # noqa: E402
     current_platform_key,
-    injected_error_cases,
+    fault_domain,
+    injected_fault_cases,
     load_contract,
 )
 
 
 REPOS_PATH = SCRIPTS_ROOT / "repos.txt"
 CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "instrumentation-contract.json"
-ERRNO_CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-errno-contract.json"
+FAULT_CONTRACT_PATH = (
+    SCRIPTS_ROOT / "contracts" / "wrapper-platform-faults.json"
+)
+FAILURE_CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-failure-contract.json"
+LIFECYCLE_CONTRACT_PATH = (
+    SCRIPTS_ROOT / "contracts" / "wrapper-lifecycle-contract.json"
+)
 VALID_KINDS = {"fault", "behavior", "behavior-existing"}
 
 
@@ -52,14 +59,25 @@ def main() -> int:
     repositories = active_library_repositories()
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
     try:
-        errno_contract = load_contract(ERRNO_CONTRACT_PATH)
+        fault_contract = load_contract(FAULT_CONTRACT_PATH)
     except ValueError:
-        print("FAIL: unsupported wrapper errno contract")
+        print("FAIL: unsupported wrapper platform-fault contract")
         return 1
-    errno_names = set(errno_contract.get("errno_names", []))
-    errno_functions = errno_contract.get("functions", {})
-    errno_wrappers = errno_contract.get("wrappers", {})
-    platform_coverage = errno_contract.get("platform_coverage", {})
+    failure_contract = json.loads(
+        FAILURE_CONTRACT_PATH.read_text(encoding="utf-8")
+    )
+    if failure_contract.get("schema") != "p101-wrapper-failure-contract-v1":
+        print("FAIL: unsupported wrapper failure contract")
+        return 1
+    failure_wrappers = failure_contract.get("wrappers", {})
+    lifecycle_contract = json.loads(
+        LIFECYCLE_CONTRACT_PATH.read_text(encoding="utf-8")
+    )
+    errno_names = set(fault_contract.get("errno_names", []))
+    errno_functions = fault_contract.get("functions", {})
+    system_faults = fault_contract.get("system_faults", {})
+    fault_wrappers_by_name = fault_contract.get("wrappers", {})
+    platform_coverage = fault_contract.get("platform_coverage", {})
     platform_key = current_platform_key()
     for function, record in sorted(errno_functions.items()):
         posix = record.get("posix", {})
@@ -127,9 +145,57 @@ def main() -> int:
                     f"errno:{function}: invalid {required_platform} "
                     "effective source path"
                 )
+    valid_system_coverage = {
+        "exhaustive-symbolic",
+        "platform-documented-plus-smoke",
+        "representative-unbounded-class",
+    }
+    for function, record in sorted(system_faults.items()):
+        if function not in errno_functions:
+            failures.append(
+                f"system:{function}: absent from native function catalogue"
+            )
+        if record.get("coverage_kind") not in valid_system_coverage:
+            failures.append(
+                f"system:{function}: invalid coverage classification"
+            )
+        posix = record.get("posix")
+        if not isinstance(posix, dict):
+            failures.append(f"system:{function}: missing POSIX record")
+        else:
+            if not isinstance(posix.get("codes"), list):
+                failures.append(f"system:{function}: invalid POSIX codes")
+            if not posix.get("source"):
+                failures.append(f"system:{function}: missing POSIX source")
+        platform_records = record.get("platforms", {})
+        for required_platform in ("linux", "macos", "freebsd"):
+            platform_record = platform_records.get(required_platform)
+            if not isinstance(platform_record, dict):
+                failures.append(
+                    f"system:{function}: missing {required_platform} record"
+                )
+                continue
+            codes = platform_record.get("codes")
+            if not isinstance(codes, list):
+                failures.append(
+                    f"system:{function}: invalid {required_platform} codes"
+                )
+            elif len(codes) != len(set(codes)):
+                failures.append(
+                    f"system:{function}: duplicate {required_platform} codes"
+                )
+            if platform_record.get("source_kind") != "platform-manual":
+                failures.append(
+                    f"system:{function}: invalid {required_platform} "
+                    "source kind"
+                )
+            if not platform_record.get("source"):
+                failures.append(
+                    f"system:{function}: missing {required_platform} source"
+                )
     native_bindings = [
         binding
-        for binding in errno_wrappers.values()
+        for binding in fault_wrappers_by_name.values()
         if binding.get("role") == "native-wrapper"
         and binding.get("function") in errno_functions
     ]
@@ -187,7 +253,7 @@ def main() -> int:
 
     tested_total = 0
     expected_total = 0
-    errno_case_total = 0
+    fault_case_total = 0
     fault_wrappers: set[str] = set()
     for library, repo in sorted(libraries.items()):
         api_rows = table(repo / "api-manifest.tsv")
@@ -195,13 +261,15 @@ def main() -> int:
         expected.discard("")
         expected_total += len(expected)
         for name in sorted(expected):
-            binding = errno_wrappers.get(name)
+            binding = fault_wrappers_by_name.get(name)
             if binding is None:
-                failures.append(f"{library}:{name}: absent from errno contract")
+                failures.append(
+                    f"{library}:{name}: absent from platform-fault contract"
+                )
                 continue
             if binding.get("library") != library:
                 failures.append(
-                    f"{library}:{name}: errno contract assigns "
+                    f"{library}:{name}: platform-fault contract assigns "
                     f"{binding.get('library')!r}"
                 )
             function = binding.get("function")
@@ -245,14 +313,62 @@ def main() -> int:
                 )
             if kind == "fault":
                 fault_wrappers.add(name)
-                binding = errno_wrappers.get(name, {})
+                failure_record = failure_wrappers.get(name)
+                if failure_record is None:
+                    failures.append(
+                        f"{library}:{name}: absent from failure contract"
+                    )
+                    continue
+                if failure_record.get("library") != library:
+                    failures.append(
+                        f"{library}:{name}: failure contract assigns "
+                        f"{failure_record.get('library')!r}"
+                    )
+                function = fault_wrappers_by_name.get(name, {}).get("function")
+                expected_domain = fault_domain(fault_contract, function)
+                if failure_record.get("error_domain") != expected_domain:
+                    failures.append(
+                        f"{library}:{name}: injected error domain differs "
+                        f"(expected {expected_domain}; found "
+                        f"{failure_record.get('error_domain')!r})"
+                    )
+                if failure_record.get("errno") != "preserved":
+                    failures.append(
+                        f"{library}:{name}: invalid injected errno policy"
+                    )
+                if (
+                    failure_record.get("fault_boundary")
+                    != "before-observable-work"
+                ):
+                    failures.append(
+                        f"{library}:{name}: invalid fault boundary policy"
+                    )
+                if (
+                    failure_record.get("writable_arguments")
+                    != "unchanged"
+                ):
+                    failures.append(
+                        f"{library}:{name}: invalid writable argument policy"
+                    )
+                if failure_record.get("resource_events") != "none":
+                    failures.append(
+                        f"{library}:{name}: invalid resource-event policy"
+                    )
+                if failure_record.get("fault_modes") not in (
+                    ["error"],
+                    ["error", "short"],
+                ):
+                    failures.append(
+                        f"{library}:{name}: invalid fault-mode contract"
+                    )
+                binding = fault_wrappers_by_name.get(name, {})
                 function = binding.get("function")
-                expected_errors = injected_error_cases(
-                    errno_contract,
+                expected_errors = injected_fault_cases(
+                    fault_contract,
                     function,
                     platform_key,
                 )
-                errno_case_total += len(expected_errors)
+                fault_case_total += len(expected_errors)
                 function_match = re.search(
                     rf"static void test_{re.escape(name)}\b(.*?)(?=\n/\* "
                     r"P101_TEST_CASE|\nint main)",
@@ -266,13 +382,21 @@ def main() -> int:
                     continue
                 arrays_match = re.search(
                     r"#ifdef __linux__\s*"
-                    r"static const int errors\[\]\s*=\s*\{([^}]*)\};\s*"
+                    r"static const int\s+errors\[\]\s*=\s*\{([^}]*)\};\s*"
+                    r"static const char \*const\s+error_names\[\]\s*=\s*"
+                    r"\{([^}]*)\};\s*"
                     r"#elif defined\(__APPLE__\)\s*"
-                    r"static const int errors\[\]\s*=\s*\{([^}]*)\};\s*"
+                    r"static const int\s+errors\[\]\s*=\s*\{([^}]*)\};\s*"
+                    r"static const char \*const\s+error_names\[\]\s*=\s*"
+                    r"\{([^}]*)\};\s*"
                     r"#elif defined\(__FreeBSD__\)\s*"
-                    r"static const int errors\[\]\s*=\s*\{([^}]*)\};\s*"
+                    r"static const int\s+errors\[\]\s*=\s*\{([^}]*)\};\s*"
+                    r"static const char \*const\s+error_names\[\]\s*=\s*"
+                    r"\{([^}]*)\};\s*"
                     r"#else\s*"
-                    r"static const int errors\[\]\s*=\s*\{([^}]*)\};\s*"
+                    r"static const int\s+errors\[\]\s*=\s*\{([^}]*)\};\s*"
+                    r"static const char \*const\s+error_names\[\]\s*=\s*"
+                    r"\{([^}]*)\};\s*"
                     r"#endif",
                     function_match.group(1),
                 )
@@ -283,25 +407,31 @@ def main() -> int:
                 else:
                     actual_by_platform = {
                         "linux": re.findall(
-                            r"\bE[A-Z0-9_]+\b",
+                            r"\b[A-Z][A-Z0-9_]+\b",
                             arrays_match.group(1),
                         ),
                         "macos": re.findall(
-                            r"\bE[A-Z0-9_]+\b",
-                            arrays_match.group(2),
-                        ),
-                        "freebsd": re.findall(
-                            r"\bE[A-Z0-9_]+\b",
+                            r"\b[A-Z][A-Z0-9_]+\b",
                             arrays_match.group(3),
                         ),
+                        "freebsd": re.findall(
+                            r"\b[A-Z][A-Z0-9_]+\b",
+                            arrays_match.group(5),
+                        ),
                         "posix": re.findall(
-                            r"\bE[A-Z0-9_]+\b",
-                            arrays_match.group(4),
+                            r"\b[A-Z][A-Z0-9_]+\b",
+                            arrays_match.group(7),
                         ),
                     }
+                    labels_by_platform = {
+                        "linux": json.loads(f"[{arrays_match.group(2)}]"),
+                        "macos": json.loads(f"[{arrays_match.group(4)}]"),
+                        "freebsd": json.loads(f"[{arrays_match.group(6)}]"),
+                        "posix": json.loads(f"[{arrays_match.group(8)}]"),
+                    }
                     expected_by_platform = {
-                        checked_platform: injected_error_cases(
-                            errno_contract,
+                        checked_platform: injected_fault_cases(
+                            fault_contract,
                             function,
                             (
                                 None
@@ -323,21 +453,44 @@ def main() -> int:
                         if actual_errors != platform_errors:
                             failures.append(
                                 f"{library}:{name}: generated "
-                                f"{checked_platform} errno cases differ "
+                                f"{checked_platform} fault cases differ "
                                 f"(expected {','.join(platform_errors)}; "
                                 f"found {','.join(actual_errors)})"
                             )
-                if "p101_error_is_errno(err, state.errnum)" not in (
-                    function_match.group(1)
-                ):
+                        if labels_by_platform[checked_platform] != (
+                            platform_errors
+                        ):
+                            failures.append(
+                                f"{library}:{name}: generated "
+                                f"{checked_platform} outcome labels differ "
+                                f"(expected {','.join(platform_errors)}; "
+                                "found "
+                                f"{','.join(labels_by_platform[checked_platform])})"
+                            )
+                expected_error_assertion = (
+                    "p101_error_is_error(err, P101_ERROR_SYSTEM, "
+                    "state.code)"
+                    if expected_domain == "system"
+                    else "p101_error_is_errno(err, state.code)"
+                )
+                if expected_error_assertion not in function_match.group(1):
                     failures.append(
-                        f"{library}:{name}: does not verify propagated errno"
+                        f"{library}:{name}: does not verify propagated "
+                        f"{expected_domain} code"
                     )
                 required_fault_steps = (
                     "for(size_t index = 0U; "
                     "index < sizeof(errors) / sizeof(errors[0]); index++)",
                     "struct fault_state state = {0, errors[index]};",
+                    "failures_before = failures;",
+                    "EXPECT(p101_error_has_no_error(err));",
+                    "fault_resource_events = 0U;",
+                    "errno                 = P101_TEST_ERRNO_SENTINEL;",
                     "EXPECT(state.checks == 1);",
+                    "EXPECT(errno == P101_TEST_ERRNO_SENTINEL);",
+                    "EXPECT(fault_resource_events == 0U);",
+                    "error_names[index]",
+                    "failures == failures_before",
                     "p101_error_reset(err);",
                     "p101_env_set_fault_injector(env, NULL, NULL);",
                 )
@@ -347,16 +500,75 @@ def main() -> int:
                             f"{library}:{name}: generated fault test omits "
                             f"{required_step!r}"
                         )
+                return_kind = failure_record.get("return_kind")
+                if return_kind == "error-code":
+                    if "EXPECT(result == state.code);" not in (
+                        function_match.group(1)
+                    ):
+                        failures.append(
+                            f"{library}:{name}: does not verify error-code "
+                            "return"
+                        )
+                elif return_kind == "value":
+                    if not re.search(
+                        r"EXPECT\((?:result|isnan\(result\)|"
+                        r"memcmp\(&result)",
+                        function_match.group(1),
+                    ):
+                        failures.append(
+                            f"{library}:{name}: does not verify failure "
+                            "return value"
+                        )
+                elif return_kind != "void":
+                    failures.append(
+                        f"{library}:{name}: invalid failure return kind "
+                        f"{return_kind!r}"
+                    )
+                expected_canaries = len(
+                    failure_record.get("runtime_canary_arguments", [])
+                )
+                actual_canaries = len(
+                    re.findall(
+                        r"EXPECT\(memcmp\(argument_[0-9]+,",
+                        function_match.group(1),
+                    )
+                )
+                if actual_canaries != expected_canaries:
+                    failures.append(
+                        f"{library}:{name}: writable-argument canaries "
+                        f"differ (expected {expected_canaries}; "
+                        f"found {actual_canaries})"
+                    )
 
         for name in sorted(expected & actual.keys()):
-            binding = errno_wrappers[name]
+            binding = fault_wrappers_by_name.get(name)
+            if binding is None:
+                continue
             function = binding.get("function")
             if binding.get("role") != "native-wrapper" or function is None:
                 continue
             documented_failure = any(
-                errno_functions[function]["platforms"][required_platform][
-                    "effective_errors"
-                ]
+                bool(
+                    injected_fault_cases(
+                        fault_contract,
+                        function,
+                        required_platform,
+                    )
+                )
+                and (
+                    bool(
+                        fault_contract.get("system_faults", {})
+                        .get(function, {})
+                        .get("platforms", {})
+                        .get(required_platform, {})
+                        .get("codes", [])
+                    )
+                    or bool(
+                        errno_functions[function]["platforms"][
+                            required_platform
+                        ]["effective_errors"]
+                    )
+                )
                 for required_platform in ("linux", "macos", "freebsd")
             )
             if documented_failure and actual[name].get("test_kind") != "fault":
@@ -398,30 +610,41 @@ def main() -> int:
 
     print(f"public p101 API unit tests: {tested_total}/{expected_total}")
     print(
-        f"documented/injected errno cases on "
-        f"{platform_key or platform.system()}: {errno_case_total}"
+        f"generated fault cases required on "
+        f"{platform_key or platform.system()}: "
+        f"{fault_case_total}/{fault_case_total}"
     )
     documented_wrappers = {
         name
-        for name, binding in errno_wrappers.items()
+        for name, binding in fault_wrappers_by_name.items()
         if binding.get("role") == "native-wrapper"
         and binding.get("function") in errno_functions
         and any(
-            errno_functions[binding["function"]]["platforms"][
+            (
+                fault_contract.get("system_faults", {})
+                .get(binding["function"], {})
+                .get("platforms", {})
+                .get(required_platform, {})
+                .get("codes", [])
+            )
+            or errno_functions[binding["function"]]["platforms"][
                 required_platform
             ]["effective_errors"]
             for required_platform in ("linux", "macos", "freebsd")
         )
     }
     print(
-        "native wrappers with supported-platform documented faults: "
+        "fallible native wrappers with injection coverage: "
         f"{len(documented_wrappers & fault_wrappers)}/"
         f"{len(documented_wrappers)}"
     )
     print(
-        f"fault-capable wrappers: {len(fault_wrappers)}; "
-        f"behavior-only wrappers: {expected_total - len(fault_wrappers)}"
+        f"injectable APIs: {len(fault_wrappers)}/{len(fault_wrappers)}; "
+        "classified non-injectable APIs: "
+        f"{expected_total - len(fault_wrappers)}/"
+        f"{expected_total - len(fault_wrappers)}"
     )
+    platform_documented_case_total = 0
     for reported_platform in ("linux", "macos", "freebsd"):
         manual_count = sum(
             errno_functions[binding["function"]]["platforms"][
@@ -433,9 +656,9 @@ def main() -> int:
         fallback_count = len(native_bindings) - manual_count
         projected_cases = sum(
             len(
-                injected_error_cases(
-                    errno_contract,
-                    errno_wrappers[name].get("function"),
+                injected_fault_cases(
+                    fault_contract,
+                    fault_wrappers_by_name[name].get("function"),
                     reported_platform,
                 )
             )
@@ -443,34 +666,98 @@ def main() -> int:
         )
         documented_cases = sum(
             len(
-                errno_functions[binding["function"]]["platforms"][
+                injected_fault_cases(
+                    fault_contract,
+                    binding["function"],
+                    reported_platform,
+                )
+            )
+            for binding in native_bindings
+            if (
+                fault_contract.get("system_faults", {})
+                .get(binding["function"], {})
+                .get("platforms", {})
+                .get(reported_platform, {})
+                .get("codes", [])
+            )
+            or errno_functions[binding["function"]]["platforms"][
+                reported_platform
+            ]["effective_errors"]
+        )
+        documented_wrapper_count = sum(
+            bool(
+                fault_contract.get("system_faults", {})
+                .get(binding["function"], {})
+                .get("platforms", {})
+                .get(reported_platform, {})
+                .get("codes", [])
+                or errno_functions[binding["function"]]["platforms"][
                     reported_platform
                 ]["effective_errors"]
             )
             for binding in native_bindings
         )
-        documented_wrapper_count = sum(
-            bool(
-                errno_functions[binding["function"]]["platforms"][
-                    reported_platform
-                ]["effective_errors"]
+        platform_documented_case_total += documented_cases
+        representative_classes = sum(
+            specification["coverage_kind"]
+            == "representative-unbounded-class"
+            and bool(
+                specification["platforms"][reported_platform]["codes"]
             )
-            for binding in native_bindings
+            for specification in fault_contract.get(
+                "system_faults",
+                {},
+            ).values()
         )
         print(
             f"{reported_platform}: {manual_count} wrapper manual overrides, "
             f"{fallback_count} POSIX fallbacks; "
-            f"{documented_cases} documented faults across "
+            f"documented fault outcomes {documented_cases}/"
+            f"{documented_cases} across "
             f"{documented_wrapper_count} wrappers; "
-            f"{projected_cases} injected cases including smoke tests"
+            f"{representative_classes} unbounded failure classes; "
+            f"{projected_cases}/{projected_cases} generated cases "
+            "including instrumentation smoke tests"
         )
-    extra_errno_wrappers = errno_wrappers.keys() - {
+    print(
+        "three-platform documented fault matrix: "
+        f"{platform_documented_case_total}/"
+        f"{platform_documented_case_total}"
+    )
+    extra_fault_bindings = fault_wrappers_by_name.keys() - {
         row["function"]
         for repo in libraries.values()
         for row in table(repo / "api-manifest.tsv")
     }
-    for name in sorted(extra_errno_wrappers):
-        failures.append(f"errno:{name}: binding has no active public API")
+    for name in sorted(extra_fault_bindings):
+        failures.append(
+            f"platform-fault:{name}: binding has no active public API"
+        )
+    missing_failure_wrappers = fault_wrappers - failure_wrappers.keys()
+    extra_failure_wrappers = failure_wrappers.keys() - fault_wrappers
+    for name in sorted(missing_failure_wrappers):
+        failures.append(f"failure:{name}: missing fault-wrapper contract")
+    for name in sorted(extra_failure_wrappers):
+        failures.append(f"failure:{name}: contract has no active fault test")
+    short_fault_wrappers = {
+        name
+        for name, record in failure_wrappers.items()
+        if "short" in record.get("fault_modes", [])
+    }
+    lifecycle_short_wrappers = {
+        specification.get("fault_name")
+        for specification in lifecycle_contract.get("scenarios", {}).values()
+        if "short" in specification.get("fault_modes", [])
+    }
+    lifecycle_short_wrappers.discard(None)
+    for name in sorted(short_fault_wrappers - lifecycle_short_wrappers):
+        failures.append(
+            f"failure:{name}: short fault has no lifecycle scenario"
+        )
+    for name in sorted(lifecycle_short_wrappers - short_fault_wrappers):
+        failures.append(
+            f"failure:{name}: lifecycle short scenario has no wrapper action"
+        )
     if failures:
         for failure in failures:
             print(f"FAIL: {failure}")

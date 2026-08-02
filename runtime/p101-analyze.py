@@ -144,8 +144,8 @@ def parse_capture_receipt(receipt_path: Path) -> dict[str, Fingerprint]:
 
     required_scalars = {
         "schema": "p101-run-receipt-v1",
-        "event_schema": "p101-tool-event-format-v4",
-        "event_log_version": "4",
+        "event_schema": "p101-tool-event-format-v5",
+        "event_log_version": "5",
         "ordering": "per-context-sequence",
         "durability": "buffered-until-close",
         "fingerprint": "fnv1a64",

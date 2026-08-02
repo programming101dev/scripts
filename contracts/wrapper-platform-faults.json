@@ -76202,11 +76202,596 @@
     }
   },
   "platform_precedence": "A documented platform manual replaces the POSIX set on that platform; POSIX is the fallback when no platform manual exists.",
-  "schema": "p101-wrapper-errno-contract-v1",
+  "schema": "p101-wrapper-platform-faults-v1",
   "standard": {
     "errno_header": "https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/errno.h.html",
     "function_index": "https://pubs.opengroup.org/onlinepubs/9799919799/idx/functions.html",
     "name": "POSIX.1-2024"
+  },
+  "system_faults": {
+    "dlclose": {
+      "coverage_kind": "representative-unbounded-class",
+      "description": "dynamic-loader diagnostic",
+      "platforms": {
+        "freebsd": {
+          "codes": [
+            "EINVAL"
+          ],
+          "source": "https://download.freebsd.org/releases/amd64/15.1-RELEASE/man.txz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/dlclose.3.gz"
+        },
+        "linux": {
+          "codes": [
+            "EINVAL"
+          ],
+          "source": "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/dlopen.3"
+        },
+        "macos": {
+          "codes": [
+            "EINVAL"
+          ],
+          "source": "xcode-sdk://macosx-26.5/usr/share/man",
+          "source_kind": "platform-manual",
+          "source_path": "man3/dlclose.3"
+        }
+      },
+      "posix": {
+        "codes": [
+          "EINVAL"
+        ],
+        "source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/dlclose.html"
+      }
+    },
+    "dlopen": {
+      "coverage_kind": "representative-unbounded-class",
+      "description": "dynamic-loader diagnostic",
+      "platforms": {
+        "freebsd": {
+          "codes": [
+            "EINVAL"
+          ],
+          "source": "https://download.freebsd.org/releases/amd64/15.1-RELEASE/man.txz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/dlopen.3.gz"
+        },
+        "linux": {
+          "codes": [
+            "EINVAL"
+          ],
+          "source": "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/dlopen.3"
+        },
+        "macos": {
+          "codes": [
+            "EINVAL"
+          ],
+          "source": "xcode-sdk://macosx-26.5/usr/share/man",
+          "source_kind": "platform-manual",
+          "source_path": "man3/dlopen.3"
+        }
+      },
+      "posix": {
+        "codes": [
+          "EINVAL"
+        ],
+        "source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/dlopen.html"
+      }
+    },
+    "dlsym": {
+      "coverage_kind": "representative-unbounded-class",
+      "description": "dynamic-loader diagnostic",
+      "platforms": {
+        "freebsd": {
+          "codes": [
+            "EINVAL"
+          ],
+          "source": "https://download.freebsd.org/releases/amd64/15.1-RELEASE/man.txz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/dlsym.3.gz"
+        },
+        "linux": {
+          "codes": [
+            "EINVAL"
+          ],
+          "source": "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/dlsym.3"
+        },
+        "macos": {
+          "codes": [
+            "EINVAL"
+          ],
+          "source": "xcode-sdk://macosx-26.5/usr/share/man",
+          "source_kind": "platform-manual",
+          "source_path": "man3/dlsym.3"
+        }
+      },
+      "posix": {
+        "codes": [
+          "EINVAL"
+        ],
+        "source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/dlsym.html"
+      }
+    },
+    "fmtmsg": {
+      "coverage_kind": "exhaustive-symbolic",
+      "platforms": {
+        "freebsd": {
+          "codes": [
+            "MM_NOCON",
+            "MM_NOMSG",
+            "MM_NOTOK"
+          ],
+          "source": "https://download.freebsd.org/releases/amd64/15.1-RELEASE/man.txz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/fmtmsg.3.gz"
+        },
+        "linux": {
+          "codes": [
+            "MM_NOCON",
+            "MM_NOMSG",
+            "MM_NOTOK"
+          ],
+          "source": "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/fmtmsg.3"
+        },
+        "macos": {
+          "codes": [
+            "MM_NOCON",
+            "MM_NOMSG",
+            "MM_NOTOK"
+          ],
+          "source": "xcode-sdk://macosx-26.5/usr/share/man",
+          "source_kind": "platform-manual",
+          "source_path": "man3/fmtmsg.3"
+        }
+      },
+      "posix": {
+        "codes": [
+          "MM_NOCON",
+          "MM_NOMSG",
+          "MM_NOTOK"
+        ],
+        "source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/fmtmsg.html"
+      }
+    },
+    "fnmatch": {
+      "coverage_kind": "representative-unbounded-class",
+      "description": "implementation-defined non-match error",
+      "platforms": {
+        "freebsd": {
+          "codes": [
+            "EINVAL"
+          ],
+          "source": "https://download.freebsd.org/releases/amd64/15.1-RELEASE/man.txz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/fnmatch.3.gz"
+        },
+        "linux": {
+          "codes": [
+            "EINVAL"
+          ],
+          "source": "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/fnmatch.3"
+        },
+        "macos": {
+          "codes": [
+            "EINVAL"
+          ],
+          "source": "xcode-sdk://macosx-26.5/usr/share/man",
+          "source_kind": "platform-manual",
+          "source_path": "man3/fnmatch.3"
+        }
+      },
+      "posix": {
+        "codes": [
+          "EINVAL"
+        ],
+        "source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/fnmatch.html"
+      }
+    },
+    "getaddrinfo": {
+      "coverage_kind": "exhaustive-symbolic",
+      "platforms": {
+        "freebsd": {
+          "codes": [
+            "EAI_ADDRFAMILY",
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_BADHINTS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NODATA",
+            "EAI_NONAME",
+            "EAI_OVERFLOW",
+            "EAI_PROTOCOL",
+            "EAI_SERVICE",
+            "EAI_SOCKTYPE",
+            "EAI_SYSTEM"
+          ],
+          "source": "https://download.freebsd.org/releases/amd64/15.1-RELEASE/man.txz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/getaddrinfo.3.gz"
+        },
+        "linux": {
+          "codes": [
+            "EAI_ADDRFAMILY",
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NODATA",
+            "EAI_NONAME",
+            "EAI_SERVICE",
+            "EAI_SOCKTYPE",
+            "EAI_SYSTEM"
+          ],
+          "source": "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/getaddrinfo.3"
+        },
+        "macos": {
+          "codes": [
+            "EAI_ADDRFAMILY",
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_BADHINTS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NODATA",
+            "EAI_NONAME",
+            "EAI_OVERFLOW",
+            "EAI_PROTOCOL",
+            "EAI_SERVICE",
+            "EAI_SOCKTYPE",
+            "EAI_SYSTEM"
+          ],
+          "source": "xcode-sdk://macosx-26.5/usr/share/man",
+          "source_kind": "platform-manual",
+          "source_path": "man3/getaddrinfo.3"
+        }
+      },
+      "posix": {
+        "codes": [
+          "EAI_AGAIN",
+          "EAI_BADFLAGS",
+          "EAI_FAIL",
+          "EAI_FAMILY",
+          "EAI_MEMORY",
+          "EAI_NONAME",
+          "EAI_SERVICE",
+          "EAI_SOCKTYPE",
+          "EAI_SYSTEM"
+        ],
+        "source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/getaddrinfo.html"
+      }
+    },
+    "getnameinfo": {
+      "coverage_kind": "exhaustive-symbolic",
+      "platforms": {
+        "freebsd": {
+          "codes": [
+            "EAI_ADDRFAMILY",
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_BADHINTS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NODATA",
+            "EAI_NONAME",
+            "EAI_OVERFLOW",
+            "EAI_PROTOCOL",
+            "EAI_SERVICE",
+            "EAI_SOCKTYPE",
+            "EAI_SYSTEM"
+          ],
+          "source": "https://download.freebsd.org/releases/amd64/15.1-RELEASE/man.txz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/getnameinfo.3.gz"
+        },
+        "linux": {
+          "codes": [
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NONAME",
+            "EAI_OVERFLOW",
+            "EAI_SYSTEM"
+          ],
+          "source": "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/getnameinfo.3"
+        },
+        "macos": {
+          "codes": [
+            "EAI_ADDRFAMILY",
+            "EAI_AGAIN",
+            "EAI_BADFLAGS",
+            "EAI_BADHINTS",
+            "EAI_FAIL",
+            "EAI_FAMILY",
+            "EAI_MEMORY",
+            "EAI_NODATA",
+            "EAI_NONAME",
+            "EAI_OVERFLOW",
+            "EAI_PROTOCOL",
+            "EAI_SERVICE",
+            "EAI_SOCKTYPE",
+            "EAI_SYSTEM"
+          ],
+          "source": "xcode-sdk://macosx-26.5/usr/share/man",
+          "source_kind": "platform-manual",
+          "source_path": "man3/getnameinfo.3"
+        }
+      },
+      "posix": {
+        "codes": [
+          "EAI_AGAIN",
+          "EAI_BADFLAGS",
+          "EAI_FAIL",
+          "EAI_FAMILY",
+          "EAI_MEMORY",
+          "EAI_NONAME",
+          "EAI_OVERFLOW",
+          "EAI_SYSTEM"
+        ],
+        "source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/getnameinfo.html"
+      }
+    },
+    "glob": {
+      "coverage_kind": "exhaustive-symbolic",
+      "platforms": {
+        "freebsd": {
+          "codes": [
+            "GLOB_ABORTED",
+            "GLOB_NOSPACE"
+          ],
+          "source": "https://download.freebsd.org/releases/amd64/15.1-RELEASE/man.txz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/glob.3.gz"
+        },
+        "linux": {
+          "codes": [
+            "GLOB_ABORTED",
+            "GLOB_NOSPACE"
+          ],
+          "source": "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/glob.3"
+        },
+        "macos": {
+          "codes": [
+            "GLOB_ABORTED",
+            "GLOB_NOSPACE"
+          ],
+          "source": "xcode-sdk://macosx-26.5/usr/share/man",
+          "source_kind": "platform-manual",
+          "source_path": "man3/glob.3"
+        }
+      },
+      "posix": {
+        "codes": [
+          "GLOB_ABORTED",
+          "GLOB_NOSPACE"
+        ],
+        "source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/glob.html"
+      }
+    },
+    "regcomp": {
+      "coverage_kind": "exhaustive-symbolic",
+      "platforms": {
+        "freebsd": {
+          "codes": [
+            "REG_ASSERT",
+            "REG_BADBR",
+            "REG_BADPAT",
+            "REG_BADRPT",
+            "REG_EBRACE",
+            "REG_EBRACK",
+            "REG_ECOLLATE",
+            "REG_ECTYPE",
+            "REG_EESCAPE",
+            "REG_EMPTY",
+            "REG_EPAREN",
+            "REG_ERANGE",
+            "REG_ESPACE",
+            "REG_ESUBREG",
+            "REG_ILLSEQ",
+            "REG_INVARG"
+          ],
+          "source": "https://download.freebsd.org/releases/amd64/15.1-RELEASE/man.txz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/regcomp.3.gz"
+        },
+        "linux": {
+          "codes": [
+            "REG_BADBR",
+            "REG_BADPAT",
+            "REG_BADRPT",
+            "REG_EBRACE",
+            "REG_EBRACK",
+            "REG_ECOLLATE",
+            "REG_ECTYPE",
+            "REG_EEND",
+            "REG_EESCAPE",
+            "REG_EPAREN",
+            "REG_ERANGE",
+            "REG_ESIZE",
+            "REG_ESPACE",
+            "REG_ESUBREG"
+          ],
+          "source": "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/regex.3"
+        },
+        "macos": {
+          "codes": [
+            "REG_ASSERT",
+            "REG_BADBR",
+            "REG_BADMAX",
+            "REG_BADPAT",
+            "REG_BADRPT",
+            "REG_EBRACE",
+            "REG_EBRACK",
+            "REG_ECOLLATE",
+            "REG_ECTYPE",
+            "REG_EESCAPE",
+            "REG_EMPTY",
+            "REG_EPAREN",
+            "REG_ERANGE",
+            "REG_ESPACE",
+            "REG_ESUBREG",
+            "REG_ILLSEQ",
+            "REG_INVARG"
+          ],
+          "source": "xcode-sdk://macosx-26.5/usr/share/man",
+          "source_kind": "platform-manual",
+          "source_path": "man3/regcomp.3"
+        }
+      },
+      "posix": {
+        "codes": [
+          "REG_BADBR",
+          "REG_BADPAT",
+          "REG_BADRPT",
+          "REG_EBRACE",
+          "REG_EBRACK",
+          "REG_ECOLLATE",
+          "REG_ECTYPE",
+          "REG_EESCAPE",
+          "REG_EPAREN",
+          "REG_ERANGE",
+          "REG_ESPACE",
+          "REG_ESUBREG"
+        ],
+        "source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/regcomp.html"
+      }
+    },
+    "regexec": {
+      "coverage_kind": "platform-documented-plus-smoke",
+      "platforms": {
+        "freebsd": {
+          "codes": [
+            "REG_ASSERT",
+            "REG_BADBR",
+            "REG_BADPAT",
+            "REG_BADRPT",
+            "REG_EBRACE",
+            "REG_EBRACK",
+            "REG_ECOLLATE",
+            "REG_ECTYPE",
+            "REG_EESCAPE",
+            "REG_EMPTY",
+            "REG_EPAREN",
+            "REG_ERANGE",
+            "REG_ESPACE",
+            "REG_ESUBREG",
+            "REG_ILLSEQ",
+            "REG_INVARG"
+          ],
+          "source": "https://download.freebsd.org/releases/amd64/15.1-RELEASE/man.txz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/regexec.3.gz"
+        },
+        "linux": {
+          "codes": [],
+          "source": "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/regex.3"
+        },
+        "macos": {
+          "codes": [
+            "REG_ASSERT",
+            "REG_BADBR",
+            "REG_BADMAX",
+            "REG_BADPAT",
+            "REG_BADRPT",
+            "REG_EBRACE",
+            "REG_EBRACK",
+            "REG_ECOLLATE",
+            "REG_ECTYPE",
+            "REG_EESCAPE",
+            "REG_EMPTY",
+            "REG_EPAREN",
+            "REG_ERANGE",
+            "REG_ESPACE",
+            "REG_ESUBREG",
+            "REG_ILLSEQ",
+            "REG_INVARG"
+          ],
+          "source": "xcode-sdk://macosx-26.5/usr/share/man",
+          "source_kind": "platform-manual",
+          "source_path": "man3/regexec.3"
+        }
+      },
+      "posix": {
+        "codes": [],
+        "source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/regexec.html"
+      }
+    },
+    "wordexp": {
+      "coverage_kind": "exhaustive-symbolic",
+      "platforms": {
+        "freebsd": {
+          "codes": [
+            "WRDE_BADCHAR",
+            "WRDE_BADVAL",
+            "WRDE_CMDSUB",
+            "WRDE_NOSPACE",
+            "WRDE_SYNTAX"
+          ],
+          "source": "https://download.freebsd.org/releases/amd64/15.1-RELEASE/man.txz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/wordexp.3.gz"
+        },
+        "linux": {
+          "codes": [
+            "WRDE_BADCHAR",
+            "WRDE_BADVAL",
+            "WRDE_CMDSUB",
+            "WRDE_NOSPACE",
+            "WRDE_SYNTAX"
+          ],
+          "source": "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
+          "source_kind": "platform-manual",
+          "source_path": "man3/wordexp.3"
+        },
+        "macos": {
+          "codes": [
+            "WRDE_BADCHAR",
+            "WRDE_BADVAL",
+            "WRDE_CMDSUB",
+            "WRDE_NOSPACE",
+            "WRDE_SYNTAX"
+          ],
+          "source": "xcode-sdk://macosx-26.5/usr/share/man",
+          "source_kind": "platform-manual",
+          "source_path": "man3/wordexp.3"
+        }
+      },
+      "posix": {
+        "codes": [
+          "WRDE_BADCHAR",
+          "WRDE_BADVAL",
+          "WRDE_CMDSUB",
+          "WRDE_NOSPACE",
+          "WRDE_SYNTAX"
+        ],
+        "source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/wordexp.html"
+      }
+    }
   },
   "wrappers": {
     "p101_a64l": {
@@ -78124,6 +78709,36 @@
       "role": "traced-api"
     },
     "p101_fsm_decide_transition": {
+      "function": null,
+      "library": "lib_fsm",
+      "provenance": "",
+      "role": "traced-api"
+    },
+    "p101_fsm_effect_batch_count": {
+      "function": null,
+      "library": "lib_fsm",
+      "provenance": "",
+      "role": "traced-api"
+    },
+    "p101_fsm_effect_batch_create": {
+      "function": null,
+      "library": "lib_fsm",
+      "provenance": "",
+      "role": "traced-api"
+    },
+    "p101_fsm_effect_batch_destroy": {
+      "function": null,
+      "library": "lib_fsm",
+      "provenance": "",
+      "role": "traced-api"
+    },
+    "p101_fsm_effect_batch_finish_step": {
+      "function": null,
+      "library": "lib_fsm",
+      "provenance": "",
+      "role": "traced-api"
+    },
+    "p101_fsm_effect_batch_sink": {
       "function": null,
       "library": "lib_fsm",
       "provenance": "",

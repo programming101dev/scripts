@@ -24,9 +24,10 @@ from typing import cast
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 
-from wrapper_errno_contract import (  # noqa: E402
+from wrapper_fault_contract import (  # noqa: E402
     current_platform_key,
-    injected_error_cases,
+    fault_domain,
+    injected_fault_cases,
     load_contract,
 )
 
@@ -34,7 +35,9 @@ from wrapper_errno_contract import (  # noqa: E402
 WORKSPACE = SCRIPTS_ROOT.parent
 CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-conformance-contract.json"
 INSTRUMENTATION_PATH = SCRIPTS_ROOT / "contracts" / "instrumentation-contract.json"
-ERRNO_CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-errno-contract.json"
+FAULT_CONTRACT_PATH = (
+    SCRIPTS_ROOT / "contracts" / "wrapper-platform-faults.json"
+)
 
 
 def rows(path: Path) -> list[dict[str, str]]:
@@ -73,6 +76,12 @@ def normalize_calls(trace: Path, source: Path, output: Path) -> None:
         text=True,
         check=False,
     )
+    if result.returncode < 0:
+        raise RuntimeError(
+            f"p101-trace terminated by signal {-result.returncode} while "
+            f"normalizing {source}; rebuild {trace.parent.parent.name} "
+            "against the current p101 libraries"
+        )
     # Test processes do not use the capture conductor, so producer-completion
     # and whole-stack checks may return 2. Parsing itself must still be clean.
     diagnostic = result.stderr
@@ -115,6 +124,109 @@ def failure_output(output: str) -> list[str]:
     return lines
 
 
+def fault_outcome_evidence(
+    path: Path,
+) -> tuple[
+    dict[tuple[str, str, str, str, str], tuple[int, str]],
+    list[str],
+]:
+    """Parse direct generated-test receipts without accepting partial lines."""
+    outcomes: dict[
+        tuple[str, str, str, str, str],
+        tuple[int, str],
+    ] = {}
+    failures: list[str] = []
+    if not path.is_file():
+        return outcomes, failures
+    with path.open(encoding="utf-8") as stream:
+        for line_number, line in enumerate(stream, 1):
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) != 10 or fields[:3] != [
+                "P101WRAPPER",
+                "1",
+                "FAULT",
+            ]:
+                failures.append(
+                    f"{path.name}:{line_number}: malformed outcome record"
+                )
+                continue
+            _magic, _version, _kind, platform_name, library = fields[:5]
+            wrapper, domain, symbol, code_text, status = fields[5:]
+            try:
+                code = int(code_text)
+            except ValueError:
+                failures.append(
+                    f"{path.name}:{line_number}: invalid numeric code "
+                    f"{code_text!r}"
+                )
+                continue
+            key = (platform_name, library, wrapper, domain, symbol)
+            if key in outcomes:
+                failures.append(
+                    f"{path.name}:{line_number}: duplicate outcome "
+                    f"{library}:{wrapper}:{domain}:{symbol}"
+                )
+                continue
+            if status not in {"PASS", "FAIL"}:
+                failures.append(
+                    f"{path.name}:{line_number}: invalid status {status!r}"
+                )
+                continue
+            outcomes[key] = (code, status)
+    return outcomes, failures
+
+
+def compare_fault_outcomes(
+    expected: set[tuple[str, str, str, str, str]],
+    observed: dict[
+        tuple[str, str, str, str, str],
+        tuple[int, str],
+    ],
+) -> list[str]:
+    """Reject missing, unexpected, or explicitly failed direct outcomes."""
+    failures: list[str] = []
+    observed_keys = set(observed)
+    for missing_outcome in sorted(expected - observed_keys):
+        (
+            _outcome_platform,
+            library,
+            wrapper,
+            domain,
+            symbol,
+        ) = missing_outcome
+        failures.append(
+            f"{library}:{wrapper}: missing direct {domain}:{symbol} "
+            "outcome receipt"
+        )
+    for unexpected_outcome in sorted(observed_keys - expected):
+        (
+            _outcome_platform,
+            library,
+            wrapper,
+            domain,
+            symbol,
+        ) = unexpected_outcome
+        failures.append(
+            f"{library}:{wrapper}: unexpected direct outcome "
+            f"{domain}:{symbol}"
+        )
+    for outcome in sorted(expected & observed_keys):
+        _code, status = observed[outcome]
+        if status != "PASS":
+            (
+                _outcome_platform,
+                library,
+                wrapper,
+                domain,
+                symbol,
+            ) = outcome
+            failures.append(
+                f"{library}:{wrapper}: direct {domain}:{symbol} "
+                "outcome failed"
+            )
+    return failures
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run per-wrapper runtime conformance checks."
@@ -129,9 +241,9 @@ def main() -> int:
     args = parser.parse_args()
 
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
-    errno_contract = load_contract(ERRNO_CONTRACT_PATH)
+    fault_contract = load_contract(FAULT_CONTRACT_PATH)
     platform_key = current_platform_key()
-    if contract.get("schema") != "p101-wrapper-conformance-contract-v1":
+    if contract.get("schema") != "p101-wrapper-conformance-contract-v2":
         print("FAIL: unsupported wrapper conformance contract")
         return 2
     selected = active_libraries()
@@ -182,27 +294,41 @@ def main() -> int:
             row["function"]: row["test_kind"]
             for row in rows(repo / "test" / "unit-test-manifest.tsv")
         }
-        errno_case_count = 0
-        errno_cases_by_wrapper: dict[str, int] = {}
+        fault_case_count = 0
+        fault_cases_by_wrapper: dict[str, int] = {}
+        expected_outcomes: set[tuple[str, str, str, str, str]] = set()
+        receipt_platform = platform_key or "posix"
         for name, kind in tests.items():
             if kind != "fault":
                 continue
-            binding = errno_contract["wrappers"][name]
+            binding = fault_contract["wrappers"][name]
             function = binding.get("function")
-            wrapper_case_count = len(
-                injected_error_cases(
-                    errno_contract,
-                    function,
-                    platform_key,
-                )
+            symbols = injected_fault_cases(
+                fault_contract,
+                function,
+                platform_key,
             )
-            errno_cases_by_wrapper[name] = wrapper_case_count
-            errno_case_count += wrapper_case_count
+            wrapper_case_count = len(symbols)
+            fault_cases_by_wrapper[name] = wrapper_case_count
+            fault_case_count += wrapper_case_count
+            domain = fault_domain(fault_contract, function)
+            expected_outcomes.update(
+                (
+                    receipt_platform,
+                    library,
+                    name,
+                    domain,
+                    symbol,
+                )
+                for symbol in symbols
+            )
         call_log = args.output / f"{library}.calls.log"
         resource_log = args.output / f"{library}.resources.log"
         normalized = args.output / f"{library}.calls.tsv"
+        outcome_log = args.output / f"{library}.outcomes.tsv"
         call_log.unlink(missing_ok=True)
         resource_log.unlink(missing_ok=True)
+        outcome_log.unlink(missing_ok=True)
         environment = os.environ.copy()
         environment.update(
             {
@@ -210,6 +336,7 @@ def main() -> int:
                 "P101_CALL_LOG_ARGS": "1",
                 "P101_CALL_LOG_RESULT": "1",
                 "P101_RESOURCE_LOG": str(resource_log),
+                "P101_WRAPPER_OUTCOME_LOG": str(outcome_log),
             }
         )
         result = subprocess.run(
@@ -236,6 +363,16 @@ def main() -> int:
                 }
             )
             continue
+
+        outcome_failure_start = len(failures)
+        observed_outcomes, outcome_failures = fault_outcome_evidence(
+            outcome_log
+        )
+        failures.extend(f"{library}: {item}" for item in outcome_failures)
+        observed_keys = set(observed_outcomes)
+        failures.extend(
+            compare_fault_outcomes(expected_outcomes, observed_outcomes)
+        )
         if not call_log.is_file():
             failures.append(f"{library}: tests emitted no call log")
             continue
@@ -258,17 +395,24 @@ def main() -> int:
         missing_failure = sorted(
             name for name in api if tests.get(name) == "fault" and enters[name] == 0
         )
-        insufficient_errno_cases = sorted(
+        insufficient_fault_cases = sorted(
             (
                 name,
-                errno_cases_by_wrapper[name],
+                fault_cases_by_wrapper[name],
                 enters[name],
             )
-            for name in errno_cases_by_wrapper
-            if enters[name] < errno_cases_by_wrapper[name]
+            for name in fault_cases_by_wrapper
+            if enters[name] < fault_cases_by_wrapper[name]
         )
         missing_arguments = sorted((api & required_arguments) - arguments)
         missing_results = sorted((api & required_results) - results)
+        non_injected_calls = {
+            name: max(0, enters[name] - fault_cases_by_wrapper.get(name, 0))
+            for name in api
+        }
+        non_injected_apis = {
+            name for name, count in non_injected_calls.items() if count > 0
+        }
         for name in missing_calls:
             failures.append(f"{library}:{name}: no runtime success/failure invocation")
         for name in unbalanced:
@@ -277,10 +421,10 @@ def main() -> int:
             )
         for name in missing_failure:
             failures.append(f"{library}:{name}: fault test emitted no call")
-        for name, expected_count, actual_count in insufficient_errno_cases:
+        for name, expected_count, actual_count in insufficient_fault_cases:
             failures.append(
                 f"{library}:{name}: fault test emitted {actual_count} call(s), "
-                f"expected at least {expected_count} errno cases"
+                f"expected at least {expected_count} platform fault cases"
             )
         for name in missing_arguments:
             failures.append(f"{library}:{name}: required arguments were not logged")
@@ -294,27 +438,42 @@ def main() -> int:
                 "invoked": len(trace_api - set(missing_calls)),
                 "balanced": len(trace_api - set(unbalanced)),
                 "fault_tests": sum(kind == "fault" for kind in tests.values()),
-                "errno_cases": errno_case_count,
+                "fault_cases": fault_case_count,
+                "fault_outcomes_observed": len(
+                    expected_outcomes & observed_keys
+                ),
+                "fault_outcome_log": str(outcome_log),
                 "arguments_logged": len(api & arguments),
                 "results_logged": len(api & results),
+                "non_injected_apis_observed": len(non_injected_apis),
+                "non_injected_invocations": sum(
+                    non_injected_calls.values()
+                ),
                 "passed": not (
                     missing_calls
                     or unbalanced
                     or missing_failure
-                    or insufficient_errno_cases
+                    or insufficient_fault_cases
                     or missing_arguments
                     or missing_results
+                    or len(failures) != outcome_failure_start
                 ),
             }
         )
 
     receipt = {
-        "schema": "p101-wrapper-conformance-receipt-v1",
+        "schema": "p101-wrapper-conformance-receipt-v3",
         "contract": str(CONTRACT_PATH),
-        "errno_contract": str(ERRNO_CONTRACT_PATH),
+        "platform_fault_contract": str(FAULT_CONTRACT_PATH),
         "libraries": receipts,
         "public_apis": sum(int(item["apis"]) for item in receipts),
-        "errno_cases": sum(int(item["errno_cases"]) for item in receipts),
+        "fault_cases": sum(int(item["fault_cases"]) for item in receipts),
+        "fault_outcomes_observed": sum(
+            int(item["fault_outcomes_observed"]) for item in receipts
+        ),
+        "non_injected_apis_observed": sum(
+            int(item["non_injected_apis_observed"]) for item in receipts
+        ),
         "failures": failures,
         "failure_details": failure_details,
         "passed": not failures,
@@ -324,7 +483,15 @@ def main() -> int:
     )
     print(
         f"wrapper conformance: {receipt['public_apis']} APIs, "
-        f"{receipt['errno_cases']} errno cases, {len(receipts)} libraries"
+        f"{receipt['fault_outcomes_observed']}/"
+        f"{receipt['fault_cases']} direct platform fault outcomes, "
+        f"{len(receipts)} libraries"
+    )
+    print(
+        "non-injected behavior evidence: "
+        f"{receipt['non_injected_apis_observed']}/"
+        f"{receipt['public_apis']} APIs "
+        "(not automatically classified as native success)"
     )
     if failures:
         for failure in failures:

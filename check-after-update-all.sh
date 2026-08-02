@@ -48,6 +48,11 @@ fuzz_secs=5
 interactive=0
 from_node=""
 only_node=""
+jobs=""
+cache_dir=""
+no_cache=0
+resume=0
+measure=0
 
 usage() {
   cat <<'USAGE'
@@ -80,8 +85,13 @@ Options:
   --playground-coverage Let tour.sh run coverage.
   --playground-fuzz     Let tour.sh run fuzz smoke.
   --interactive         Pause at a failed graph node and retry that exact node.
-  --from <node>         Resume at the named graph node and run its downstream nodes.
+  --resume              Reuse only exact clean records from the receipt under -o.
+  --from <node>         Resume at the named node after validating omitted prerequisites.
   --only <node>         Run only the named graph node and its dependencies.
+  --jobs <count>        Maximum concurrent graph nodes. Default: graph policy.
+  --cache-dir <dir>     Exact local evidence cache. Default: scripts/target.
+  --no-cache            Execute every selected functional node.
+  --measure             Run sequentially without cache for comparable timings.
   -h, --help            Show this help.
 USAGE
 }
@@ -107,8 +117,13 @@ while [ "$#" -gt 0 ]; do
     --playground-coverage) playground_coverage=1; shift ;;
     --playground-fuzz) playground_fuzz=1; shift ;;
     --interactive) interactive=1; shift ;;
+    --resume) resume=1; shift ;;
     --from) from_node="${2:?}"; shift 2 ;;
     --only) only_node="${2:?}"; shift 2 ;;
+    --jobs) jobs="${2:?}"; shift 2 ;;
+    --cache-dir) cache_dir="${2:?}"; shift 2 ;;
+    --no-cache) no_cache=1; shift ;;
+    --measure) measure=1; shift ;;
     *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
   esac
 done
@@ -168,11 +183,13 @@ run_checks() {
   local playground_quality_arg=""
   local playground_coverage_arg=""
   local playground_fuzz_arg=""
+  local profile
   local summary
   local -a graph_args
 
   run_out_dir="$(mkdir -p "$run_out_dir" && CDPATH='' cd -P "$run_out_dir" && pwd -P)"
   mkdir -p "$run_out_dir/logs"
+  profile="$run_out_dir/profile.md"
   summary="$run_out_dir/summary.md"
 
   [ "$template_no_tests" -eq 0 ] || template_no_tests_arg="--template-no-tests"
@@ -200,8 +217,13 @@ run_checks() {
   [ "$skip_stack" -eq 0 ] || graph_args+=(--skip-group stack)
   [ "$skip_regression" -eq 0 ] || graph_args+=(--skip-group regression)
   [ "$interactive" -eq 0 ] || graph_args+=(--interactive)
+  [ "$resume" -eq 0 ] || graph_args+=(--resume)
   [ -z "$from_node" ] || graph_args+=(--from "$from_node")
   [ -z "$only_node" ] || graph_args+=(--only "$only_node")
+  [ -z "$jobs" ] || graph_args+=(--jobs "$jobs")
+  [ -z "$cache_dir" ] || graph_args+=(--cache-dir "$cache_dir")
+  [ "$no_cache" -eq 0 ] || graph_args+=(--no-cache)
+  [ "$measure" -eq 0 ] || graph_args+=(--measure)
 
   printf 'p101 post-update-all check output: %s\n' "$run_out_dir"
   printf 'Host:         %s %s %s\n' "$host_os" "$host_release" "$host_machine"
@@ -212,6 +234,7 @@ run_checks() {
 
   printf 'p101 post-update-all checks passed: %s\n' "$run_out_dir"
   printf 'Summary: %s\n' "$summary"
+  printf 'Profile: %s\n' "$profile"
 }
 
 if [ "$compiler_was_selected" -eq 0 ]; then
@@ -222,7 +245,7 @@ if [ "$compiler_was_selected" -eq 0 ]; then
   fi
   out_dir="$(mkdir -p "$out_dir" && CDPATH='' cd -P "$out_dir" && pwd -P)"
   matrix_summary="$out_dir/matrix-summary.md"
-  printf '# p101 post-update-all compiler matrix\n\n| C compiler | C++ compiler | Result | Summary |\n| --- | --- | --- | --- |\n' > "$matrix_summary"
+  printf '# p101 post-update-all compiler matrix\n\n| C compiler | C++ compiler | Result | Summary | Profile |\n| --- | --- | --- | --- | --- |\n' > "$matrix_summary"
   pairs_run=0
   pairs_failed=0
   pairs_skipped=0
@@ -243,9 +266,9 @@ if [ "$compiler_was_selected" -eq 0 ]; then
     printf 'Checking compiler pair: %s : %s\n' "$matrix_cc" "$matrix_cxx"
     printf '===============================================================================\n'
     if run_checks "$resolved_cc" "$resolved_cxx" "$pair_out"; then
-      printf '| %s | %s | PASS | [%s](%s/summary.md) |\n' "$matrix_cc" "$matrix_cxx" "$pair_name" "$pair_name" >> "$matrix_summary"
+      printf '| %s | %s | PASS | [%s](%s/summary.md) | [profile](%s/profile.md) |\n' "$matrix_cc" "$matrix_cxx" "$pair_name" "$pair_name" "$pair_name" >> "$matrix_summary"
     else
-      printf '| %s | %s | FAIL | [%s](%s/summary.md) |\n' "$matrix_cc" "$matrix_cxx" "$pair_name" "$pair_name" >> "$matrix_summary"
+      printf '| %s | %s | FAIL | [%s](%s/summary.md) | [profile](%s/profile.md) |\n' "$matrix_cc" "$matrix_cxx" "$pair_name" "$pair_name" "$pair_name" >> "$matrix_summary"
       pairs_failed=$((pairs_failed + 1))
     fi
     pairs_run=$((pairs_run + 1))
