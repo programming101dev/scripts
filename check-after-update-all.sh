@@ -28,6 +28,9 @@ CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 cc=""
 cxx=""
+c_list_file="supported_c_compilers.txt"
+cxx_list_file="supported_cxx_compilers.txt"
+compiler_was_selected=0
 out_dir=""
 skip_cmake=0
 skip_tool_contracts=0
@@ -53,8 +56,10 @@ Run acceptance checks that make sense after ./update-all.sh has already built
 the workspace. The script does not run build-repo.sh.
 
 Options:
-  -c <cc>          C compiler for checks. Default: first supported C compiler.
-  -x <cxx>         C++ compiler for checks. Default: matching/first supported C++ compiler.
+  -c <cc>          Select one C compiler instead of the full compiler matrix.
+  -x <cxx>         Select one C++ compiler instead of the full compiler matrix.
+  -C <file>        C compiler list. Default: supported_c_compilers.txt.
+  -X <file>        C++ compiler list. Default: supported_cxx_compilers.txt.
   -o <dir>         Artifact directory. Default: /tmp/p101-after-update-all-check-<pid>.
   -n <count>       Fault-injection cases for playground tour. Default: 1.
   --fuzz-secs <s>  Per-target repository fuzz budget and optional playground
@@ -83,8 +88,10 @@ USAGE
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
-    -c) cc="${2:?}"; shift 2 ;;
-    -x) cxx="${2:?}"; shift 2 ;;
+    -c) cc="${2:?}"; compiler_was_selected=1; shift 2 ;;
+    -x) cxx="${2:?}"; compiler_was_selected=1; shift 2 ;;
+    -C) c_list_file="${2:?}"; shift 2 ;;
+    -X) cxx_list_file="${2:?}"; shift 2 ;;
     -o) out_dir="${2:?}"; shift 2 ;;
     -n) fault_count="${2:?}"; shift 2 ;;
     --fuzz-secs) fuzz_secs="${2:?}"; shift 2 ;;
@@ -105,14 +112,6 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-if [ -z "$out_dir" ]; then
-  out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-after-update-all-check.XXXXXX")"
-fi
-
-out_dir="$(mkdir -p "$out_dir" && CDPATH='' cd -P "$out_dir" && pwd -P)"
-log_dir="$out_dir/logs"
-mkdir -p "$log_dir"
-summary="$out_dir/summary.md"
 host_os="$(uname -s)"
 host_release="$(uname -r)"
 host_machine="$(uname -m)"
@@ -145,8 +144,9 @@ derive_cxx_name() {
 
 find_cxx_for_c() {
   wanted="$(derive_cxx_name "$1")"
+  list_file="${2:-$cxx_list_file}"
 
-  if [ -n "$wanted" ] && [ -f supported_cxx_compilers.txt ]; then
+  if [ -n "$wanted" ] && [ -f "$list_file" ]; then
     awk -v want="$wanted" '
       NF && $0 !~ /^[[:space:]]*#/ {
         n = split($1, parts, "/")
@@ -155,68 +155,125 @@ find_cxx_for_c() {
           exit
         }
       }
-    ' supported_cxx_compilers.txt
+    ' "$list_file"
   fi
 }
 
+run_checks() {
+  local run_cc="$1"
+  local run_cxx="$2"
+  local run_out_dir="$3"
+  local template_no_tests_arg=""
+  local playground_quality_arg=""
+  local playground_coverage_arg=""
+  local playground_fuzz_arg=""
+  local summary
+  local -a graph_args
+
+  run_out_dir="$(mkdir -p "$run_out_dir" && CDPATH='' cd -P "$run_out_dir" && pwd -P)"
+  mkdir -p "$run_out_dir/logs"
+  summary="$run_out_dir/summary.md"
+
+  [ "$template_no_tests" -eq 0 ] || template_no_tests_arg="--template-no-tests"
+  [ "$playground_quality" -eq 0 ] || playground_quality_arg="--playground-quality"
+  [ "$playground_coverage" -eq 0 ] || playground_coverage_arg="--playground-coverage"
+  [ "$playground_fuzz" -eq 0 ] || playground_fuzz_arg="--playground-fuzz"
+
+  graph_args=(
+    run
+    --out "$run_out_dir"
+    --var "cc=$run_cc"
+    --var "cxx=$run_cxx"
+    --var "fuzz_secs=$fuzz_secs"
+    --var "fault_count=$fault_count"
+    --var "template_no_tests=$template_no_tests_arg"
+    --var "playground_quality=$playground_quality_arg"
+    --var "playground_coverage=$playground_coverage_arg"
+    --var "playground_fuzz=$playground_fuzz_arg"
+  )
+
+  [ "$skip_cmake" -eq 0 ] || graph_args+=(--skip-group cmake)
+  [ "$skip_tool_contracts" -eq 0 ] || graph_args+=(--skip-group tool-contracts)
+  [ "$skip_tool_audit" -eq 0 ] || graph_args+=(--skip-group tool-audit)
+  [ "$skip_library_audit" -eq 0 ] || graph_args+=(--skip-group library-audit)
+  [ "$skip_stack" -eq 0 ] || graph_args+=(--skip-group stack)
+  [ "$skip_regression" -eq 0 ] || graph_args+=(--skip-group regression)
+  [ "$interactive" -eq 0 ] || graph_args+=(--interactive)
+  [ -z "$from_node" ] || graph_args+=(--from "$from_node")
+  [ -z "$only_node" ] || graph_args+=(--only "$only_node")
+
+  printf 'p101 post-update-all check output: %s\n' "$run_out_dir"
+  printf 'Host:         %s %s %s\n' "$host_os" "$host_release" "$host_machine"
+  printf 'C compiler:   %s\n' "$run_cc"
+  printf 'C++ compiler: %s\n' "$run_cxx"
+
+  ./p101-check-graph.py "${graph_args[@]}"
+
+  printf 'p101 post-update-all checks passed: %s\n' "$run_out_dir"
+  printf 'Summary: %s\n' "$summary"
+}
+
+if [ "$compiler_was_selected" -eq 0 ]; then
+  [ -f "$c_list_file" ] || { printf 'C compiler list not found: %s\n' "$c_list_file" >&2; exit 2; }
+  [ -f "$cxx_list_file" ] || { printf 'C++ compiler list not found: %s\n' "$cxx_list_file" >&2; exit 2; }
+  if [ -z "$out_dir" ]; then
+    out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-after-update-all-check.XXXXXX")"
+  fi
+  out_dir="$(mkdir -p "$out_dir" && CDPATH='' cd -P "$out_dir" && pwd -P)"
+  matrix_summary="$out_dir/matrix-summary.md"
+  printf '# p101 post-update-all compiler matrix\n\n| C compiler | C++ compiler | Result | Summary |\n| --- | --- | --- | --- |\n' > "$matrix_summary"
+  pairs_run=0
+  pairs_failed=0
+  pairs_skipped=0
+
+  while IFS= read -r matrix_cc; do
+    [ -n "$matrix_cc" ] || continue
+    matrix_cxx="$(find_cxx_for_c "$matrix_cc" "$cxx_list_file")"
+    if [ -z "$matrix_cxx" ]; then
+      printf 'WARN: %s has no matching C++ compiler in %s; skipping.\n' "$matrix_cc" "$cxx_list_file" >&2
+      pairs_skipped=$((pairs_skipped + 1))
+      continue
+    fi
+    resolved_cc="$(resolve_compiler "$matrix_cc")"
+    resolved_cxx="$(resolve_compiler "$matrix_cxx")"
+    pair_name="$(printf '%s__%s' "$(basename "$matrix_cc")" "$(basename "$matrix_cxx")" | tr -c '[:alnum:]_.-' '_')"
+    pair_out="$out_dir/$pair_name"
+    printf '\n===============================================================================\n'
+    printf 'Checking compiler pair: %s : %s\n' "$matrix_cc" "$matrix_cxx"
+    printf '===============================================================================\n'
+    if run_checks "$resolved_cc" "$resolved_cxx" "$pair_out"; then
+      printf '| %s | %s | PASS | [%s](%s/summary.md) |\n' "$matrix_cc" "$matrix_cxx" "$pair_name" "$pair_name" >> "$matrix_summary"
+    else
+      printf '| %s | %s | FAIL | [%s](%s/summary.md) |\n' "$matrix_cc" "$matrix_cxx" "$pair_name" "$pair_name" >> "$matrix_summary"
+      pairs_failed=$((pairs_failed + 1))
+    fi
+    pairs_run=$((pairs_run + 1))
+  done < <(awk 'NF && $0 !~ /^[[:space:]]*#/ { print $1 }' "$c_list_file")
+
+  [ "$pairs_run" -gt 0 ] || { printf 'No usable compiler pairs were found.\n' >&2; exit 3; }
+  printf '\nCompiler matrix complete: %d passed, %d failed, %d skipped.\n' \
+    "$((pairs_run - pairs_failed))" "$pairs_failed" "$pairs_skipped"
+  printf 'Matrix summary: %s\n' "$matrix_summary"
+  [ "$pairs_failed" -eq 0 ]
+  exit
+fi
+
 if [ -z "$cc" ]; then
-  cc="$(trim_line supported_c_compilers.txt)"
+  cc="$(trim_line "$c_list_file")"
 fi
-
 if [ -z "$cxx" ]; then
-  cxx="$(find_cxx_for_c "$cc")"
+  cxx="$(find_cxx_for_c "$cc" "$cxx_list_file")"
 fi
-
 if [ -z "$cxx" ]; then
-  cxx="$(trim_line supported_cxx_compilers.txt)"
+  cxx="$(trim_line "$cxx_list_file")"
 fi
-
 if [ -z "$cc" ] || [ -z "$cxx" ]; then
   echo "Unable to choose compilers. Run ./check-compilers.sh first or pass -c/-x." >&2
   exit 2
 fi
-
 cc="$(resolve_compiler "$cc")"
 cxx="$(resolve_compiler "$cxx")"
-
-template_no_tests_arg=""
-playground_quality_arg=""
-playground_coverage_arg=""
-playground_fuzz_arg=""
-[ "$template_no_tests" -eq 0 ] || template_no_tests_arg="--template-no-tests"
-[ "$playground_quality" -eq 0 ] || playground_quality_arg="--playground-quality"
-[ "$playground_coverage" -eq 0 ] || playground_coverage_arg="--playground-coverage"
-[ "$playground_fuzz" -eq 0 ] || playground_fuzz_arg="--playground-fuzz"
-
-graph_args=(
-  run
-  --out "$out_dir"
-  --var "cc=$cc"
-  --var "cxx=$cxx"
-  --var "fuzz_secs=$fuzz_secs"
-  --var "fault_count=$fault_count"
-  --var "template_no_tests=$template_no_tests_arg"
-  --var "playground_quality=$playground_quality_arg"
-  --var "playground_coverage=$playground_coverage_arg"
-  --var "playground_fuzz=$playground_fuzz_arg"
-)
-
-[ "$skip_cmake" -eq 0 ] || graph_args+=(--skip-group cmake)
-[ "$skip_tool_contracts" -eq 0 ] || graph_args+=(--skip-group tool-contracts)
-[ "$skip_tool_audit" -eq 0 ] || graph_args+=(--skip-group tool-audit)
-[ "$skip_library_audit" -eq 0 ] || graph_args+=(--skip-group library-audit)
-[ "$skip_stack" -eq 0 ] || graph_args+=(--skip-group stack)
-[ "$skip_regression" -eq 0 ] || graph_args+=(--skip-group regression)
-[ "$interactive" -eq 0 ] || graph_args+=(--interactive)
-[ -z "$from_node" ] || graph_args+=(--from "$from_node")
-[ -z "$only_node" ] || graph_args+=(--only "$only_node")
-
-printf 'p101 post-update-all check output: %s\n' "$out_dir"
-printf 'Host:         %s %s %s\n' "$host_os" "$host_release" "$host_machine"
-printf 'C compiler:   %s\n' "$cc"
-printf 'C++ compiler: %s\n' "$cxx"
-
-./p101-check-graph.py "${graph_args[@]}"
-
-printf 'p101 post-update-all checks passed: %s\n' "$out_dir"
-printf 'Summary: %s\n' "$summary"
+if [ -z "$out_dir" ]; then
+  out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-after-update-all-check.XXXXXX")"
+fi
+run_checks "$cc" "$cxx" "$out_dir"
