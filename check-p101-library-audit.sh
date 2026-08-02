@@ -201,13 +201,13 @@ if [ "$found" -eq 0 ]; then
 fi
 
 if [ "$failed" -ne 0 ]; then
-  printf '\nFailure details (last 80 lines per artifact):\n'
+  printf '\nComplete failure details:\n'
   for failure_entry in "${failure_logs[@]}"; do
     failure_label="${failure_entry%%|*}"
     failure_log="${failure_entry#*|}"
     printf '%s\n' "--- $failure_label: $failure_log ---"
     if [ -f "$failure_log" ]; then
-      tail -n 80 "$failure_log"
+      cat "$failure_log"
     else
       printf 'missing failure artifact\n'
     fi

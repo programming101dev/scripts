@@ -101,7 +101,7 @@ class CheckGraphTests(unittest.TestCase):
             self.assertEqual(receipt["records"][0]["attempts"], 2)
             self.assertEqual(receipt["records"][0]["outcome"], "clean")
 
-    def test_noninteractive_failure_prints_bounded_log_tail(self) -> None:
+    def test_noninteractive_failure_prints_complete_log(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
             code = "print('actionable finding'); raise SystemExit(9)"
@@ -122,7 +122,7 @@ class CheckGraphTests(unittest.TestCase):
             with redirect_stdout(console):
                 status = MODULE.run_graph(document, nodes, output, {}, False)
             self.assertEqual(status, 1)
-            self.assertIn("--- log tail ---", console.getvalue())
+            self.assertIn("--- failure log ---", console.getvalue())
             self.assertIn("actionable finding", console.getvalue())
 
 

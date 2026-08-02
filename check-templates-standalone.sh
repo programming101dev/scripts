@@ -77,13 +77,13 @@ fail() {
   failed=$((failed + 1))
 }
 
-show_log_tail() {
+show_failure_log() {
   local log="$1"
 
   if [ -f "$log" ]; then
-    printf '    --- log tail: %s ---\n' "$log" >&2
-    tail -n 120 "$log" >&2 || true
-    printf '    --- end log tail ---\n' >&2
+    printf '    --- failure log: %s ---\n' "$log" >&2
+    cat "$log" >&2 || true
+    printf '    --- end failure log ---\n' >&2
   fi
 }
 
@@ -105,7 +105,7 @@ run_logged() {
     say "    PASS"
   else
     fail "$title; see $log"
-    show_log_tail "$log"
+    show_failure_log "$log"
   fi
 }
 

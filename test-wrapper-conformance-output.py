@@ -26,27 +26,27 @@ def load_checker():
 CHECKER = load_checker()
 
 
-class FailureExcerptTests(unittest.TestCase):
+class FailureOutputTests(unittest.TestCase):
     def test_empty_output_is_explicit(self) -> None:
         self.assertEqual(
-            CHECKER.failure_excerpt(""),
+            CHECKER.failure_output(""),
             ["(test.sh produced no output)"],
         )
 
     def test_every_short_failure_line_is_preserved(self) -> None:
         output = "compile failed\nassertion failed\nctest failed\n"
         self.assertEqual(
-            CHECKER.failure_excerpt(output),
+            CHECKER.failure_output(output),
             ["compile failed", "assertion failed", "ctest failed"],
         )
 
-    def test_long_output_is_bounded_to_the_diagnostic_tail(self) -> None:
-        count = CHECKER.FAILURE_EXCERPT_LINES + 20
+    def test_long_output_is_not_truncated(self) -> None:
+        count = 100
         output = "\n".join(f"line {index}" for index in range(count))
-        excerpt = CHECKER.failure_excerpt(output)
-        self.assertEqual(len(excerpt), CHECKER.FAILURE_EXCERPT_LINES)
-        self.assertEqual(excerpt[0], "line 20")
-        self.assertEqual(excerpt[-1], f"line {count - 1}")
+        emitted = CHECKER.failure_output(output)
+        self.assertEqual(len(emitted), count)
+        self.assertEqual(emitted[0], "line 0")
+        self.assertEqual(emitted[-1], f"line {count - 1}")
 
 
 if __name__ == "__main__":

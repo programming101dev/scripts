@@ -145,9 +145,9 @@ run_logged() {
     printf '| PASS | %s | [log](./logs/%s) |\n' "$title" "$(basename "$log")" >> "$summary"
   else
     say "    FAIL (see $log)"
-    say "    --- log tail ---"
-    tail -n 80 "$log" | sed 's/^/    | /'
-    say "    --- end log tail ---"
+    say "    --- failure log ---"
+    sed 's/^/    | /' "$log"
+    say "    --- end failure log ---"
     printf '| FAIL | %s | [log](./logs/%s) |\n' "$title" "$(basename "$log")" >> "$summary"
     return 1
   fi
@@ -183,9 +183,9 @@ run_module_logged() {
       ;;
     *)
       say "    FAIL (exit $command_rc; see $log)"
-      say "    --- log tail ---"
-      tail -n 80 "$log" | sed 's/^/    | /'
-      say "    --- end log tail ---"
+      say "    --- failure log ---"
+      sed 's/^/    | /' "$log"
+      say "    --- end failure log ---"
       printf '| FAIL | %s | [log](./logs/%s) |\n' "$title" "$(basename "$log")" >> "$summary"
       ;;
   esac

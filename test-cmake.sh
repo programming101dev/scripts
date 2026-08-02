@@ -118,7 +118,7 @@ pass=0
 fail=0
 
 ok()   { echo "PASS: $1"; pass=$((pass+1)); }
-bad()  { echo "FAIL: $1"; [[ -n "${2:-}" && -f "${2:-}" ]] && tail -15 "$2" | sed 's/^/    | /'; fail=$((fail+1)); }
+bad()  { echo "FAIL: $1"; [[ -n "${2:-}" && -f "${2:-}" ]] && sed 's/^/    | /' "$2"; fail=$((fail+1)); }
 
 # new_proj <name> — creates $PROJ with the shared CMakeLists.txt + .clang-format
 new_proj() {

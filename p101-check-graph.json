@@ -364,7 +364,7 @@
       "command": ["./test-wrapper-conformance-output.py"],
       "depends_on": ["instrumentation"],
       "resources": {"writes": [], "units": {}},
-      "guarantee": "Wrapper test failures retain a bounded diagnostic excerpt and explicit no-output evidence."
+      "guarantee": "Wrapper test failures print complete diagnostic output and retain explicit no-output evidence."
     },
     {
       "id": "wrapper-conformance",

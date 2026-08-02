@@ -132,9 +132,8 @@ def run_logged(command: list[str], log_path: Path, phase: str) -> None:
     )
     log_path.write_text(result.stdout, encoding="utf-8")
     if result.returncode != 0:
-        tail = "\n".join(result.stdout.splitlines()[-80:])
-        if tail:
-            print(tail)
+        if result.stdout:
+            print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
         raise RuntimeError(
             f"lifecycle driver {phase} failed with exit {result.returncode}; "
             f"see {log_path}"

@@ -184,18 +184,18 @@ def write_summary(
     summary.write_text("\n".join(lines), encoding="utf-8")
 
 
-def print_log_tail(log_path: Path, line_count: int = 80) -> None:
-    """Print a bounded, readable failure receipt to the calling terminal."""
+def print_failure_log(log_path: Path) -> None:
+    """Print the complete failure receipt to the calling terminal."""
     try:
         lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
     except OSError as error:
         print(f"    unable to read failure log: {error}")
         return
 
-    print("    --- log tail ---")
-    for line in lines[-line_count:]:
+    print("    --- failure log ---")
+    for line in lines:
         print(f"    | {line}")
-    print("    --- end log tail ---")
+    print("    --- end failure log ---")
 
 
 def run_graph(
@@ -238,11 +238,11 @@ def run_graph(
             if not interactive:
                 outcome = "tool-error"
                 print(f"    FAIL (exit {result.returncode}; see {log_path})")
-                print_log_tail(log_path)
+                print_failure_log(log_path)
                 failed = True
                 break
             print(f"    FAIL (exit {result.returncode}; see {log_path})")
-            print_log_tail(log_path)
+            print_failure_log(log_path)
             prompt = "[r]etry"
             if not node["required"]:
                 prompt += ", [s]kip"

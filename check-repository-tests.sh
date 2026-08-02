@@ -59,6 +59,7 @@ summary="$out_dir/summary.md"
 printf '# p101 standalone repository tests\n\n| Repository | Unit tests | Fuzz smoke |\n| --- | --- | --- |\n' > "$summary"
 
 failed=0
+failure_logs=()
 while IFS='|' read -r _url relative language || [ -n "${relative:-}" ]; do
   [ -n "${relative:-}" ] || continue
   [ "$language" != "c-bootstrap" ] || continue
@@ -80,6 +81,7 @@ while IFS='|' read -r _url relative language || [ -n "${relative:-}" ]; do
       unit="PASS"
     else
       unit="FAIL"
+      failure_logs+=("$name unit tests|$out_dir/$name-test.log")
       failed=1
     fi
   fi
@@ -98,6 +100,7 @@ while IFS='|' read -r _url relative language || [ -n "${relative:-}" ]; do
         fuzz="PASS"
       else
         fuzz="FAIL"
+        failure_logs+=("$name fuzz smoke|$out_dir/$name-fuzz.log")
         failed=1
       fi
     else
@@ -120,6 +123,21 @@ done < <(
     fi
   done
 )
+
+if [ "$failed" -ne 0 ]; then
+  printf '\nComplete failure details:\n'
+  for failure_entry in "${failure_logs[@]}"; do
+    failure_label="${failure_entry%%|*}"
+    failure_log="${failure_entry#*|}"
+    printf '%s\n' "--- $failure_label: $failure_log ---"
+    if [ -f "$failure_log" ]; then
+      cat "$failure_log"
+    else
+      printf 'missing failure log\n'
+    fi
+    printf '%s\n' "--- end $failure_label ---"
+  done
+fi
 
 printf 'Repository test summary: %s\n' "$summary"
 [ "$failed" -eq 0 ]

@@ -32,7 +32,6 @@ WORKSPACE = SCRIPT_DIR.parent
 CONTRACT_PATH = SCRIPT_DIR / "wrapper-conformance-contract.json"
 INSTRUMENTATION_PATH = SCRIPT_DIR / "instrumentation-contract.json"
 ERRNO_CONTRACT_PATH = SCRIPT_DIR / "wrapper-errno-contract.json"
-FAILURE_EXCERPT_LINES = 80
 
 
 def rows(path: Path) -> list[dict[str, str]]:
@@ -105,12 +104,12 @@ def call_evidence(path: Path) -> tuple[Counter[str], Counter[str], set[str], set
     return enters, exits, arguments, results
 
 
-def failure_excerpt(output: str) -> list[str]:
-    """Return a bounded, useful tail without discarding individual failures."""
+def failure_output(output: str) -> list[str]:
+    """Return every line emitted by a failed repository test suite."""
     lines = output.rstrip().splitlines()
     if not lines:
         return ["(test.sh produced no output)"]
-    return lines[-FAILURE_EXCERPT_LINES:]
+    return lines
 
 
 def main() -> int:
@@ -230,7 +229,7 @@ def main() -> int:
                     "phase": "test.sh",
                     "exit_status": result.returncode,
                     "log": str(args.output / f"{library}.test.log"),
-                    "excerpt": failure_excerpt(result.stdout),
+                    "output_lines": failure_output(result.stdout),
                 }
             )
             continue
@@ -328,12 +327,12 @@ def main() -> int:
         for failure in failures:
             print(f"FAIL: {failure}")
         for detail in failure_details:
-            excerpt = cast(list[str], detail["excerpt"])
+            output_lines = cast(list[str], detail["output_lines"])
             print(
                 f"\n--- {detail['library']} {detail['phase']} "
-                f"(exit {detail['exit_status']}; last {len(excerpt)} line(s)) ---"
+                f"(exit {detail['exit_status']}; complete output) ---"
             )
-            for line in excerpt:
+            for line in output_lines:
                 print(f"| {line}")
             print(f"Full log: {detail['log']}")
         return 1
