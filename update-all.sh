@@ -25,7 +25,7 @@ interactive=0
 
 c_list_file="supported_c_compilers.txt"
 cxx_list_file="supported_cxx_compilers.txt"
-driver="./update.sh"
+driver="./workspace/update.sh"
 
 usage() {
     printf '%s\n' \
@@ -144,7 +144,7 @@ esac
 # not partway through the compiler loop. A CI VM source snapshot is also a
 # valid build input even though it cannot self-update.
 pull_rc=0
-./pull.sh --allow-snapshot || pull_rc=$?
+./distribution/pull.sh --allow-snapshot || pull_rc=$?
 if [ "$pull_rc" -eq 1 ]; then
   printf 'The scripts repository was just updated. Please re-run: %s\n' "$0" >&2
   exit 1

@@ -13,5 +13,5 @@ They are historical migration aids, not stack maintenance commands:
 
 Both scripts require the retired repositories to be present locally. Fresh
 workspaces intentionally do not clone those repositories. The maintained
-contract is `../check-functional-library-split.py`; run that check to validate
+contract is `../checks/check-functional-library-split.py`; run that check to validate
 the resulting repository graph.

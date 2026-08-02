@@ -160,14 +160,14 @@ set(P101_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE PATH
 if (NOT EXISTS "${P101_CMAKE_DIR}/FailIfCppcheckDiagnostics.cmake")
     message(FATAL_ERROR
             "p101 helper scripts not found in ${P101_CMAKE_DIR}. In the "
-            "workspace run scripts/link-cmake.sh to symlink them; for a "
-            "standalone checkout run scripts/recreate-cmake-helpers.sh.")
+            "workspace run scripts/distribution/link-cmake.sh to symlink them; for a "
+            "standalone checkout run scripts/distribution/recreate-cmake-helpers.sh.")
 endif ()
 if (NOT EXISTS "${P101_CMAKE_DIR}/ToolConfig.cmake")
     message(FATAL_ERROR
             "p101 tool config not found in ${P101_CMAKE_DIR}. In the "
-            "workspace run scripts/link-cmake.sh to symlink it; for a "
-            "standalone checkout run scripts/recreate-cmake-helpers.sh.")
+            "workspace run scripts/distribution/link-cmake.sh to symlink it; for a "
+            "standalone checkout run scripts/distribution/recreate-cmake-helpers.sh.")
 endif ()
 include("${P101_CMAKE_DIR}/ToolConfig.cmake")
 
@@ -248,7 +248,7 @@ else ()
     else ()
         message(FATAL_ERROR
                 "No flags dir for ${_CC_BASE} under ${_FLAGS_ROOT}. "
-                "Run scripts/update.sh or scripts/generate-flags.sh for this compiler, "
+                "Run scripts/workspace/update.sh or scripts/generators/generate-flags.sh for this compiler, "
                 "or set P101_ALLOW_NO_FLAGS=1 for an explicit flagless bring-up build.")
     endif ()
 endif ()

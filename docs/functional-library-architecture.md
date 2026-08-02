@@ -39,14 +39,14 @@ example repositories are absent from `repos.txt`.
 
 ## Evidence
 
-`wrapper-library-map.tsv` is the central ownership receipt. Every functional
+`contracts/wrapper-library-map.tsv` is the central ownership receipt. Every functional
 library carries its own `api-manifest.tsv`. Run:
 
 ```sh
-./check-functional-library-split.py
-./check-wrapper-unit-tests.py
-./check-p101-library-audit.sh
-./test-cmake.sh -c clang -x clang++
+./checks/check-functional-library-split.py
+./checks/check-wrapper-unit-tests.py
+./checks/check-p101-library-audit.sh
+./tests/test-cmake.sh -c clang -x clang++
 ```
 
 The first command rejects duplicate or missing ownership, stale source/header

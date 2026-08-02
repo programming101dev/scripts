@@ -24,24 +24,50 @@ Navigate to the cloned directory:
 cd scripts
 ```
 
-Ensure the scripts are executable:
+Ensure the public entry points are executable:
 
 ```bash
-chmod +x *.sh
+chmod +x p101 p101-workspace setup.sh update-all.sh check-after-update-all.sh
 ```
+
+## Command layout
+
+The repository keeps five public commands at its root:
+
+- `p101` is the student/tool dispatcher.
+- `p101-workspace` is the maintainer dispatcher.
+- `setup.sh` performs first-time workspace setup.
+- `update-all.sh` refreshes and builds the compiler matrix.
+- `check-after-update-all.sh` runs the governed acceptance graph.
+
+The implementation is grouped by responsibility:
+
+- `checks/` contains acceptance and policy gates.
+- `tests/` contains regression tests for shared scripts and contracts.
+- `generators/` contains flag, wrapper-test, and source-data generators.
+- `workspace/` contains configure/build and local toolchain mechanics.
+- `distribution/` contains repository refresh and shared-file distribution.
+- `runtime/` contains the implementation behind the `p101` dispatcher.
+- `contracts/` contains machine-readable manifests and policies.
+- `shared/library/` contains the canonical library-only install helpers.
+
+This boundary is intentional: callers should prefer `p101` or
+`p101-workspace`; direct paths into these directories are for maintainers,
+tests, and CI. The C/C++ repositories still carry their own root build scripts
+because templates must remain usable after being copied outside this workspace.
 
 ## **Prerequisites**
 
 To ensure you have all of the required tools installed, run:
 ```bash
-./check-env.sh
+./p101-workspace environment
 ```
 
 If you are missing tools follow these [instructions](https://docs.google.com/document/d/1ZPqlPD1mie5iwJ2XAcNGz7WeA86dTLerFXs9sAuwCco/edit?usp=drive_link).
 
 To determine which compilers you have installed on your system, run:
 ```bash
-./check-compilers.sh
+./p101-workspace compilers
 ```
 
 ## **Running the setup.sh Script**
@@ -63,7 +89,7 @@ cat supported_cxx_compilers.txt
 After the system has been setup you will want to periodically update from github and rebuild:
 
 ```bash
-./update.sh -c <c compiler> -x <c++ compiler>
+./p101-workspace update -c <c compiler> -x <c++ compiler>
 ```
 
 ## **Running the update-all.sh Script**
@@ -102,10 +128,10 @@ After `update-all.sh` succeeds, run the post-build acceptance checks:
 ./check-after-update-all.sh
 ```
 
-This delegates to the governed graph in `p101-check-graph.json`. Every node
+This delegates to the governed graph in `contracts/p101-check-graph.json`. Every node
 declares its argv, dependencies, resource effects, guarantee, and limitation;
 the runner writes a log per node plus a `p101-tool-run-receipt-v1` receipt.
-Use `./p101-check-graph.py list` to inspect the graph,
+Use `./checks/p101-check-graph.py list` to inspect the graph,
 `./check-after-update-all.sh --only boundaries` for one node and its
 dependencies, or `--from <node>` to resume from a known boundary. With
 `--interactive`, a failure pauses and retries exactly that node after the fix.
@@ -113,17 +139,17 @@ dependencies, or `--from <node>` to resume from a known boundary. With
 The graph includes the shared CMake regression harness, tool and wrapper
 audits, fresh-template standalone checks, every repository-owned unit suite,
 bounded fuzz smoke tests where supported, the playground tour, and the p101
-behavior regression corpus. `p101-boundaries.json` separately binds shared
+behavior regression corpus. `contracts/p101-boundaries.json` separately binds shared
 mechanisms to one owner and to clean, typed-refusal, and binding-swap tests.
-`p101-test-inventory.json` prevents a repository or scripts verification entry
+`contracts/p101-test-inventory.json` prevents a repository or scripts verification entry
 point from silently falling outside the runners.
 
 Three narrower checks enforce contracts that used to be implicit:
 
 ```bash
-./check-p101-instrumentation.py
-./check-repository-tests.sh
-./check-workspace-public-api.sh
+./checks/check-p101-instrumentation.py
+./checks/check-repository-tests.sh
+./checks/check-workspace-public-api.sh
 ```
 
 The workspace API audit requires a compile database from every C/C++ repository
@@ -131,11 +157,11 @@ in `repos.txt`; run `update-all.sh` first. This prevents a missing consumer buil
 from being mistaken for an unused public API. `--allow-incomplete` is available
 for an explicitly provisional local report, and labels the result as
 incomplete. Intentional non-consumers must be named with a reason in
-`workspace-public-api-excludes.txt`; they are reported separately rather than
+`contracts/workspace-public-api-excludes.txt`; they are reported separately rather than
 silently dropped.
 
 The instrumentation check compares Clang-derived wrapper facts with
-`instrumentation-contract.json`: error-aware wrappers must expose a fault
+`contracts/instrumentation-contract.json`: error-aware wrappers must expose a fault
 point, tracing must be balanced, and resource-owning wrappers listed in the
 manifest must emit the corresponding lifecycle event. The repository test
 check reports `NO TEST` and `NO FUZZ TARGET` explicitly instead of treating
@@ -149,7 +175,7 @@ allowlisting intentional API.
 For a shorter behavior-only gate, run:
 
 ```bash
-./check-p101-regression-corpus.sh
+./checks/check-p101-regression-corpus.sh
 ```
 
 Every runtime fixture in that gate is captured once and analyzed from one
@@ -160,7 +186,7 @@ To stress `lib_c_facts` against pinned external code rather than only p101
 sources, run:
 
 ```bash
-./check-c-facts-external-corpus.sh -o /tmp/p101-c-facts-external
+./checks/check-c-facts-external-corpus.sh -o /tmp/p101-c-facts-external
 ```
 
 This opt-in suite samples 10 mature C and 10 mature C++ projects, then exercises
@@ -172,7 +198,7 @@ directory. See [the external corpus contract](docs/c-facts-external-corpus.md).
 To replay the source-contract audit over every active wrapper library:
 
 ```bash
-./check-p101-library-audit.sh
+./checks/check-p101-library-audit.sh
 ```
 
 This uses each library's compile database, its optional checked-in
@@ -311,7 +337,7 @@ The source/runtime ownership map and the consolidation tradeoff are recorded in
 To check that each `p101-*` README exposes the minimum contract surface, run:
 
 ```bash
-./check-p101-tool-contracts.sh
+./checks/check-p101-tool-contracts.sh
 ./p101 contracts
 ```
 
@@ -319,7 +345,7 @@ To replay the broader p101 tool audit — README contract checks, strict
 wrapper-audit checks over the C tools, and module-map design reports — run:
 
 ```bash
-./check-p101-tool-audit.sh
+./checks/check-p101-tool-audit.sh
 ./p101 tool-audit
 ```
 
@@ -343,14 +369,14 @@ wrappers for the surrounding cleanup, logging, and resource-management calls.
 `github-actions/p101-stack.yml` is a starter CI workflow for macOS, Linux, and
 FreeBSD. Copy it to `.github/workflows/` in the repo that should own the
 multi-platform gate. In this repo it is kept byte-for-byte identical to
-`.github/workflows/p101-stack.yml`; `./check-github-actions-template.sh` and
+`.github/workflows/p101-stack.yml`; `./checks/check-github-actions-template.sh` and
 `./check-after-update-all.sh` fail if the starter copy drifts from the live CI
 workflow. The workflow can be dispatched for all platforms or one target OS
 (`linux`, `macos`, or `freebsd`) when you only need to rerun a single leg.
 
 `scripts/CMakeLists.txt` is the source of truth for the shared C/C++ build
-pipeline. After editing it, run `./copy-cmake.sh` and commit the copied files in
-the affected repos. `./check-cmake-distribution.sh` and
+pipeline. After editing it, run `./distribution/copy-cmake.sh` and commit the copied files in
+the affected repos. `./checks/check-cmake-distribution.sh` and
 `./check-after-update-all.sh` fail if any distributed copy has drifted.
 
 When a repo is checked out inside the broader `programming101dev` workspace,
@@ -366,7 +392,7 @@ fall back to the installed p101 stack.
 Before committing changes to `CMakeLists.txt`, run:
 
 ```bash
-./test-cmake.sh
+./tests/test-cmake.sh
 ```
 
 It configures and builds a matrix of tiny sample projects (library+executable
@@ -381,7 +407,7 @@ To verify that fresh template instances are self-contained aside from intentiona
 shared-artifact symlinks such as `.flags`, run:
 
 ```bash
-./check-templates-standalone.sh
+./checks/check-templates-standalone.sh
 ```
 
 It copies `template-c`, `template-c-program`, and `template-cxx` to `/tmp`,
@@ -391,7 +417,7 @@ and tests each fresh project instance.
 To run the broader p101 stack ratchet, use:
 
 ```bash
-./check-p101-stack.sh -c clang -x clang++
+./checks/check-p101-stack.sh -c clang -x clang++
 ./p101 stack-check -c clang -x clang++
 ```
 
@@ -408,7 +434,7 @@ To see every flag your installed compilers support that `flags/*.txt` has no
 decision on yet, run:
 
 ```bash
-./harvest-flags.py gcc clang
+./generators/harvest-flags.py gcc clang
 ```
 
 It queries the installed binaries themselves (`gcc --help=<section>`,
@@ -428,8 +454,8 @@ compiler upgrade to see what new checks became available.
 To seed future functional wrapper libraries, use:
 
 ```bash
-./fetch-unix-doc-sources.sh -d /tmp/unix-doc-sources
-./discover-common-unix-functions.py \
+./generators/fetch-unix-doc-sources.sh -d /tmp/unix-doc-sources
+./generators/discover-common-unix-functions.py \
   --linux /tmp/unix-doc-sources/linux-man-pages \
   --freebsd /tmp/unix-doc-sources/freebsd-src \
   --macos /tmp/unix-doc-sources/apple-Libc \
@@ -486,7 +512,7 @@ the official FreeBSD manual archive. The refresh command deliberately consumes
 local source snapshots so ordinary builds and CI never depend on the network:
 
 ```bash
-./refresh-wrapper-errno-contract.py \
+./generators/refresh-wrapper-errno-contract.py \
   --index /path/to/posix/idx/functions.html \
   --errno-page /path/to/posix/basedefs/errno.h.html \
   --page-dir /path/to/posix/functions \
@@ -501,9 +527,9 @@ two. Regenerate the deterministic injected-failure cases and validate the
 complete contract:
 
 ```bash
-./generate-wrapper-unit-tests.py --clang clang
-./test-wrapper-errno-contract.py
-./check-wrapper-unit-tests.py
+./generators/generate-wrapper-unit-tests.py --clang clang
+./tests/test-wrapper-errno-contract.py
+./checks/check-wrapper-unit-tests.py
 ```
 
 For each fault-capable wrapper, the generator injects every error in the active
@@ -529,7 +555,7 @@ The executable 10x contract replays every library test suite with call and
 resource logging enabled:
 
 ```bash
-./check-wrapper-conformance.py -o /tmp/p101-wrapper-conformance
+./checks/check-wrapper-conformance.py -o /tmp/p101-wrapper-conformance
 ```
 
 It combines `api-manifest.tsv`, `unit-test-manifest.tsv`, and the
@@ -541,7 +567,7 @@ is admitted by `wrapper-conformance-contract.json`.
 The 11x lifecycle layer exercises interactions rather than isolated calls:
 
 ```bash
-./check-wrapper-lifecycles.py -o /tmp/p101-wrapper-lifecycles
+./checks/check-wrapper-lifecycles.py -o /tmp/p101-wrapper-lifecycles
 ```
 
 `wrapper-lifecycle-contract.json` defines deterministic state machines for

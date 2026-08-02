@@ -120,28 +120,28 @@ case "$command_name" in
     exec_found p101-observe P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe
     ;;
   run)
-    exec ./p101-run.py "$@"
+    exec ./runtime/p101-run.py "$@"
     ;;
   analyze)
-    exec ./p101-analyze.py "$@"
+    exec ./runtime/p101-analyze.py "$@"
     ;;
   verify)
-    exec ./p101-model.py verify "$@"
+    exec ./runtime/p101-model.py verify "$@"
     ;;
   compare)
-    exec ./p101-model.py compare "$@"
+    exec ./runtime/p101-model.py compare "$@"
     ;;
   explain)
-    exec ./p101-model.py explain "$@"
+    exec ./runtime/p101-model.py explain "$@"
     ;;
   report)
-    exec ./p101-view.py report "$@"
+    exec ./runtime/p101-view.py report "$@"
     ;;
   trace)
-    exec ./p101-view.py trace "$@"
+    exec ./runtime/p101-view.py trace "$@"
     ;;
   resource|resource-tracker)
-    exec ./p101-view.py resource "$@"
+    exec ./runtime/p101-view.py resource "$@"
     ;;
   walk|error-path-walk)
     observe_path="$(find_tool P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe)" || {
@@ -152,7 +152,7 @@ case "$command_name" in
       echo "p101: p101-event-model not found; build it first or set P101_EVENT_MODEL" >&2
       exit 2
     }
-    command_args=(-U "$PWD/p101-run.py" -O "$observe_path" -Y "$PWD/p101-analyze.py" -B "$model_path" "${command_args[@]}")
+    command_args=(-U "$PWD/runtime/p101-run.py" -O "$observe_path" -Y "$PWD/runtime/p101-analyze.py" -B "$model_path" "${command_args[@]}")
     exec_found p101-error-path-walk P101_ERROR_PATH_WALK "$(last_build_tool ../programs/p101-error-path-walk p101-error-path-walk)" ../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk ../programs/p101-error-path-walk/build-clang/p101-error-path-walk p101-error-path-walk
     ;;
   audit|wrapper-audit)
@@ -162,7 +162,7 @@ case "$command_name" in
     exec_found p101-module-map P101_MODULE_MAP "$(last_build_tool ../programs/p101-module-map p101-module-map)" ../programs/p101-module-map/build-clang-22/p101-module-map ../programs/p101-module-map/build-clang/p101-module-map p101-module-map
     ;;
   sync|sync-check)
-    exec ./p101-view.py sync "$@"
+    exec ./runtime/p101-view.py sync "$@"
     ;;
   report-events)
     exec_found p101-report P101_REPORT "$(last_build_tool ../programs/p101-report p101-report)" ../programs/p101-report/build-clang-22/p101-report ../programs/p101-report/build-clang/p101-report p101-report
@@ -183,7 +183,7 @@ case "$command_name" in
       echo "p101: p101-event-model not found; build it first or set P101_EVENT_MODEL" >&2
       exit 2
     }
-    command_args=(-U "$PWD/p101-run.py" -O "$observe_path" -Y "$PWD/p101-analyze.py" -B "$model_path" "${command_args[@]}")
+    command_args=(-U "$PWD/runtime/p101-run.py" -O "$observe_path" -Y "$PWD/runtime/p101-analyze.py" -B "$model_path" "${command_args[@]}")
     exec_found p101-doctor P101_DOCTOR "$(last_build_tool ../programs/p101-doctor p101-doctor)" ../programs/p101-doctor/build-clang-22/p101-doctor ../programs/p101-doctor/build-clang/p101-doctor p101-doctor
     ;;
   playground)
@@ -193,11 +193,11 @@ case "$command_name" in
     for argument in "$@"; do
       case "$argument" in
         --rules|--rules=*)
-          exec ./p101-model.py check "$@"
+          exec ./runtime/p101-model.py check "$@"
           ;;
       esac
     done
-    exec ./p101-check.sh "$@"
+    exec ./runtime/p101-check.sh "$@"
     ;;
   corpus)
     exec ../playgrounds/corpus.sh "$@"
@@ -209,44 +209,44 @@ case "$command_name" in
     case "${1:-}" in
       run)
         shift
-        exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json run "$@"
+        exec python3 ./runtime/p101_lessons.py --catalog ../playgrounds/lessons/manifest.json run "$@"
         ;;
       verify)
         shift
-        exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json verify-one "$@"
+        exec python3 ./runtime/p101_lessons.py --catalog ../playgrounds/lessons/manifest.json verify-one "$@"
         ;;
       show)
         shift
-        exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json show "$@"
+        exec python3 ./runtime/p101_lessons.py --catalog ../playgrounds/lessons/manifest.json show "$@"
         ;;
       *)
-        exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json show "$@"
+        exec python3 ./runtime/p101_lessons.py --catalog ../playgrounds/lessons/manifest.json show "$@"
         ;;
     esac
     ;;
   lessons)
-    exec python3 ./p101_lessons.py --catalog ../playgrounds/lessons/manifest.json "$@"
+    exec python3 ./runtime/p101_lessons.py --catalog ../playgrounds/lessons/manifest.json "$@"
     ;;
   contracts|tool-contracts)
-    exec ./check-p101-tool-contracts.sh "$@"
+    exec ./checks/check-p101-tool-contracts.sh "$@"
     ;;
   tool-audit|audit-tools)
-    exec ./check-p101-tool-audit.sh "$@"
+    exec ./checks/check-p101-tool-audit.sh "$@"
     ;;
   stack-check|stack)
-    exec ./check-p101-stack.sh "$@"
+    exec ./checks/check-p101-stack.sh "$@"
     ;;
   after-update|post-update)
     exec ./check-after-update-all.sh "$@"
     ;;
   html-report)
-    exec ./p101-html-report.py "$@"
+    exec ./runtime/p101-html-report.py "$@"
     ;;
   cohort)
-    exec ./p101-cohort-summary.py "$@"
+    exec ./runtime/p101-cohort-summary.py "$@"
     ;;
   bug-bundle)
-    exec ./p101-bug-bundle.sh "$@"
+    exec ./runtime/p101-bug-bundle.sh "$@"
     ;;
   *)
     echo "Unknown p101 command: $command_name" >&2

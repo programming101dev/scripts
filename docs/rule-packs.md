@@ -81,6 +81,6 @@ is not proof that the program is secure.
 
 ## Evidence
 
-The deterministic rule engine is covered by `test-p101-model.py`. The
+The deterministic rule engine is covered by `tests/test-p101-model.py`. The
 stack-level behavior corpus exercises clean, leak, double-release, generic
 resource, execution-inheritance, and malformed-protocol cases.

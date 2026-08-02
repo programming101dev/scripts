@@ -207,7 +207,7 @@ run_checks() {
   printf 'C compiler:   %s\n' "$run_cc"
   printf 'C++ compiler: %s\n' "$run_cxx"
 
-  ./p101-check-graph.py "${graph_args[@]}"
+  ./checks/p101-check-graph.py "${graph_args[@]}"
 
   printf 'p101 post-update-all checks passed: %s\n' "$run_out_dir"
   printf 'Summary: %s\n' "$summary"
@@ -268,7 +268,7 @@ if [ -z "$cxx" ]; then
   cxx="$(trim_line "$cxx_list_file")"
 fi
 if [ -z "$cc" ] || [ -z "$cxx" ]; then
-  echo "Unable to choose compilers. Run ./check-compilers.sh first or pass -c/-x." >&2
+  echo "Unable to choose compilers. Run ./p101-workspace compilers first or pass -c/-x." >&2
   exit 2
 fi
 cc="$(resolve_compiler "$cc")"

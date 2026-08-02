@@ -94,7 +94,7 @@ or the playground case's fixed-state oracle.
 ## Replayable evidence
 
 ```sh
-./test-p101-lessons.py
+./tests/test-p101-lessons.py
 ./p101 lessons check
 ./p101 lesson P101-FD-001
 ./p101 lesson run P101-FD-001

@@ -483,7 +483,7 @@ a-test_src_Kf3zP0.gcno
 .last-build-dir
 # harvest-flags.py output (per-machine curation worklists)
 flag_report/
-claude-report/
+toolchain-report/
 
 # generated per-machine by check-compilers.sh
 compiler_paths.txt

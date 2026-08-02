@@ -90,10 +90,10 @@ programs/p101-module-map/test.sh
 programs/p101-report/test.sh
 programs/p101-observe/test.sh
 programs/p101-doctor/test.sh
-scripts/test-p101-runtime.py
-scripts/test-p101-lessons.py
+scripts/tests/test-p101-runtime.py
+scripts/tests/test-p101-lessons.py
 scripts/p101 lessons check
-scripts/check-p101-regression-corpus.sh
+scripts/checks/check-p101-regression-corpus.sh
 ```
 
 Blind spots remain the same as the underlying evidence: unparsed source,

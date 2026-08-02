@@ -17,22 +17,22 @@ most 20 implementation files. The stress cohorts name exact files.
 Run the complete corpus:
 
 ```sh
-./check-c-facts-external-corpus.sh -o /tmp/p101-c-facts-external
+./checks/check-c-facts-external-corpus.sh -o /tmp/p101-c-facts-external
 ```
 
 Run a bounded slice while developing:
 
 ```sh
-./check-c-facts-external-corpus.sh --cohort ioccc \
+./checks/check-c-facts-external-corpus.sh --cohort ioccc \
   -o /tmp/p101-c-facts-ioccc
-./check-c-facts-external-corpus.sh --case curl \
+./checks/check-c-facts-external-corpus.sh --case curl \
   -o /tmp/p101-c-facts-curl
 ```
 
 After one online run, replay from the pinned cache without network access:
 
 ```sh
-./check-c-facts-external-corpus.sh --offline \
+./checks/check-c-facts-external-corpus.sh --offline \
   -o /tmp/p101-c-facts-offline
 ```
 
@@ -70,5 +70,5 @@ and reviewed like test-fixture changes.
 The lightweight manifest test does not access the network:
 
 ```sh
-./test-c-facts-external-corpus.sh
+./tests/test-c-facts-external-corpus.sh
 ```

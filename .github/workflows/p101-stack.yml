@@ -31,9 +31,9 @@ jobs:
           brew install cmake cppcheck llvm gcovr shellcheck
           echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
       - name: Clone p101 repos
-        run: cd scripts && ./clone-repos.sh
+        run: cd scripts && ./p101-workspace clone
       - name: Detect compilers
-        run: cd scripts && ./check-compilers.sh
+        run: cd scripts && ./p101-workspace compilers
       - name: Update all repos
         run: |
           cd scripts
@@ -61,9 +61,9 @@ jobs:
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y cmake clang clang-tidy clang-format libclang-dev cppcheck gcovr libgdbm-dev libgdbm-compat-dev shellcheck
       - name: Clone p101 repos
-        run: cd scripts && ./clone-repos.sh
+        run: cd scripts && ./p101-workspace clone
       - name: Detect compilers
-        run: cd scripts && ./check-compilers.sh
+        run: cd scripts && ./p101-workspace compilers
       - name: Update all repos
         run: |
           cd scripts
@@ -107,9 +107,9 @@ jobs:
             export P101_QUIET=1
             status=0
             mkdir -p ci-output
-            ./clone-repos.sh || status=$?
+            ./p101-workspace clone || status=$?
             if [ "$status" -eq 0 ]; then
-              ./check-compilers.sh || status=$?
+              ./p101-workspace compilers || status=$?
             fi
             if [ "$status" -eq 0 ]; then
               printf 'clang\n' > ci_c_compilers.txt
@@ -154,7 +154,7 @@ jobs:
           path: instrumentation-receipts
       - name: Verify supported-platform instrumentation coverage
         run: >-
-          python3 scripts/check-p101-instrumentation.py
+          python3 scripts/checks/check-p101-instrumentation.py
           --merge-receipts instrumentation-receipts/*/instrumentation-receipt.json
           --require-platform Darwin
           --require-platform Linux

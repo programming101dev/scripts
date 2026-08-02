@@ -34,14 +34,14 @@ usage()
     _cc="$(_p101_names supported_c_compilers.txt)"; _cxx="$(_p101_names supported_cxx_compilers.txt)"
     if [ -n "$_cc" ] || [ -n "$_cxx" ]; then
         echo ""
-        echo "Compilers detected on this machine (./check-compilers.sh):"
+        echo "Compilers detected on this machine (./p101-workspace compilers):"
         echo "  C:   ${_cc:-<none>}"
         echo "  C++: ${_cxx:-<none>}"
         _fc="${_cc%%,*}"; _fx="$(_p101_cxx_of "$_fc")"
         if [ -n "$_fc" ] && [ -n "$_fx" ]; then echo "  e.g. $0 -c $_fc -x $_fx"; fi
     else
         echo ""
-        echo "  (run ./check-compilers.sh first to detect the compilers installed here)"
+        echo "  (run ./p101-workspace compilers first to detect the compilers installed here)"
     fi
     exit 1
 }
@@ -116,7 +116,7 @@ current_version="./version.txt"
 # to signal "re-run so the new scripts are used" — handle that explicitly
 # instead of dying with a generic set -e failure.
 pull_rc=0
-./pull.sh --allow-snapshot || pull_rc=$?
+./distribution/pull.sh --allow-snapshot || pull_rc=$?
 if [ "$pull_rc" -eq 1 ]; then
   echo "The scripts repository was just updated. Please re-run: $0 $*" >&2
   exit 1
@@ -125,10 +125,10 @@ elif [ "$pull_rc" -ne 0 ]; then
   exit "$pull_rc"
 fi
 
-./clone-repos.sh
+./distribution/clone-repos.sh
 # Discovery runs BEFORE the environment check so keg-only compilers (found
 # by check-compilers.sh, absent from PATH) resolve through the map.
-./check-compilers.sh
+./workspace/check-compilers.sh
 
 MAP_FILE="compiler_paths.txt"
 map_lookup() {
@@ -156,7 +156,7 @@ resolve_compiler() {
 CC_PATH="$(resolve_compiler "$c_compiler")"
 CXX_PATH="$(resolve_compiler "$cxx_compiler")"
 
-./check-env.sh -c "$CC_PATH" -x "$CXX_PATH" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
+./workspace/check-env.sh -c "$CC_PATH" -x "$CXX_PATH" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
 
 in_supported() {
   # The supported lists hold compiler names. Older generated lists may hold
@@ -235,13 +235,13 @@ if ! compiler_supported "$cxx_compiler" "$CXX_PATH" supported_cxx_compilers.txt;
     exit 1
 fi
 
-./generate-flags.sh
-./link-flags.sh
-./link-compilers.sh
+./generators/generate-flags.sh
+./distribution/link-flags.sh
+./distribution/link-compilers.sh
 mkdir -p -- "$(dirname -- "$flags_version")"
 cp "$current_version" "$flags_version"
 build_repo_args=(-c "$CC_PATH" -x "$CXX_PATH" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers")
 if $interactive; then
   build_repo_args+=(--interactive)
 fi
-./build-repo.sh "${build_repo_args[@]}"
+./workspace/build-repo.sh "${build_repo_args[@]}"
