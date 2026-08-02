@@ -5,23 +5,24 @@
 # It intentionally does NOT rebuild every repo again. Instead it runs the checks
 # that catch integration/template/tool regressions after the heavy build pass:
 #
-#   1. GitHub Actions starter workflow drift check;
-#   2. shared CMakeLists distribution drift check;
-#   3. shared per-repository script distribution drift check;
-#   4. shared playground-track runner distribution drift check;
-#   5. replay-analysis receipt/integrity regression tests;
-#   6. shared CMakeLists regression harness;
-#   7. p101 tool contract documentation checks;
-#   8. finding-to-lesson curriculum completeness;
-#   9. strict source/module audits over every p101 tool;
-#  10. source-contract, instrumentation, and executable wrapper conformance;
-#  11. model-based wrapper lifecycle/fault/replay laboratory;
-#  12. closed-workspace public API candidate audit;
-#  13. every repository-owned unit suite and bounded fuzz target;
-#  14. fresh-template standalone instantiate/build/test;
-#  15. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor;
-#  16. the external C/C++ facts corpus manifest contract;
-#  17. the cross-tool behavior regression corpus.
+#   1. exact repository-lock verification and receipt;
+#   2. GitHub Actions starter workflow drift check;
+#   3. shared CMakeLists distribution drift check;
+#   4. shared per-repository script distribution drift check;
+#   5. shared playground-track runner distribution drift check;
+#   6. replay-analysis receipt/integrity regression tests;
+#   7. shared CMakeLists regression harness;
+#   8. p101 tool contract documentation checks;
+#   9. finding-to-lesson curriculum completeness;
+#  10. strict source/module audits over every p101 tool;
+#  11. source-contract, instrumentation, and executable wrapper conformance;
+#  12. model-based wrapper lifecycle/fault/replay laboratory;
+#  13. closed-workspace public API candidate audit;
+#  14. every repository-owned unit suite and bounded fuzz target;
+#  15. fresh-template standalone instantiate/build/test;
+#  16. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor;
+#  17. the external C/C++ facts corpus manifest contract;
+#  18. the cross-tool behavior regression corpus.
 
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"

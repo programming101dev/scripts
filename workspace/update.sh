@@ -23,6 +23,7 @@ standard=false
 skip_install=false
 interactive=false
 skip_self_update=false
+latest=false
 
 # Files and helper scripts expected in the current directory
 # CACHE_ROOT / FLAGS_VERSION_FILE are re-pointed for the --standard profile
@@ -94,6 +95,8 @@ Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clan
                        fails, pause, pull the pushed fix, and retry that phase.
   --skip-self-update   Do not run pull.sh. Used by update-all.sh after it has
                        already handled the scripts repository once.
+  --latest             Follow moving upstream branches instead of repos.lock.
+                       Refresh repos.lock explicitly before strict acceptance.
 
 Examples:
   ./update.sh -c clang -x clang++
@@ -212,6 +215,7 @@ LONG_PROFILE=0
 LONG_SKIP_INSTALL=0
 LONG_INTERACTIVE=0
 LONG_SKIP_SELF_UPDATE=0
+LONG_LATEST=0
 declare -a _argv=()
 for _a in "$@"; do
   if [[ "$_a" == "--dry-run" ]]; then
@@ -230,6 +234,8 @@ for _a in "$@"; do
     LONG_INTERACTIVE=1
   elif [[ "$_a" == "--skip-self-update" ]]; then
     LONG_SKIP_SELF_UPDATE=1
+  elif [[ "$_a" == "--latest" ]]; then
+    LONG_LATEST=1
   else
     _argv+=("$_a")
   fi
@@ -266,6 +272,7 @@ shift $((OPTIND-1))
 [[ $LONG_SKIP_INSTALL -eq 1 ]] && skip_install=true
 [[ $LONG_INTERACTIVE -eq 1 ]] && interactive=true
 [[ $LONG_SKIP_SELF_UPDATE -eq 1 ]] && skip_self_update=true
+[[ $LONG_LATEST -eq 1 ]] && latest=true
 
 if $no_flags && $standard; then
   die "--no-flags and --standard are mutually exclusive (one means no flags, the other a fixed standard set)."
@@ -439,8 +446,15 @@ run_or_echo "$CHECK_ENV_SH" \
 # Clone or update repos listed in repos.txt. Interactive mode applies to this
 # phase too: local edits or branch divergence must be resolved by the user, but
 # the update can then retry the same repository and continue the matrix.
+clone_args=()
 if $interactive; then
-  run_or_echo "$CLONE_REPOS_SH" --interactive
+  clone_args+=(--interactive)
+fi
+if $latest; then
+  clone_args+=(--latest)
+fi
+if ((${#clone_args[@]})); then
+  run_or_echo "$CLONE_REPOS_SH" "${clone_args[@]}"
 else
   run_or_echo "$CLONE_REPOS_SH"
 fi

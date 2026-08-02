@@ -13,6 +13,7 @@ clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
 sanitizers="address,leak,pointer_overflow,undefined"
 interactive=false
+latest=false
 
 # Function to display script usage
 # detected-compiler helpers (smarter --help; harmless if lists absent)
@@ -31,6 +32,7 @@ usage()
     echo "  --coverage        Opt-in: instrument the initial build for code coverage (gcov)"
     echo "  --profile         Opt-in: instrument the initial build for profiling (gprof)"
     echo "  --interactive     Pause, pull the pushed fix, and retry the failed phase"
+    echo "  --latest          Follow moving upstream branches instead of repos.lock"
     _cc="$(_p101_names supported_c_compilers.txt)"; _cxx="$(_p101_names supported_cxx_compilers.txt)"
     if [ -n "$_cc" ] || [ -n "$_cxx" ]; then
         echo ""
@@ -59,6 +61,7 @@ for _a in "$@"; do
     --coverage) export P101_COVERAGE=1 ;;
     --profile)  export P101_PROFILE=1 ;;
     --interactive) interactive=true ;;
+    --latest) latest=true ;;
     *)          _setup_argv+=("$_a") ;;
   esac
 done
@@ -125,7 +128,18 @@ elif [ "$pull_rc" -ne 0 ]; then
   exit "$pull_rc"
 fi
 
-./distribution/clone-repos.sh
+clone_args=()
+if $interactive; then
+  clone_args+=(--interactive)
+fi
+if $latest; then
+  clone_args+=(--latest)
+fi
+if ((${#clone_args[@]})); then
+  ./distribution/clone-repos.sh "${clone_args[@]}"
+else
+  ./distribution/clone-repos.sh
+fi
 # Discovery runs BEFORE the environment check so keg-only compilers (found
 # by check-compilers.sh, absent from PATH) resolve through the map.
 ./workspace/check-compilers.sh

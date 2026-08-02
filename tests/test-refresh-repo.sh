@@ -77,7 +77,7 @@ mkdir -p "$sandbox/clone-driver/distribution"
 cp ./distribution/clone-repos.sh ./distribution/refresh-repo.sh "$sandbox/clone-driver/distribution/"
 chmod +x "$sandbox/clone-driver/distribution/clone-repos.sh" "$sandbox/clone-driver/distribution/refresh-repo.sh"
 printf '%s|%s|c\n' "$remote" "$consumer" > "$sandbox/clone-driver/repos.txt"
-(cd "$sandbox" && "$sandbox/clone-driver/distribution/clone-repos.sh" > "$sandbox/clone.out")
+(cd "$sandbox" && "$sandbox/clone-driver/distribution/clone-repos.sh" --latest > "$sandbox/clone.out")
 [[ "$(git -C "$consumer" rev-parse HEAD)" == "$published_head" ]]
 grep -Fq 'Refreshing configured upstream' "$sandbox/clone.out"
 
@@ -121,7 +121,7 @@ chmod +x "$sandbox/interactive-driver/distribution/refresh-repo.sh"
 export P101_TEST_REFRESH_INVOCATIONS="$sandbox/interactive-refresh.txt"
 export P101_TEST_REFRESH_FAIL_ONCE="$sandbox/interactive-fail-once"
 touch "$P101_TEST_REFRESH_FAIL_ONCE"
-printf '\n' | "$sandbox/interactive-driver/distribution/clone-repos.sh" --interactive \
+printf '\n' | "$sandbox/interactive-driver/distribution/clone-repos.sh" --interactive --latest \
     > "$sandbox/interactive.out" 2> "$sandbox/interactive.err"
 [[ "$(wc -l < "$P101_TEST_REFRESH_INVOCATIONS")" -eq 2 ]]
 grep -Fq 'FAILED: refresh' "$sandbox/interactive.err"

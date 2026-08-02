@@ -4,6 +4,8 @@
   "does_not_prove": "Passing this graph proves that the declared commands completed over the selected local inputs. It does not prove undeclared behavior, complete instrumentation, third-party code, or platforms that were not executed.",
   "coverage": {
     "required_nodes": [
+      "repository-lock-tests",
+      "workspace-lock",
       "check-graph-tests",
       "boundaries",
       "boundary-tests",
@@ -47,12 +49,32 @@
   },
   "nodes": [
     {
+      "id": "repository-lock-tests",
+      "title": "workspace repository-lock contract tests",
+      "group": "architecture",
+      "required": true,
+      "command": ["./tests/test-repository-lock.py"],
+      "depends_on": [],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "Lock refresh is deterministic, manifest drift is rejected, dirty-state policy is explicit, and fresh clones select the recorded commit."
+    },
+    {
+      "id": "workspace-lock",
+      "title": "workspace exact-revision lock",
+      "group": "architecture",
+      "required": true,
+      "command": ["./workspace/repos-lock.py", "verify", "--receipt", "{out}/workspace-lock-receipt.json"],
+      "depends_on": ["repository-lock-tests"],
+      "resources": {"writes": ["{out}/workspace-lock-receipt.json"], "units": {}},
+      "guarantee": "Every configured repository URL and HEAD matches the immutable revision set recorded in repos.lock."
+    },
+    {
       "id": "check-graph-tests",
       "title": "p101 governed check-graph tests",
       "group": "architecture",
       "required": true,
       "command": ["./tests/test-p101-check-graph.py"],
-      "depends_on": [],
+      "depends_on": ["workspace-lock"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Graph validation, dependency closure, resume selection, and argv substitution pass their negative and positive controls."
     },

@@ -113,7 +113,9 @@ terminal, then press Enter; the script fast-forwards the repository with
 to the prompt without retrying stale code. Enter `q` to abort. Repositories that
 already passed are not rebuilt, and after the repaired repository succeeds the
 compiler matrix continues normally. The same option is available on `setup.sh`,
-`update.sh`, and `build-repo.sh`.
+`update.sh`, and `build-repo.sh`. This is an intentional development relaxation:
+after coordinated fixes move repository revisions, refresh and commit
+`repos.lock` before expecting strict workspace acceptance to pass.
 
 `repos.txt` uses `c`, `cxx`, and `python` for active projects. A newly created,
 not-yet-populated C repository uses `c-bootstrap`: `clone-repos.sh` keeps it
@@ -121,6 +123,42 @@ present and updated, while build, distribution, test, and audit gates skip it.
 Change the type to `c` in the same change that adds its project contract; an
 active C repository is never allowed to pass without `config.cmake`, build
 scripts, tests, and the shared workspace links.
+
+## Reproducible workspace revisions
+
+`repos.txt` declares repository ownership and location. `repos.lock` binds
+every declaration to one exact 40-character Git commit. Setup, update,
+`p101-workspace clone`, and GitHub Actions use the lock by default, so Linux,
+macOS, and FreeBSD evaluate the same source graph even if an upstream `main`
+branch moves while a matrix run is in progress.
+
+Inspect or verify the current workspace with:
+
+```bash
+./p101-workspace lock verify
+```
+
+Following moving upstream branches is an explicit development operation:
+
+```bash
+./p101-workspace clone --latest
+# review, build, test, commit, and push the coordinated changes
+./p101-workspace lock refresh
+git add repos.lock
+git commit -m "Refresh workspace repository lock"
+```
+
+`lock refresh` refuses a repository whose `HEAD` is not exactly its configured
+upstream, which prevents an unpushed local commit from entering a shared lock.
+Use `--require-clean` when generated or other uncommitted worktree content must
+also be absent. Ordinary lock verification requires exact origins and commits
+and reports dirty worktrees without pretending their uncommitted content is
+reproducible.
+
+`setup.sh`, `update.sh`, and `update-all.sh` accept `--latest` as the same
+explicit escape hatch. Strict post-update acceptance verifies the lock and
+writes `workspace-lock-receipt.json`; the governed graph receipt records its
+lock and manifest digests.
 
 After `update-all.sh` succeeds, run the post-build acceptance checks:
 

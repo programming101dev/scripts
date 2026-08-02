@@ -17,7 +17,8 @@ Commands:
   compilers      Discover supported C and C++ compilers
   environment    Check required build and analysis tools
   doctor         Report available toolchain and instrumentation support
-  clone          Clone or refresh repositories from repos.txt
+  clone          Clone or align repositories to repos.lock
+  lock           Refresh or verify the exact workspace revision lock
   push           Push committed repository changes
   distribute     Refresh shared CMake, scripts, links, and playground runners
   remove-retired Remove repositories no longer present in repos.txt
@@ -44,6 +45,7 @@ case "$command_name" in
   environment|env) exec ./workspace/check-env.sh "$@" ;;
   doctor) exec ./workspace/doctor.sh "$@" ;;
   clone|refresh) exec ./distribution/clone-repos.sh "$@" ;;
+  lock) exec ./workspace/repos-lock.py "$@" ;;
   push) exec ./distribution/push-repos.sh "$@" ;;
   distribute)
     if [ "$#" -ne 0 ]; then

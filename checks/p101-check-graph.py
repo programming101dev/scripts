@@ -198,6 +198,24 @@ def print_failure_log(log_path: Path) -> None:
     print("    --- end failure log ---")
 
 
+def workspace_lock_identity(output: Path) -> dict[str, Any] | None:
+    path = output / "workspace-lock-receipt.json"
+    if not path.is_file():
+        return None
+    try:
+        receipt = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return {"receipt": path.name, "valid": False}
+    return {
+        "receipt": path.name,
+        "valid": receipt.get("schema") == "p101-repository-lock-receipt-v1"
+        and receipt.get("passed") is True,
+        "lock_sha256": receipt.get("lock_sha256", ""),
+        "manifest_sha256": receipt.get("manifest_sha256", ""),
+        "repository_count": receipt.get("repository_count", 0),
+    }
+
+
 def run_graph(
     document: dict[str, Any],
     selected: list[dict[str, Any]],
@@ -291,6 +309,7 @@ def run_graph(
                             record["outcome"] == "clean" for record in records
                         ),
                     },
+                    "workspace_lock": workspace_lock_identity(output),
                     "records": records,
                     "does_not_prove": document["does_not_prove"],
                 },

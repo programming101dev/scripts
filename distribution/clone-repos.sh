@@ -5,26 +5,36 @@ set -euo pipefail
 case " $* " in
     *" --help "*|*" -h "*)
         cat <<'P101_USAGE'
-Usage: clone-repos.sh [--interactive]
+Usage: clone-repos.sh [--interactive] [--latest]
 
-Clone missing repositories and refresh existing repositories from their
-configured upstreams.
+Clone missing repositories and align existing repositories to repos.lock.
+The lock is the default so one invocation uses one immutable workspace
+revision set.
 
   -i, --interactive
       Pause after a repository-refresh failure. Resolve the repository in
       another terminal, then press Enter to retry that repository. Enter q to
       abort. Local changes are never discarded or stashed automatically.
+  --latest
+      Ignore repos.lock and fast-forward configured upstream branches from
+      repos.txt. This is an explicit development mode; refresh repos.lock
+      afterward before running strict workspace acceptance.
 P101_USAGE
         exit 0
         ;;
 esac
 
 interactive=false
+latest=false
 refresh_aborted=false
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -i|--interactive)
             interactive=true
+            shift
+            ;;
+        --latest)
+            latest=true
             shift
             ;;
         --)
@@ -47,6 +57,8 @@ fi
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 REPOS_FILE="repos.txt"
+LOCK_FILE="repos.lock"
+LOCK_HELPER="./workspace/repos-lock.py"
 REFRESH_REPO_SH="./distribution/refresh-repo.sh"
 GIT_RETRY_ATTEMPTS=5
 GIT_RETRY_DELAY_SECONDS=5
@@ -120,6 +132,41 @@ refresh_repository() {
     done
 }
 
+align_locked_repository() {
+    local target_dir="$1"
+    local expected_commit="$2"
+    local current_commit
+    local branch
+
+    current_commit="$(git -C "${target_dir}" rev-parse HEAD)" || return 2
+    if [[ "${current_commit}" == "${expected_commit}" ]]; then
+        echo "  -> Locked revision already checked out: ${expected_commit:0:12}"
+        return 0
+    fi
+    if [[ -n "$(git -C "${target_dir}" status --porcelain=v1 --untracked-files=normal)" ]]; then
+        echo "  ! Cannot align a modified worktree to locked ${expected_commit:0:12}." >&2
+        return 3
+    fi
+    echo "  -> Fetching locked revision ${expected_commit:0:12}..."
+    retry_git git -C "${target_dir}" fetch --tags --prune origin || return 3
+    if ! git -C "${target_dir}" cat-file -e "${expected_commit}^{commit}" 2>/dev/null; then
+        echo "  ! Locked commit is not available from origin: ${expected_commit}" >&2
+        return 3
+    fi
+    if ! git -C "${target_dir}" merge-base --is-ancestor "${current_commit}" "${expected_commit}"; then
+        echo "  ! Current HEAD ${current_commit:0:12} cannot fast-forward to locked ${expected_commit:0:12}." >&2
+        echo "  ! Refusing to rewind or discard local commits." >&2
+        return 3
+    fi
+    branch="$(git -C "${target_dir}" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    if [[ -n "${branch}" ]]; then
+        git -C "${target_dir}" merge --ff-only --quiet "${expected_commit}" || return 3
+    else
+        git -C "${target_dir}" checkout --quiet --detach "${expected_commit}" || return 3
+    fi
+    echo "  -> Aligned to locked revision ${expected_commit:0:12}."
+}
+
 if [[ ! -f "${REPOS_FILE}" ]]; then
     echo "Error: ${REPOS_FILE} not found in current directory." >&2
     exit 1
@@ -132,6 +179,28 @@ fi
 if [[ ! -x "${REFRESH_REPO_SH}" ]]; then
     echo "Error: ${REFRESH_REPO_SH} is missing or not executable." >&2
     exit 1
+fi
+
+repository_input="${REPOS_FILE}"
+lock_snapshot=""
+manifest_snapshot=""
+if ! ${latest}; then
+    if [[ ! -f "${LOCK_FILE}" || ! -x "${LOCK_HELPER}" ]]; then
+        echo "Error: locked refresh requires ${LOCK_FILE} and ${LOCK_HELPER}." >&2
+        exit 1
+    fi
+    lock_snapshot="$(mktemp "${TMPDIR:-/tmp}/p101-repos-lock.XXXXXX")"
+    manifest_snapshot="${lock_snapshot}.manifest"
+    repository_input="${lock_snapshot}.entries"
+    trap 'rm -f -- "${lock_snapshot}" "${manifest_snapshot}" "${repository_input}"' EXIT
+    cp -- "${LOCK_FILE}" "${lock_snapshot}"
+    cp -- "${REPOS_FILE}" "${manifest_snapshot}"
+    if ! "${LOCK_HELPER}" --manifest "${manifest_snapshot}" --lock "${lock_snapshot}" entries > "${repository_input}"; then
+        echo "Error: repository lock validation failed." >&2
+        exit 1
+    fi
+    echo "Using locked workspace revisions:"
+    echo "  lock_sha256=$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "${lock_snapshot}")"
 fi
 
 failures=0
@@ -148,11 +217,12 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         continue
     fi
 
-    IFS='|' read -r repo_url target_dir repo_type <<< "${line}"
+    IFS='|' read -r repo_url target_dir repo_type locked_commit <<< "${line}"
 
     repo_url="$(trim_whitespace "${repo_url:-}")"
     target_dir="$(trim_whitespace "${target_dir:-}")"
     repo_type="$(trim_whitespace "${repo_type:-}")"
+    locked_commit="$(trim_whitespace "${locked_commit:-}")"
 
     if [[ -z "${repo_url}" || -z "${target_dir}" || -z "${repo_type}" ]]; then
         echo "FAIL: malformed line: ${raw}" >&2
@@ -201,7 +271,33 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
             continue
         fi
 
-        if [[ "${repo_type}" == "c-bootstrap" ]] &&
+        if ! ${latest}; then
+            if [[ -z "${locked_commit}" && "${repo_type}" != "c-bootstrap" ]]; then
+                echo "  ! Missing locked commit: ${target_dir}" >&2
+                failures=$((failures + 1))
+                echo
+                continue
+            fi
+            if [[ -z "${locked_commit}" ]]; then
+                if git -C "${target_dir}" rev-parse --verify HEAD >/dev/null 2>&1; then
+                    echo "  ! Bootstrap repository now has a commit; refresh repos.lock." >&2
+                    failures=$((failures + 1))
+                    echo
+                    continue
+                fi
+                echo "  -> Empty bootstrap repository matches the lock."
+                echo
+                continue
+            fi
+            align_status=0
+            align_locked_repository "${target_dir}" "${locked_commit}" || align_status=$?
+            if [[ "${align_status}" -ne 0 ]]; then
+                echo "  ! Locked repository alignment failed (exit ${align_status})."
+                failures=$((failures + 1))
+                echo
+                continue
+            fi
+        elif [[ "${repo_type}" == "c-bootstrap" ]] &&
            ! git -C "${target_dir}" rev-parse --verify HEAD >/dev/null 2>&1; then
             # A newly-created GitHub repository may intentionally have no
             # first commit yet. It still belongs in repos.txt so every
@@ -227,6 +323,23 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         echo "  -> Cloning ${repo_url}"
         if retry_git git clone --recursive "${repo_url}" "${target_dir}"; then
             echo "  -> Clone OK."
+            if ! ${latest} && [[ -z "${locked_commit}" ]]; then
+                if git -C "${target_dir}" rev-parse --verify HEAD >/dev/null 2>&1; then
+                    echo "  ! Bootstrap repository now has a commit; refresh repos.lock." >&2
+                    failures=$((failures + 1))
+                    echo
+                    continue
+                fi
+                echo "  -> Empty bootstrap repository matches the lock."
+            elif ! ${latest} && [[ "$(git -C "${target_dir}" rev-parse HEAD)" != "${locked_commit}" ]]; then
+                if ! git -C "${target_dir}" checkout --quiet --detach "${locked_commit}"; then
+                    echo "  ! Could not check out locked commit ${locked_commit}."
+                    failures=$((failures + 1))
+                    echo
+                    continue
+                fi
+                echo "  -> Checked out locked revision ${locked_commit:0:12}."
+            fi
         else
             echo "  ! Clone failed."
             failures=$((failures + 1))
@@ -244,7 +357,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     fi
 
     echo
-done 3< "${REPOS_FILE}"
+done 3< "${repository_input}"
 
 if (( processed == 0 )); then
     echo "Error: ${REPOS_FILE} did not contain any repositories." >&2
@@ -253,5 +366,13 @@ fi
 if (( failures > 0 )); then
     echo "Repository update failed: ${failures} problem(s)." >&2
     exit 1
+fi
+if ! ${latest}; then
+    if ! cmp -s "${LOCK_FILE}" "${lock_snapshot}" ||
+       ! cmp -s "${REPOS_FILE}" "${manifest_snapshot}"; then
+        echo "Repository manifest or lock changed while this refresh was running; refusing mixed revisions." >&2
+        exit 1
+    fi
+    "${LOCK_HELPER}" --manifest "${manifest_snapshot}" --lock "${lock_snapshot}" verify
 fi
 echo "All ${processed} repositories processed successfully."

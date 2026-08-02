@@ -50,7 +50,13 @@ class CheckGraphTests(unittest.TestCase):
         selected = MODULE.select_nodes(ordered, {"boundary-tests"}, set(), None)
         self.assertEqual(
             [node["id"] for node in selected],
-            ["check-graph-tests", "boundaries", "boundary-tests"],
+            [
+                "repository-lock-tests",
+                "workspace-lock",
+                "check-graph-tests",
+                "boundaries",
+                "boundary-tests",
+            ],
         )
 
     def test_group_skip_and_resume(self) -> None:
