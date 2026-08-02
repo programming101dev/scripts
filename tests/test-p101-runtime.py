@@ -11,7 +11,7 @@ from pathlib import Path
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 
-from p101_runtime import analyze_model, write_analysis
+from p101_runtime import RuntimeModelError, analyze_model, write_analysis
 
 
 def node(
@@ -54,6 +54,100 @@ def model(*nodes: dict[str, object]) -> dict[str, object]:
 
 
 class RuntimePolicyTests(unittest.TestCase):
+    def test_runtime_rejects_a_cyclic_causal_graph(self) -> None:
+        first = node("resource", "fd-open", 1, resource_identity="3")
+        second = node("resource", "fd-close", 2, resource_identity="3")
+        run_model = model(first, second)
+        run_model["edges"] = [
+            {"kind": "bad", "from": second["id"], "to": first["id"]}
+        ]
+
+        with self.assertRaisesRegex(RuntimeModelError, "causal graph contains a cycle"):
+            analyze_model(run_model)
+
+    def test_resource_policy_orders_child_events_after_their_fork(self) -> None:
+        parent_open_five = node(
+            "resource",
+            "fd-open",
+            1,
+            pid=10,
+            resource_class="fd",
+            resource_identity="5",
+        )
+        parent_open_six = node(
+            "resource",
+            "fd-open",
+            2,
+            pid=10,
+            resource_class="fd",
+            resource_identity="6",
+        )
+        child_close_five = node(
+            "resource",
+            "fd-close",
+            4,
+            pid=11,
+            resource_class="fd",
+            resource_identity="5",
+        )
+        child_close_six = node(
+            "resource",
+            "fd-close",
+            5,
+            pid=11,
+            resource_class="fd",
+            resource_identity="6",
+        )
+        fork = node("resource", "fork", 3, pid=10, child_pid=11)
+        parent_close_five = node(
+            "resource",
+            "fd-close",
+            6,
+            pid=10,
+            resource_class="fd",
+            resource_identity="5",
+        )
+        parent_close_six = node(
+            "resource",
+            "fd-close",
+            7,
+            pid=10,
+            resource_class="fd",
+            resource_identity="6",
+        )
+        run_model = model(
+            parent_open_five,
+            parent_open_six,
+            child_close_five,
+            child_close_six,
+            fork,
+            parent_close_five,
+            parent_close_six,
+        )
+        run_model["edges"] = [
+            {
+                "kind": "process-child-event",
+                "from": fork["id"],
+                "to": child_close_five["id"],
+            },
+            {
+                "kind": "process-child-event",
+                "from": fork["id"],
+                "to": child_close_six["id"],
+            },
+        ]
+
+        analysis = analyze_model(run_model)
+
+        self.assertEqual(analysis.resource.findings, [])
+        child_metrics = next(
+            item
+            for item in analysis.resource.summary["process_metrics"]
+            if item["pid"] == 11
+        )
+        self.assertEqual(child_metrics["fd_peak"], 2)
+        self.assertEqual(child_metrics["fd_live"], 0)
+
     def test_resource_policy_finds_leak_and_double_close(self) -> None:
         analysis = analyze_model(
             model(

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import heapq
 import json
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -151,6 +152,51 @@ def _source(node: dict[str, Any]) -> dict[str, Any]:
         "line": int(source.get("line", 0)),
         "function": str(source.get("function", "?")),
     }
+
+
+def _causal_nodes(model: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return a stable topological order for the admitted run model.
+
+    The two event logs are read independently, so their physical node order is
+    not a global execution order.  Explicit model edges carry cross-context
+    causality (most importantly fork-before-child), while sequence numbers
+    carry order within one execution context.
+    """
+    nodes = model["nodes"]
+    node_index = {node["id"]: index for index, node in enumerate(nodes)}
+    outgoing: list[set[int]] = [set() for _ in nodes]
+    indegree = [0 for _ in nodes]
+
+    def add_edge(source: int, destination: int) -> None:
+        if source == destination or destination in outgoing[source]:
+            return
+        outgoing[source].add(destination)
+        indegree[destination] += 1
+
+    for edge in model["edges"]:
+        add_edge(node_index[edge["from"]], node_index[edge["to"]])
+
+    contexts: dict[tuple[int, int], list[int]] = defaultdict(list)
+    for index, node in enumerate(nodes):
+        contexts[(node["pid"], node["context"])].append(index)
+    for indices in contexts.values():
+        indices.sort(key=lambda index: (nodes[index]["sequence"], index))
+        for source, destination in zip(indices, indices[1:]):
+            add_edge(source, destination)
+
+    ready = [index for index, degree in enumerate(indegree) if degree == 0]
+    heapq.heapify(ready)
+    ordered: list[dict[str, Any]] = []
+    while ready:
+        current = heapq.heappop(ready)
+        ordered.append(nodes[current])
+        for destination in sorted(outgoing[current]):
+            indegree[destination] -= 1
+            if indegree[destination] == 0:
+                heapq.heappush(ready, destination)
+    if len(ordered) != len(nodes):
+        raise RuntimeModelError("run-model causal graph contains a cycle")
+    return ordered
 
 
 def _finding(
@@ -806,11 +852,12 @@ def analyze_trace(model: dict[str, Any]) -> tuple[PolicyResult, str]:
 
 
 def analyze_model(model: dict[str, Any]) -> RuntimeAnalysis:
-    trace, trace_tree = analyze_trace(model)
+    ordered_model = {**model, "nodes": _causal_nodes(model)}
+    trace, trace_tree = analyze_trace(ordered_model)
     return RuntimeAnalysis(
-        model=model,
-        resource=analyze_resources(model),
-        synchronization=analyze_synchronization(model),
+        model=ordered_model,
+        resource=analyze_resources(ordered_model),
+        synchronization=analyze_synchronization(ordered_model),
         trace=trace,
         trace_tree=trace_tree,
     )
