@@ -1141,6 +1141,35 @@ def _receipt(
     }
 
 
+def _print_native_failures(
+    results: list[dict[str, Any]], output: Path
+) -> None:
+    printed_logs: set[str] = set()
+    for result in results:
+        if result.get("status") != "FAIL":
+            continue
+        label = str(result.get("label", "unknown"))
+        command = result.get("command", [])
+        print(f"\n--- native lesson failure: {label} ---")
+        if isinstance(command, list):
+            print("$ " + " ".join(str(argument) for argument in command))
+        print(f"cwd: {result.get('cwd', '?')}")
+        print(f"exit: {result.get('exit', '?')}")
+        log_name = result.get("log")
+        if not isinstance(log_name, str) or log_name in printed_logs:
+            continue
+        printed_logs.add(log_name)
+        log_path = output / log_name
+        try:
+            log_text = log_path.read_text(encoding="utf-8")
+        except OSError as error:
+            print(f"could not read failure log {log_path}: {error}")
+            continue
+        print(f"log: {log_path}")
+        print(log_text, end="" if log_text.endswith("\n") else "\n")
+        print(f"--- end native lesson failure: {label} ---")
+
+
 def command_check(args: argparse.Namespace) -> int:
     try:
         catalog = load_catalog(args.catalog)
@@ -1426,6 +1455,7 @@ def command_verify_all(args: argparse.Namespace) -> int:
     )
     print(f"Output: {output}")
     print(f"Coverage: {output / 'coverage.md'}")
+    _print_native_failures(results, output)
     return 0 if receipt["summary"]["result"] == "PASS" else 1
 
 

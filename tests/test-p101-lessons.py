@@ -200,6 +200,32 @@ class LessonCatalogTests(unittest.TestCase):
             ["first", "second"],
         )
 
+    def test_native_failures_print_the_complete_log(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            (output / "failed.log").write_text(
+                "first diagnostic\nsecond diagnostic\n", encoding="utf-8"
+            )
+            stream = io.StringIO()
+            with redirect_stdout(stream):
+                p101_lessons._print_native_failures(
+                    [
+                        {
+                            "label": "profile-example",
+                            "status": "FAIL",
+                            "command": ["./test.sh"],
+                            "cwd": "/workspace/example",
+                            "exit": 2,
+                            "log": "failed.log",
+                        }
+                    ],
+                    output,
+                )
+        text = stream.getvalue()
+        self.assertIn("native lesson failure: profile-example", text)
+        self.assertIn("$ ./test.sh", text)
+        self.assertIn("first diagnostic\nsecond diagnostic", text)
+
     def test_progress_honors_prerequisites_and_lesson_only_receipts(self) -> None:
         digest = p101_lessons.catalog_digest(self.catalog)
         with tempfile.TemporaryDirectory() as directory:
