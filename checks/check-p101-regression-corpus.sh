@@ -114,7 +114,7 @@ check_case() {
   echo "==> $name"
   mkdir -p "$case_root"
   set +e
-  "$observe" -C -o "$capture" -- \
+  "$observe" -o "$capture" -- \
     "$playground" -s "$scenario" -o "$case_root/program-output.txt" \
     > "$log" 2>&1
   capture_status=$?

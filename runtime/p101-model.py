@@ -32,6 +32,7 @@ ANALYSIS_STATUS_ROLES = {
     "resource_policy",
     "sync_policy",
     "trace_policy",
+    "sanitizer_policy",
     "report_renderer",
 }
 ANALYSIS_TOOL_ROLES = {
