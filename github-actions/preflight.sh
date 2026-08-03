@@ -175,8 +175,24 @@ exec "${P101_PREFLIGHT_REAL_CXX:?}" --no-default-config \
 EOF
   chmod +x "$toolchain/clang" "$toolchain/clang++"
   if [[ -n "$llvm_prefix" && -x "$llvm_prefix/bin/clang-extdef-mapping" ]]; then
-    ln -sf "$llvm_prefix/bin/clang-extdef-mapping" \
-      "$toolchain/clang-extdef-mapping"
+    cat > "$toolchain/clang-extdef-mapping" <<'EOF'
+#!/usr/bin/env bash
+arguments=()
+inserted=0
+for argument in "$@"; do
+  arguments+=("$argument")
+  if [[ "$argument" == "--" ]]; then
+    arguments+=(--no-default-config -isysroot "${P101_PREFLIGHT_MACOS_SDK:?}")
+    inserted=1
+  fi
+done
+if [[ "$inserted" -eq 0 ]]; then
+  arguments+=(-- --no-default-config -isysroot "${P101_PREFLIGHT_MACOS_SDK:?}")
+fi
+exec "${P101_PREFLIGHT_REAL_EXTDEF:?}" "${arguments[@]}"
+EOF
+    chmod +x "$toolchain/clang-extdef-mapping"
+    export P101_PREFLIGHT_REAL_EXTDEF="$llvm_prefix/bin/clang-extdef-mapping"
   fi
 
   export P101_PREFLIGHT_REAL_CC="$original_cc"
