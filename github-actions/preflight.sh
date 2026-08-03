@@ -32,7 +32,8 @@ Environment overrides:
 
 This is strong local evidence, not proof about another operating system. The
 actual macOS, Linux, and FreeBSD jobs remain authoritative for platform headers,
-tool versions, kernels, runtimes, and package behavior.
+tool versions, kernels, runtimes, and package behavior. Repository installation
+into privileged system prefixes is intentionally skipped.
 EOF
 }
 
@@ -246,6 +247,7 @@ set +e
 set -o pipefail
 P101_QUIET=1 ./update-all.sh \
   --latest \
+  --skip-install \
   -C "$c_list" \
   -X "$cxx_list" \
   -f "$clang_format" \
@@ -293,7 +295,7 @@ cat > "$out_dir/receipt.md" <<EOF
 
 This receipt exercises the strict build and complete governed acceptance graph
 over the clean local candidate commits. It does not prove behavior on operating
-systems other than the host that produced it.
+systems other than the host that produced it, or privileged system installation.
 EOF
 
 printf '\nPASS: local candidate cleared the GitHub Actions preflight.\n'
