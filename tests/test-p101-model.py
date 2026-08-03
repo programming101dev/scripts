@@ -82,6 +82,7 @@ class ModelTests(unittest.TestCase):
                     "to": "call:test-run:1:1:2:call-exit",
                 }
             ],
+            "lifecycle": {"entries": [], "findings": []},
         }
         (directory / "run-model.json").write_text(
             json.dumps(model) + "\n", encoding="utf-8"
@@ -112,7 +113,7 @@ class ModelTests(unittest.TestCase):
         schemas = {
             "correlated-report.json": "p101-analysis-findings-v1",
             "resource-report.json": "p101-resource-policy-findings-v1",
-            "concurrency-report.json": "p101-sync-check-findings-v1",
+            "concurrency-report.json": "p101-synchronization-policy-findings-v1",
         }
         for filename, schema in schemas.items():
             (directory / filename).write_text(

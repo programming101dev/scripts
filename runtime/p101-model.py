@@ -86,8 +86,17 @@ def validate_model(directory: Path) -> dict[str, Any]:
         raise ModelError("run-model.json has an unknown ordering contract")
     nodes = model.get("nodes")
     edges = model.get("edges")
-    if not isinstance(nodes, list) or not isinstance(edges, list):
-        raise ModelError("run model nodes and edges must be arrays")
+    lifecycle = model.get("lifecycle")
+    if (
+        not isinstance(nodes, list)
+        or not isinstance(edges, list)
+        or not isinstance(lifecycle, dict)
+        or not isinstance(lifecycle.get("entries"), list)
+        or not isinstance(lifecycle.get("findings"), list)
+    ):
+        raise ModelError(
+            "run model nodes, edges, lifecycle entries, and lifecycle findings must be arrays"
+        )
     node_ids: set[str] = set()
     observation_ids: set[tuple[str, int, int, int]] = set()
     node_by_id: dict[str, dict[str, Any]] = {}
@@ -302,7 +311,7 @@ def finding_documents(directory: Path) -> list[dict[str, Any]]:
     schemas = {
         "correlated-report.json": "p101-analysis-findings-v1",
         "resource-report.json": "p101-resource-policy-findings-v1",
-        "concurrency-report.json": "p101-sync-check-findings-v1",
+        "concurrency-report.json": "p101-synchronization-policy-findings-v1",
     }
     loaded: dict[str, dict[str, Any]] = {}
     for name, schema in schemas.items():

@@ -48,6 +48,8 @@ ANALYSIS_FILES = {
     "trace_tree": "trace-tree.txt",
     "trace_summary": "trace-summary.txt",
     "trace_tools_stderr": "trace-tools.stderr.txt",
+    "sanitizer_report": "sanitizer-report.txt",
+    "sanitizer_json": "sanitizer-report.json",
     "correlated_report": "correlated-report.txt",
     "correlated_json": "correlated-report.json",
     "resource_lifetimes_graph": "resource-lifetimes.md",

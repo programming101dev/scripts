@@ -10,6 +10,7 @@ import platform
 import random
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,9 @@ SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = SCRIPTS_ROOT.parent
 CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-lifecycle-contract.json"
 LAB_DIR = SCRIPTS_ROOT / "wrapper-lab"
+sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
+
+from p101_runtime import RuntimeModelError, analyze_model, load_model  # noqa: E402
 
 
 def resolved_program(program: str) -> Path:
@@ -251,7 +255,6 @@ def first_line(*texts: str) -> str:
 def run_case(
     driver: Path,
     event_model: Path,
-    resource_tracker: Path,
     output: Path,
     scenario: str,
     replay: list[str],
@@ -325,21 +328,23 @@ def run_case(
     (case_dir / "event-model-report.txt").write_text(
         model_result.stdout + model_result.stderr, encoding="utf-8"
     )
-    resource_result = subprocess.run(
-        [str(resource_tracker), "-q", str(resources)],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        check=False,
-    )
+    resource_status = 2
+    resource_diagnostic = ""
+    if model_result.returncode == 0:
+        try:
+            resource_analysis = analyze_model(load_model(model)).resource
+            resource_status = resource_analysis.status
+            resource_diagnostic = resource_analysis.text
+        except RuntimeModelError as error:
+            resource_diagnostic = f"p101 runtime: {error}\n"
     (case_dir / "resource-report.txt").write_text(
-        resource_result.stdout + resource_result.stderr, encoding="utf-8"
+        resource_diagnostic, encoding="utf-8"
     )
     fault_hit = fault.is_file() and fault.stat().st_size > 0
     passed = (
         result.returncode == 0
         and model_result.returncode == 0
-        and resource_result.returncode == 0
+        and resource_status == 0
     )
     receipt: dict[str, object] = {
         "scenario": scenario,
@@ -350,7 +355,7 @@ def run_case(
         "fault_hit": fault_hit,
         "driver_status": result.returncode,
         "event_model_status": model_result.returncode,
-        "resource_tracker_status": resource_result.returncode,
+        "resource_policy_status": resource_status,
         "case_directory": str(case_dir),
         "passed": passed,
     }
@@ -369,17 +374,14 @@ def run_case(
             )
         else:
             receipt["reason_code"] = "resource-analysis-failed"
-            receipt["failed_stage"] = "resource-tracker"
-            receipt["first_diagnostic"] = first_line(
-                resource_result.stderr, resource_result.stdout
-            )
+            receipt["failed_stage"] = "resource-policy"
+            receipt["first_diagnostic"] = first_line(resource_diagnostic)
     return passed, receipt
 
 
 def minimize_failure(
     driver: Path,
     event_model: Path,
-    resource_tracker: Path,
     output: Path,
     receipt: dict[str, object],
     specification: dict[str, Any],
@@ -397,7 +399,6 @@ def minimize_failure(
             passed, _ = run_case(
                 driver,
                 event_model,
-                resource_tracker,
                 output / "minimize",
                 str(receipt["scenario"]),
                 candidate,
@@ -433,10 +434,6 @@ def main() -> int:
     try:
         driver = configure_driver(args.output, args.compiler)
         event_model = find_program(WORKSPACE / "libraries" / "lib_tool_event", "p101-event-model")
-        resource_tracker = find_program(
-            WORKSPACE / "programs" / "p101-resource-tracker",
-            "p101-resource-tracker",
-        )
     except RuntimeError as exc:
         print(f"FAIL: {exc}")
         return 2
@@ -455,7 +452,6 @@ def main() -> int:
             passed, receipt = run_case(
                 driver,
                 event_model,
-                resource_tracker,
                 args.output,
                 scenario,
                 replay,
@@ -474,7 +470,6 @@ def main() -> int:
                 passed, receipt = run_case(
                     driver,
                     event_model,
-                    resource_tracker,
                     args.output,
                     scenario,
                     fault_replay,
@@ -507,7 +502,6 @@ def main() -> int:
         minimized = minimize_failure(
             driver,
             event_model,
-            resource_tracker,
             args.output,
             failure,
             specification,

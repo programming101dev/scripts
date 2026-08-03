@@ -27,17 +27,13 @@ https://github.com/programming101dev/lib_host.git|../libraries/lib_host|c
 https://github.com/programming101dev/lib_fsm.git|../libraries/lib_fsm|c
 https://github.com/programming101dev/lib_util.git|../libraries/lib_util|c
 https://github.com/programming101dev/lib_convert.git|../libraries/lib_convert|c
-https://github.com/programming101dev/p101-resource-tracker.git|../programs/p101-resource-tracker|c
 https://github.com/programming101dev/simple-port-forwarder.git|../programs/simple-port-forwarder|c
-https://github.com/programming101dev/p101-trace.git|../programs/p101-trace|c
 https://github.com/programming101dev/p101-observe.git|../programs/p101-observe|c
-https://github.com/programming101dev/p101-report.git|../programs/p101-report|c
 https://github.com/programming101dev/p101-error-path-walk.git|../programs/p101-error-path-walk|c
 https://github.com/programming101dev/p101-error-contract.git|../programs/p101-error-contract|c
 https://github.com/programming101dev/p101-wrapper-audit.git|../programs/p101-wrapper-audit|c
 https://github.com/programming101dev/p101-doctor.git|../programs/p101-doctor|c
 https://github.com/programming101dev/p101-module-map.git|../programs/p101-module-map|c
-https://github.com/programming101dev/p101-sync-check.git|../programs/p101-sync-check|c
 https://github.com/programming101dev/p101-mutation-check.git|../programs/p101-mutation-check|c
 https://github.com/programming101dev/playgrounds.git|../playgrounds|c
 https://github.com/programming101dev/template-c.git|../templates/template-c|c

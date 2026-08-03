@@ -78,8 +78,8 @@
       "refusal": "p101_error",
       "evidence": "replayable lifecycle entries and findings",
       "collaborators": [
-        "p101-resource-tracker owns command-line policy",
-        "p101-report owns presentation and teaching advice"
+        "scripts/runtime/p101_runtime.py owns lifecycle policy",
+        "scripts/runtime/p101-view.py owns presentation and teaching advice"
       ],
       "tests": {
         "path": "libraries/lib_tool_event/test/test_lifecycle.c",

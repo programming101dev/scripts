@@ -220,7 +220,7 @@ else
   printf 'SKIP: --skip-quality\n' > "$log_dir/quality-check.log"
 fi
 
-doctor_args=(-S -o "$out_dir/doctor" -s "$source_path" -A "$wrapper_tool" -E "$error_contract_tool" -M "$module_tool")
+doctor_args=(-o "$out_dir/doctor" -s "$source_path" -A "$wrapper_tool" -E "$error_contract_tool" -M "$module_tool")
 if [ "$skip_wrapper" -eq 1 ]; then
   doctor_args=(-x "${doctor_args[@]}")
 fi

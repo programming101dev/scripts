@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import heapq
 import json
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -56,6 +57,7 @@ class RuntimeAnalysis:
     resource: PolicyResult
     synchronization: PolicyResult
     trace: PolicyResult
+    sanitizer: PolicyResult
     trace_tree: str
 
     @property
@@ -64,6 +66,7 @@ class RuntimeAnalysis:
             *self.resource.findings,
             *self.synchronization.findings,
             *self.trace.findings,
+            *self.sanitizer.findings,
         ]
 
     @property
@@ -72,16 +75,11 @@ class RuntimeAnalysis:
             self.resource.status,
             self.synchronization.status,
             self.trace.status,
+            self.sanitizer.status,
         )
         if 2 in statuses:
             return 2
         return 1 if 1 in statuses else 0
-
-
-@dataclass
-class _Live:
-    node: dict[str, Any]
-    size: int = 0
 
 
 RESOURCE_MESSAGES = {
@@ -104,8 +102,44 @@ SYNC_MESSAGES = {
     "P101-SYNC-001": "lock-order graph contains a cycle",
     "P101-SYNC-002": "live wait-for graph contains a deadlock cycle",
     "P101-SYNC-003": "thread join graph contains a cycle",
-    "P101-SYNC-901": "analysis capacity was exceeded",
 }
+
+SANITIZER_MESSAGES = {
+    "P101-SAN-001": "AddressSanitizer reported an invalid memory access",
+    "P101-SAN-002": "LeakSanitizer reported leaked memory",
+    "P101-SAN-003": "UndefinedBehaviorSanitizer reported undefined behavior",
+    "P101-SAN-004": "ThreadSanitizer reported a data race or synchronization defect",
+}
+
+_SANITIZER_HEADERS = (
+    (
+        re.compile(r"(?:ERROR:\s*)?AddressSanitizer:\s*(.+)"),
+        "P101-SAN-001",
+        "address",
+    ),
+    (
+        re.compile(r"(?:ERROR:\s*)?LeakSanitizer:\s*(.+)"),
+        "P101-SAN-002",
+        "leak",
+    ),
+    (
+        re.compile(r"(?:WARNING:\s*)?ThreadSanitizer:\s*(.+)"),
+        "P101-SAN-004",
+        "thread",
+    ),
+    (
+        re.compile(r"runtime error:\s*(.+)"),
+        "P101-SAN-003",
+        "undefined",
+    ),
+)
+_SOURCE_LOCATION = re.compile(
+    r"((?:[A-Za-z]:)?[^ \t():]+\.(?:c|cc|cpp|cxx|h|hh|hpp))"
+    r":(\d+)(?::\d+)?"
+)
+_SOURCE_FUNCTION = re.compile(
+    r"\b(?:in|at)\s+([A-Za-z_][A-Za-z0-9_:<>~]*)"
+)
 
 
 def load_model(path: Path) -> dict[str, Any]:
@@ -117,8 +151,17 @@ def load_model(path: Path) -> dict[str, Any]:
         raise RuntimeModelError("run model does not use p101-run-model-v1")
     nodes = model.get("nodes")
     edges = model.get("edges")
-    if not isinstance(nodes, list) or not isinstance(edges, list):
-        raise RuntimeModelError("run model must contain node and edge arrays")
+    lifecycle = model.get("lifecycle")
+    if (
+        not isinstance(nodes, list)
+        or not isinstance(edges, list)
+        or not isinstance(lifecycle, dict)
+        or not isinstance(lifecycle.get("entries"), list)
+        or not isinstance(lifecycle.get("findings"), list)
+    ):
+        raise RuntimeModelError(
+            "run model must contain node, edge, and lifecycle arrays"
+        )
     node_ids: set[str] = set()
     for index, node in enumerate(nodes):
         if (
@@ -227,14 +270,113 @@ def _call_nodes(model: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def analyze_resources(model: dict[str, Any]) -> PolicyResult:
+    lifecycle = model.get("lifecycle")
+    if not isinstance(lifecycle, dict):
+        raise RuntimeModelError("run model does not contain canonical lifecycle facts")
+    entries = lifecycle.get("entries")
+    lifecycle_findings = lifecycle.get("findings")
+    if not isinstance(entries, list) or not isinstance(lifecycle_findings, list):
+        raise RuntimeModelError("run model lifecycle must contain entry and finding arrays")
+
+    nodes = _resource_nodes(model)
+    node_order = {node["id"]: index for index, node in enumerate(nodes)}
+    direct_nodes = {
+        (node["pid"], node["context"], node["sequence"]): node for node in nodes
+    }
+
+    def node_for(pid: int, location: dict[str, Any]) -> dict[str, Any]:
+        context = int(location.get("context", 0))
+        sequence = int(location.get("sequence", 0))
+        node = direct_nodes.get((pid, context, sequence))
+        if node is not None:
+            return node
+        for candidate in nodes:
+            if (
+                candidate.get("kind") == "fork"
+                and candidate.get("child_pid") == pid
+                and candidate.get("context") == context
+                and candidate.get("sequence") == sequence
+            ):
+                return candidate
+        source = location.get("source")
+        if not isinstance(source, dict):
+            source = {"file": "?", "line": 0, "function": "?"}
+        return {
+            "id": f"lifecycle:{pid}:{context}:{sequence}",
+            "domain": "resource",
+            "kind": "lifecycle",
+            "pid": pid,
+            "context": context,
+            "sequence": sequence,
+            "source": source,
+        }
+
+    def diagnostic_id(kind: str, resource_class: str) -> str:
+        if kind == "exec-inherit":
+            return "P101-FD-004"
+        suffixes = {
+            "leak": "001",
+            "double-release": "002",
+            "stray-release": "003",
+            "bad-replace": "004",
+            "duplicate-acquire": "005",
+        }
+        suffix = suffixes.get(kind)
+        if suffix is None:
+            raise RuntimeModelError(f"unknown lifecycle finding kind: {kind}")
+        if resource_class == "fd" and kind in {
+            "leak",
+            "double-release",
+            "stray-release",
+        }:
+            return f"P101-FD-{suffix}"
+        if resource_class == "allocation" and kind in {
+            "leak",
+            "double-release",
+            "stray-release",
+            "bad-replace",
+        }:
+            return f"P101-ALLOC-{suffix}"
+        return f"P101-RESOURCE-{suffix}"
+
     findings: list[Finding] = []
-    live_fd: dict[tuple[int, str], _Live] = {}
-    closed_fd: dict[tuple[int, str], dict[str, Any]] = {}
-    live_alloc: dict[tuple[int, str], _Live] = {}
-    freed_alloc: dict[tuple[int, str], dict[str, Any]] = {}
-    live_generic: dict[tuple[int, str, str], _Live] = {}
-    released_generic: dict[tuple[int, str, str], dict[str, Any]] = {}
-    pending_exec: dict[tuple[int, str], list[Finding]] = defaultdict(list)
+    for index, lifecycle_finding in enumerate(lifecycle_findings):
+        if not isinstance(lifecycle_finding, dict):
+            raise RuntimeModelError(f"invalid lifecycle finding {index}")
+        kind = str(lifecycle_finding.get("kind", ""))
+        resource_class = str(lifecycle_finding.get("resource_class", ""))
+        identity = str(lifecycle_finding.get("identity", ""))
+        pid = int(lifecycle_finding.get("pid", -1))
+        location = lifecycle_finding.get("at")
+        if not isinstance(location, dict):
+            raise RuntimeModelError(f"lifecycle finding {index} has no location")
+        node = node_for(pid, location)
+        identifier = diagnostic_id(kind, resource_class)
+        evidence: dict[str, Any] = {
+            "pid": pid,
+            "resource_class": resource_class,
+            "identity": identity,
+        }
+        if resource_class == "fd":
+            evidence["fd"] = identity
+        elif resource_class == "allocation":
+            evidence["ptr"] = identity
+        previous = lifecycle_finding.get("previous")
+        if isinstance(previous, dict):
+            evidence["previous_node"] = node_for(pid, previous)["id"]
+        if kind == "exec-inherit":
+            evidence["target"] = str(node.get("target", ""))
+        findings.append(
+            Finding(
+                identifier,
+                "resource",
+                RESOURCE_MESSAGES[identifier],
+                node["id"],
+                _source(node),
+                evidence,
+            )
+        )
+
     process_metrics: dict[int, dict[str, int]] = defaultdict(
         lambda: {
             "fd_live": 0,
@@ -245,206 +387,39 @@ def analyze_resources(model: dict[str, Any]) -> PolicyResult:
             "bytes_peak": 0,
         }
     )
+    metric_events: list[tuple[int, int, str, int, int]] = []
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            raise RuntimeModelError(f"invalid lifecycle entry {index}")
+        pid = int(entry.get("pid", -1))
+        resource_class = str(entry.get("resource_class", ""))
+        size = int(entry.get("size", 0))
+        acquired = entry.get("acquired")
+        if not isinstance(acquired, dict):
+            raise RuntimeModelError(f"lifecycle entry {index} has no acquisition")
+        acquired_node = node_for(pid, acquired)
+        acquired_order = node_order.get(acquired_node["id"], len(nodes) + index)
+        metric_events.append((acquired_order, 0, resource_class, pid, size))
+        released = entry.get("released")
+        if isinstance(released, dict):
+            released_node = node_for(pid, released)
+            released_order = node_order.get(
+                released_node["id"], len(nodes) + len(entries) + index
+            )
+            metric_events.append((released_order, 1, resource_class, pid, size))
 
-    def add(identifier: str, node: dict[str, Any], **evidence: Any) -> None:
-        findings.append(_finding(identifier, "resource", node, **evidence))
-
-    for node in _resource_nodes(model):
-        kind = node["kind"]
-        pid = node["pid"]
-        identity = str(node.get("resource_identity", ""))
+    for _, phase, resource_class, pid, size in sorted(metric_events):
         metrics = process_metrics[pid]
-        if kind == "fd-open":
-            key = (pid, identity)
-            if key in live_fd:
-                add("P101-RESOURCE-005", node, resource_class="fd", identity=identity)
-            else:
-                live_fd[key] = _Live(node)
-                closed_fd.pop(key, None)
-                metrics["fd_live"] += 1
-                metrics["fd_peak"] = max(metrics["fd_peak"], metrics["fd_live"])
-        elif kind == "fd-close":
-            key = (pid, identity)
-            acquired = live_fd.pop(key, None)
-            if acquired is not None:
-                closed_fd[key] = node
-                metrics["fd_live"] -= 1
-            elif key in closed_fd:
-                add(
-                    "P101-FD-002",
-                    node,
-                    fd=identity,
-                    previous_node=closed_fd[key]["id"],
-                )
-            else:
-                add("P101-FD-003", node, fd=identity)
-        elif kind == "alloc":
-            if identity in {"", "-", "NULL", "null"}:
-                continue
-            key = (pid, identity)
-            if key in live_alloc:
-                add(
-                    "P101-RESOURCE-005",
-                    node,
-                    resource_class="allocation",
-                    identity=identity,
-                )
-            else:
-                size = int(node.get("size", 0))
-                live_alloc[key] = _Live(node, size)
-                freed_alloc.pop(key, None)
-                metrics["heap_live"] += 1
-                metrics["bytes_live"] += size
-                metrics["heap_peak"] = max(
-                    metrics["heap_peak"], metrics["heap_live"]
-                )
-                metrics["bytes_peak"] = max(
-                    metrics["bytes_peak"], metrics["bytes_live"]
-                )
-        elif kind == "free":
-            if identity in {"", "-", "NULL", "null"}:
-                continue
-            key = (pid, identity)
-            acquired = live_alloc.pop(key, None)
-            if acquired is not None:
-                metrics["heap_live"] -= 1
-                metrics["bytes_live"] -= acquired.size
-                freed_alloc[key] = node
-            elif key in freed_alloc:
-                add(
-                    "P101-ALLOC-002",
-                    node,
-                    ptr=identity,
-                    previous_node=freed_alloc[key]["id"],
-                )
-            else:
-                add("P101-ALLOC-003", node, ptr=identity)
-        elif kind == "realloc":
-            old = identity
-            new = str(node.get("related_identity", ""))
-            size = int(node.get("size", 0))
-            old_null = old in {"", "-", "NULL", "null"}
-            new_null = new in {"", "-", "NULL", "null"}
-            acquired = None if old_null else live_alloc.pop((pid, old), None)
-            if not old_null and acquired is None:
-                add("P101-ALLOC-004", node, ptr=old, new_ptr=new)
-                continue
-            if acquired is not None:
-                metrics["heap_live"] -= 1
-                metrics["bytes_live"] -= acquired.size
-                freed_alloc[(pid, old)] = node
-            if not new_null:
-                live_alloc[(pid, new)] = _Live(node, size)
-                freed_alloc.pop((pid, new), None)
-                metrics["heap_live"] += 1
-                metrics["bytes_live"] += size
-                metrics["heap_peak"] = max(
-                    metrics["heap_peak"], metrics["heap_live"]
-                )
-                metrics["bytes_peak"] = max(
-                    metrics["bytes_peak"], metrics["bytes_live"]
-                )
-        elif kind == "fork":
-            child = int(node.get("child_pid", -1))
-            if child >= 0:
-                for (owner, fd), acquired in list(live_fd.items()):
-                    if owner == pid:
-                        live_fd[(child, fd)] = acquired
-                        process_metrics[child]["fd_live"] += 1
-                process_metrics[child]["fd_peak"] = process_metrics[child][
-                    "fd_live"
-                ]
-        elif kind == "exec":
-            if not bool(node.get("cloexec", False)):
-                finding = _finding(
-                    "P101-FD-004",
-                    "resource",
-                    node,
-                    fd=identity,
-                    target=str(node.get("target", "")),
-                )
-                findings.append(finding)
-                pending_exec[(pid, str(node.get("target", "")))].append(finding)
-        elif kind == "exec-fail":
-            key = (pid, str(node.get("target", "")))
-            cancelled = set(id(item) for item in pending_exec.pop(key, []))
-            findings[:] = [item for item in findings if id(item) not in cancelled]
-        elif kind == "resource":
-            resource_class = str(node.get("resource_class", ""))
-            resource_id = identity
-            key = (pid, resource_class, resource_id)
-            operation = node.get("operation")
-            if operation == "acquire":
-                if key in live_generic:
-                    add(
-                        "P101-RESOURCE-005",
-                        node,
-                        resource_class=resource_class,
-                        identity=resource_id,
-                        previous_node=live_generic[key].node["id"],
-                    )
-                else:
-                    live_generic[key] = _Live(node, int(node.get("size", 0)))
-                    released_generic.pop(key, None)
-            elif operation == "release":
-                acquired = live_generic.pop(key, None)
-                if acquired is not None:
-                    released_generic[key] = node
-                elif key in released_generic:
-                    add(
-                        "P101-RESOURCE-002",
-                        node,
-                        resource_class=resource_class,
-                        identity=resource_id,
-                        previous_node=released_generic[key]["id"],
-                    )
-                else:
-                    add(
-                        "P101-RESOURCE-003",
-                        node,
-                        resource_class=resource_class,
-                        identity=resource_id,
-                    )
-            elif operation in {"replace", "transfer"}:
-                acquired = live_generic.pop(key, None)
-                if acquired is None:
-                    add(
-                        "P101-RESOURCE-004",
-                        node,
-                        resource_class=resource_class,
-                        identity=resource_id,
-                    )
-                    continue
-                related = str(node.get("related_identity", ""))
-                if related not in {"", "-"}:
-                    replacement = (pid, resource_class, related)
-                    live_generic[replacement] = _Live(
-                        node, int(node.get("size", acquired.size))
-                    )
-                elif operation == "replace":
-                    live_generic[key] = _Live(
-                        node, int(node.get("size", acquired.size))
-                    )
-
-    for (pid, fd), acquired in live_fd.items():
-        add("P101-FD-001", acquired.node, pid=pid, fd=fd)
-    for (pid, ptr), acquired in live_alloc.items():
-        add(
-            "P101-ALLOC-001",
-            acquired.node,
-            pid=pid,
-            ptr=ptr,
-            size=acquired.size,
-        )
-    for (pid, resource_class, identity), acquired in live_generic.items():
-        add(
-            "P101-RESOURCE-001",
-            acquired.node,
-            pid=pid,
-            resource_class=resource_class,
-            identity=identity,
-            size=acquired.size,
-        )
+        if resource_class == "fd":
+            metrics["fd_live"] += 1 if phase == 0 else -1
+            metrics["fd_peak"] = max(metrics["fd_peak"], metrics["fd_live"])
+        elif resource_class == "allocation":
+            metrics["heap_live"] += 1 if phase == 0 else -1
+            metrics["bytes_live"] += size if phase == 0 else -size
+            metrics["heap_peak"] = max(metrics["heap_peak"], metrics["heap_live"])
+            metrics["bytes_peak"] = max(
+                metrics["bytes_peak"], metrics["bytes_live"]
+            )
 
     summary = {
         "records": len(_resource_nodes(model)),
@@ -656,7 +631,7 @@ def analyze_synchronization(model: dict[str, Any]) -> PolicyResult:
         "observed_sync_events": len(sync_nodes),
     }
     lines = [
-        "p101-sync-check: "
+        "p101 synchronization policy: "
         f"{len(findings)} finding{'s' if len(findings) != 1 else ''}, "
         f"{len(lock_edges)} lock-order edge{'s' if len(lock_edges) != 1 else ''}"
     ]
@@ -851,14 +826,105 @@ def analyze_trace(model: dict[str, Any]) -> tuple[PolicyResult, str]:
     )
 
 
-def analyze_model(model: dict[str, Any]) -> RuntimeAnalysis:
+def _sanitizer_source(lines: list[str], start: int) -> dict[str, Any]:
+    for line in lines[start : min(start + 12, len(lines))]:
+        match = _SOURCE_LOCATION.search(line)
+        if match is not None:
+            function = _SOURCE_FUNCTION.search(line)
+            return {
+                "file": match.group(1),
+                "line": int(match.group(2)),
+                "function": function.group(1) if function is not None else "?",
+            }
+    return {"file": "stderr.txt", "line": start + 1, "function": "?"}
+
+
+def analyze_sanitizers(path: Path) -> PolicyResult:
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError as error:
+        return PolicyResult(
+            "sanitizer",
+            [],
+            {"records": 0, "findings": 0},
+            "p101 sanitizer policy\nrecords=0 findings=0\n",
+            [f"cannot read captured stderr: {error}"],
+        )
+
+    findings: list[Finding] = []
+    counts: dict[str, int] = defaultdict(int)
+    for index, line in enumerate(lines):
+        for pattern, diagnostic_id, sanitizer in _SANITIZER_HEADERS:
+            match = pattern.search(line)
+            if match is None:
+                continue
+            source = _sanitizer_source(lines, index)
+            findings.append(
+                Finding(
+                    diagnostic_id,
+                    "sanitizer",
+                    SANITIZER_MESSAGES[diagnostic_id],
+                    f"stderr:{index + 1}",
+                    source,
+                    {
+                        "sanitizer": sanitizer,
+                        "detail": match.group(1).strip(),
+                        "stderr_line": index + 1,
+                    },
+                )
+            )
+            counts[sanitizer] += 1
+            break
+
+    summary = {
+        "records": len(lines),
+        "findings": len(findings),
+        "address": counts["address"],
+        "leak": counts["leak"],
+        "undefined": counts["undefined"],
+        "thread": counts["thread"],
+    }
+    text = [
+        "p101 sanitizer policy",
+        f"records={len(lines)} findings={len(findings)}",
+    ]
+    for finding in findings:
+        source = finding.source
+        text.append(
+            f"{finding.diagnostic_id}: {finding.message} "
+            f"[{source['file']}:{source['line']} in {source['function']}()] "
+            f"{finding.evidence['detail']}"
+        )
+    return PolicyResult(
+        "sanitizer", findings, summary, "\n".join(text) + "\n"
+    )
+
+
+def analyze_model(
+    model: dict[str, Any], sanitizer: PolicyResult | None = None
+) -> RuntimeAnalysis:
     ordered_model = {**model, "nodes": _causal_nodes(model)}
     trace, trace_tree = analyze_trace(ordered_model)
+    if sanitizer is None:
+        sanitizer = PolicyResult(
+            "sanitizer",
+            [],
+            {
+                "records": 0,
+                "findings": 0,
+                "address": 0,
+                "leak": 0,
+                "undefined": 0,
+                "thread": 0,
+            },
+            "p101 sanitizer policy\nrecords=0 findings=0\n",
+        )
     return RuntimeAnalysis(
         model=ordered_model,
         resource=analyze_resources(ordered_model),
         synchronization=analyze_synchronization(ordered_model),
         trace=trace,
+        sanitizer=sanitizer,
         trace_tree=trace_tree,
     )
 
@@ -924,7 +990,7 @@ def write_analysis(output: Path, analysis: RuntimeAnalysis) -> None:
     )
     (output / "concurrency-report.json").write_text(
         _json_document(
-            "p101-sync-check-findings-v1",
+            "p101-synchronization-policy-findings-v1",
             analysis.synchronization.findings,
             analysis.synchronization.summary,
         ),
@@ -936,12 +1002,24 @@ def write_analysis(output: Path, analysis: RuntimeAnalysis) -> None:
     (output / "trace-summary.txt").write_text(
         analysis.trace.text, encoding="utf-8"
     )
+    (output / "sanitizer-report.txt").write_text(
+        analysis.sanitizer.text, encoding="utf-8"
+    )
+    (output / "sanitizer-report.json").write_text(
+        _json_document(
+            "p101-sanitizer-findings-v1",
+            analysis.sanitizer.findings,
+            analysis.sanitizer.summary,
+        ),
+        encoding="utf-8",
+    )
     findings = analysis.findings
     correlated_summary = {
         "findings": len(findings),
         "resource_findings": len(analysis.resource.findings),
         "synchronization_findings": len(analysis.synchronization.findings),
         "trace_findings": len(analysis.trace.findings),
+        "sanitizer_findings": len(analysis.sanitizer.findings),
     }
     (output / "correlated-report.json").write_text(
         _json_document("p101-analysis-findings-v1", findings, correlated_summary),

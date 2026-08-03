@@ -122,8 +122,9 @@ class LessonCatalogTests(unittest.TestCase):
 
     def test_every_diagnostic_has_native_and_repair_evidence(self) -> None:
         coverage = p101_lessons.coverage_document(self.catalog)
-        self.assertEqual(coverage["summary"]["diagnostic_ids"], 86)
-        self.assertEqual(coverage["summary"]["protocol_pairs"], 86)
+        diagnostic_count = len(self.catalog.by_finding_id)
+        self.assertEqual(coverage["summary"]["diagnostic_ids"], diagnostic_count)
+        self.assertEqual(coverage["summary"]["protocol_pairs"], diagnostic_count)
         self.assertEqual(coverage["summary"]["uncovered_ids"], 0)
         self.assertEqual(
             set(coverage["summary"]["platform_contract"]),
@@ -168,7 +169,9 @@ class LessonCatalogTests(unittest.TestCase):
             self.assertEqual(
                 receipt["schema"], "p101-lesson-acceptance-receipt-v1"
             )
-            self.assertEqual(receipt["protocol_pairs"], 86)
+            self.assertEqual(
+                receipt["protocol_pairs"], len(self.catalog.by_finding_id)
+            )
             self.assertEqual(coverage["summary"]["uncovered_ids"], 0)
 
     def test_native_cases_run_in_parallel_and_keep_catalog_order(self) -> None:
@@ -286,7 +289,7 @@ class LessonCatalogTests(unittest.TestCase):
             self.assertEqual(missing, {"P101-NEW-999"})
             self.assertEqual(
                 stale_ignored,
-                {"P101-SYNC-000", "P101-UNKNOWN-000", "P101-WRAP-000"},
+                {"P101-WRAP-000"},
             )
 
     def test_annotation_preserves_evidence_and_adds_mapping_summary(self) -> None:
@@ -306,7 +309,7 @@ class LessonCatalogTests(unittest.TestCase):
         )
         self.assertEqual(
             annotated["lesson_catalog"]["unmapped_finding_ids"],
-            ["P101-NOT-CATALOGED-999"],
+            ["P101-NOT-CATALOGED-999", "P101-UNKNOWN-000"],
         )
         self.assertEqual(annotated["lesson_catalog"]["mapped_findings"], 1)
 
@@ -928,7 +931,7 @@ class LessonCatalogTests(unittest.TestCase):
                 0,
             )
             ignored = root / "ignored.log"
-            ignored.write_text("P101-UNKNOWN-000", encoding="utf-8")
+            ignored.write_text("P101-WRAP-000", encoding="utf-8")
             self.assertEqual(
                 p101_lessons.command_guide(
                     Namespace(**common, paths=[ignored], markdown=False)

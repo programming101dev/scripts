@@ -63,6 +63,33 @@ if os.environ.get("P101_FAKE_FINDING"):
     }]
 else:
     nodes = []
+lifecycle = {
+    "entries": ([{
+        "pid": 1,
+        "resource_class": "fd",
+        "identity": "3",
+        "size": 0,
+        "live": True,
+        "acquired": {
+            "context": 1,
+            "sequence": 1,
+            "source": {"file": "student.c", "line": 7, "function": "demo"},
+        },
+        "released": None,
+    }] if nodes else []),
+    "findings": ([{
+        "kind": "leak",
+        "pid": 1,
+        "resource_class": "fd",
+        "identity": "3",
+        "at": {
+            "context": 1,
+            "sequence": 1,
+            "source": {"file": "student.c", "line": 7, "function": "demo"},
+        },
+        "previous": None,
+    }] if nodes else []),
+}
 output.write_text(__import__("json").dumps({
     "schema": "p101-run-model-v1",
     "event_schema": "p101-tool-event-format-v5",
@@ -71,6 +98,7 @@ output.write_text(__import__("json").dumps({
     "summary": {"call_nodes": 0, "resource_nodes": len(nodes)},
     "nodes": nodes,
     "edges": [],
+    "lifecycle": lifecycle,
 }) + "\\n")
 
 print(f"{name} output")

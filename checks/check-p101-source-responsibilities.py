@@ -14,6 +14,7 @@ SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = SCRIPTS_ROOT.parent
 REGISTER = SCRIPTS_ROOT / "contracts" / "p101-source-responsibilities.json"
 SOURCE_SUFFIXES = {".c", ".h", ".cc", ".cpp", ".hpp"}
+CONFIG_ROOTS = ("libraries", "programs", "templates", "playgrounds")
 
 
 class ResponsibilityError(ValueError):
@@ -110,10 +111,49 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
                 f"facade responsibility grew: {relative}={count}>{maximum}"
             )
 
+    dependency_configs = 0
+    for root_name in CONFIG_ROOTS:
+        root = WORKSPACE / root_name
+        if not root.exists():
+            continue
+        for config in root.glob("*/config.cmake") if root_name != "playgrounds" else [root / "config.cmake"]:
+            if not config.is_file():
+                continue
+            repository = config.parent
+            config_text = config.read_text(encoding="utf-8")
+            source_text = "\n".join(
+                path.read_text(encoding="utf-8", errors="replace")
+                for path in source_files(
+                    [
+                        str((repository / child).relative_to(WORKSPACE))
+                        for child in ("src", "include")
+                        if (repository / child).exists()
+                    ]
+                )
+            )
+            declares_event = bool(
+                re.search(r"(?m)^[ \t]+p101_tool_event(?:[ \t]|$)", config_text)
+            )
+            uses_event = "p101_tool_event/" in source_text
+            uses_record = "p101_record/" in source_text
+            declares_record = bool(
+                re.search(r"(?m)^[ \t]+p101_record(?:[ \t]|$)", config_text)
+            )
+            if declares_event and not uses_event:
+                raise ResponsibilityError(
+                    f"{config.relative_to(WORKSPACE)} declares p101_tool_event without using its API"
+                )
+            if uses_record and not declares_record:
+                raise ResponsibilityError(
+                    f"{config.relative_to(WORKSPACE)} uses p101_record without declaring it"
+                )
+            dependency_configs += 1
+
     return {
         "owners": len(owners),
         "facades": len(facades),
         "consumer_files": len(checked_files),
+        "dependency_configs": dependency_configs,
     }
 
 
@@ -126,7 +166,8 @@ def main() -> int:
     print(
         "p101 source responsibilities: "
         f"{report['owners']} owners, {report['facades']} facade ratchets, "
-        f"{report['consumer_files']} consumer source files"
+        f"{report['consumer_files']} consumer source files, "
+        f"{report['dependency_configs']} dependency manifests"
     )
     return 0
 

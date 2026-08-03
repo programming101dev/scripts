@@ -56,6 +56,14 @@ This boundary is intentional: callers should prefer `p101` or
 tests, and CI. The C/C++ repositories still carry their own root build scripts
 because templates must remain usable after being copied outside this workspace.
 
+The `p101` dispatcher also exposes the governed advanced checks:
+
+- `p101 fault-campaign` derives every admitted synthetic mode and documented
+  errno/system code from the current host platform's wrapper contract;
+- `p101 interleaving-walk` explores bounded synchronization reorderings;
+- `p101 api-diff` compares public-API manifests;
+- `p101 fuzz [repository]` runs that repository's declared fuzz contract.
+
 ## **Prerequisites**
 
 To ensure you have all of the required tools installed, run:
@@ -446,6 +454,10 @@ multi-platform gate. In this repo it is kept byte-for-byte identical to
 `./check-after-update-all.sh` fail if the starter copy drifts from the live CI
 workflow. The workflow can be dispatched for all platforms or one target OS
 (`linux`, `macos`, or `freebsd`) when you only need to rerun a single leg.
+Every platform job publishes the governed check table and bounded failure logs
+to the GitHub job summary and emits one `::error` annotation per failed or
+blocked check. The complete evidence directory is still uploaded as an
+artifact, but ordinary diagnosis should not require downloading it.
 
 `scripts/CMakeLists.txt` is the source of truth for the shared C/C++ build
 pipeline. After editing it, run `./distribution/copy-cmake.sh` and commit the copied files in
@@ -682,7 +694,8 @@ positioned-short-read, and positioned-short-write scenarios cover every wrapper
 that accepts a `P101_ENV_FAULT_SHORT` action. The runner generates replay
 sequences, walks error/EINTR/timeout and short-I/O disruptions to exhaustion,
 validates the v5 event stream through
-`lib_tool_event`, rejects resource leaks with `p101-resource-tracker`, and
+`lib_tool_event`, rejects resource leaks with the canonical runtime resource
+policy, and
 shrinks any failure to a replayable minimal sequence. Its JSON receipt records
 the seed, compiler, platform, replay, and fault index.
 

@@ -67,7 +67,7 @@ done
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue((output / "capture").is_dir())
             self.assertTrue((output / "analysis").is_dir())
-            self.assertEqual(args_file.read_text(encoding="utf-8").splitlines()[0], "-C")
+            self.assertEqual(args_file.read_text(encoding="utf-8").splitlines()[0], "-o")
 
     def test_command_findings_are_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

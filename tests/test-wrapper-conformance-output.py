@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -99,6 +100,48 @@ class FaultOutcomeTests(unittest.TestCase):
             failures,
             ["lib_io:p101_read: direct errno:EINTR outcome failed"],
         )
+
+
+class CanonicalEventModelTests(unittest.TestCase):
+    def test_call_evidence_comes_from_canonical_model_nodes(self) -> None:
+        document = {
+            "schema": "p101-run-model-v1",
+            "nodes": [
+                {
+                    "domain": "call",
+                    "kind": "call-enter",
+                    "name": "p101_read",
+                    "arguments": "fd=3",
+                    "result": "-",
+                },
+                {
+                    "domain": "resource",
+                    "kind": "fd-open",
+                },
+                {
+                    "domain": "call",
+                    "kind": "call-exit",
+                    "name": "p101_read",
+                    "arguments": "-",
+                    "result": "4",
+                },
+            ],
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "run-model.json"
+            path.write_text(json.dumps(document), encoding="utf-8")
+            enters, exits, arguments, results = CHECKER.call_evidence(path)
+        self.assertEqual(enters["p101_read"], 1)
+        self.assertEqual(exits["p101_read"], 1)
+        self.assertEqual(arguments, {"p101_read"})
+        self.assertEqual(results, {"p101_read"})
+
+    def test_unsupported_model_schema_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "run-model.json"
+            path.write_text('{"schema":"old","nodes":[]}', encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "unsupported schema"):
+                CHECKER.call_evidence(path)
 
 
 if __name__ == "__main__":

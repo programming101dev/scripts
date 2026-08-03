@@ -15,8 +15,8 @@ Every tool should make its boundary clear:
 - which files or platforms are outside its model.
 
 This matters most for wrapper-based tools. If a program calls `malloc` directly,
-`p101-resource-tracker` cannot see the allocation. If a dependency opens a file
-without a p101 wrapper, the descriptor is outside the observed event stream.
+the p101 resource policy cannot see the allocation. If a dependency opens a
+file without a p101 wrapper, the descriptor is outside the observed event stream.
 That is not a bug in the report; it is a boundary that must stay visible.
 
 ## 2. Separate mechanism from policy

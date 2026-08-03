@@ -3,9 +3,9 @@
 
 The checked API and unit-test manifests admit the wrapper surface and fixtures.
 Clang-derived instrumentation supplies fault/resource capabilities. Each
-library test suite is replayed with call logging enabled, and p101-trace (which
-uses lib_tool_event) normalizes the protocol before this checker evaluates
-per-wrapper runtime obligations.
+library test suite is replayed with call logging enabled, and the canonical
+lib_tool_event model command validates and normalizes the protocol before this
+checker evaluates per-wrapper runtime obligations.
 """
 
 from __future__ import annotations
@@ -68,28 +68,34 @@ def find_program(repo: Path, name: str) -> Path:
     raise RuntimeError(f"cannot find a built {name}; build {repo.name} first")
 
 
-def normalize_calls(trace: Path, source: Path, output: Path) -> None:
+def normalize_events(
+    event_model: Path, resources: Path, calls: Path, output: Path
+) -> None:
     result = subprocess.run(
-        [str(trace), "-f", str(source)],
-        stdout=output.open("w", encoding="utf-8"),
+        [
+            str(event_model),
+            "-r",
+            str(resources),
+            "-c",
+            str(calls),
+            "-o",
+            str(output),
+        ],
+        stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
         check=False,
     )
     if result.returncode < 0:
         raise RuntimeError(
-            f"p101-trace terminated by signal {-result.returncode} while "
-            f"normalizing {source}; rebuild {trace.parent.parent.name} "
+            f"p101-event-model terminated by signal {-result.returncode} while "
+            f"normalizing {calls}; rebuild {event_model.parent.parent.name} "
             "against the current p101 libraries"
         )
-    # Test processes do not use the capture conductor, so producer-completion
-    # and whole-stack checks may return 2. Parsing itself must still be clean.
-    diagnostic = result.stderr
-    if result.returncode != 0 and (
-        "0 malformed records, 0 unsupported-version records" not in diagnostic
-    ):
+    if result.returncode != 0:
         raise RuntimeError(
-            f"p101-trace rejected {source}: {diagnostic.strip()}"
+            f"p101-event-model rejected the test event streams: "
+            f"{result.stderr.strip()}"
         )
 
 
@@ -98,21 +104,30 @@ def call_evidence(path: Path) -> tuple[Counter[str], Counter[str], set[str], set
     exits: Counter[str] = Counter()
     arguments: set[str] = set()
     results: set[str] = set()
-    with path.open(encoding="utf-8") as stream:
-        for line in stream:
-            fields = line.rstrip("\n").split("\t")
-            if len(fields) != 11:
-                raise RuntimeError(f"malformed normalized call record: {line!r}")
-            event = fields[4]
-            name = fields[5]
-            if event == "ENTER":
-                enters[name] += 1
-                if fields[7] != "-":
-                    arguments.add(name)
-            elif event == "EXIT":
-                exits[name] += 1
-                if fields[8] != "-":
-                    results.add(name)
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"cannot read normalized event model: {error}") from error
+    if document.get("schema") != "p101-run-model-v1":
+        raise RuntimeError("normalized event model has an unsupported schema")
+    nodes = document.get("nodes")
+    if not isinstance(nodes, list):
+        raise RuntimeError("normalized event model has no node list")
+    for node in nodes:
+        if not isinstance(node, dict) or node.get("domain") != "call":
+            continue
+        name = node.get("name")
+        kind = node.get("kind")
+        if not isinstance(name, str):
+            raise RuntimeError("normalized call node has no name")
+        if kind == "call-enter":
+            enters[name] += 1
+            if node.get("arguments") not in {None, "", "-"}:
+                arguments.add(name)
+        elif kind == "call-exit":
+            exits[name] += 1
+            if node.get("result") not in {None, "", "-"}:
+                results.add(name)
     return enters, exits, arguments, results
 
 
@@ -256,7 +271,9 @@ def main() -> int:
         selected = {name: selected[name] for name in sorted(requested)}
 
     args.output.mkdir(parents=True, exist_ok=True)
-    trace = find_program(WORKSPACE / "programs" / "p101-trace", "p101-trace")
+    event_model = find_program(
+        WORKSPACE / "libraries" / "lib_tool_event", "p101-event-model"
+    )
     instrumentation_receipt = args.output / "instrumentation.json"
     instrumentation = subprocess.run(
         [
@@ -324,7 +341,7 @@ def main() -> int:
             )
         call_log = args.output / f"{library}.calls.log"
         resource_log = args.output / f"{library}.resources.log"
-        normalized = args.output / f"{library}.calls.tsv"
+        normalized = args.output / f"{library}.run-model.json"
         outcome_log = args.output / f"{library}.outcomes.tsv"
         call_log.unlink(missing_ok=True)
         resource_log.unlink(missing_ok=True)
@@ -377,7 +394,7 @@ def main() -> int:
             failures.append(f"{library}: tests emitted no call log")
             continue
         try:
-            normalize_calls(trace, call_log, normalized)
+            normalize_events(event_model, resource_log, call_log, normalized)
             enters, exits, arguments, results = call_evidence(normalized)
         except RuntimeError as exc:
             failures.append(f"{library}: {exc}")

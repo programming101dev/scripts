@@ -35,6 +35,7 @@ jobs:
       - name: Detect compilers
         run: cd scripts && ./p101-workspace compilers
       - name: Update all repos
+        id: update
         run: |
           cd scripts
           export P101_QUIET=1
@@ -42,7 +43,14 @@ jobs:
           printf 'clang++\n' > ci_cxx_compilers.txt
           ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt
       - name: Check after update-all
+        id: check
         run: cd scripts && P101_QUIET=1 ./check-after-update-all.sh -c clang -x clang++ -o ci-output
+      - name: Publish CI summary
+        if: ${{ always() }}
+        env:
+          UPDATE_OUTCOME: ${{ steps.update.outcome }}
+          CHECK_OUTCOME: ${{ steps.check.outcome }}
+        run: cd scripts && ./github-actions/publish-ci-summary.sh ci-output "$RUNNER_OS" "$UPDATE_OUTCOME" "$CHECK_OUTCOME"
       - name: Publish CI evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v6
@@ -65,6 +73,7 @@ jobs:
       - name: Detect compilers
         run: cd scripts && ./p101-workspace compilers
       - name: Update all repos
+        id: update
         run: |
           cd scripts
           export P101_QUIET=1
@@ -72,7 +81,14 @@ jobs:
           printf 'clang++\n' > ci_cxx_compilers.txt
           ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt
       - name: Check after update-all
+        id: check
         run: cd scripts && P101_QUIET=1 ./check-after-update-all.sh -c clang -x clang++ -o ci-output
+      - name: Publish CI summary
+        if: ${{ always() }}
+        env:
+          UPDATE_OUTCOME: ${{ steps.update.outcome }}
+          CHECK_OUTCOME: ${{ steps.check.outcome }}
+        run: cd scripts && ./github-actions/publish-ci-summary.sh ci-output "$RUNNER_OS" "$UPDATE_OUTCOME" "$CHECK_OUTCOME"
       - name: Publish CI evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v6
@@ -89,6 +105,7 @@ jobs:
         with:
           path: scripts
       - name: Check in FreeBSD VM
+        id: freebsd-check
         uses: vmactions/freebsd-vm@v1
         with:
           usesh: true
@@ -121,6 +138,11 @@ jobs:
             fi
             printf '%s\n' "$status" > ci-output/freebsd-exit-code
             exit 0
+      - name: Publish CI summary
+        if: ${{ always() }}
+        env:
+          VM_OUTCOME: ${{ steps.freebsd-check.outcome }}
+        run: cd scripts && ./github-actions/publish-ci-summary.sh ci-output FreeBSD not-run "$VM_OUTCOME"
       - name: Enforce FreeBSD result
         run: |
           if [ ! -f scripts/ci-output/freebsd-exit-code ]; then
@@ -153,9 +175,20 @@ jobs:
           pattern: instrumentation-*
           path: instrumentation-receipts
       - name: Verify supported-platform instrumentation coverage
+        id: instrumentation
         run: >-
           python3 scripts/checks/check-p101-instrumentation.py
           --merge-receipts instrumentation-receipts/*/instrumentation-receipt.json
           --require-platform Darwin
           --require-platform Linux
           --require-platform FreeBSD
+      - name: Publish CI summary
+        if: ${{ always() }}
+        env:
+          CHECK_OUTCOME: ${{ steps.instrumentation.outcome }}
+        run: >-
+          scripts/github-actions/publish-ci-summary.sh
+          instrumentation-receipts
+          supported-platform-matrix
+          not-run
+          "$CHECK_OUTCOME"

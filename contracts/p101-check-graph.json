@@ -21,6 +21,7 @@
       "retired-repository-cleanup",
       "interactive-build-retry",
       "github-workflow-drift",
+      "github-summary-tests",
       "cmake-distribution",
       "script-distribution",
       "playground-script-distribution",
@@ -29,6 +30,10 @@
       "capture-composition",
       "causal-model",
       "runtime-policy",
+      "fault-campaign-tests",
+      "interleaving-walk-tests",
+      "api-diff-tests",
+      "fuzz-dispatch-tests",
       "lesson-tests",
       "lesson-completeness",
       "external-facts-manifest",
@@ -46,6 +51,7 @@
       "library-audit",
       "instrumentation",
       "wrapper-conformance-output-tests",
+      "native-wrapper-parity",
       "wrapper-conformance",
       "wrapper-lifecycle-driver-tests",
       "wrapper-lifecycles",
@@ -189,6 +195,16 @@
       "guarantee": "Distributed GitHub Actions workflows match the scripts-owned source."
     },
     {
+      "id": "github-summary-tests",
+      "title": "GitHub Actions inline failure reporting",
+      "group": "distribution",
+      "required": true,
+      "command": ["./tests/test-github-actions-summary.sh"],
+      "depends_on": ["github-workflow-drift"],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "CI failures emit GitHub annotations and publish bounded diagnostics in the job summary without requiring artifact downloads."
+    },
+    {
       "id": "cmake-distribution",
       "title": "shared CMakeLists distribution drift",
       "group": "distribution",
@@ -267,6 +283,46 @@
       "depends_on": ["capture-composition"],
       "resources": {"writes": ["/tmp"], "units": {}},
       "guarantee": "Shared runtime policy remains deterministic over admitted tool outputs."
+    },
+    {
+      "id": "fault-campaign-tests",
+      "title": "contract-derived fault campaign tests",
+      "group": "receipts",
+      "required": true,
+      "command": ["./tests/test-p101-fault-campaign.py"],
+      "depends_on": ["runtime-policy", "wrapper-fault-semantics"],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "Platform fault campaigns enumerate only admitted wrapper faults and preserve bounded dry-run receipts."
+    },
+    {
+      "id": "interleaving-walk-tests",
+      "title": "bounded synchronization interleaving tests",
+      "group": "receipts",
+      "required": true,
+      "command": ["./tests/test-p101-interleaving-walk.py"],
+      "depends_on": ["runtime-policy"],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "The interleaving explorer preserves admitted order constraints and exposes prefix synchronization counterexamples."
+    },
+    {
+      "id": "api-diff-tests",
+      "title": "public API compatibility snapshot tests",
+      "group": "architecture",
+      "required": true,
+      "command": ["./tests/test-p101-api-diff.py"],
+      "depends_on": ["functional-library-split"],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "Manifest snapshots reject removals, library moves, header moves, and platform-support loss."
+    },
+    {
+      "id": "fuzz-dispatch-tests",
+      "title": "first-class fuzz dispatcher tests",
+      "group": "repository-tests",
+      "required": true,
+      "command": ["./tests/test-p101-fuzz.py"],
+      "depends_on": ["test-inventory"],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "The p101 fuzz command enters the admitted repository, preserves its arguments, and refuses missing fuzz contracts."
     },
     {
       "id": "lesson-tests",
@@ -456,12 +512,22 @@
       "guarantee": "Wrapper test failures print complete diagnostics, malformed and duplicate outcome records are rejected, and missing, unexpected, or failed symbolic pairs are caught."
     },
     {
+      "id": "native-wrapper-parity",
+      "title": "deterministic native-wrapper parity fixtures",
+      "group": "library-audit",
+      "required": true,
+      "command": ["./checks/check-native-wrapper-parity.py"],
+      "depends_on": ["wrapper-unit-tests"],
+      "resources": {"writes": [], "units": {}},
+      "guarantee": "Admitted deterministic wrappers are compared directly with their native functions in compiled unit-test assertions."
+    },
+    {
       "id": "wrapper-conformance",
       "title": "p101 executable wrapper conformance",
       "group": "library-audit",
       "required": true,
       "command": ["./checks/check-wrapper-conformance.py", "-o", "{out}/wrapper-conformance"],
-      "depends_on": ["wrapper-conformance-output-tests"],
+      "depends_on": ["wrapper-conformance-output-tests", "native-wrapper-parity"],
       "resources": {"writes": ["{out}/wrapper-conformance"], "units": {"compiler": 1}},
       "guarantee": "Every public API is invoked with balanced tracing, and every expected platform fault has one direct passing symbolic outcome receipt."
     },
@@ -512,7 +578,7 @@
       "required": true,
       "cacheable": false,
       "command": ["./checks/check-repository-tests.sh", "-c", "{cc}", "-x", "{cxx}", "-o", "{out}/repository-tests", "--fuzz-secs", "{fuzz_secs}"],
-      "depends_on": ["cmake-regression", "tool-audit", "wrapper-lifecycles", "repository-tests-runner-tests"],
+      "depends_on": ["cmake-regression", "tool-audit", "wrapper-lifecycles", "repository-tests-runner-tests", "fuzz-dispatch-tests", "fault-campaign-tests", "interleaving-walk-tests", "api-diff-tests"],
       "resources": {"writes": ["{out}/repository-tests"], "units": {"compiler": 1}},
       "guarantee": "Every declared repository unit suite and available bounded fuzz target executes."
     },

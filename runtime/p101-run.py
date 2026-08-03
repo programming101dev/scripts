@@ -54,7 +54,7 @@ def main(argv: list[str]) -> int:
     if args.observe_tool is None:
         observe_command = [str(script_dir / "p101"), "observe"]
     else:
-        observe_command = [str(args.observe_tool), "-C"]
+        observe_command = [str(args.observe_tool)]
     if args.log_arguments:
         observe_command.append("-A")
     if args.log_results:

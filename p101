@@ -22,13 +22,15 @@ Commands:
   trace         Render the trace view of a p101 analysis
   resource      Render the resource view of a p101 analysis
   walk          Run p101-error-path-walk
+  fault-campaign Run contract-derived fault modes for selected wrappers
+  interleaving-walk Explore bounded synchronization-event reorderings
+  api-diff      Snapshot or compare governed public APIs
+  fuzz          Run a repository's governed libFuzzer target
   audit         Run p101-wrapper-audit
   module-map    Run p101-module-map
   sync-check    Render the synchronization view of a p101 analysis
-  report-events Run the standalone event-log reporter (parity/debugging)
   mutation-check Run p101-mutation-check
   doctor        Run source/module preflight through p101-doctor
-  doctor-full   Run the compatibility all-in-one doctor workflow
   playground    Run p101-tool-playground
   check         Check an analysis with rule packs, or run the full workflow
   corpus        Run the p101-tool-playground lesson corpus
@@ -116,7 +118,6 @@ case "$command_name" in
     usage
     ;;
   observe)
-    command_args=(-C "${command_args[@]}")
     exec_found p101-observe P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe
     ;;
   run)
@@ -155,6 +156,38 @@ case "$command_name" in
     command_args=(-U "$PWD/runtime/p101-run.py" -O "$observe_path" -Y "$PWD/runtime/p101-analyze.py" -B "$model_path" "${command_args[@]}")
     exec_found p101-error-path-walk P101_ERROR_PATH_WALK "$(last_build_tool ../programs/p101-error-path-walk p101-error-path-walk)" ../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk ../programs/p101-error-path-walk/build-clang/p101-error-path-walk p101-error-path-walk
     ;;
+  fault-campaign)
+    exec ./runtime/p101-fault-campaign.py "$@"
+    ;;
+  interleaving-walk)
+    exec ./runtime/p101-interleaving-walk.py "$@"
+    ;;
+  api-diff)
+    exec ./runtime/p101-api-diff.py "$@"
+    ;;
+  fuzz)
+    if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+      cat <<'FUZZ_USAGE'
+Usage: p101 fuzz [repository] [fuzz.sh arguments...]
+
+Run the executable fuzz.sh owned by repository (default: the current
+directory). The dispatcher does not invent a fallback target: a repository
+without an executable fuzz.sh has no admitted fuzz contract.
+FUZZ_USAGE
+      exit 0
+    fi
+    fuzz_repo="$dispatch_cwd"
+    if [ "$#" -gt 0 ] && [ -d "$1" ]; then
+      fuzz_repo="$(CDPATH='' cd -- "$1" && pwd -P)"
+      shift
+    fi
+    [ -x "$fuzz_repo/fuzz.sh" ] || {
+      echo "p101: $fuzz_repo has no executable fuzz.sh" >&2
+      exit 2
+    }
+    CDPATH='' cd -- "$fuzz_repo"
+    exec ./fuzz.sh "$@"
+    ;;
   audit|wrapper-audit)
     exec_found p101-wrapper-audit P101_WRAPPER_AUDIT ../programs/p101-wrapper-audit/p101-wrapper-audit p101-wrapper-audit
     ;;
@@ -164,26 +197,10 @@ case "$command_name" in
   sync|sync-check)
     exec ./runtime/p101-view.py sync "$@"
     ;;
-  report-events)
-    exec_found p101-report P101_REPORT "$(last_build_tool ../programs/p101-report p101-report)" ../programs/p101-report/build-clang-22/p101-report ../programs/p101-report/build-clang/p101-report p101-report
-    ;;
   mutation|mutation-check)
     exec_found p101-mutation-check P101_MUTATION_CHECK ../programs/p101-mutation-check/p101-mutation-check p101-mutation-check
     ;;
   doctor)
-    command_args=(-S "${command_args[@]}")
-    exec_found p101-doctor P101_DOCTOR "$(last_build_tool ../programs/p101-doctor p101-doctor)" ../programs/p101-doctor/build-clang-22/p101-doctor ../programs/p101-doctor/build-clang/p101-doctor p101-doctor
-    ;;
-  doctor-full)
-    observe_path="$(find_tool P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe)" || {
-      echo "p101: p101-observe not found; build it first or set P101_OBSERVE" >&2
-      exit 2
-    }
-    model_path="$(find_tool P101_EVENT_MODEL "$(last_build_tool ../libraries/lib_tool_event p101-event-model)" ../libraries/lib_tool_event/build-clang-22/p101-event-model ../libraries/lib_tool_event/build-clang/p101-event-model p101-event-model)" || {
-      echo "p101: p101-event-model not found; build it first or set P101_EVENT_MODEL" >&2
-      exit 2
-    }
-    command_args=(-U "$PWD/runtime/p101-run.py" -O "$observe_path" -Y "$PWD/runtime/p101-analyze.py" -B "$model_path" "${command_args[@]}")
     exec_found p101-doctor P101_DOCTOR "$(last_build_tool ../programs/p101-doctor p101-doctor)" ../programs/p101-doctor/build-clang-22/p101-doctor ../programs/p101-doctor/build-clang/p101-doctor p101-doctor
     ;;
   playground)

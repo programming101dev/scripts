@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# Publish the p101 acceptance receipt where GitHub users can see it without
+# downloading the CI evidence artifact.
+
+set -euo pipefail
+
+out_dir="${1:-ci-output}"
+platform="${2:-${RUNNER_OS:-unknown}}"
+update_outcome="${3:-unknown}"
+check_outcome="${4:-unknown}"
+step_summary="${GITHUB_STEP_SUMMARY:-}"
+local_summary="$out_dir/github-step-summary.md"
+graph_summary="$out_dir/summary.md"
+failure_limit=240
+
+mkdir -p "$out_dir"
+
+trim() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+escape_annotation_data() {
+  local value="$1"
+  value="${value//%/%25}"
+  value="${value//$'\r'/%0D}"
+  value="${value//$'\n'/%0A}"
+  printf '%s' "$value"
+}
+
+escape_annotation_property() {
+  local value
+  value="$(escape_annotation_data "$1")"
+  value="${value//:/%3A}"
+  value="${value//,/%2C}"
+  printf '%s' "$value"
+}
+
+annotate_error() {
+  local title="$1"
+  local detail="$2"
+  printf '::error title=%s::%s\n' \
+    "$(escape_annotation_property "$title")" \
+    "$(escape_annotation_data "$detail")"
+}
+
+first_diagnostic() {
+  local log="$1"
+  awk '
+    {
+      line = $0
+      sub(/^[[:space:]]+/, "", line)
+      sub(/[[:space:]]+$/, "", line)
+      if(line != "" && line !~ /^\$ / && line !~ /^# retry /) {
+        print line
+        exit
+      }
+    }
+  ' "$log"
+}
+
+append_failure_log() {
+  local title="$1"
+  local log="$2"
+  local lines
+
+  {
+    printf '\n<details>\n<summary>%s</summary>\n\n' "$title"
+    printf '```text\n'
+    lines="$(wc -l < "$log" | tr -d '[:space:]')"
+    if [ "$lines" -le "$failure_limit" ]; then
+      sed -n "1,${failure_limit}p" "$log"
+    else
+      sed -n '1,120p' "$log"
+      printf '\n... %d line(s) omitted; the complete log remains in the job console and CI artifact ...\n\n' \
+        "$((lines - failure_limit))"
+      tail -n 120 "$log"
+    fi
+    printf '```\n\n</details>\n'
+  } >> "$local_summary"
+}
+
+if [ -f "$out_dir/freebsd-exit-code" ]; then
+  freebsd_status="$(tr -d '[:space:]' < "$out_dir/freebsd-exit-code")"
+  if [ -n "$freebsd_status" ] && [ "$freebsd_status" -ne 0 ]; then
+    check_outcome="failure"
+  fi
+fi
+
+{
+  printf '# p101 CI result — %s\n\n' "$platform"
+  printf '| Phase | Outcome |\n'
+  printf '| --- | --- |\n'
+  printf '| Repository update/build | %s |\n' "$update_outcome"
+  printf '| Governed acceptance graph | %s |\n' "$check_outcome"
+  printf '\n'
+  if [ -f "$graph_summary" ]; then
+    cat "$graph_summary"
+  else
+    printf 'The governed acceptance graph did not produce a summary. '
+    printf 'Inspect the failed update/build step shown in this job.\n'
+  fi
+} > "$local_summary"
+
+reported_graph_failure=0
+if [ -f "$graph_summary" ]; then
+  while IFS= read -r row; do
+    title="$(trim "$(printf '%s\n' "$row" | cut -d '|' -f 3)")"
+    log_relative="$(printf '%s\n' "$row" \
+      | sed -n 's#.*\[log\](\./\(logs/[^)]*\.log\)).*#\1#p')"
+    log="$out_dir/$log_relative"
+    detail="The governed check failed."
+    if [ -n "$log_relative" ] && [ -f "$log" ]; then
+      diagnostic="$(first_diagnostic "$log")"
+      if [ -n "$diagnostic" ]; then
+        detail="$diagnostic"
+      fi
+      append_failure_log "$title" "$log"
+    fi
+    annotate_error "p101: $title" "$detail"
+    reported_graph_failure=1
+  done < <(grep -E '^\| (TOOL-ERROR|BLOCKED) \|' "$graph_summary" || true)
+fi
+
+case "$update_outcome" in
+  failure|cancelled)
+    annotate_error "p101: repository update/build" \
+      "The repository update or build phase failed. The complete diagnostic is in the failed GitHub Actions step."
+    ;;
+esac
+
+case "$check_outcome" in
+  failure|cancelled)
+    if [ "$reported_graph_failure" -eq 0 ]; then
+      annotate_error "p101: governed acceptance graph" \
+        "The acceptance phase failed before it produced a governed failure receipt. Inspect the failed GitHub Actions step."
+    fi
+    ;;
+esac
+
+if [ -n "$step_summary" ]; then
+  cat "$local_summary" >> "$step_summary"
+fi
+
+printf 'GitHub Actions summary: %s\n' "$local_summary"

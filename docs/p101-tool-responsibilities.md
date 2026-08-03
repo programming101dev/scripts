@@ -6,9 +6,9 @@ tools with explicit judgments.
 
 ## Source evidence
 
-- `p101-c-facts` acquires Clang-derived C/C++ facts. It is the fact-producing
-  interface; it does not decide whether a project is well structured.
-- `lib_c_facts` parses and exposes the fact snapshot.
+- `lib_c_facts` owns native Clang-derived C/C++ acquisition and the reusable
+  fact snapshot format. C tools call its analysis API directly; `p101-c-facts`
+  is only its command-line snapshot frontend.
 - `p101-wrapper-audit` owns the portable wrapper boundary: missed wrappers,
   unresolved external calls, indirect-call boundaries, wrapper form, and the
   opt-in platform-header rule pack.
@@ -26,23 +26,34 @@ owns the larger quality, runtime, fault-walk, HTML, and bundle workflow.
 
 - `p101 observe` captures stdout, stderr, resource events, call events, the
   manifest, and the run receipt. Capture does not make policy judgments.
-- `lib_tool_event` owns event protocol v5, parsing, and construction of the
-  policy-free `p101-run-model-v1`. Its `p101-event-model` frontend is the only
-  event-log parser launched by `p101 analyze`.
-- `p101_runtime.py` owns the resource, synchronization, and trace policy
-  modules over that model. It also renders their text/JSON views and the
-  correlated report. Policies share facts but retain separate diagnostic IDs,
-  summaries, and exit statuses.
+- `lib_tool_event` owns event protocol v5, parsing, lifecycle state, and
+  construction of the policy-free `p101-run-model-v1`. Its
+  `p101-event-model` frontend is the only event-log parser launched by
+  `p101 analyze`; the model's lifecycle entries and findings are produced in C.
+- `p101_runtime.py` currently owns presentation policy over that C model:
+  diagnostic-ID mapping, synchronization and trace judgments, text/JSON views,
+  and the correlated report. It does not reconstruct resource lifecycle state.
+  This Python layer remains orchestration/policy debt, not a competing parser
+  or lifecycle implementation.
 - `p101 report`, `p101 resource`, `p101 sync-check`, and `p101 trace` are views
   over an analysis directory. They do not parse event logs again.
-- The standalone `p101-resource-tracker`, `p101-sync-check`, `p101-trace`, and
-  `p101-report` binaries remain differential/reference implementations while
-  migration receipts are accumulated. They are available through the explicit
-  `p101 report-events` escape hatch, not the ordinary workflow.
+- Resource, synchronization, trace, and correlated-report policy is owned by
+  the canonical `p101 analyze`/`p101 view` runtime. The former standalone
+  renderers are retired and are not admitted workspace dependencies.
 - `p101-error-path-walk` owns repeated fault campaigns. Every baseline and
   injected case goes through the same `p101 run` capture/model/policy pipeline;
   the walker consumes the normalized resource-policy summary and never launches
   the four standalone analyzers.
+- `p101 fault-campaign` expands the wrapper fault contract into platform- and
+  mode-specific error-path-walk cases. It uses the authoritative
+  wrapper-to-native mapping and resolves non-errno symbolic codes with the
+  current platform compiler; a campaign cannot claim another host platform.
+- `p101 interleaving-walk` owns bounded synchronization-event reorderings. It
+  preserves recorded per-thread and explicit happens-before edges; it is not a
+  general scheduler model checker.
+- `p101 api-diff` owns governed public-API snapshot comparison.
+- `p101 fuzz` delegates to a repository's declared `fuzz.sh`; absence is
+  explicit tool trouble rather than a silently skipped check.
 
 ## Teaching policy
 
@@ -58,6 +69,10 @@ new unmapped diagnostic fail the workspace acceptance gate.
 
 ## Shared process mechanism
 
+`p101_record` owns protocol-neutral TSV field handling and JSON string
+encoding. Tools may decide their own JSON shape, but do not implement their own
+escaping loops.
+
 `lib_util` owns child launch, output redirection, `exec`, and `wait` through
 `p101_tool_run_capture`. Individual tools retain only their child-environment
 setup policy. This keeps process plumbing shared without putting tool-specific
@@ -68,10 +83,9 @@ environment variables or exit-status judgments in a library.
 The consolidation shares facts, not policy. A single model builder removes
 duplicate parsing and lifecycle state, while three small policy modules keep
 resource, synchronization, and trace judgments independently testable. The
-standalone analyzers are retained temporarily for differential debugging;
-ordinary commands no longer depend on them. This preserves the useful teaching
-boundaries without paying for seven processes and several competing models per
-run.
+standalone analyzers are retired. Differential regression checks compare
+canonical policy outputs and native-wrapper fixtures without retaining
+competing runtime implementations.
 
 `p101 observe` and `p101 analyze` are deliberately separate. `p101 run` is only
 their convenience composition, so one immutable capture can be replayed against
@@ -87,7 +101,6 @@ libraries/lib_util/test.sh
 programs/p101-wrapper-audit/test.sh
 programs/p101-error-contract/test.sh
 programs/p101-module-map/test.sh
-programs/p101-report/test.sh
 programs/p101-observe/test.sh
 programs/p101-doctor/test.sh
 scripts/tests/test-p101-runtime.py

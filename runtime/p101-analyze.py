@@ -31,7 +31,13 @@ from p101_lessons import (
     catalog_digest,
     load_catalog,
 )
-from p101_runtime import RuntimeModelError, analyze_model, load_model, write_analysis
+from p101_runtime import (
+    RuntimeModelError,
+    analyze_model,
+    analyze_sanitizers,
+    load_model,
+    write_analysis,
+)
 
 EXIT_CLEAN = 0
 EXIT_FINDINGS = 1
@@ -580,7 +586,7 @@ def main(argv: list[str] | None = None) -> int:
     event_snapshot = tempfile.TemporaryDirectory(prefix="p101-analysis-input.")
     event_snapshot_dir = Path(event_snapshot.name)
     snapshot_paths: dict[str, Path] = {}
-    for role in ("resources", "calls"):
+    for role in ("stderr", "resources", "calls"):
         source = capture_dir / CAPTURE_FILES[role]
         destination = event_snapshot_dir / CAPTURE_FILES[role]
         snapshot_paths[role] = destination
@@ -651,7 +657,8 @@ def main(argv: list[str] | None = None) -> int:
     if model_result.status == EXIT_CLEAN:
         try:
             runtime_analysis = analyze_model(
-                load_model(output_dir / OUTPUT_FILES["run_model"])
+                load_model(output_dir / OUTPUT_FILES["run_model"]),
+                analyze_sanitizers(snapshot_paths["stderr"]),
             )
             write_analysis(output_dir, runtime_analysis)
             if lesson_catalog is not None:
@@ -664,6 +671,9 @@ def main(argv: list[str] | None = None) -> int:
                         "sync_policy", runtime_analysis.synchronization.status
                     ),
                     RunResult("trace_policy", runtime_analysis.trace.status),
+                    RunResult(
+                        "sanitizer_policy", runtime_analysis.sanitizer.status
+                    ),
                     RunResult("report_renderer", runtime_analysis.status),
                 ]
             )
@@ -677,6 +687,7 @@ def main(argv: list[str] | None = None) -> int:
                     RunResult("resource_policy", EXIT_TROUBLE),
                     RunResult("sync_policy", EXIT_TROUBLE),
                     RunResult("trace_policy", EXIT_TROUBLE),
+                    RunResult("sanitizer_policy", EXIT_TROUBLE),
                     RunResult("report_renderer", EXIT_TROUBLE),
                 ]
             )
@@ -686,6 +697,7 @@ def main(argv: list[str] | None = None) -> int:
                 RunResult("resource_policy", EXIT_TROUBLE),
                 RunResult("sync_policy", EXIT_TROUBLE),
                 RunResult("trace_policy", EXIT_TROUBLE),
+                RunResult("sanitizer_policy", EXIT_TROUBLE),
                 RunResult("report_renderer", EXIT_TROUBLE),
             ]
         )
