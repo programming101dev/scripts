@@ -163,6 +163,8 @@ repair_macos_clang_driver()
     > "$out_dir/compiler-smoke.repaired-cxx.log" 2>&1 || return 1
 
   mkdir -p "$toolchain"
+  rm -f "$toolchain/clang" "$toolchain/clang++" \
+    "$toolchain/clang-extdef-mapping"
   cat > "$toolchain/clang" <<'EOF'
 #!/usr/bin/env bash
 exec "${P101_PREFLIGHT_REAL_CC:?}" --no-default-config \
