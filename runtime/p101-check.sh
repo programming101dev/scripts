@@ -165,6 +165,10 @@ project_dir="$(CDPATH='' cd -P "$project_dir" && pwd -P)" || {
   echo "p101 check: project directory does not exist: $project_dir" >&2
   exit 2
 }
+# p101 check becomes the boundary for its nested capture and fault-walk tools.
+# Relative command paths belong to the selected project, not to the directory
+# from which the top-level dispatcher found this script.
+export P101_DISPATCH_CWD="$project_dir"
 if [ -z "$out_dir" ]; then
   out_dir="$(mktemp -d "$project_dir/p101-check.XXXXXX")"
 fi
