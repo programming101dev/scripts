@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -30,6 +31,26 @@ def run(*arguments: str | Path, cwd: Path | None = None) -> subprocess.Completed
     )
 
 
+def run_with_env(
+    environment: dict[str, str],
+    *arguments: str | Path,
+    cwd: Path | None = None,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(argument) for argument in arguments],
+        cwd=cwd,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+        env={
+            "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin",
+            **environment,
+        },
+    )
+
+
 def git(repository: Path, *arguments: str) -> str:
     completed = run("git", "-C", repository, *arguments)
     if completed.returncode != 0:
@@ -38,6 +59,83 @@ def git(repository: Path, *arguments: str) -> str:
 
 
 class RepositoryLockTests(unittest.TestCase):
+    def test_ephemeral_lock_admits_clean_ahead_commits(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="p101-pre-push-lock.") as temporary:
+            root = Path(temporary)
+            scripts = root / "scripts"
+            workspace = scripts / "workspace"
+            libraries = root / "libraries"
+            remote = root / "remote.git"
+            consumer = libraries / "lib_one"
+            workspace.mkdir(parents=True)
+            libraries.mkdir()
+            shutil.copy2(LOCK_TOOL, workspace / "repos-lock.py")
+
+            self.assertEqual(run("git", "init", "--quiet", "--bare", remote).returncode, 0)
+            self.assertEqual(run("git", "clone", "--quiet", remote, consumer).returncode, 0)
+            git(consumer, "config", "user.name", "p101 pre-push test")
+            git(consumer, "config", "user.email", "pre-push@invalid.example")
+            (consumer / "value.txt").write_text("published\n", encoding="utf-8")
+            git(consumer, "add", "value.txt")
+            git(consumer, "commit", "--quiet", "-m", "published")
+            git(consumer, "branch", "-M", "main")
+            git(consumer, "push", "--quiet", "-u", "origin", "main")
+            (consumer / "value.txt").write_text("candidate\n", encoding="utf-8")
+            git(consumer, "add", "value.txt")
+            git(consumer, "commit", "--quiet", "-m", "candidate")
+
+            manifest = scripts / "repos.txt"
+            lock = root / "candidate.lock"
+            manifest.write_text(f"{remote}|../libraries/lib_one|c\n", encoding="utf-8")
+            base_arguments = (
+                workspace / "repos-lock.py",
+                "--scripts-root",
+                scripts,
+                "--manifest",
+                manifest,
+            )
+            strict = run(*base_arguments, "--lock", lock, "refresh", "--require-clean")
+            self.assertEqual(strict.returncode, 2)
+            self.assertIn("is not the configured upstream", strict.stderr)
+
+            admitted = run(
+                *base_arguments,
+                "--lock",
+                lock,
+                "refresh",
+                "--require-clean",
+                "--allow-ahead",
+            )
+            self.assertEqual(admitted.returncode, 0, admitted.stderr)
+            verified = run_with_env(
+                {"P101_REPOS_LOCK": os.fspath(lock)},
+                *base_arguments,
+                "verify",
+            )
+            self.assertEqual(verified.returncode, 0, verified.stderr)
+
+            self.assertEqual(
+                run(
+                    "git",
+                    "--git-dir",
+                    remote,
+                    "update-ref",
+                    "-d",
+                    "refs/heads/main",
+                ).returncode,
+                0,
+            )
+            git(consumer, "fetch", "--prune", "origin")
+            gone_upstream = run(
+                *base_arguments,
+                "--lock",
+                lock,
+                "refresh",
+                "--require-clean",
+                "--allow-ahead",
+            )
+            self.assertEqual(gone_upstream.returncode, 0, gone_upstream.stderr)
+
     def test_lock_is_deterministic_verifiable_and_used_by_clone(self) -> None:
         with tempfile.TemporaryDirectory(prefix="p101-repository-lock.") as temporary:
             root = Path(temporary)

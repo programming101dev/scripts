@@ -129,6 +129,17 @@ def git(repository: Path, *arguments: str, check: bool = True) -> str:
     return completed.stdout.strip()
 
 
+def git_succeeds(repository: Path, *arguments: str) -> bool:
+    completed = subprocess.run(
+        ["git", "-C", os.fspath(repository), *arguments],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return completed.returncode == 0
+
+
 def repository_root(scripts_root: Path, entry: Repository) -> Path:
     configured = Path(entry.path)
     workspace_root = scripts_root.parent.resolve()
@@ -162,6 +173,7 @@ def inspect_repository(
     expected_commit: str | None,
     require_clean: bool,
     require_upstream: bool,
+    allow_ahead: bool = False,
 ) -> dict[str, Any]:
     path = repository_root(scripts_root, entry)
     actual_root = Path(git(path, "rev-parse", "--show-toplevel")).resolve()
@@ -204,13 +216,27 @@ def inspect_repository(
         branch = git(path, "symbolic-ref", "--quiet", "--short", "HEAD")
         if not branch:
             raise LockError(f"{path}: cannot refresh a lock from detached HEAD")
-        upstream = git(path, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
-        upstream_commit = git(path, "rev-parse", "@{u}")
-        if head != upstream_commit:
-            raise LockError(
-                f"{path}: HEAD {head[:12]} is not the configured upstream "
-                f"{upstream} at {upstream_commit[:12]}"
+        if allow_ahead and not git_succeeds(path, "rev-parse", "--verify", "@{u}"):
+            upstream = ""
+        else:
+            upstream = git(
+                path, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"
             )
+            upstream_commit = git(path, "rev-parse", "@{u}")
+            if head != upstream_commit and not (
+                allow_ahead
+                and git_succeeds(
+                    path,
+                    "merge-base",
+                    "--is-ancestor",
+                    upstream_commit,
+                    head,
+                )
+            ):
+                raise LockError(
+                    f"{path}: HEAD {head[:12]} is not the configured upstream "
+                    f"{upstream} at {upstream_commit[:12]}"
+                )
     return {
         "url": entry.url,
         "path": entry.path,
@@ -240,6 +266,7 @@ def refresh(args: argparse.Namespace) -> int:
             expected_commit=None,
             require_clean=args.require_clean,
             require_upstream=True,
+            allow_ahead=args.allow_ahead,
         )
         for entry in manifest
     ]
@@ -332,7 +359,13 @@ def parser() -> argparse.ArgumentParser:
     )
     result.add_argument("--scripts-root", type=Path, default=scripts_root)
     result.add_argument("--manifest", type=Path, default=scripts_root / "repos.txt")
-    result.add_argument("--lock", type=Path, default=scripts_root / "repos.lock")
+    result.add_argument(
+        "--lock",
+        type=Path,
+        default=Path(
+            os.environ.get("P101_REPOS_LOCK", os.fspath(scripts_root / "repos.lock"))
+        ),
+    )
     subparsers = result.add_subparsers(dest="command", required=True)
 
     refresh_parser = subparsers.add_parser(
@@ -342,6 +375,14 @@ def parser() -> argparse.ArgumentParser:
         "--require-clean",
         action="store_true",
         help="also refuse generated or other worktree changes",
+    )
+    refresh_parser.add_argument(
+        "--allow-ahead",
+        action="store_true",
+        help=(
+            "admit clean commits ahead of configured upstreams; intended only "
+            "for an ephemeral pre-push verification lock"
+        ),
     )
     refresh_parser.set_defaults(function=refresh)
 

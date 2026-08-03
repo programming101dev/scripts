@@ -12,18 +12,22 @@ CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 assume_yes=0
 dry_run=0
+run_preflight=1
+preflight_script="${P101_PUSH_PREFLIGHT:-./github-actions/preflight.sh}"
 
 usage()
 {
     cat <<'EOF'
-Usage: ./push-repos.sh [--yes] [--dry-run]
+Usage: ./push-repos.sh [--yes] [--dry-run] [--skip-preflight]
 
 Push clean, ahead-only repositories from repos.txt to their configured
-upstreams. The scripts repository is always excluded.
+upstreams. Before any push, run the strict local GitHub Actions preflight.
+The scripts repository is always excluded.
 
-  -n, --dry-run  Ask Git to validate each push without changing a remote.
-  -y, --yes      Skip the confirmation question.
-  -h, --help     Show this help.
+  -n, --dry-run       Ask Git to validate each push without changing a remote.
+  -y, --yes           Skip the confirmation question.
+  --skip-preflight    Explicitly bypass the local GitHub Actions preflight.
+  -h, --help          Show this help.
 EOF
 }
 
@@ -34,6 +38,9 @@ while (($# > 0)); do
             ;;
         -y | --yes)
             assume_yes=1
+            ;;
+        --skip-preflight)
+            run_preflight=0
             ;;
         -h | --help)
             usage
@@ -97,6 +104,19 @@ printf 'Repositories selected for %s:\n' \
 for repository in "${repositories[@]}"; do
     printf '  %s\n' "$repository"
 done
+
+if [[ $run_preflight -eq 1 ]]; then
+    if [[ ! -x "$preflight_script" ]]; then
+        printf 'Error: GitHub Actions preflight is unavailable: %s\n' \
+            "$preflight_script" >&2
+        exit 2
+    fi
+    printf '\nRunning required GitHub Actions preflight before any push...\n'
+    "$preflight_script"
+    printf 'GitHub Actions preflight: PASS\n\n'
+else
+    printf '\nWARNING: GitHub Actions preflight explicitly disabled.\n\n' >&2
+fi
 
 if [[ $assume_yes -eq 0 ]]; then
     printf 'Continue? [y/N] '

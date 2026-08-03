@@ -41,6 +41,7 @@ Commands:
   tool-audit    Run the broader p101 tool audit
   stack-check   Run the p101 stack smoke
   after-update  Run checks intended after update-all.sh
+  ci-preflight  Build and check clean local commits before any GitHub push
   html-report   Run p101-html-report.py
   cohort        Run p101-cohort-summary.py
   bug-bundle    Run p101-bug-bundle.sh
@@ -255,6 +256,9 @@ FUZZ_USAGE
     ;;
   after-update|post-update)
     exec ./check-after-update-all.sh "$@"
+    ;;
+  ci-preflight|github-preflight)
+    exec ./github-actions/preflight.sh "$@"
     ;;
   html-report)
     exec ./runtime/p101-html-report.py "$@"

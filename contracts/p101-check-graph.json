@@ -22,6 +22,8 @@
       "interactive-build-retry",
       "github-workflow-drift",
       "github-summary-tests",
+      "github-preflight-tests",
+      "push-preflight-tests",
       "cmake-distribution",
       "script-distribution",
       "playground-script-distribution",
@@ -203,6 +205,29 @@
       "depends_on": ["github-workflow-drift"],
       "resources": {"writes": ["/tmp"], "units": {}},
       "guarantee": "CI failures emit GitHub annotations and publish bounded diagnostics in the job summary without requiring artifact downloads."
+    },
+    {
+      "id": "github-preflight-tests",
+      "title": "pre-push GitHub Actions gate",
+      "group": "distribution",
+      "required": true,
+      "command": [
+        "./tests/test-repository-lock.py",
+        "RepositoryLockTests.test_ephemeral_lock_admits_clean_ahead_commits"
+      ],
+      "depends_on": ["github-summary-tests"],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "A temporary candidate lock can admit clean ahead-only commits without weakening the published lock contract."
+    },
+    {
+      "id": "push-preflight-tests",
+      "title": "managed push preflight enforcement",
+      "group": "distribution",
+      "required": true,
+      "command": ["./tests/test-push-repos-preflight.sh"],
+      "depends_on": ["github-preflight-tests"],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "The supported multi-repository push path refuses to contact push remotes until the GitHub Actions preflight succeeds, unless explicitly overridden."
     },
     {
       "id": "cmake-distribution",

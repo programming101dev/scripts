@@ -174,6 +174,38 @@ After `update-all.sh` succeeds, run the post-build acceptance checks:
 ./check-after-update-all.sh
 ```
 
+Before publishing coordinated changes, run the GitHub Actions preflight on
+macOS:
+
+```bash
+./p101 ci-preflight
+```
+
+The preflight requires clean committed worktrees, builds the moving local
+candidate revisions with the same Homebrew LLVM-oriented path used by the
+macOS GitHub job, and runs the complete governed acceptance graph without its
+evidence cache. It creates an ephemeral repository lock that may contain clean
+commits ahead of their upstreams; it does not weaken or rewrite `repos.lock`.
+The evidence directory contains the candidate lock, both complete command logs,
+the governed acceptance outputs, and a short receipt.
+
+Use the supported publication workflow for managed repositories:
+
+```bash
+./distribution/push-repos.sh
+```
+
+It runs the preflight before the first push and stops the entire publication if
+the preflight fails. `--skip-preflight` is an explicit emergency escape hatch,
+not the normal workflow. The scripts repository remains intentionally excluded
+from that program and is pushed manually, last, only after the same preflight
+has passed.
+
+The local receipt is host-specific. Native macOS can exercise the macOS stack;
+Linux can additionally run inside a Linux container; FreeBSD requires a
+FreeBSD host, jail, or VM. The three GitHub jobs remain authoritative for
+platform-specific headers, kernels, runtimes, packages, and tool versions.
+
 This delegates to the governed graph in `contracts/p101-check-graph.json`. Every node
 declares its argv, dependencies, resource effects, guarantee, and limitation;
 the runner writes a log per node plus a `p101-tool-run-receipt-v3` receipt with
