@@ -131,6 +131,78 @@ fi
 out_dir="$(CDPATH='' cd -P -- "$out_dir" && pwd -P)"
 mkdir -p "$out_dir"
 
+compiler_smoke()
+{
+  local compiler="$1"
+  local language="$2"
+  local source="$out_dir/compiler-smoke.${language//+/x}"
+  local log="$out_dir/compiler-smoke.${language//+/x}.log"
+
+  printf 'int main(void) { return 0; }\n' > "$source"
+  "$compiler" -x "$language" -Werror -fsyntax-only "$source" > "$log" 2>&1
+}
+
+repair_macos_clang_driver()
+{
+  local original_cc="$cc"
+  local original_cxx="$cxx"
+  local sdk
+  local toolchain="$out_dir/toolchain"
+
+  [[ "$(uname -s)" == "Darwin" ]] || return 1
+  "$original_cc" --version 2>/dev/null | head -n 1 | grep -qi clang || return 1
+  sdk="$(xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
+  [[ -n "$sdk" && -d "$sdk" ]] || return 1
+
+  printf 'int main(void) { return 0; }\n' > "$out_dir/compiler-smoke.cxx"
+  "$original_cc" --no-default-config -isysroot "$sdk" \
+    -x c -Werror -fsyntax-only "$out_dir/compiler-smoke.c" \
+    > "$out_dir/compiler-smoke.repaired-c.log" 2>&1 || return 1
+  "$original_cxx" --no-default-config -isysroot "$sdk" \
+    -x c++ -Werror -fsyntax-only "$out_dir/compiler-smoke.cxx" \
+    > "$out_dir/compiler-smoke.repaired-cxx.log" 2>&1 || return 1
+
+  mkdir -p "$toolchain"
+  cat > "$toolchain/clang" <<'EOF'
+#!/usr/bin/env bash
+exec "${P101_PREFLIGHT_REAL_CC:?}" --no-default-config \
+  -isysroot "${P101_PREFLIGHT_MACOS_SDK:?}" "$@"
+EOF
+  cat > "$toolchain/clang++" <<'EOF'
+#!/usr/bin/env bash
+exec "${P101_PREFLIGHT_REAL_CXX:?}" --no-default-config \
+  -isysroot "${P101_PREFLIGHT_MACOS_SDK:?}" "$@"
+EOF
+  chmod +x "$toolchain/clang" "$toolchain/clang++"
+  if [[ -n "$llvm_prefix" && -x "$llvm_prefix/bin/clang-extdef-mapping" ]]; then
+    ln -sf "$llvm_prefix/bin/clang-extdef-mapping" \
+      "$toolchain/clang-extdef-mapping"
+  fi
+
+  export P101_PREFLIGHT_REAL_CC="$original_cc"
+  export P101_PREFLIGHT_REAL_CXX="$original_cxx"
+  export P101_PREFLIGHT_MACOS_SDK="$sdk"
+  cc="$toolchain/clang"
+  cxx="$toolchain/clang++"
+  printf 'Warning: compiler default configuration is unusable; using %s with the valid SDK %s.\n' \
+    "$original_cc" "$sdk" >&2
+}
+
+if ! compiler_smoke "$cc" c; then
+  printf 'Compiler smoke failed for %s:\n' "$cc" >&2
+  sed -n '1,40p' "$out_dir/compiler-smoke.c.log" >&2
+  if ! repair_macos_clang_driver; then
+    printf 'Error: the selected compiler cannot compile a strict trivial C translation unit.\n' >&2
+    exit 2
+  fi
+fi
+if ! compiler_smoke "$cxx" c++; then
+  printf 'Compiler smoke failed for %s:\n' "$cxx" >&2
+  sed -n '1,40p' "$out_dir/compiler-smoke.cxx.log" >&2
+  printf 'Error: the selected compiler cannot compile a strict trivial C++ translation unit.\n' >&2
+  exit 2
+fi
+
 if [[ -n "$(git status --porcelain=v1 --untracked-files=normal)" ]]; then
   printf 'Error: scripts must be committed before the GitHub preflight runs.\n' >&2
   git status --short >&2
