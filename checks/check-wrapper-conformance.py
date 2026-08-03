@@ -139,6 +139,11 @@ def failure_output(output: str) -> list[str]:
     return lines
 
 
+def conformance_run_id(library: str) -> str:
+    """Return the shared protocol identity for one library test campaign."""
+    return f"p101-wrapper-conformance-{library.replace('_', '-')}"
+
+
 def fault_outcome_evidence(
     path: Path,
 ) -> tuple[
@@ -349,6 +354,8 @@ def main() -> int:
         environment = os.environ.copy()
         environment.update(
             {
+                "P101_EVENT_RUN_ID": conformance_run_id(library),
+                "P101_WRAPPER_CONFORMANCE": "1",
                 "P101_CALL_LOG": str(call_log),
                 "P101_CALL_LOG_ARGS": "1",
                 "P101_CALL_LOG_RESULT": "1",

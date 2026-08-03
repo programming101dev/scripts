@@ -103,6 +103,12 @@ class FaultOutcomeTests(unittest.TestCase):
 
 
 class CanonicalEventModelTests(unittest.TestCase):
+    def test_library_campaign_has_one_stable_run_identity(self) -> None:
+        self.assertEqual(
+            CHECKER.conformance_run_id("lib_c_facts"),
+            "p101-wrapper-conformance-lib-c-facts",
+        )
+
     def test_call_evidence_comes_from_canonical_model_nodes(self) -> None:
         document = {
             "schema": "p101-run-model-v1",
