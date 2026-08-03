@@ -492,8 +492,9 @@ if ! $update; then
       _name="${_name#"${_name%%[![:space:]]*}"}"
       _name="${_name%"${_name##*[![:space:]]}"}"
       [[ -z "$_name" ]] && continue
+      _cache_name="$(basename "$_name")"
       _have_cache=false
-      for _f in "${CACHE_ROOT}/$_name"/*.txt; do
+      for _f in "${CACHE_ROOT}/$_cache_name"/*.txt; do
         if [[ -f "$_f" ]]; then
           _have_cache=true
           break
