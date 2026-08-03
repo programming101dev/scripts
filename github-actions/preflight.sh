@@ -11,10 +11,11 @@ clang_format="${P101_GITHUB_CLANG_FORMAT:-}"
 clang_tidy="${P101_GITHUB_CLANG_TIDY:-}"
 cppcheck="${P101_GITHUB_CPPCHECK:-}"
 out_dir=""
+clean_builds=1
 
 usage() {
   cat <<'EOF'
-Usage: ./github-actions/preflight.sh [-c <cc>] [-x <cxx>] [-o <dir>]
+Usage: ./github-actions/preflight.sh [-c <cc>] [-x <cxx>] [-o <dir>] [--keep-builds]
 
 Build the clean local candidate revisions with the same strict clang-oriented
 path used by GitHub Actions, then run the complete governed acceptance graph
@@ -25,6 +26,10 @@ Options:
   -c <cc>     C compiler. Default: Homebrew LLVM clang on macOS, otherwise clang.
   -x <cxx>    C++ compiler. Default: the matching clang++.
   -o <dir>    Evidence directory. Default: a new directory under /tmp.
+  --keep-builds
+               Preserve existing generated build trees. By default they are
+               removed before the strict rebuild to control disk usage and
+               prevent stale compiler artifacts from influencing the receipt.
   -h, --help  Show this help.
 
 Environment overrides:
@@ -50,6 +55,10 @@ while (($# > 0)); do
     -o)
       out_dir="${2:?Error: -o requires a directory}"
       shift 2
+      ;;
+    --keep-builds)
+      clean_builds=0
+      shift
       ;;
     -h|--help)
       usage
@@ -226,6 +235,42 @@ if [[ -n "$(git status --porcelain=v1 --untracked-files=normal)" ]]; then
   printf 'Error: scripts must be committed before the GitHub preflight runs.\n' >&2
   git status --short >&2
   exit 2
+fi
+
+clean_managed_build_trees()
+{
+  local repository_url
+  local repository_path
+  local _repository_kind
+  local removed=0
+  local build_tree
+  local relative_build_tree
+
+  while IFS='|' read -r repository_url repository_path _repository_kind; do
+    [[ -n "$repository_path" && "$repository_url" != \#* ]] || continue
+    [[ -d "$repository_path/.git" ]] || continue
+
+    while IFS= read -r -d '' build_tree; do
+      relative_build_tree="${build_tree#"$repository_path"/}"
+      if ! git -C "$repository_path" check-ignore -q -- "$relative_build_tree"; then
+        printf 'Error: refusing to remove non-ignored build tree: %s\n' \
+          "$build_tree" >&2
+        return 2
+      fi
+      rm -rf -- "$build_tree"
+      removed=$((removed + 1))
+    done < <(
+      find "$repository_path" -type d \
+        \( -name build -o -name 'build-*' \) -prune -print0
+    )
+  done < repos.txt
+
+  printf 'Removed %d generated managed-repository build tree(s).\n' "$removed"
+}
+
+if [[ "$clean_builds" -eq 1 ]]; then
+  printf '==> remove generated managed-repository build trees\n'
+  clean_managed_build_trees
 fi
 
 ./checks/check-github-actions-template.sh
