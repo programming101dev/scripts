@@ -40,10 +40,18 @@ grep -Fq 'source.c:12:4: error: deliberately broken' "$sandbox/step-summary.md"
 cmp -s "$sandbox/output/github-step-summary.md" "$sandbox/step-summary.md"
 
 mkdir -p "$sandbox/early"
+cat > "$sandbox/early/update-all.log" <<'EOF'
+Configuring repositories...
+/workspace/tool.c:87:5: error: 'switch' missing 'default' label
+make: stopped
+EOF
 GITHUB_STEP_SUMMARY="$sandbox/early-summary.md" \
   ./github-actions/publish-ci-summary.sh \
   "$sandbox/early" FreeBSD failure skipped > "$sandbox/early-stdout"
-grep -Fq '::error title=p101%3A repository update/build::' "$sandbox/early-stdout"
+grep -Fq "::error title=p101%3A repository update/build::/workspace/tool.c:87:5: error: 'switch' missing 'default' label" \
+  "$sandbox/early-stdout"
 grep -Fq 'did not produce a summary' "$sandbox/early-summary.md"
+grep -Fq '<summary>Repository update/build failure</summary>' "$sandbox/early-summary.md"
+grep -Fq "/workspace/tool.c:87:5: error: 'switch' missing 'default' label" "$sandbox/early-summary.md"
 
 printf 'PASS: GitHub Actions failures produce annotations and an inline job summary.\n'

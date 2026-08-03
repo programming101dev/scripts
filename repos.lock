@@ -14,7 +14,7 @@
       "url": "https://github.com/programming101dev/lib_tool_event.git"
     },
     {
-      "commit": "4a4022b23eaa6f723dd3b221d71756dfede65e4b",
+      "commit": "2783903a9522a5861d6db008edbfa165e69ce690",
       "path": "../libraries/lib_env",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_env.git"
@@ -212,7 +212,7 @@
       "url": "https://github.com/programming101dev/p101-doctor.git"
     },
     {
-      "commit": "8feba3625f325ae98de18db0deccdfd6e8f90555",
+      "commit": "e730a0de97d0745759bac37cecf3127de3cd418d",
       "path": "../programs/p101-module-map",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-module-map.git"

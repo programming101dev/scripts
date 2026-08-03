@@ -48,6 +48,37 @@ annotate_error() {
 
 first_diagnostic() {
   local log="$1"
+  local diagnostic
+
+  diagnostic="$(awk '
+    {
+      line = $0
+      sub(/^[[:space:]]+/, "", line)
+      sub(/[[:space:]]+$/, "", line)
+      if(line ~ /:[0-9]+:[0-9]+: (fatal )?(error|warning):/) {
+        source_diagnostic = line
+      } else if(line ~ /^CMake Error/ ||
+                line ~ /clang-tidy failed for:/ ||
+                line ~ /cppcheck reported [1-9][0-9]* diagnostics?/ ||
+                line ~ /^FAIL([:(]|$)/ ||
+                line ~ /Undefined symbols/ ||
+                line ~ /linker command failed/) {
+        tool_diagnostic = line
+      }
+    }
+    END {
+      if(source_diagnostic != "") {
+        print source_diagnostic
+      } else if(tool_diagnostic != "") {
+        print tool_diagnostic
+      }
+    }
+  ' "$log")"
+  if [ -n "$diagnostic" ]; then
+    printf '%s\n' "$diagnostic"
+    return
+  fi
+
   awk '
     {
       line = $0
@@ -126,8 +157,16 @@ fi
 
 case "$update_outcome" in
   failure|cancelled)
-    annotate_error "p101: repository update/build" \
-      "The repository update or build phase failed. The complete diagnostic is in the failed GitHub Actions step."
+    update_log="$out_dir/update-all.log"
+    update_detail="The repository update or build phase failed. The complete diagnostic is in the failed GitHub Actions step."
+    if [ -f "$update_log" ]; then
+      diagnostic="$(first_diagnostic "$update_log")"
+      if [ -n "$diagnostic" ]; then
+        update_detail="$diagnostic"
+      fi
+      append_failure_log "Repository update/build failure" "$update_log"
+    fi
+    annotate_error "p101: repository update/build" "$update_detail"
     ;;
 esac
 
