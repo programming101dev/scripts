@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 import tempfile
@@ -37,12 +38,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
     script_dir = Path(__file__).resolve().parent
+    invocation_dir = Path(os.environ.get("P101_DISPATCH_CWD", Path.cwd())).resolve()
     output = args.output
     if output is None:
         output = Path(
-            tempfile.mkdtemp(prefix="p101-run.", dir=str(Path.cwd()))
+            tempfile.mkdtemp(prefix="p101-run.", dir=str(invocation_dir))
         )
     else:
+        if not output.is_absolute():
+            output = invocation_dir / output
         if output.exists() or output.is_symlink():
             print(f"p101 run: output path already exists: {output}", file=sys.stderr)
             return EXIT_TROUBLE
@@ -52,7 +56,7 @@ def main(argv: list[str]) -> int:
     analysis = output / "analysis"
 
     if args.observe_tool is None:
-        observe_command = [str(script_dir / "p101"), "observe"]
+        observe_command = [str(script_dir.parent / "p101"), "observe"]
     else:
         observe_command = [str(args.observe_tool)]
     if args.log_arguments:
@@ -60,7 +64,7 @@ def main(argv: list[str]) -> int:
     if args.log_results:
         observe_command.append("-R")
     observe_command.extend(["-o", str(capture), "--", *args.command])
-    observed = subprocess.run(observe_command, check=False)
+    observed = subprocess.run(observe_command, cwd=invocation_dir, check=False)
     if observed.returncode > EXIT_FINDINGS:
         print(
             f"p101 run: capture failed with status {observed.returncode}",
@@ -76,7 +80,7 @@ def main(argv: list[str]) -> int:
     if args.model_tool is not None:
         analyze_command.extend(["--model-tool", str(args.model_tool)])
     analyze_command.append(str(capture))
-    analyzed = subprocess.run(analyze_command, check=False)
+    analyzed = subprocess.run(analyze_command, cwd=invocation_dir, check=False)
     if analyzed.returncode > EXIT_FINDINGS:
         return EXIT_TROUBLE
 

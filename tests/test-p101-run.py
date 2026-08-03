@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import tempfile
@@ -21,6 +22,68 @@ def executable(path: Path, body: str) -> Path:
 
 
 class RunTests(unittest.TestCase):
+    def test_dispatch_directory_owns_relative_paths_and_child_working_directory(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            invocation_dir = root / "project"
+            invocation_dir.mkdir()
+            cwd_file = root / "child.cwd"
+            observe = executable(
+                root / "observe",
+                """
+pwd > "$P101_TEST_CWD"
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-o" ]; then mkdir -p "$2"; break; fi
+  shift
+done
+""",
+            )
+            analyze = executable(
+                root / "analyze",
+                """
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-o" ]; then mkdir -p "$2"; break; fi
+  shift
+done
+""",
+            )
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "P101_DISPATCH_CWD": str(invocation_dir),
+                    "P101_TEST_CWD": str(cwd_file),
+                }
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(RUN),
+                    "-o",
+                    "relative-result",
+                    "--observe-tool",
+                    str(observe),
+                    "--analyze-tool",
+                    str(analyze),
+                    "--",
+                    "./relative-command",
+                ],
+                cwd=SCRIPTS_ROOT,
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                cwd_file.read_text(encoding="utf-8").strip(),
+                os.path.realpath(invocation_dir),
+            )
+            self.assertTrue((invocation_dir / "relative-result" / "capture").is_dir())
+            self.assertFalse((SCRIPTS_ROOT / "relative-result").exists())
+
     def test_composes_capture_and_analysis(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

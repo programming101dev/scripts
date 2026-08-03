@@ -6,6 +6,7 @@ unset CDPATH
 dispatch_cwd="$(pwd)"
 export P101_DISPATCH_CWD="$dispatch_cwd"
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+script_dir="$PWD"
 
 usage() {
   cat <<'USAGE'
@@ -65,7 +66,12 @@ find_tool() {
       continue
     fi
     if [ -x "$candidate" ]; then
-      printf '%s\n' "$candidate"
+      if [[ "$candidate" = /* ]]; then
+        printf '%s\n' "$candidate"
+      else
+        candidate_dir="$(CDPATH='' cd -- "$(dirname -- "$candidate")" && pwd -P)"
+        printf '%s/%s\n' "$candidate_dir" "$(basename -- "$candidate")"
+      fi
       return 0
     fi
     if command -v "$candidate" >/dev/null 2>&1; then
@@ -102,7 +108,8 @@ exec_found() {
     echo "p101: ${tool_label} not found; build it first or set ${env_name}" >&2
     exit 2
   }
-  exec "$tool_path" "${command_args[@]}"
+  CDPATH='' cd -- "$dispatch_cwd"
+  exec "$tool_path" ${command_args[@]+"${command_args[@]}"}
 }
 
 if [ "$#" -eq 0 ]; then
@@ -122,7 +129,7 @@ case "$command_name" in
     exec_found p101-observe P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe
     ;;
   run)
-    exec ./runtime/p101-run.py "$@"
+    exec "$script_dir/runtime/p101-run.py" "$@"
     ;;
   analyze)
     exec ./runtime/p101-analyze.py "$@"
@@ -154,7 +161,7 @@ case "$command_name" in
       echo "p101: p101-event-model not found; build it first or set P101_EVENT_MODEL" >&2
       exit 2
     }
-    command_args=(-U "$PWD/runtime/p101-run.py" -O "$observe_path" -Y "$PWD/runtime/p101-analyze.py" -B "$model_path" "${command_args[@]}")
+    command_args=(-U "$script_dir/runtime/p101-run.py" -O "$observe_path" -Y "$script_dir/runtime/p101-analyze.py" -B "$model_path" "${command_args[@]}")
     exec_found p101-error-path-walk P101_ERROR_PATH_WALK "$(last_build_tool ../programs/p101-error-path-walk p101-error-path-walk)" ../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk ../programs/p101-error-path-walk/build-clang/p101-error-path-walk p101-error-path-walk
     ;;
   fault-campaign)
