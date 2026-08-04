@@ -152,7 +152,7 @@
       "url": "https://github.com/programming101dev/lib_random.git"
     },
     {
-      "commit": "460118b19b915a1dbf45e7738d5f58a3ab30273b",
+      "commit": "ecfc9d9828298d846b304904dfc01535a32d4fd8",
       "path": "../libraries/lib_host",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_host.git"

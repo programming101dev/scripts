@@ -16,6 +16,11 @@ SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 LOCK_TOOL = SCRIPTS_ROOT / "workspace" / "repos-lock.py"
 CLONE_TOOL = SCRIPTS_ROOT / "distribution" / "clone-repos.sh"
 REFRESH_TOOL = SCRIPTS_ROOT / "distribution" / "refresh-repo.sh"
+TEST_ENVIRONMENT = {
+    "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin",
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_CONFIG_NOSYSTEM": "1",
+}
 
 
 def run(*arguments: str | Path, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
@@ -27,7 +32,7 @@ def run(*arguments: str | Path, cwd: Path | None = None) -> subprocess.Completed
         stderr=subprocess.PIPE,
         text=True,
         check=False,
-        env={"PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"},
+        env=TEST_ENVIRONMENT,
     )
 
 
@@ -45,7 +50,7 @@ def run_with_env(
         text=True,
         check=False,
         env={
-            "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin",
+            **TEST_ENVIRONMENT,
             **environment,
         },
     )
@@ -64,7 +69,7 @@ def run_with_input(
         stderr=subprocess.PIPE,
         text=True,
         check=False,
-        env={"PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"},
+        env=TEST_ENVIRONMENT,
     )
 
 
@@ -182,8 +187,6 @@ class RepositoryLockTests(unittest.TestCase):
             git(publisher, "push", "--quiet", "-u", "origin", "main")
             run("git", "--git-dir", remote, "symbolic-ref", "HEAD", "refs/heads/main")
             self.assertEqual(run("git", "clone", "--quiet", remote, consumer).returncode, 0)
-            git(consumer, "config", "user.name", "p101 lock test")
-            git(consumer, "config", "user.email", "lock-test@invalid.example")
 
             manifest = scripts / "repos.txt"
             lock = scripts / "repos.lock"
@@ -225,6 +228,8 @@ class RepositoryLockTests(unittest.TestCase):
             )
             self.assertNotEqual(detached.returncode, 0)
 
+            git(consumer, "config", "user.name", "p101 lock test")
+            git(consumer, "config", "user.email", "lock-test@invalid.example")
             git(consumer, "checkout", "--quiet", "-b", "local-ahead")
             (consumer / "value.txt").write_text("local commit\n", encoding="utf-8")
             git(consumer, "add", "value.txt")
