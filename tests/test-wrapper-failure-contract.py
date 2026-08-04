@@ -11,6 +11,7 @@ from pathlib import Path
 
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-failure-contract.json"
+OUTCOME_CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-outcome-contract.json"
 
 
 def load_generator():
@@ -64,6 +65,77 @@ def test_function_pointer_result(generator) -> None:
     )
 
 
+def test_single_exit_fault_result(generator) -> None:
+    fragment = """
+        fault = p101_env_check_fault(env, "open");
+        if(fault != 0)
+        {
+            P101_ERROR_RAISE_ERRNO(err, fault);
+            p101_single_result_ = -1;
+            goto p101_single_exit_;
+        }
+        p101_single_result_ = ret_val;
+    """
+    check(
+        generator.explicit_fault_result(fragment) == "-1",
+        "manual single-exit fault result was not recovered",
+    )
+    check(
+        generator.explicit_fault_result(
+            "p101_single_result_ = 0; goto p101_single_exit_;"
+        )
+        is None,
+        "non-fault single-exit result was misclassified",
+    )
+
+
+def test_va_list_fixture_is_started(generator) -> None:
+    declaration = {
+        "inner": [
+            {
+                "kind": "ParmVarDecl",
+                "name": "env",
+                "type": {"qualType": "const struct p101_env *"},
+            },
+            {
+                "kind": "ParmVarDecl",
+                "name": "err",
+                "type": {"qualType": "struct p101_error *"},
+            },
+            {
+                "kind": "ParmVarDecl",
+                "name": "arguments",
+                "type": {"qualType": "va_list"},
+            },
+        ]
+    }
+    check(
+        generator.has_va_list_parameter(declaration),
+        "va_list parameter was not detected",
+    )
+    check(
+        generator.fault_test_signature_suffix(declaration) == ", ...",
+        "generated va_list test is not variadic",
+    )
+    check(
+        generator.fault_test_call_suffix(declaration) == ", 0",
+        "generated va_list test lacks its variadic sentinel",
+    )
+    setup = generator.va_list_setup(declaration)
+    check(
+        "va_start(arguments, err);" in setup,
+        "generated va_list fixture is not started",
+    )
+    check(
+        "memset" not in setup,
+        "generated va_list fixture is still zero-initialized",
+    )
+    check(
+        "va_end(arguments);" in generator.va_list_teardown(declaration),
+        "generated va_list fixture is not ended",
+    )
+
+
 def test_checked_contract() -> None:
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
     check(
@@ -112,12 +184,60 @@ def test_checked_contract() -> None:
         )
 
 
+def test_outcome_contract() -> None:
+    contract = json.loads(
+        OUTCOME_CONTRACT_PATH.read_text(encoding="utf-8")
+    )
+    check(
+        contract.get("schema") == "p101-wrapper-outcome-contract-v1",
+        "outcome contract schema drifted",
+    )
+    valid = {
+        "direct-hard-failure",
+        "short-partial-result",
+        "delegated-failure",
+        "deterministic-rejection",
+        "genuinely-infallible",
+        "non-returning-cleanup",
+    }
+    apis = contract.get("apis", {})
+    check(bool(apis), "outcome contract is empty")
+    required = {
+        "library",
+        "role",
+        "accepts_error",
+        "classification",
+        "rationale",
+        "source",
+    }
+    for name, record in apis.items():
+        check(
+            set(record) == required,
+            f"{name}: outcome contract fields drifted",
+        )
+        classification = record.get("classification")
+        check(
+            classification in valid,
+            f"{name}: invalid outcome classification",
+        )
+        check(bool(record.get("rationale")), f"{name}: missing rationale")
+        if record.get("accepts_error"):
+            check(
+                classification
+                in {"direct-hard-failure", "short-partial-result"},
+                f"{name}: error-taking API is not directly injectable",
+            )
+
+
 def main() -> int:
     generator = load_generator()
     tests = (
         lambda: test_macro_reader(generator),
         lambda: test_function_pointer_result(generator),
+        lambda: test_single_exit_fault_result(generator),
+        lambda: test_va_list_fixture_is_started(generator),
         test_checked_contract,
+        test_outcome_contract,
     )
     for test in tests:
         test()

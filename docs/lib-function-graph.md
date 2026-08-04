@@ -4,10 +4,10 @@ Generated from active `libraries/lib_*` directories. `_to_delete` is excluded.
 
 ## Summary
 
-- Wrapper/function nodes: `1224`
-- Edges: `1945`
-- Wrapper-to-wrapper edges: `182`
-- Wrapper-to-native wrapped-call edges: `951`
+- Wrapper/function nodes: `1237`
+- Edges: `2002`
+- Wrapper-to-wrapper edges: `241`
+- Wrapper-to-native wrapped-call edges: `946`
 - Domains: `77`
 - Recommended repo: `playgrounds`
 - Recommended tracks: `40`
@@ -18,10 +18,10 @@ Generated from active `libraries/lib_*` directories. `_to_delete` is excluded.
 ```mermaid
 flowchart LR
   playgrounds["playgrounds\n40 tracks"]
-  track_c_memory_runtime["c-memory-runtime\n41 wrappers"] --> playgrounds
+  track_c_memory_runtime["c-memory-runtime\n37 wrappers"] --> playgrounds
   c_random["c/random"] --> track_c_memory_runtime
   c_stdlib["c/stdlib"] --> track_c_memory_runtime
-  track_c_memory_bytes["c-memory-bytes\n24 wrappers"] --> playgrounds
+  track_c_memory_bytes["c-memory-bytes\n30 wrappers"] --> playgrounds
   c_byte_utility["c/byte-utility"] --> track_c_memory_bytes
   c_memory_bytes["c/memory-bytes"] --> track_c_memory_bytes
   c_memory_bytes_extensions["c/memory-bytes-extensions"] --> track_c_memory_bytes
@@ -80,7 +80,7 @@ flowchart LR
   systems_filesystem_paths["systems/filesystem-paths"] --> track_filesystem_paths
   track_directories_patterns["directories-patterns\n21 wrappers"] --> playgrounds
   systems_directories_patterns["systems/directories-patterns"] --> track_directories_patterns
-  track_processes_signals["processes-signals\n64 wrappers"] --> playgrounds
+  track_processes_signals["processes-signals\n63 wrappers"] --> playgrounds
   systems_process_signal["systems/process-signal"] --> track_processes_signals
   track_thread_lifecycle["thread-lifecycle\n35 wrappers"] --> playgrounds
   systems_thread_attributes["systems/thread-attributes"] --> track_thread_lifecycle
@@ -112,7 +112,7 @@ flowchart LR
   systems_platform_admin["systems/platform-admin"] --> track_resources_platform
   systems_resource_time_memory["systems/resource-time-memory"] --> track_resources_platform
   systems_system_configuration["systems/system-configuration"] --> track_resources_platform
-  track_logging_diagnostics["logging-diagnostics\n12 wrappers"] --> playgrounds
+  track_logging_diagnostics["logging-diagnostics\n8 wrappers"] --> playgrounds
   systems_logging_diagnostics["systems/logging-diagnostics"] --> track_logging_diagnostics
   track_runtime_services["runtime-services\n40 wrappers"] --> playgrounds
   systems_dynamic_loading["systems/dynamic-loading"] --> track_runtime_services
@@ -126,13 +126,13 @@ flowchart LR
   support_error_core["support/error-core"] --> track_error_handling
   track_environment_lifecycle["environment-lifecycle\n12 wrappers"] --> playgrounds
   support_environment_lifecycle["support/environment-lifecycle"] --> track_environment_lifecycle
-  track_event_streams["event-streams\n36 wrappers"] --> playgrounds
+  track_event_streams["event-streams\n37 wrappers"] --> playgrounds
   support_call_tracing["support/call-tracing"] --> track_event_streams
   support_fault_injection["support/fault-injection"] --> track_event_streams
   support_resource_events["support/resource-events"] --> track_event_streams
-  track_fsm["fsm\n26 wrappers"] --> playgrounds
+  track_fsm["fsm\n31 wrappers"] --> playgrounds
   support_fsm["support/fsm"] --> track_fsm
-  track_tool_building["tool-building\n41 wrappers"] --> playgrounds
+  track_tool_building["tool-building\n51 wrappers"] --> playgrounds
   tooling_c_facts["tooling/c-facts"] --> track_tool_building
   tooling_event_protocol["tooling/event-protocol"] --> track_tool_building
 ```
@@ -143,8 +143,8 @@ Use one playground repository, `playgrounds`, with small explicit tracks inside 
 
 | Track | Function count | Domains | Purpose |
 | --- | ---: | --- | --- |
-| `c-memory-runtime` | 41 | `c/random`, `c/stdlib` | Allocation, process termination, environment variables, sorting/searching helpers, and common stdlib extensions. |
-| `c-memory-bytes` | 24 | `c/byte-utility`, `c/memory-bytes`, `c/memory-bytes-extensions` | Raw byte memory operations and the difference between object bytes and strings. |
+| `c-memory-runtime` | 37 | `c/random`, `c/stdlib` | Allocation, process termination, environment variables, sorting/searching helpers, and common stdlib extensions. |
+| `c-memory-bytes` | 30 | `c/byte-utility`, `c/memory-bytes`, `c/memory-bytes-extensions` | Raw byte memory operations and the difference between object bytes and strings. |
 | `c-byte-strings` | 83 | `c/byte-strings`, `c/byte-strings-extensions` | NUL-terminated byte strings, comparisons, searching, collation, and common string extensions. |
 | `c-char-classification` | 14 | `c/char-classification` | Character classification, case mapping, locale-sensitive predicates, and signed-char pitfalls. |
 | `c-wide-strings` | 20 | `c/wide-memory`, `c/wide-strings` | Wide string copying, comparison, searching, transformation, and wide-memory operations. |
@@ -165,7 +165,7 @@ Use one playground repository, `playgrounds`, with small explicit tracks inside 
 | `file-io` | 25 | `systems/async-io`, `systems/fd-io` | File descriptors, open/read/write/close, vectored I/O, short reads/writes, async I/O, descriptor ownership, and cleanup. |
 | `filesystem-paths` | 33 | `systems/filesystem-paths` | Paths, permissions, stat, links, directories-as-filesystem-objects, timestamps, and filesystem mutation. |
 | `directories-patterns` | 21 | `systems/directories-patterns` | Directory traversal, glob/fnmatch/wordexp, path decomposition, and tree walking. |
-| `processes-signals` | 64 | `systems/process-signal` | fork, exec, wait, spawn, signals, inherited resources, CLOEXEC, and process failure paths. |
+| `processes-signals` | 63 | `systems/process-signal` | fork, exec, wait, spawn, signals, inherited resources, CLOEXEC, and process failure paths. |
 | `thread-lifecycle` | 35 | `systems/thread-attributes`, `systems/thread-lifecycle` | Thread creation, joining, detaching, identity, scheduling hooks, and basic lifecycle ownership. |
 | `thread-synchronization` | 38 | `systems/thread-conditions`, `systems/thread-mutexes`, `systems/thread-rwlocks` | Mutexes, condition variables, read/write locks, and synchronization cleanup rules. |
 | `thread-state-cancellation` | 9 | `systems/thread-cancellation`, `systems/thread-local-once` | Thread-local storage, once initialization, cancellation state, cancellation points, and cleanup hazards. |
@@ -176,13 +176,13 @@ Use one playground repository, `playgrounds`, with small explicit tracks inside 
 | `network-dns-resolver` | 0 |  | Resolver state, DNS message parsing/packing, compressed names, and resolver validation helpers. |
 | `terminals-users` | 47 | `systems/users-terminals` | Terminal control, user/group lookup, identity APIs, tty databases, utmpx records, and interactive program boundaries. |
 | `resources-platform` | 30 | `systems/platform-admin`, `systems/resource-time-memory`, `systems/system-configuration` | Resource limits, priorities, clocks/time, memory mapping/locking, host/system configuration, and portable platform administration APIs. |
-| `logging-diagnostics` | 12 | `systems/logging-diagnostics` | syslog, err/warn-style diagnostics, formatted messages, and teachable logging/error-reporting practice. |
+| `logging-diagnostics` | 8 | `systems/logging-diagnostics` | syslog, err/warn-style diagnostics, formatted messages, and teachable logging/error-reporting practice. |
 | `runtime-services` | 40 | `systems/dynamic-loading`, `systems/legacy-database`, `systems/localization-conversion`, `systems/search-structures`, `systems/text-patterns` | Dynamic loading, regex, iconv, locale/message catalogs, legacy DBM, and libc search structures. |
 | `error-handling` | 50 | `support/assertions`, `support/error-codes`, `support/error-core` | Error objects, errno mapping, assertions/check helpers, reporting, and failure-aware control flow. |
 | `environment-lifecycle` | 12 | `support/environment-lifecycle` | Creating, configuring, labeling, duplicating, and destroying p101 environments. |
-| `event-streams` | 36 | `support/call-tracing`, `support/fault-injection`, `support/resource-events` | Resource events, call tracing, fault injection, event-log formatting, and observer configuration. |
-| `fsm` | 26 | `support/fsm` | Finite-state-machine structure, state transitions, callbacks, invalid transitions, and lifecycle ownership. |
-| `tool-building` | 41 | `tooling/c-facts`, `tooling/event-protocol` | C facts, small analyzers, and writing tools that reason about p101 projects. |
+| `event-streams` | 37 | `support/call-tracing`, `support/fault-injection`, `support/resource-events` | Resource events, call tracing, fault injection, event-log formatting, and observer configuration. |
+| `fsm` | 31 | `support/fsm` | Finite-state-machine structure, state transitions, callbacks, invalid transitions, and lifecycle ownership. |
+| `tool-building` | 51 | `tooling/c-facts`, `tooling/event-protocol` | C facts, small analyzers, and writing tools that reason about p101 projects. |
 
 ## Coverage
 
@@ -201,17 +201,17 @@ Every discovered domain is assigned to one primary track.
 
 | Library | Functions |
 | --- | ---: |
-| `lib_c` | 466 |
-| `lib_c_facts` | 4 |
+| `lib_c` | 462 |
+| `lib_c_facts` | 8 |
 | `lib_cli` | 4 |
 | `lib_convert` | 38 |
 | `lib_database` | 9 |
-| `lib_diagnostics` | 12 |
+| `lib_diagnostics` | 8 |
 | `lib_dynamic_linking` | 4 |
-| `lib_env` | 48 |
+| `lib_env` | 49 |
 | `lib_error` | 50 |
 | `lib_filesystem` | 59 |
-| `lib_fsm` | 26 |
+| `lib_fsm` | 31 |
 | `lib_host` | 8 |
 | `lib_identity` | 26 |
 | `lib_io` | 45 |
@@ -220,7 +220,7 @@ Every discovered domain is assigned to one primary track.
 | `lib_math` | 6 |
 | `lib_memory` | 10 |
 | `lib_network` | 56 |
-| `lib_process` | 64 |
+| `lib_process` | 63 |
 | `lib_random` | 8 |
 | `lib_search` | 11 |
 | `lib_sync` | 45 |
@@ -228,8 +228,8 @@ Every discovered domain is assigned to one primary track.
 | `lib_text` | 74 |
 | `lib_thread` | 37 |
 | `lib_time` | 9 |
-| `lib_tool_event` | 37 |
-| `lib_util` | 18 |
+| `lib_tool_event` | 43 |
+| `lib_util` | 24 |
 
 ## Domain clusters
 
@@ -238,7 +238,7 @@ Every discovered domain is assigned to one primary track.
 | `c/atomics` | 26 | `lib_c`:26 | C-family track |
 | `c/byte-strings` | 14 | `lib_c`:14 | C-family track |
 | `c/byte-strings-extensions` | 69 | `lib_text`:69 | C-family track |
-| `c/byte-utility` | 18 | `lib_util`:18 | C-family track |
+| `c/byte-utility` | 24 | `lib_util`:24 | C-family track |
 | `c/char-classification` | 14 | `lib_c`:14 | C-family track |
 | `c/cli-parsing` | 4 | `lib_cli`:4 | C-family track |
 | `c/complex-components` | 18 | `lib_c`:18 | C-family track |
@@ -264,7 +264,7 @@ Every discovered domain is assigned to one primary track.
 | `c/stdio-state-buffering` | 5 | `lib_c`:5 | C-family track |
 | `c/stdio-streams-files` | 13 | `lib_c`:13 | C-family track |
 | `c/stdio-streams-files-extensions` | 14 | `lib_io`:14 | C-family track |
-| `c/stdlib` | 33 | `lib_c`:33 | C-family track |
+| `c/stdlib` | 29 | `lib_c`:29 | C-family track |
 | `c/time` | 6 | `lib_c`:6 | C-family track |
 | `c/wide-char-classification` | 18 | `lib_c`:18 | C-family track |
 | `c/wide-conversion` | 16 | `lib_c`:16 | C-family track |
@@ -283,8 +283,8 @@ Every discovered domain is assigned to one primary track.
 | `support/environment-lifecycle` | 12 | `lib_env`:12 | environment-lifecycle track |
 | `support/error-codes` | 1 | `lib_error`:1 | error-handling track |
 | `support/error-core` | 24 | `lib_error`:24 | error-handling track |
-| `support/fault-injection` | 4 | `lib_env`:4 | event-streams track |
-| `support/fsm` | 26 | `lib_fsm`:26 | fsm track |
+| `support/fault-injection` | 5 | `lib_env`:5 | event-streams track |
+| `support/fsm` | 31 | `lib_fsm`:31 | fsm track |
 | `support/resource-events` | 19 | `lib_env`:19 | event-streams track |
 | `systems/async-io` | 8 | `lib_io`:8 | systems-family track |
 | `systems/directories-patterns` | 21 | `lib_filesystem`:21 | systems-family track |
@@ -295,9 +295,9 @@ Every discovered domain is assigned to one primary track.
 | `systems/ipc` | 17 | `lib_ipc`:17 | strong IPC playground cluster |
 | `systems/legacy-database` | 9 | `lib_database`:9 | runtime-services track |
 | `systems/localization-conversion` | 12 | `lib_locale`:12 | runtime-services track |
-| `systems/logging-diagnostics` | 12 | `lib_diagnostics`:12 | systems-family track |
+| `systems/logging-diagnostics` | 8 | `lib_diagnostics`:8 | systems-family track |
 | `systems/platform-admin` | 8 | `lib_host`:8 | systems-family track |
-| `systems/process-signal` | 64 | `lib_process`:64 | systems-family track |
+| `systems/process-signal` | 63 | `lib_process`:63 | systems-family track |
 | `systems/resource-time-memory` | 19 | `lib_memory`:10, `lib_time`:9 | systems-family track |
 | `systems/search-structures` | 11 | `lib_search`:11 | runtime-services track |
 | `systems/system-configuration` | 3 | `lib_filesystem`:3 | systems-family track |
@@ -310,8 +310,8 @@ Every discovered domain is assigned to one primary track.
 | `systems/thread-mutexes` | 17 | `lib_sync`:17 | systems-family track |
 | `systems/thread-rwlocks` | 11 | `lib_sync`:11 | systems-family track |
 | `systems/users-terminals` | 47 | `lib_identity`:26, `lib_terminal`:21 | systems-family track |
-| `tooling/c-facts` | 4 | `lib_c_facts`:4 | tool-building track |
-| `tooling/event-protocol` | 37 | `lib_tool_event`:37 | tool-building track |
+| `tooling/c-facts` | 8 | `lib_c_facts`:8 | tool-building track |
+| `tooling/event-protocol` | 43 | `lib_tool_event`:43 | tool-building track |
 
 ## Large clusters and representative functions
 
@@ -319,9 +319,9 @@ Every discovered domain is assigned to one primary track.
 
 `p101_a64l`, `p101_ffs`, `p101_isalnum_l`, `p101_isalpha_l`, `p101_isblank_l`, `p101_iscntrl_l`, `p101_isdigit_l`, `p101_isgraph_l`, `p101_islower_l`, `p101_isprint_l`, `p101_ispunct_l`, `p101_isspace_l`, `p101_isupper_l`, `p101_iswalnum_l`, `p101_iswalpha_l`, `p101_iswblank_l`, `p101_iswcntrl_l`, `p101_iswctype_l`, `p101_iswdigit_l`, `p101_iswgraph_l`, `p101_iswlower_l`, `p101_iswprint_l`, `p101_iswpunct_l`, `p101_iswspace_l`, `p101_iswupper_l`, `p101_iswxdigit_l`, `p101_isxdigit_l`, `p101_l64a`, `p101_mbsnrtowcs`, `p101_open_wmemstream`, `p101_rpmatch`, `p101_stpcpy`, `p101_stpncpy`, `p101_strcasecmp`, `p101_strcasecmp_l` … +34 more
 
-### `systems/process-signal` (64)
+### `systems/process-signal` (63)
 
-`p101_alarm`, `p101_execv`, `p101_execve`, `p101_execvp`, `p101_fork`, `p101_getpgid`, `p101_getpgrp`, `p101_getpid`, `p101_getppid`, `p101_getpriority`, `p101_getrlimit`, `p101_getrusage`, `p101_getsid`, `p101_kill`, `p101_killpg`, `p101_nice`, `p101_pause`, `p101_pclose`, `p101_popen`, `p101_posix_exit_immediately`, `p101_posix_spawn`, `p101_posix_spawn_file_actions_addclose`, `p101_posix_spawn_file_actions_adddup2`, `p101_posix_spawn_file_actions_addopen`, `p101_posix_spawn_file_actions_destroy`, `p101_posix_spawn_file_actions_init`, `p101_posix_spawnattr_destroy`, `p101_posix_spawnattr_getflags`, `p101_posix_spawnattr_getpgroup`, `p101_posix_spawnattr_getsigdefault`, `p101_posix_spawnattr_getsigmask`, `p101_posix_spawnattr_init`, `p101_posix_spawnattr_setflags`, `p101_posix_spawnattr_setpgroup`, `p101_posix_spawnattr_setsigdefault` … +29 more
+`p101_alarm`, `p101_execv`, `p101_execve`, `p101_execvp`, `p101_fork`, `p101_getpgid`, `p101_getpgrp`, `p101_getpid`, `p101_getppid`, `p101_getpriority`, `p101_getrlimit`, `p101_getrusage`, `p101_getsid`, `p101_kill`, `p101_killpg`, `p101_nice`, `p101_pause`, `p101_pclose`, `p101_popen`, `p101_posix_spawn`, `p101_posix_spawn_file_actions_addclose`, `p101_posix_spawn_file_actions_adddup2`, `p101_posix_spawn_file_actions_addopen`, `p101_posix_spawn_file_actions_destroy`, `p101_posix_spawn_file_actions_init`, `p101_posix_spawnattr_destroy`, `p101_posix_spawnattr_getflags`, `p101_posix_spawnattr_getpgroup`, `p101_posix_spawnattr_getsigdefault`, `p101_posix_spawnattr_getsigmask`, `p101_posix_spawnattr_init`, `p101_posix_spawnattr_setflags`, `p101_posix_spawnattr_setpgroup`, `p101_posix_spawnattr_setsigdefault`, `p101_posix_spawnattr_setsigmask` … +28 more
 
 ### `c/math-rounding-remainder` (54)
 
@@ -335,25 +335,25 @@ Every discovered domain is assigned to one primary track.
 
 `p101_cfgetispeed`, `p101_cfgetospeed`, `p101_cfmakeraw`, `p101_cfsetispeed`, `p101_cfsetospeed`, `p101_cfsetspeed`, `p101_crypt`, `p101_endusershell`, `p101_endutxent`, `p101_getegid`, `p101_geteuid`, `p101_getgid`, `p101_getgrgid_r`, `p101_getgrnam_r`, `p101_getgroups`, `p101_getlogin_r`, `p101_getpwnam_r`, `p101_getpwuid_r`, `p101_getuid`, `p101_getusershell`, `p101_getutxent`, `p101_getutxid`, `p101_getutxline`, `p101_grantpt`, `p101_isatty`, `p101_posix_openpt`, `p101_ptsname`, `p101_pututxline`, `p101_setegid`, `p101_seteuid`, `p101_setgid`, `p101_setregid`, `p101_setreuid`, `p101_setuid`, `p101_setusershell` … +12 more
 
+### `tooling/event-protocol` (43)
+
+`p101_record_parse_size`, `p101_record_split`, `p101_record_unescape_field`, `p101_record_write_json_string`, `p101_record_write_json_string_contents`, `p101_tool_event_fingerprint_file`, `p101_tool_event_lifecycle_create`, `p101_tool_event_lifecycle_destroy`, `p101_tool_event_lifecycle_entry_at`, `p101_tool_event_lifecycle_entry_count`, `p101_tool_event_lifecycle_finding_at`, `p101_tool_event_lifecycle_finding_count`, `p101_tool_event_lifecycle_finish`, `p101_tool_event_lifecycle_ingest`, `p101_tool_event_line_is_ours`, `p101_tool_event_ownership_classify_release`, `p101_tool_event_ownership_classify_replace`, `p101_tool_event_ownership_exec_inherits`, `p101_tool_event_parse_json_size`, `p101_tool_event_parse_line`, `p101_tool_event_parse_policy_summary_json`, `p101_tool_event_parse_resource_summary_json`, `p101_tool_event_parse_status_name`, `p101_tool_event_read_line`, `p101_tool_event_resource_summary_finding_count`, `p101_tool_event_stream_health_destroy`, `p101_tool_event_stream_health_incomplete_producers`, `p101_tool_event_stream_health_is_complete`, `p101_tool_event_stream_health_observe`, `p101_tool_event_write`, `p101_tool_failure_reason_name`, `p101_tool_model_create`, `p101_tool_model_destroy`, `p101_tool_model_edge_at`, `p101_tool_model_edge_count` … +8 more
+
 ### `c/math-trig` (39)
 
 `p101_acos`, `p101_acosf`, `p101_acosh`, `p101_acoshf`, `p101_acoshl`, `p101_acosl`, `p101_asin`, `p101_asinf`, `p101_asinh`, `p101_asinhf`, `p101_asinhl`, `p101_asinl`, `p101_atan`, `p101_atan2`, `p101_atan2f`, `p101_atan2l`, `p101_atanf`, `p101_atanh`, `p101_atanhf`, `p101_atanhl`, `p101_atanl`, `p101_cos`, `p101_cosf`, `p101_cosh`, `p101_coshf`, `p101_coshl`, `p101_cosl`, `p101_sin`, `p101_sinf`, `p101_sinh`, `p101_sinhf`, `p101_sinhl`, `p101_sinl`, `p101_tan`, `p101_tanf` … +4 more
-
-### `tooling/event-protocol` (37)
-
-`p101_tool_event_fingerprint_file`, `p101_tool_event_lifecycle_create`, `p101_tool_event_lifecycle_destroy`, `p101_tool_event_lifecycle_entry_at`, `p101_tool_event_lifecycle_entry_count`, `p101_tool_event_lifecycle_finding_at`, `p101_tool_event_lifecycle_finding_count`, `p101_tool_event_lifecycle_finish`, `p101_tool_event_lifecycle_ingest`, `p101_tool_event_line_is_ours`, `p101_tool_event_ownership_classify_release`, `p101_tool_event_ownership_classify_replace`, `p101_tool_event_ownership_exec_inherits`, `p101_tool_event_parse_json_size`, `p101_tool_event_parse_line`, `p101_tool_event_parse_policy_summary_json`, `p101_tool_event_parse_resource_summary_json`, `p101_tool_event_parse_size_field`, `p101_tool_event_parse_status_name`, `p101_tool_event_read_line`, `p101_tool_event_resource_summary_finding_count`, `p101_tool_event_split`, `p101_tool_event_stream_health_destroy`, `p101_tool_event_stream_health_incomplete_producers`, `p101_tool_event_stream_health_is_complete`, `p101_tool_event_stream_health_observe`, `p101_tool_event_unescape_field`, `p101_tool_event_write`, `p101_tool_model_create`, `p101_tool_model_destroy`, `p101_tool_model_edge_at`, `p101_tool_model_edge_count`, `p101_tool_model_finish`, `p101_tool_model_ingest`, `p101_tool_model_node_at` … +2 more
 
 ### `c/conversion` (36)
 
 `p101_parse_char`, `p101_parse_int`, `p101_parse_int16_t`, `p101_parse_int32_t`, `p101_parse_int64_t`, `p101_parse_int8_t`, `p101_parse_long`, `p101_parse_long_long`, `p101_parse_negative_char`, `p101_parse_negative_int`, `p101_parse_negative_int16_t`, `p101_parse_negative_int32_t`, `p101_parse_negative_int64_t`, `p101_parse_negative_int8_t`, `p101_parse_negative_long`, `p101_parse_negative_long_long`, `p101_parse_negative_short`, `p101_parse_positive_char`, `p101_parse_positive_int`, `p101_parse_positive_int16_t`, `p101_parse_positive_int32_t`, `p101_parse_positive_int64_t`, `p101_parse_positive_int8_t`, `p101_parse_positive_long`, `p101_parse_positive_long_long`, `p101_parse_positive_short`, `p101_parse_short`, `p101_parse_uint16_t`, `p101_parse_uint32_t`, `p101_parse_uint64_t`, `p101_parse_uint8_t`, `p101_parse_unsigned_char`, `p101_parse_unsigned_int`, `p101_parse_unsigned_long`, `p101_parse_unsigned_long_long` … +1 more
 
-### `c/stdlib` (33)
-
-`p101_abort`, `p101_abs`, `p101_aligned_alloc`, `p101_at_quick_exit`, `p101_atexit`, `p101_bsearch`, `p101_calloc`, `p101_div`, `p101_exit`, `p101_exit_immediately`, `p101_free`, `p101_getenv`, `p101_labs`, `p101_ldiv`, `p101_llabs`, `p101_lldiv`, `p101_malloc`, `p101_mblen`, `p101_mbstowcs`, `p101_mbtowc`, `p101_qsort`, `p101_quick_exit`, `p101_realloc`, `p101_strtod`, `p101_strtof`, `p101_strtol`, `p101_strtold`, `p101_strtoll`, `p101_strtoul`, `p101_strtoull`, `p101_system`, `p101_wcstombs`, `p101_wctomb`
-
 ### `systems/filesystem-paths` (33)
 
 `p101_access`, `p101_chdir`, `p101_chmod`, `p101_chown`, `p101_faccessat`, `p101_fchdir`, `p101_fchmod`, `p101_fchmodat`, `p101_fchown`, `p101_fchownat`, `p101_fstat`, `p101_fstatat`, `p101_fstatvfs`, `p101_futimens`, `p101_lchown`, `p101_link`, `p101_linkat`, `p101_lstat`, `p101_mkdir`, `p101_mkdirat`, `p101_mknod`, `p101_readlink`, `p101_readlinkat`, `p101_rmdir`, `p101_stat`, `p101_statvfs`, `p101_symlink`, `p101_symlinkat`, `p101_truncate`, `p101_umask`, `p101_unlink`, `p101_unlinkat`, `p101_utimensat`
+
+### `support/fsm` (31)
+
+`p101_fsm_decide_exit`, `p101_fsm_decide_pause`, `p101_fsm_decide_transition`, `p101_fsm_effect_batch_count`, `p101_fsm_effect_batch_create`, `p101_fsm_effect_batch_destroy`, `p101_fsm_effect_batch_finish_step`, `p101_fsm_effect_batch_sink`, `p101_fsm_emit_effect`, `p101_fsm_exit_immediately`, `p101_fsm_info_create`, `p101_fsm_info_default_bad_change_state_handler`, `p101_fsm_info_default_bad_change_state_notifier`, `p101_fsm_info_default_did_change_state_notifier`, `p101_fsm_info_default_will_change_state_notifier`, `p101_fsm_info_destroy`, `p101_fsm_info_get_bad_change_state_handler`, `p101_fsm_info_get_bad_change_state_notifier`, `p101_fsm_info_get_current_state`, `p101_fsm_info_get_did_change_state_notifier`, `p101_fsm_info_get_name`, `p101_fsm_info_get_step_sequence`, `p101_fsm_info_get_will_change_state_notifier`, `p101_fsm_info_is_terminal`, `p101_fsm_info_set_bad_change_state_handler`, `p101_fsm_info_set_bad_change_state_notifier`, `p101_fsm_info_set_did_change_state_notifier`, `p101_fsm_info_set_step_observer`, `p101_fsm_info_set_will_change_state_notifier`, `p101_fsm_run`, `p101_fsm_step`
 
 ### `c/complex-trig` (30)
 
@@ -363,17 +363,21 @@ Every discovered domain is assigned to one primary track.
 
 `p101_copysign`, `p101_copysignf`, `p101_copysignl`, `p101_fabs`, `p101_fabsf`, `p101_fabsl`, `p101_fdim`, `p101_fdimf`, `p101_fdiml`, `p101_fma`, `p101_fmaf`, `p101_fmal`, `p101_fmax`, `p101_fmaxf`, `p101_fmaxl`, `p101_fmin`, `p101_fminf`, `p101_fminl`, `p101_ilogb`, `p101_ilogbf`, `p101_ilogbl`, `p101_nan`, `p101_nanf`, `p101_nanl`, `p101_nextafter`, `p101_nextafterf`, `p101_nextafterl`, `p101_nexttoward`, `p101_nexttowardf`, `p101_nexttowardl`
 
+### `c/stdlib` (29)
+
+`p101_abs`, `p101_aligned_alloc`, `p101_at_quick_exit`, `p101_atexit`, `p101_bsearch`, `p101_calloc`, `p101_div`, `p101_free`, `p101_getenv`, `p101_labs`, `p101_ldiv`, `p101_llabs`, `p101_lldiv`, `p101_malloc`, `p101_mblen`, `p101_mbstowcs`, `p101_mbtowc`, `p101_qsort`, `p101_realloc`, `p101_strtod`, `p101_strtof`, `p101_strtol`, `p101_strtold`, `p101_strtoll`, `p101_strtoul`, `p101_strtoull`, `p101_system`, `p101_wcstombs`, `p101_wctomb`
+
 ### `c/atomics` (26)
 
 `p101_atomic_flag_clear`, `p101_atomic_flag_clear_explicit`, `p101_atomic_flag_test_and_set`, `p101_atomic_flag_test_and_set_explicit`, `p101_atomic_signal_fence`, `p101_atomic_thread_fence`, `p101_atomic_uint_compare_exchange_strong`, `p101_atomic_uint_compare_exchange_strong_explicit`, `p101_atomic_uint_compare_exchange_weak`, `p101_atomic_uint_compare_exchange_weak_explicit`, `p101_atomic_uint_exchange`, `p101_atomic_uint_exchange_explicit`, `p101_atomic_uint_fetch_add`, `p101_atomic_uint_fetch_add_explicit`, `p101_atomic_uint_fetch_and`, `p101_atomic_uint_fetch_and_explicit`, `p101_atomic_uint_fetch_or`, `p101_atomic_uint_fetch_or_explicit`, `p101_atomic_uint_fetch_sub`, `p101_atomic_uint_fetch_sub_explicit`, `p101_atomic_uint_fetch_xor`, `p101_atomic_uint_fetch_xor_explicit`, `p101_atomic_uint_load`, `p101_atomic_uint_load_explicit`, `p101_atomic_uint_store`, `p101_atomic_uint_store_explicit`
 
-### `support/fsm` (26)
-
-`p101_fsm_decide_exit`, `p101_fsm_decide_pause`, `p101_fsm_decide_transition`, `p101_fsm_emit_effect`, `p101_fsm_exit_immediately`, `p101_fsm_info_create`, `p101_fsm_info_default_bad_change_state_handler`, `p101_fsm_info_default_bad_change_state_notifier`, `p101_fsm_info_default_did_change_state_notifier`, `p101_fsm_info_default_will_change_state_notifier`, `p101_fsm_info_destroy`, `p101_fsm_info_get_bad_change_state_handler`, `p101_fsm_info_get_bad_change_state_notifier`, `p101_fsm_info_get_current_state`, `p101_fsm_info_get_did_change_state_notifier`, `p101_fsm_info_get_name`, `p101_fsm_info_get_step_sequence`, `p101_fsm_info_get_will_change_state_notifier`, `p101_fsm_info_is_terminal`, `p101_fsm_info_set_bad_change_state_handler`, `p101_fsm_info_set_bad_change_state_notifier`, `p101_fsm_info_set_did_change_state_notifier`, `p101_fsm_info_set_step_observer`, `p101_fsm_info_set_will_change_state_notifier`, `p101_fsm_run`, `p101_fsm_step`
-
 ### `support/assertions` (25)
 
 `p101_check_equals_int`, `p101_check_equals_intmax`, `p101_check_equals_string`, `p101_check_equals_uintmax`, `p101_check_greater_than_double`, `p101_check_greater_than_int`, `p101_check_greater_than_intmax`, `p101_check_greater_than_long_double`, `p101_check_greater_than_uintmax`, `p101_check_in_range_double`, `p101_check_in_range_int`, `p101_check_in_range_intmax`, `p101_check_in_range_long_double`, `p101_check_in_range_uintmax`, `p101_check_less_than_double`, `p101_check_less_than_int`, `p101_check_less_than_intmax`, `p101_check_less_than_long_double`, `p101_check_less_than_uintmax`, `p101_check_not_equals_int`, `p101_check_not_equals_intmax`, `p101_check_not_equals_string`, `p101_check_not_equals_uintmax`, `p101_check_not_null`, `p101_check_null`
+
+### `c/byte-utility` (24)
+
+`p101_be16toh`, `p101_be32toh`, `p101_be64toh`, `p101_bswap16`, `p101_bswap32`, `p101_bswap64`, `p101_htobe16`, `p101_htobe32`, `p101_htobe64`, `p101_htole16`, `p101_htole32`, `p101_htole64`, `p101_is_little_endian`, `p101_le16toh`, `p101_le32toh`, `p101_le64toh`, `p101_tool_argv_append`, `p101_tool_argv_append_prefixed`, `p101_tool_argv_destroy`, `p101_tool_argv_init`, `p101_tool_read_pipe_close`, `p101_tool_read_pipe_open`, `p101_tool_run_capture`, `p101_tool_run_redirect`
 
 ### `support/error-core` (24)
 
@@ -394,10 +398,6 @@ Every discovered domain is assigned to one primary track.
 ### `systems/resource-time-memory` (19)
 
 `p101_clock_getres`, `p101_clock_gettime`, `p101_clock_settime`, `p101_gmtime_r`, `p101_localtime_r`, `p101_mlock`, `p101_mlockall`, `p101_mmap`, `p101_mprotect`, `p101_msync`, `p101_munlock`, `p101_munlockall`, `p101_munmap`, `p101_nanosleep`, `p101_posix_madvise`, `p101_posix_memalign`, `p101_strftime_l`, `p101_strptime`, `p101_tzset`
-
-### `c/byte-utility` (18)
-
-`p101_be16toh`, `p101_be32toh`, `p101_be64toh`, `p101_bswap16`, `p101_bswap32`, `p101_bswap64`, `p101_htobe16`, `p101_htobe32`, `p101_htobe64`, `p101_htole16`, `p101_htole32`, `p101_htole64`, `p101_is_little_endian`, `p101_le16toh`, `p101_le32toh`, `p101_le64toh`, `p101_tool_run_capture`, `p101_tool_run_redirect`
 
 ### `c/complex-components` (18)
 
@@ -483,10 +483,6 @@ Every discovered domain is assigned to one primary track.
 
 `p101_catclose`, `p101_catgets`, `p101_catopen`, `p101_duplocale`, `p101_freelocale`, `p101_iconv`, `p101_iconv_close`, `p101_iconv_open`, `p101_newlocale`, `p101_nl_langinfo`, `p101_nl_langinfo_l`, `p101_uselocale`
 
-### `systems/logging-diagnostics` (12)
-
-`p101_closelog`, `p101_err`, `p101_errx`, `p101_fmtmsg`, `p101_openlog`, `p101_setlogmask`, `p101_verr`, `p101_verrx`, `p101_vwarn`, `p101_vwarnx`, `p101_warn`, `p101_warnx`
-
 ### `c/floating-env` (11)
 
 `p101_feclearexcept`, `p101_fegetenv`, `p101_fegetexceptflag`, `p101_fegetround`, `p101_feholdexcept`, `p101_feraiseexcept`, `p101_fesetenv`, `p101_fesetexceptflag`, `p101_fesetround`, `p101_fetestexcept`, `p101_feupdateenv`
@@ -519,9 +515,17 @@ Every discovered domain is assigned to one primary track.
 
 `p101_aio_cancel`, `p101_aio_error`, `p101_aio_fsync`, `p101_aio_read`, `p101_aio_return`, `p101_aio_suspend`, `p101_aio_write`, `p101_lio_listio`
 
+### `systems/logging-diagnostics` (8)
+
+`p101_closelog`, `p101_fmtmsg`, `p101_openlog`, `p101_setlogmask`, `p101_vwarn`, `p101_vwarnx`, `p101_warn`, `p101_warnx`
+
 ### `systems/platform-admin` (8)
 
 `p101_confstr`, `p101_getdomainname`, `p101_gethostid`, `p101_gethostname`, `p101_getloadavg`, `p101_setdomainname`, `p101_sysconf`, `p101_uname`
+
+### `tooling/c-facts` (8)
+
+`p101_c_analysis_kind_name`, `p101_c_analysis_scan`, `p101_c_fact_kind_name`, `p101_c_fact_parse_line`, `p101_c_fact_status_name`, `p101_c_facts_find_clang_compile_database`, `p101_c_facts_with_compile_command`, `p101_c_mutation_kind_name`
 
 ### `c/inttypes` (6)
 
@@ -559,6 +563,10 @@ Every discovered domain is assigned to one primary track.
 
 `p101_ether_aton`, `p101_ether_hostton`, `p101_ether_line`, `p101_ether_ntoa`, `p101_ether_ntohost`
 
+### `support/fault-injection` (5)
+
+`p101_env_check_fault`, `p101_env_check_fault_action`, `p101_env_default_tracer`, `p101_env_record_fault_action`, `p101_env_set_fault_injector`
+
 ### `systems/thread-local-once` (5)
 
 `p101_pthread_getspecific`, `p101_pthread_key_create`, `p101_pthread_key_delete`, `p101_pthread_once`, `p101_pthread_setspecific`
@@ -571,10 +579,6 @@ Every discovered domain is assigned to one primary track.
 
 `p101_getc_unlocked`, `p101_getchar_unlocked`, `p101_putc_unlocked`, `p101_putchar_unlocked`
 
-### `support/fault-injection` (4)
-
-`p101_env_check_fault`, `p101_env_check_fault_action`, `p101_env_default_tracer`, `p101_env_set_fault_injector`
-
 ### `systems/dynamic-loading` (4)
 
 `p101_dlclose`, `p101_dlerror`, `p101_dlopen`, `p101_dlsym`
@@ -586,10 +590,6 @@ Every discovered domain is assigned to one primary track.
 ### `systems/thread-cancellation` (4)
 
 `p101_pthread_cancel`, `p101_pthread_setcancelstate`, `p101_pthread_setcanceltype`, `p101_pthread_testcancel`
-
-### `tooling/c-facts` (4)
-
-`p101_c_fact_kind_name`, `p101_c_fact_parse_line`, `p101_c_fact_status_name`, `p101_c_facts_find_clang_compile_database`
 
 ### `c/control-flow` (3)
 

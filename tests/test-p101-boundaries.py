@@ -29,7 +29,10 @@ class BoundaryTests(unittest.TestCase):
     def test_current_register(self) -> None:
         report = MODULE.validate(copy.deepcopy(self.document))
         self.assertGreaterEqual(report["boundaries"], 6)
-        self.assertEqual(report["matrix_cases"], 6)
+        self.assertEqual(
+            report["matrix_cases"],
+            report["boundaries"] * len(MODULE.REQUIRED_TESTS),
+        )
 
     def test_duplicate_owner_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)
@@ -44,7 +47,9 @@ class BoundaryTests(unittest.TestCase):
 
     def test_missing_test_marker_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)
-        document["boundaries"][0]["tests"]["binding_swap"] = "not_a_real_test_marker"
+        document["boundaries"][0]["tests"]["binding_swap"][
+            "marker"
+        ] = "not_a_real_test_marker"
         with self.assertRaisesRegex(MODULE.BoundaryError, "binding_swap marker"):
             MODULE.validate(document)
 
@@ -54,16 +59,29 @@ class BoundaryTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.BoundaryError, "does_not_prove"):
             MODULE.validate(document)
 
-    def test_missing_matrix_case_is_rejected(self) -> None:
+    def test_missing_per_boundary_case_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)
-        del document["test_matrix"]["stale_version"]
-        with self.assertRaisesRegex(MODULE.BoundaryError, "test_matrix"):
+        del document["boundaries"][0]["tests"]["resource_limit"]
+        with self.assertRaisesRegex(MODULE.BoundaryError, "has no tests"):
             MODULE.validate(document)
 
-    def test_missing_matrix_marker_is_rejected(self) -> None:
+    def test_non_applicable_is_only_allowed_for_version_axis(self) -> None:
         document = copy.deepcopy(self.document)
-        document["test_matrix"]["identity_mismatch"]["marker"] = "not_present"
-        with self.assertRaisesRegex(MODULE.BoundaryError, "identity_mismatch marker"):
+        document["boundaries"][0]["tests"]["identity_mismatch"] = {
+            "not_applicable": True,
+            "reason": "not useful",
+        }
+        with self.assertRaisesRegex(MODULE.BoundaryError, "requires executable evidence"):
+            MODULE.validate(document)
+
+    def test_matrix_cases_cannot_reuse_the_same_evidence(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["boundaries"][0]["tests"]["identity_mismatch"] = copy.deepcopy(
+            document["boundaries"][0]["tests"]["binding_swap"]
+        )
+        with self.assertRaisesRegex(
+            MODULE.BoundaryError, "reuses another matrix case"
+        ):
             MODULE.validate(document)
 
 

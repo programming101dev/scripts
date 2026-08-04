@@ -61,9 +61,9 @@ BACKUP_STAMP=$(date +%Y%m%d%H%M%S)
 SYNC_SCRIPTS="build-all.sh build.sh change-compiler.sh check-compilers.sh check-env.sh check.sh clean.sh coverage-report.sh create-links.sh debug.sh doctor.sh fuzz.sh profile-report.sh report.sh test-all.sh test.sh"
 
 # Non-executable canonical files kept in lock-step the same way.
-SYNC_FILES=".gitignore .clang-format coverage.txt profile.txt"
+SYNC_FILES=".gitignore .clang-format LICENSE coverage.txt profile.txt"
 SYNC_EXAMPLE_SCRIPTS="build.sh change-compiler.sh check-compilers.sh check-env.sh doctor.sh"
-SYNC_EXAMPLE_FILES=".gitignore"
+SYNC_EXAMPLE_FILES=".gitignore LICENSE"
 SYNC_AGGREGATE_EXAMPLE_SCRIPTS="check-compilers.sh doctor.sh"
 
 # Library-only scripts; canonical is this scripts repo itself (see header).
@@ -193,6 +193,9 @@ while IFS= read -r line || [ -n "$line" ]; do
     for s in $SYNC_AGGREGATE_EXAMPLE_SCRIPTS; do
       sync_one "$src" "$destdir" "$dest" "$s" x
     done
+    for s in $SYNC_EXAMPLE_FILES; do
+      sync_one "$src" "$destdir" "$dest" "$s" -
+    done
     continue
   elif [ "$example_kind" = "library" ]; then
     for s in $SYNC_EXAMPLE_SCRIPTS; do
@@ -219,6 +222,16 @@ while IFS= read -r line || [ -n "$line" ]; do
       done ;;
   esac
 done < "$REPOS_FILE"
+
+# The scripts and setup repositories are workspace conductors rather than
+# repos.txt entries, but repository policy files must still be byte-identical
+# everywhere.
+for policy_repo in "$SCRIPT_DIR" "$SCRIPT_DIR/../setup"; do
+  policy_label=$(basename "$policy_repo")
+  for s in .gitignore LICENSE; do
+    sync_one "$C_SRC" "$policy_repo" "$policy_label" "$s" -
+  done
+done
 
 if [ "$failures" -gt 0 ]; then
   printf 'Shared script distribution failed: %d problem(s).\n' "$failures" >&2

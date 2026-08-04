@@ -26,7 +26,7 @@ esac
 
 interactive=false
 latest=false
-refresh_aborted=false
+interaction_aborted=false
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -i|--interactive)
@@ -118,17 +118,52 @@ refresh_repository() {
         printf 'Resolve the repository, then press Enter to retry it; enter q to abort: ' >&2
         if ! IFS= read -r answer; then
             printf '\nInteractive input closed; aborting.\n' >&2
-            refresh_aborted=true
+            interaction_aborted=true
             return "${refresh_status}"
         fi
         case "${answer}" in
             q|Q|quit|QUIT)
                 printf 'Aborting at repository refresh: %s\n' "${target_dir}" >&2
-                refresh_aborted=true
+                interaction_aborted=true
                 return "${refresh_status}"
                 ;;
         esac
         printf 'Retrying repository refresh: %s\n\n' "${target_dir}" >&2
+    done
+}
+
+align_repository() {
+    local target_dir="$1"
+    local expected_commit="$2"
+    local align_status
+    local answer
+
+    while true; do
+        align_status=0
+        align_locked_repository "${target_dir}" "${expected_commit}" || align_status=$?
+        if [[ "${align_status}" -eq 0 ]]; then
+            return 0
+        fi
+        if ! ${interactive}; then
+            return "${align_status}"
+        fi
+
+        printf '\nFAILED: align %s to locked revision %s (exit %d).\n' \
+            "${target_dir}" "${expected_commit:0:12}" "${align_status}" >&2
+        printf 'Resolve the repository, then press Enter to retry it; enter q to abort: ' >&2
+        if ! IFS= read -r answer; then
+            printf '\nInteractive input closed; aborting.\n' >&2
+            interaction_aborted=true
+            return "${align_status}"
+        fi
+        case "${answer}" in
+            q|Q|quit|QUIT)
+                printf 'Aborting at locked repository alignment: %s\n' "${target_dir}" >&2
+                interaction_aborted=true
+                return "${align_status}"
+                ;;
+        esac
+        printf 'Retrying locked repository alignment: %s\n\n' "${target_dir}" >&2
     done
 }
 
@@ -145,6 +180,10 @@ align_locked_repository() {
     fi
     if [[ -n "$(git -C "${target_dir}" status --porcelain=v1 --untracked-files=normal)" ]]; then
         echo "  ! Cannot align a modified worktree to locked ${expected_commit:0:12}." >&2
+        if git -C "${target_dir}" merge-base --is-ancestor "${expected_commit}" "${current_commit}"; then
+            echo "  ! The worktree is based on the lock but contains newer development work." >&2
+            echo "  ! Abort and rerun the calling command with --latest to preserve and build it." >&2
+        fi
         return 3
     fi
     echo "  -> Fetching locked revision ${expected_commit:0:12}..."
@@ -290,8 +329,11 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
                 continue
             fi
             align_status=0
-            align_locked_repository "${target_dir}" "${locked_commit}" || align_status=$?
+            align_repository "${target_dir}" "${locked_commit}" || align_status=$?
             if [[ "${align_status}" -ne 0 ]]; then
+                if ${interaction_aborted}; then
+                    exit "${align_status}"
+                fi
                 echo "  ! Locked repository alignment failed (exit ${align_status})."
                 failures=$((failures + 1))
                 echo
@@ -309,7 +351,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
             refresh_status=0
             refresh_repository "${target_dir}" || refresh_status=$?
             if [[ "${refresh_status}" -ne 0 ]]; then
-                if ${refresh_aborted}; then
+                if ${interaction_aborted}; then
                     exit "${refresh_status}"
                 fi
                 echo "  ! Repository refresh failed (exit ${refresh_status})."

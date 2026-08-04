@@ -45,6 +45,7 @@ sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 from wrapper_fault_contract import (  # noqa: E402
     effective_fault_selection,
     fault_domain,
+    has_documented_faults,
     load_contract,
 )
 
@@ -56,6 +57,9 @@ PLATFORM_FAULTS_PATH = (
 )
 FAILURE_CONTRACT_PATH = (
     SCRIPTS_ROOT / "contracts" / "wrapper-failure-contract.json"
+)
+OUTCOME_CONTRACT_PATH = (
+    SCRIPTS_ROOT / "contracts" / "wrapper-outcome-contract.json"
 )
 REPOS_PATH = SCRIPTS_ROOT / "repos.txt"
 AGGREGATE_TYPEDEFS = {
@@ -289,6 +293,49 @@ def result_declaration(
     return f"{return_type(declaration)} {name}"
 
 
+def has_va_list_parameter(declaration: dict[str, Any]) -> bool:
+    """Return whether a wrapper accepts an already-started va_list.
+
+    A va_list is not an ordinary zero-initializable object. Generated tests
+    must create it in a variadic function with va_start(), even when injected
+    failure is expected to return before the wrapped function consumes it.
+    """
+    return any(
+        child.get("kind") == "ParmVarDecl"
+        and "va_list" in child.get("type", {}).get("qualType", "")
+        for child in declaration.get("inner", [])
+    )
+
+
+def accepts_error_parameter(declaration: dict[str, Any]) -> bool:
+    return any(
+        child.get("kind") == "ParmVarDecl"
+        and "p101_error" in child.get("type", {}).get("qualType", "")
+        and "*" in child.get("type", {}).get("qualType", "")
+        for child in declaration.get("inner", [])
+    )
+
+
+def fault_test_signature_suffix(declaration: dict[str, Any]) -> str:
+    return ", ..." if has_va_list_parameter(declaration) else ""
+
+
+def fault_test_call_suffix(declaration: dict[str, Any]) -> str:
+    return ", 0" if has_va_list_parameter(declaration) else ""
+
+
+def va_list_setup(declaration: dict[str, Any]) -> str:
+    if not has_va_list_parameter(declaration):
+        return ""
+    return "    va_list arguments;\n\n    va_start(arguments, err);\n"
+
+
+def va_list_teardown(declaration: dict[str, Any]) -> str:
+    if not has_va_list_parameter(declaration):
+        return ""
+    return "    va_end(arguments);\n"
+
+
 def argument_expression(parameter: dict[str, Any]) -> str:
     type_info = parameter["type"]
     qualified = type_info["qualType"]
@@ -386,11 +433,91 @@ def direct_return_expression(
     return match.group(1).strip() if match is not None else None
 
 
+def explicit_fault_result(fragment: str) -> str | None:
+    """Return the first single-exit result assigned by a manual fault path."""
+    if "p101_env_check_fault" not in fragment:
+        return None
+    match = re.search(
+        r"\bp101_single_result_\s*=\s*([^;]+)\s*;",
+        fragment,
+    )
+    return match.group(1).strip() if match is not None else None
+
+
 def fault_return_contract(
     declaration: dict[str, Any],
     source: Path,
 ) -> dict[str, str]:
     """Extract the injected branch's return contract from Clang locations."""
+    text = source.read_text(encoding="utf-8", errors="replace")
+    declaration_range = declaration.get("range", {})
+    begin = declaration_range.get("begin", {})
+    end = declaration_range.get("end", {})
+    begin = begin.get("expansionLoc", begin)
+    end = end.get("expansionLoc", end)
+    begin_offset = begin.get("offset")
+    end_offset = end.get("offset")
+    token_length = end.get("tokLen", 0)
+    if all(
+        isinstance(value, int)
+        for value in (begin_offset, end_offset, token_length)
+    ):
+        fragment = text[begin_offset : end_offset + token_length]
+        for match in re.finditer(
+            r"\bP101_[A-Z0-9_]*FAULT[A-Z0-9_]*RETURN[A-Z0-9_]*\s*\(",
+            fragment,
+        ):
+            invocation = macro_invocation(text, begin_offset + match.start())
+            if invocation is None:
+                continue
+            macro_name, arguments = invocation
+            domain = "system" if "_SYSTEM" in macro_name else "errno"
+            if macro_name.endswith("_CODE"):
+                return {
+                    "kind": "error-code",
+                    "expression": "fault-code",
+                    "error_domain": domain,
+                }
+            if macro_name.endswith("_VOID"):
+                return {
+                    "kind": "void",
+                    "expression": "void",
+                    "error_domain": domain,
+                }
+            if macro_name == "P101_FAULT_RETURN_PARSED":
+                default_parameter = next(
+                    (
+                        parameter
+                        for parameter in declaration.get("inner", [])
+                        if parameter.get("kind") == "ParmVarDecl"
+                        and parameter.get("name") == "default_value"
+                    ),
+                    None,
+                )
+                if default_parameter is None:
+                    raise RuntimeError(
+                        f"{declaration.get('name', '?')} uses "
+                        "P101_FAULT_RETURN_PARSED without default_value"
+                    )
+                return {
+                    "kind": "value",
+                    "expression": argument_expression(default_parameter),
+                    "error_domain": domain,
+                }
+            if arguments:
+                return {
+                    "kind": "value",
+                    "expression": arguments[-1],
+                    "error_domain": domain,
+                }
+        expression = explicit_fault_result(fragment)
+        if expression is not None:
+            return {
+                "kind": "value",
+                "expression": expression,
+                "error_domain": "errno",
+            }
+
     direct_returns: list[str] = []
     for node in nodes(declaration):
         if node.get("kind") != "ReturnStmt":
@@ -417,7 +544,31 @@ def fault_return_contract(
                         "expression": "void",
                         "error_domain": domain,
                     }
-                if "FAULT_RETURN" in macro_name and arguments:
+                if macro_name == "P101_FAULT_RETURN_PARSED":
+                    default_parameter = next(
+                        (
+                            parameter
+                            for parameter in declaration.get("inner", [])
+                            if parameter.get("kind") == "ParmVarDecl"
+                            and parameter.get("name") == "default_value"
+                        ),
+                        None,
+                    )
+                    if default_parameter is None:
+                        raise RuntimeError(
+                            f"{declaration.get('name', '?')} uses "
+                            "P101_FAULT_RETURN_PARSED without default_value"
+                        )
+                    return {
+                        "kind": "value",
+                        "expression": argument_expression(default_parameter),
+                        "error_domain": domain,
+                    }
+                if (
+                    "FAULT" in macro_name
+                    and "RETURN" in macro_name
+                    and arguments
+                ):
                     return {
                         "kind": "value",
                         "expression": arguments[-1],
@@ -590,17 +741,7 @@ def fault_test(
         for child in declaration.get("inner", [])
         if child.get("kind") == "ParmVarDecl"
     ]
-    has_va_list = any(
-        "va_list" in parameter.get("type", {}).get("qualType", "")
-        for parameter in parameters
-    )
-    argument_setup = (
-        "    va_list arguments;\n"
-        "\n"
-        "    memset(&arguments, 0, sizeof(arguments));\n"
-        if has_va_list
-        else ""
-    )
+    argument_setup = va_list_setup(declaration)
     fixture_declarations: list[str] = []
     argument_values: list[str] = []
     fixture_assertions: list[str] = []
@@ -652,7 +793,7 @@ def fault_test(
         for key in ("linux", "macos", "freebsd", "posix")
     }
     return f"""/* P101_TEST_CASE({name}) */
-static void test_{name}(struct p101_env *env, struct p101_error *err)
+static void test_{name}(struct p101_env *env, struct p101_error *err{fault_test_signature_suffix(declaration)})
 {{
 {argument_setup}\
 {fixture_setup}\
@@ -695,6 +836,7 @@ static void test_{name}(struct p101_env *env, struct p101_error *err)
         p101_error_reset(err);
     }}
     p101_env_set_fault_injector(env, NULL, NULL);
+{va_list_teardown(declaration)}\
 }}
 """
 
@@ -725,7 +867,10 @@ int main(void)
         )
         for name in names
     )
-    calls = "\n".join(f"    test_{name}(env, err);" for name in names)
+    calls = "\n".join(
+        f"    test_{name}(env, err{fault_test_call_suffix(declarations[name])});"
+        for name in names
+    )
     return f"""#include <errno.h>
 #include <arpa/inet.h>
 #include <fmtmsg.h>
@@ -989,6 +1134,20 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         )
     drift: list[Path] = []
     fault_contract = load_contract(PLATFORM_FAULTS_PATH)
+    outcome_contract = json.loads(
+        OUTCOME_CONTRACT_PATH.read_text(encoding="utf-8")
+    )
+    if outcome_contract.get("schema") != "p101-wrapper-outcome-contract-v1":
+        raise RuntimeError("unsupported wrapper outcome contract")
+    outcome_apis = outcome_contract.get("apis", {})
+    valid_outcome_classes = {
+        "direct-hard-failure",
+        "short-partial-result",
+        "delegated-failure",
+        "deterministic-rejection",
+        "genuinely-infallible",
+        "non-returning-cleanup",
+    }
     failure_contract: dict[str, Any] = {
         "schema": "p101-wrapper-failure-contract-v1",
         "semantics": {
@@ -1003,6 +1162,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         "wrappers": {},
     }
     wrapper_errors: dict[str, dict[str, list[str]]] = {}
+    admitted_apis: set[str] = set()
     for wrapper, binding in fault_contract["wrappers"].items():
         function = binding.get("function")
         if function is None:
@@ -1032,7 +1192,16 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
 
     for library, (repo, library_rows) in sorted(libraries.items()):
         admitted = {row["function"] for row in library_rows}
+        admitted_apis.update(admitted)
         declarations = function_definitions(clang, library_rows, include_dirs)
+        sources = {
+            row["function"]: WORKSPACE / row["current_source"]
+            for row in library_rows
+        }
+        source_names = {
+            row["function"]: row["current_source"]
+            for row in library_rows
+        }
         manifest_path = repo / "test" / "unit-test-manifest.tsv"
         fault_calls = {"p101_env_check_fault", "p101_env_check_fault_action"}
         faultable = {
@@ -1042,10 +1211,120 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         }
         fault_names = sorted(admitted & faultable)
         behavior_names = sorted(admitted - faultable)
-        sources = {
-            row["function"]: WORKSPACE / row["current_source"]
-            for row in library_rows
-        }
+        for name in sorted(admitted):
+            outcome = outcome_apis.get(name)
+            if outcome is None:
+                raise RuntimeError(
+                    f"{name}: absent from explicit wrapper outcome contract"
+                )
+            if outcome.get("library") != library:
+                raise RuntimeError(
+                    f"{name}: outcome contract assigns "
+                    f"{outcome.get('library')!r}, expected {library!r}"
+                )
+            if outcome.get("source") != source_names[name]:
+                raise RuntimeError(
+                    f"{name}: outcome contract source differs from the "
+                    "public API manifest"
+                )
+            expected_role = fault_contract["wrappers"][name].get("role")
+            if outcome.get("role") != expected_role:
+                raise RuntimeError(
+                    f"{name}: outcome contract role differs "
+                    f"(expected {expected_role!r})"
+                )
+            if not outcome.get("rationale"):
+                raise RuntimeError(
+                    f"{name}: outcome contract lacks a rationale"
+                )
+            classification = outcome.get("classification")
+            if classification not in valid_outcome_classes:
+                raise RuntimeError(
+                    f"{name}: invalid outcome classification "
+                    f"{classification!r}"
+                )
+            declaration = declarations[name]
+            accepts_error = accepts_error_parameter(declaration)
+            if outcome.get("accepts_error") is not accepts_error:
+                raise RuntimeError(
+                    f"{name}: outcome contract accepts_error differs "
+                    "from its public declaration"
+                )
+            references = referenced_names(declaration)
+            has_hard_boundary = "p101_env_check_fault" in references
+            has_action_boundary = (
+                "p101_env_check_fault_action" in references
+            )
+            expected_class = (
+                "short-partial-result"
+                if has_action_boundary
+                else "direct-hard-failure"
+                if has_hard_boundary
+                else None
+            )
+            if expected_class is not None and classification != expected_class:
+                raise RuntimeError(
+                    f"{name}: implementation has {expected_class}, but "
+                    f"outcome contract declares {classification}"
+                )
+            if expected_class is None and classification in {
+                "direct-hard-failure",
+                "short-partial-result",
+            }:
+                raise RuntimeError(
+                    f"{name}: outcome contract declares {classification} "
+                    "without the corresponding direct fault boundary"
+                )
+            if accepts_error and classification not in {
+                "direct-hard-failure",
+                "short-partial-result",
+            }:
+                raise RuntimeError(
+                    f"{name}: APIs accepting p101_error must be directly "
+                    "injectable"
+                )
+            native_function = fault_contract["wrappers"][name].get(
+                "function"
+            )
+            if (
+                expected_role == "native-wrapper"
+                and has_documented_faults(
+                    fault_contract,
+                    native_function,
+                )
+                and not accepts_error
+            ):
+                raise RuntimeError(
+                    f"{name}: {native_function} has documented failure "
+                    "outcomes but the wrapper does not accept p101_error"
+                )
+            if classification == "delegated-failure":
+                delegated_targets = {
+                    target
+                    for target in called_functions(declaration)
+                    if outcome_apis.get(target, {}).get("classification")
+                    in {
+                        "direct-hard-failure",
+                        "short-partial-result",
+                    }
+                }
+                if not delegated_targets:
+                    raise RuntimeError(
+                        f"{name}: delegated-failure has no called "
+                        "injectable API"
+                    )
+            is_noreturn = any(
+                node.get("kind") in {"C11NoReturnAttr", "NoReturnAttr"}
+                for node in nodes(declaration)
+            )
+            if (
+                is_noreturn
+                and classification != "non-returning-cleanup"
+            ):
+                raise RuntimeError(
+                    f"{name}: non-returning API must be classified as "
+                    "non-returning-cleanup"
+                )
         library_failures: dict[str, dict[str, str]] = {}
         for name in fault_names:
             validate_fault_boundary(declarations[name])
@@ -1156,6 +1435,12 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         print(
             f"{library}: {len(fault_names)} injected-failure, "
             f"{len(behavior_names)} behavior tests"
+        )
+    extra_outcomes = set(outcome_apis) - admitted_apis
+    if extra_outcomes:
+        raise RuntimeError(
+            "wrapper outcome contract contains non-public APIs: "
+            + ", ".join(sorted(extra_outcomes))
         )
     expected_contract = (
         json.dumps(failure_contract, indent=2, sort_keys=True) + "\n"

@@ -516,6 +516,70 @@
       "runtime_canary_arguments": [],
       "writable_arguments": "unchanged"
     },
+    "p101_c_analysis_scan": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_c_facts",
+      "resource_events": "none",
+      "return_expression": "false",
+      "return_kind": "value",
+      "runtime_canary_arguments": [
+        "context"
+      ],
+      "writable_arguments": "unchanged"
+    },
+    "p101_c_fact_parse_line": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_c_facts",
+      "resource_events": "none",
+      "return_expression": "P101_C_FACT_MALFORMED",
+      "return_kind": "value",
+      "runtime_canary_arguments": [
+        "line"
+      ],
+      "writable_arguments": "unchanged"
+    },
+    "p101_c_facts_find_clang_compile_database": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_c_facts",
+      "resource_events": "none",
+      "return_expression": "false",
+      "return_kind": "value",
+      "runtime_canary_arguments": [
+        "path"
+      ],
+      "writable_arguments": "unchanged"
+    },
+    "p101_c_facts_with_compile_command": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_c_facts",
+      "resource_events": "none",
+      "return_expression": "false",
+      "return_kind": "value",
+      "runtime_canary_arguments": [
+        "context"
+      ],
+      "writable_arguments": "unchanged"
+    },
     "p101_cabs": {
       "errno": "preserved",
       "error_domain": "errno",
@@ -1242,6 +1306,20 @@
       "library": "lib_network",
       "resource_events": "none",
       "return_expression": "-1",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_convert_address": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [],
       "writable_arguments": "unchanged"
@@ -2851,6 +2929,148 @@
       "resource_events": "none",
       "return_expression": "-1",
       "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_fsm_effect_batch_create": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_fsm",
+      "resource_events": "none",
+      "return_expression": "NULL",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_fsm_effect_batch_finish_step": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_fsm",
+      "resource_events": "none",
+      "return_expression": "-1",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_fsm_emit_effect": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_fsm",
+      "resource_events": "none",
+      "return_expression": "void",
+      "return_kind": "void",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_fsm_exit_immediately": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_fsm",
+      "resource_events": "none",
+      "return_expression": "void",
+      "return_kind": "void",
+      "runtime_canary_arguments": [
+        "arg"
+      ],
+      "writable_arguments": "unchanged"
+    },
+    "p101_fsm_info_create": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_fsm",
+      "resource_events": "none",
+      "return_expression": "NULL",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_fsm_info_default_bad_change_state_handler": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_fsm",
+      "resource_events": "none",
+      "return_expression": "void",
+      "return_kind": "void",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_fsm_info_default_bad_change_state_notifier": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_fsm",
+      "resource_events": "none",
+      "return_expression": "void",
+      "return_kind": "void",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_fsm_info_default_did_change_state_notifier": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_fsm",
+      "resource_events": "none",
+      "return_expression": "void",
+      "return_kind": "void",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_fsm_info_default_will_change_state_notifier": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_fsm",
+      "resource_events": "none",
+      "return_expression": "void",
+      "return_kind": "void",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_fsm_info_destroy": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_fsm",
+      "resource_events": "none",
+      "return_expression": "void",
+      "return_kind": "void",
       "runtime_canary_arguments": [],
       "writable_arguments": "unchanged"
     },
@@ -5282,6 +5502,524 @@
       "resource_events": "none",
       "return_expression": "void",
       "return_kind": "void",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_char": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_in_port_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_int": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_int16_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_int32_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_int64_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_int8_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_long": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_long_long": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_negative_char": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_negative_int": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_negative_int16_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_negative_int32_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_negative_int64_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_negative_int8_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_negative_long": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_negative_long_long": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_negative_short": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_positive_char": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_positive_int": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_positive_int16_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_positive_int32_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_positive_int64_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_positive_int8_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_positive_long": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_positive_long_long": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_positive_short": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_short": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_uint16_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_uint32_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_uint64_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_uint8_t": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_unsigned_char": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_unsigned_int": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_unsigned_long": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_unsigned_long_long": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_parse_unsigned_short": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_convert",
+      "resource_events": "none",
+      "return_expression": "0",
+      "return_kind": "value",
       "runtime_canary_arguments": [],
       "writable_arguments": "unchanged"
     },
@@ -7859,6 +8597,20 @@
       "runtime_canary_arguments": [],
       "writable_arguments": "unchanged"
     },
+    "p101_sethostent": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_network",
+      "resource_events": "none",
+      "return_expression": "void",
+      "return_kind": "void",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
     "p101_setlocale": {
       "errno": "preserved",
       "error_domain": "errno",
@@ -7870,6 +8622,20 @@
       "resource_events": "none",
       "return_expression": "NULL",
       "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_setnetent": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_network",
+      "resource_events": "none",
+      "return_expression": "void",
+      "return_kind": "void",
       "runtime_canary_arguments": [],
       "writable_arguments": "unchanged"
     },
@@ -7898,6 +8664,20 @@
       "resource_events": "none",
       "return_expression": "-1",
       "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_setprotoent": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_network",
+      "resource_events": "none",
+      "return_expression": "void",
+      "return_kind": "void",
       "runtime_canary_arguments": [],
       "writable_arguments": "unchanged"
     },
@@ -7940,6 +8720,20 @@
       "resource_events": "none",
       "return_expression": "-1",
       "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_setservent": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_network",
+      "resource_events": "none",
+      "return_expression": "void",
+      "return_kind": "void",
       "runtime_canary_arguments": [],
       "writable_arguments": "unchanged"
     },
@@ -8615,6 +9409,22 @@
       ],
       "writable_arguments": "unchanged"
     },
+    "p101_strftime_l": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_time",
+      "resource_events": "none",
+      "return_expression": "0U",
+      "return_kind": "value",
+      "runtime_canary_arguments": [
+        "s"
+      ],
+      "writable_arguments": "unchanged"
+    },
     "p101_strndup": {
       "errno": "preserved",
       "error_domain": "errno",
@@ -9226,6 +10036,90 @@
       "resource_events": "none",
       "return_expression": "NULL",
       "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_tool_argv_append": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_util",
+      "resource_events": "none",
+      "return_expression": "false",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_tool_argv_append_prefixed": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_util",
+      "resource_events": "none",
+      "return_expression": "false",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_tool_read_pipe_close": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_util",
+      "resource_events": "none",
+      "return_expression": "-1",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_tool_read_pipe_open": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_util",
+      "resource_events": "none",
+      "return_expression": "false",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_tool_run_capture": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_util",
+      "resource_events": "none",
+      "return_expression": "-1",
+      "return_kind": "value",
+      "runtime_canary_arguments": [],
+      "writable_arguments": "unchanged"
+    },
+    "p101_tool_run_redirect": {
+      "errno": "preserved",
+      "error_domain": "errno",
+      "fault_boundary": "before-observable-work",
+      "fault_modes": [
+        "error"
+      ],
+      "library": "lib_util",
+      "resource_events": "none",
+      "return_expression": "void",
+      "return_kind": "void",
       "runtime_canary_arguments": [],
       "writable_arguments": "unchanged"
     },

@@ -11,9 +11,9 @@
     {
       "id": "event-parser",
       "owner": "libraries/lib_tool_event",
-      "markers": ["p101_tool_event_parse_line", "p101_tool_event_lifecycle_ingest"],
+      "markers": ["p101_tool_event_parse_line", "p101_tool_event_lifecycle_ingest", "p101_tool_run_receipt_validate_file"],
       "consumer_roots": ["programs"],
-      "forbidden_definitions": ["p101_tool_event_parse_line", "p101_tool_event_lifecycle_ingest"]
+      "forbidden_definitions": ["p101_tool_event_parse_line", "p101_tool_event_lifecycle_ingest", "p101_tool_run_receipt_validate_file"]
     },
     {
       "id": "tool-subprocess",
@@ -28,6 +28,11 @@
       "path": "libraries/lib_tool_event/include/p101_tool_event/event.h",
       "maximum_lines": 240,
       "reason": "event representation must not absorb lifecycle or report policy"
+    },
+    {
+      "path": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "maximum_lines": 140,
+      "reason": "receipt transport and validation must not absorb producer policy"
     },
     {
       "path": "libraries/lib_c_facts/include/p101_c_facts/facts.h",

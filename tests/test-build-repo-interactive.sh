@@ -126,4 +126,80 @@ grep -Fxq -- '--interactive' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--skip-install' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- 'address' "$sandbox/matrix/driver-arguments.txt"
 
+snapshot_root="$sandbox/update-snapshot"
+snapshot_scripts="$snapshot_root/scripts"
+mkdir -p "$snapshot_scripts/workspace" "$snapshot_scripts/distribution" \
+  "$snapshot_scripts/generators" "$snapshot_root/.flags" "$snapshot_root/bin"
+cp ./workspace/update.sh "$snapshot_scripts/workspace/update.sh"
+chmod +x "$snapshot_scripts/workspace/update.sh"
+
+cat > "$snapshot_root/bin/tool" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$snapshot_root/bin/tool"
+for name in clang clang++ clang-format clang-tidy cppcheck; do
+  ln -s tool "$snapshot_root/bin/$name"
+done
+
+cat > "$snapshot_root/bin/diff" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+touch "$P101_TEST_DIFF_READY"
+while [[ ! -f "$P101_TEST_DIFF_CONTINUE" ]]; do
+  sleep 0.01
+done
+exit 0
+EOF
+chmod +x "$snapshot_root/bin/diff"
+
+cat > "$snapshot_scripts/helper" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$snapshot_scripts/helper"
+for helper in \
+  distribution/pull.sh \
+  workspace/check-env.sh \
+  distribution/clone-repos.sh \
+  workspace/check-compilers.sh \
+  workspace/compiler-fingerprint.sh \
+  generators/generate-flags.sh \
+  distribution/link-flags.sh \
+  distribution/link-compilers.sh \
+  distribution/link-cmake.sh \
+  workspace/build-repo.sh \
+  distribution/copy-scripts.sh \
+  distribution/copy-playground-track-scripts.sh \
+  distribution/remove-retired-repos.sh \
+  distribution/copy-cmake.sh
+do
+  ln -s ../helper "$snapshot_scripts/$helper"
+done
+printf 'clang\n' > "$snapshot_scripts/supported_c_compilers.txt"
+printf 'clang++\n' > "$snapshot_scripts/supported_cxx_compilers.txt"
+printf '1\n' > "$snapshot_scripts/version.txt"
+printf '1\n' > "$snapshot_root/.flags/version.txt"
+
+export P101_TEST_DIFF_READY="$snapshot_root/diff-ready"
+export P101_TEST_DIFF_CONTINUE="$snapshot_root/diff-continue"
+PATH="$snapshot_root/bin:$PATH" \
+  "$snapshot_scripts/workspace/update.sh" \
+    -c clang -x clang++ -f clang-format -t clang-tidy -k cppcheck \
+    --dry-run --skip-self-update \
+    > "$snapshot_root/update.stdout" 2> "$snapshot_root/update.stderr" &
+snapshot_pid=$!
+for _attempt in $(seq 1 500); do
+  [[ -f "$P101_TEST_DIFF_READY" ]] && break
+  sleep 0.01
+done
+[[ -f "$P101_TEST_DIFF_READY" ]]
+# Simulate editing or fast-forwarding update.sh while an interactive run is
+# paused. The running process must finish from its immutable startup snapshot.
+printf '"\n' > "$snapshot_scripts/workspace/update.sh"
+touch "$P101_TEST_DIFF_CONTINUE"
+wait "$snapshot_pid"
+grep -Fxq 'All done.' "$snapshot_root/update.stdout"
+unset P101_TEST_DIFF_READY P101_TEST_DIFF_CONTINUE
+
 printf 'PASS: interactive repository phase retry and abort behavior\n'

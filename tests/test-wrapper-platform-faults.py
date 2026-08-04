@@ -13,6 +13,8 @@ sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 
 from wrapper_fault_contract import (
     effective_fault_selection,
+    has_explicit_platform_faults,
+    has_documented_faults,
     injected_fault_cases,
 )
 
@@ -184,6 +186,8 @@ def test_platform_precedence() -> None:
                 "platforms": {
                     "linux": {
                         "status": "documented",
+                        "errors": ["EACCES"],
+                        "references": [],
                         "effective_errors": ["EACCES"],
                         "source": "linux://open",
                     },
@@ -200,6 +204,19 @@ def test_platform_precedence() -> None:
                     "source": "posix://voidish",
                 },
                 "platforms": {},
+            },
+            "silent": {
+                "posix": {
+                    "effective_errors": ["EINTR"],
+                    "source": "posix://silent",
+                },
+                "platforms": {
+                    "linux": {
+                        "status": "documented",
+                        "effective_errors": [],
+                        "source": "linux://silent",
+                    },
+                },
             },
         }
     }
@@ -227,6 +244,34 @@ def test_platform_precedence() -> None:
     check(
         injected_fault_cases(contract, "voidish", "linux") == ["EIO"],
         "empty documented set must retain one instrumentation smoke case",
+    )
+    errors, domain, kind, source, coverage = effective_fault_selection(
+        contract,
+        "silent",
+        "linux",
+    )
+    check(
+        errors == ["EINTR"],
+        "silent platform manual erased a POSIX-documented error",
+    )
+    check(domain == "errno", "silent-manual errno domain was lost")
+    check(kind == "posix-fallback", "silent manual did not select POSIX")
+    check(source == "posix://silent", "silent-manual source is wrong")
+    check(
+        coverage == "exhaustive-symbolic",
+        "silent-manual coverage is wrong",
+    )
+    check(
+        has_documented_faults(contract, "silent"),
+        "silent platform page hid a documented POSIX failure",
+    )
+    check(
+        not has_documented_faults(contract, "voidish"),
+        "infallible API was incorrectly marked as documented-failure",
+    )
+    check(
+        not has_explicit_platform_faults(contract, "silent", "linux"),
+        "silent platform page was treated as explicit fault evidence",
     )
 
 

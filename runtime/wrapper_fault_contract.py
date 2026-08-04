@@ -28,6 +28,38 @@ def current_platform_key() -> str | None:
     return PLATFORM_KEYS.get(platform.system())
 
 
+def has_explicit_platform_faults(
+    contract: dict[str, Any],
+    function: str,
+    platform_key: str,
+    visiting: set[str] | None = None,
+) -> bool:
+    """Return whether a platform page or its references names fault codes."""
+    seen = set() if visiting is None else visiting
+    if function in seen:
+        return False
+    record = contract.get("functions", {}).get(function)
+    if record is None:
+        return False
+    platform_record = record.get("platforms", {}).get(platform_key)
+    if (
+        platform_record is None
+        or platform_record.get("status") != "documented"
+    ):
+        return False
+    if platform_record.get("errors", []):
+        return True
+    return any(
+        has_explicit_platform_faults(
+            contract,
+            reference,
+            platform_key,
+            seen | {function},
+        )
+        for reference in platform_record.get("references", [])
+    )
+
+
 def effective_fault_selection(
     contract: dict[str, Any],
     function: str,
@@ -38,8 +70,18 @@ def effective_fault_selection(
     if system_record is not None:
         if platform_key is not None:
             selected = system_record["platforms"][platform_key]
+            codes = sorted(set(selected["codes"]))
+            if not codes and system_record["posix"]["codes"]:
+                selected = system_record["posix"]
+                return (
+                    sorted(set(selected["codes"])),
+                    "system",
+                    "posix-fallback",
+                    selected.get("source"),
+                    system_record["coverage_kind"],
+                )
             return (
-                sorted(set(selected["codes"])),
+                codes,
                 "system",
                 selected["source_kind"],
                 selected.get("source"),
@@ -64,8 +106,42 @@ def effective_fault_selection(
         platform_record is not None
         and platform_record.get("status") == "documented"
     ):
+        posix = record["posix"]
+        platform_lacks_explicit_faults = (
+            not has_explicit_platform_faults(
+                contract,
+                function,
+                platform_key,
+            )
+            and bool(posix["effective_errors"])
+        )
+        if platform_lacks_explicit_faults:
+            return (
+                sorted(set(posix["effective_errors"])),
+                "errno",
+                "posix-fallback",
+                posix.get("source"),
+                "exhaustive-symbolic",
+            )
+        platform_errors = sorted(
+            set(platform_record["effective_errors"])
+        )
+        if (
+            platform_record.get("effective_source_kind")
+            == "posix-fallback"
+            or (not platform_errors and posix["effective_errors"])
+        ):
+            return (
+                platform_errors
+                or sorted(set(posix["effective_errors"])),
+                "errno",
+                "posix-fallback",
+                platform_record.get("effective_source")
+                or posix.get("source"),
+                "exhaustive-symbolic",
+            )
         return (
-            sorted(set(platform_record["effective_errors"])),
+            platform_errors,
             "errno",
             "platform-manual",
             platform_record.get("source"),
@@ -97,6 +173,28 @@ def injected_fault_cases(
         )
     )
     return errors or ["EIO"]
+
+
+def has_documented_faults(
+    contract: dict[str, Any],
+    function: str | None,
+) -> bool:
+    """Return whether any supported authority documents a failure outcome."""
+    if function is None:
+        return False
+    system_record = contract.get("system_faults", {}).get(function)
+    if system_record is not None:
+        return bool(system_record["posix"]["codes"]) or any(
+            value["codes"]
+            for value in system_record["platforms"].values()
+        )
+    record = contract.get("functions", {}).get(function)
+    if record is None:
+        return False
+    return bool(record["posix"]["effective_errors"]) or any(
+        value["effective_errors"]
+        for value in record["platforms"].values()
+    )
 
 
 def fault_domain(

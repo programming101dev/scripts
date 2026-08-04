@@ -285,7 +285,6 @@ assign(
     "p101_getsid",
     "p101_nice",
     "p101_pause",
-    "p101_posix_exit_immediately",
     "p101_setpgid",
     "p101_setsid",
     "p101_sleep",

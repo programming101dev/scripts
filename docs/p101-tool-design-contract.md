@@ -58,20 +58,38 @@ same command over the same admitted inputs and inspect the result.
 
 Machine-readable receipts use the shared outcome vocabulary where practical:
 `clean`, `findings`, `refused`, `incomplete`, `unsupported`, and `tool-error`.
-The C representation and `p101-tool-run-receipt-v2` writer live in
-`lib_tool_event`; the post-update graph uses the same vocabulary and records a
-typed failure reason, failed stage, and first diagnostic. Ordinary
+The C representation, `p101-tool-run-receipt-v4` writer, strict reader, and
+`p101-tool-receipt verify` and `require-clean` commands live in
+`lib_tool_event`; v4 binds the
+admitted input identity, policy identity, and run identity to the typed outcome
+and carries a semantic change-detection digest. Durable tools emit this shared
+receipt as `tool-receipt.json`. The post-update graph uses the same vocabulary
+and records
+a typed failure reason, failed stage, first diagnostic, stack-contract
+identity, and a canonical receipt digest. Ordinary
 command-line exit statuses remain `0` for clean, `1` for findings, and `2` for
 refusal, incomplete evidence, unsupported execution, or tool failure.
 
 ## 4. Govern boundaries and checks
 
-`p101-boundaries.json` names the owner, admitted input, output, refusal,
-evidence, and clean/refusal/binding-swap tests for each load-bearing shared
-boundary. `p101-check-graph.json` names the post-update checks, dependencies,
-resource effects, guarantees, and limitations. Their validators are release
-gates; adding an ungoverned verification entry point or silently moving an
-owner is a failure.
+`p101-boundaries.json` names the owner, admitted input, output, refusal, and a
+six-axis executable matrix for each load-bearing shared boundary: clean,
+typed-refusal, binding-swap, identity-mismatch, resource-limit, and
+stale-version behavior. A boundary may mark stale-version testing not
+applicable only with an explicit reason; the other five axes are mandatory.
+`p101-check-graph.json` names the post-update checks, dependencies, resource
+effects, guarantees, and limitations. `p101-stack-contract.json` binds the
+load-bearing manifests and shared build policy to one reviewed byte set. Their
+validators are release gates; adding an ungoverned verification entry point,
+silently moving an owner, or running against stale policy is a failure.
+
+The shared CMake entry point is orchestration. Narrow modules under `cmake/`
+own external-link resolution, install layout, and configure-summary
+presentation so those policies can be read and tested independently. The
+governed check runner likewise keeps graph validation/selection and report
+presentation in separate modules from execution. New coherent mechanisms
+should follow that pattern rather than expanding either orchestration file
+indefinitely.
 
 ## 5. Make blind spots explicit
 

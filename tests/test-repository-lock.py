@@ -51,6 +51,23 @@ def run_with_env(
     )
 
 
+def run_with_input(
+    input_text: str,
+    *arguments: str | Path,
+    cwd: Path | None = None,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(argument) for argument in arguments],
+        cwd=cwd,
+        input=input_text,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+        env={"PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"},
+    )
+
+
 def git(repository: Path, *arguments: str) -> str:
     completed = run("git", "-C", repository, *arguments)
     if completed.returncode != 0:
@@ -206,6 +223,24 @@ class RepositoryLockTests(unittest.TestCase):
             )
             self.assertNotEqual(detached.returncode, 0)
 
+            git(consumer, "checkout", "--quiet", "-b", "local-ahead")
+            (consumer / "value.txt").write_text("local commit\n", encoding="utf-8")
+            git(consumer, "add", "value.txt")
+            git(consumer, "commit", "--quiet", "-m", "local ahead")
+            (consumer / "value.txt").write_text("local\n", encoding="utf-8")
+            before_head = git(consumer, "rev-parse", "HEAD")
+            before_status = git(consumer, "status", "--porcelain=v1")
+            aborted = run_with_input(
+                "q\n", distribution / "clone-repos.sh", "--interactive"
+            )
+            self.assertEqual(aborted.returncode, 3, aborted.stdout + aborted.stderr)
+            self.assertIn("FAILED: align", aborted.stderr)
+            self.assertIn("Aborting at locked repository alignment", aborted.stderr)
+            self.assertIn("rerun the calling command with --latest", aborted.stderr)
+            self.assertEqual(git(consumer, "rev-parse", "HEAD"), before_head)
+            self.assertEqual(git(consumer, "status", "--porcelain=v1"), before_status)
+
+            git(consumer, "reset", "--hard", locked_commit)
             (consumer / "value.txt").write_text("local\n", encoding="utf-8")
             dirty = run(*base_arguments, "verify", "--receipt", receipt)
             self.assertEqual(dirty.returncode, 0, dirty.stderr)

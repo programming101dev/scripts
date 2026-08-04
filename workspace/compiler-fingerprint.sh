@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    cat <<'P101_USAGE'
+Usage:
+  compiler-fingerprint.sh print <compiler>
+  compiler-fingerprint.sh write <compiler> <output>
+  compiler-fingerprint.sh check <compiler> <fingerprint>
+
+Record or compare the compiler identity that owns a probed flag cache.
+The identity includes the resolved executable, compiler version report, and
+target triple. A mismatch means the cache must be regenerated.
+P101_USAGE
+}
+
+case "${1:-}" in
+    -h|--help)
+        usage
+        exit 0
+        ;;
+esac
+
+operation="${1:-}"
+compiler="${2:-}"
+output="${3:-}"
+
+case "${operation}" in
+    print)
+        [[ "$#" -eq 2 ]] || { usage >&2; exit 2; }
+        ;;
+    write|check)
+        [[ "$#" -eq 3 ]] || { usage >&2; exit 2; }
+        ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac
+
+resolve_compiler() {
+    local requested="$1"
+
+    case "${requested}" in
+        /*)
+            [[ -x "${requested}" ]] || return 1
+            printf '%s' "${requested}"
+            ;;
+        *)
+            command -v "${requested}" 2>/dev/null
+            ;;
+    esac
+}
+
+resolved="$(resolve_compiler "${compiler}")" || {
+    printf 'Error: compiler is not executable: %s\n' "${compiler}" >&2
+    exit 2
+}
+
+canonical_path="${resolved}"
+if command -v realpath >/dev/null 2>&1; then
+    canonical_path="$(realpath "${resolved}" 2>/dev/null || printf '%s' "${resolved}")"
+fi
+
+emit_fingerprint() {
+    local target
+
+    target="$("${resolved}" -dumpmachine 2>/dev/null || true)"
+    printf 'schema=p101-compiler-fingerprint-v1\n'
+    printf 'executable=%s\n' "${canonical_path}"
+    printf 'target=%s\n' "${target}"
+    printf '%s\n' 'version-begin'
+    "${resolved}" --version 2>&1
+    printf '%s\n' 'version-end'
+}
+
+case "${operation}" in
+    print)
+        emit_fingerprint
+        ;;
+    write)
+        mkdir -p -- "$(dirname -- "${output}")"
+        temporary="$(mktemp "${output}.tmp.XXXXXX")"
+        trap 'rm -f -- "${temporary}"' EXIT
+        emit_fingerprint > "${temporary}"
+        mv -f -- "${temporary}" "${output}"
+        trap - EXIT
+        ;;
+    check)
+        [[ -f "${output}" ]] || exit 1
+        temporary="$(mktemp "${TMPDIR:-/tmp}/p101-compiler-fingerprint.XXXXXX")"
+        trap 'rm -f -- "${temporary}"' EXIT
+        emit_fingerprint > "${temporary}"
+        cmp -s -- "${temporary}" "${output}"
+        ;;
+esac

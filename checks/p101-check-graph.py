@@ -15,13 +15,20 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
+
+CHECKS_DIR = Path(__file__).resolve().parent
+if os.fspath(CHECKS_DIR) not in sys.path:
+    sys.path.insert(0, os.fspath(CHECKS_DIR))
+
+from p101_check_plan import GraphError, expand_command, select_nodes, validate
+from p101_check_reporting import log_result, write_profile, write_summary
 
 
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GRAPH = SCRIPTS_ROOT / "contracts" / "p101-check-graph.json"
 CACHE_RECEIPT_SCHEMA = "p101-check-evidence-cache-v1"
-RUN_RECEIPT_SCHEMA = "p101-tool-run-receipt-v3"
+RUN_RECEIPT_SCHEMA = "p101-check-graph-receipt-v2"
 SOURCE_EXCLUDES = {
     ".git",
     ".flags",
@@ -45,177 +52,6 @@ SEMANTIC_ENVIRONMENT = {
     "TSAN_OPTIONS",
     "UBSAN_OPTIONS",
 }
-
-
-class GraphError(ValueError):
-    """The graph is malformed or cannot be selected as requested."""
-
-
-def require_text(row: dict[str, Any], key: str, context: str) -> str:
-    value = row.get(key)
-    if not isinstance(value, str) or not value.strip():
-        raise GraphError(f"{context} has no {key}")
-    return value
-
-
-def validate(document: dict[str, Any]) -> list[dict[str, Any]]:
-    if document.get("schema") != "p101-check-graph-v1":
-        raise GraphError("unexpected check-graph schema")
-    require_text(document, "does_not_prove", "graph")
-    default_jobs = document.get("default_jobs")
-    if not isinstance(default_jobs, int) or isinstance(default_jobs, bool) or default_jobs <= 0:
-        raise GraphError("default_jobs must be a positive integer")
-    capacities = document.get("resource_capacities", {})
-    if not isinstance(capacities, dict) or any(
-        not isinstance(name, str)
-        or not name
-        or not isinstance(amount, int)
-        or isinstance(amount, bool)
-        or amount <= 0
-        for name, amount in capacities.items()
-    ):
-        raise GraphError("resource_capacities must map names to positive integers")
-    nodes = document.get("nodes")
-    if not isinstance(nodes, list) or not nodes:
-        raise GraphError("graph has no nodes")
-
-    identifiers: set[str] = set()
-    for raw in nodes:
-        if not isinstance(raw, dict):
-            raise GraphError("graph node is not an object")
-        identifier = require_text(raw, "id", "node")
-        context = f"node {identifier}"
-        if identifier in identifiers:
-            raise GraphError(f"duplicate node id: {identifier}")
-        identifiers.add(identifier)
-        for key in ("title", "group", "guarantee"):
-            require_text(raw, key, context)
-        if not isinstance(raw.get("required"), bool):
-            raise GraphError(f"{context} has no required policy")
-        command = raw.get("command")
-        if (
-            not isinstance(command, list)
-            or not command
-            or any(not isinstance(value, str) or not value for value in command)
-        ):
-            raise GraphError(f"{context} has an invalid argv command")
-        dependencies = raw.get("depends_on")
-        if not isinstance(dependencies, list) or any(
-            not isinstance(value, str) or not value for value in dependencies
-        ):
-            raise GraphError(f"{context} has invalid dependencies")
-        resources = raw.get("resources")
-        if (
-            not isinstance(resources, dict)
-            or not isinstance(resources.get("writes"), list)
-            or not isinstance(resources.get("units"), dict)
-            or any(
-                not isinstance(path, str) or not path
-                for path in resources.get("writes", [])
-            )
-        ):
-            raise GraphError(f"{context} has invalid resources")
-        for resource, amount in resources["units"].items():
-            if resource not in capacities:
-                raise GraphError(f"{context} uses unknown resource {resource!r}")
-            if (
-                not isinstance(amount, int)
-                or isinstance(amount, bool)
-                or amount <= 0
-                or amount > capacities[resource]
-            ):
-                raise GraphError(f"{context} has invalid {resource!r} resource units")
-        if "cacheable" in raw and not isinstance(raw["cacheable"], bool):
-            raise GraphError(f"{context} cacheable must be boolean")
-
-    for node in nodes:
-        unknown = set(node["depends_on"]) - identifiers
-        if unknown:
-            raise GraphError(f"node {node['id']} has unknown dependencies: {sorted(unknown)}")
-
-    order = topological_order(nodes)
-    coverage = document.get("coverage")
-    if not isinstance(coverage, dict):
-        raise GraphError("graph has no coverage contract")
-    required_nodes = coverage.get("required_nodes")
-    if not isinstance(required_nodes, list) or len(required_nodes) != len(set(required_nodes)):
-        raise GraphError("coverage required_nodes is invalid")
-    expected = {node["id"] for node in nodes if node["required"]}
-    if set(required_nodes) != expected:
-        raise GraphError(
-            "required-node coverage drift: "
-            f"missing={sorted(expected - set(required_nodes))} "
-            f"extra={sorted(set(required_nodes) - expected)}"
-        )
-    return order
-
-
-def topological_order(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    by_id = {node["id"]: node for node in nodes}
-    remaining = {identifier: set(node["depends_on"]) for identifier, node in by_id.items()}
-    ordered: list[dict[str, Any]] = []
-    while remaining:
-        ready = [identifier for identifier, dependencies in remaining.items() if not dependencies]
-        if not ready:
-            raise GraphError(f"dependency cycle among: {sorted(remaining)}")
-        for identifier in ready:
-            ordered.append(by_id[identifier])
-            del remaining[identifier]
-            for dependencies in remaining.values():
-                dependencies.discard(identifier)
-    return ordered
-
-
-def dependency_closure(
-    identifiers: Iterable[str], by_id: dict[str, dict[str, Any]]
-) -> set[str]:
-    selected = set(identifiers)
-    pending = list(selected)
-    while pending:
-        identifier = pending.pop()
-        if identifier not in by_id:
-            raise GraphError(f"unknown selected node: {identifier}")
-        for dependency in by_id[identifier]["depends_on"]:
-            if dependency not in selected:
-                selected.add(dependency)
-                pending.append(dependency)
-    return selected
-
-
-def select_nodes(
-    ordered: list[dict[str, Any]],
-    only: set[str],
-    skipped_groups: set[str],
-    start: str | None,
-) -> list[dict[str, Any]]:
-    by_id = {node["id"]: node for node in ordered}
-    selected = dependency_closure(only, by_id) if only else set(by_id)
-    selected = {
-        identifier
-        for identifier in selected
-        if by_id[identifier]["group"] not in skipped_groups
-    }
-    if start is not None:
-        if start not in by_id:
-            raise GraphError(f"unknown --from node: {start}")
-        start_index = next(
-            index for index, node in enumerate(ordered) if node["id"] == start
-        )
-        allowed = {node["id"] for node in ordered[start_index:]}
-        selected &= allowed
-    return [node for node in ordered if node["id"] in selected]
-
-
-def expand_command(command: list[str], variables: dict[str, str]) -> list[str]:
-    expanded: list[str] = []
-    for token in command:
-        try:
-            value = token.format_map(variables)
-        except KeyError as error:
-            raise GraphError(f"command references unknown variable: {error.args[0]}") from error
-        if value:
-            expanded.append(value)
-    return expanded
 
 
 def canonical_sha256(value: Any) -> str:
@@ -426,6 +262,8 @@ def node_input_identity(
         value = variables.get(name)
         if value:
             tools.append(value)
+    if node.get("receipts"):
+        tools.append(variables.get("receipt_verifier", "p101-tool-receipt"))
     normalized_node = dict(node)
     normalized_node["command"] = [
         normalize_for_identity(value, output) for value in command
@@ -438,6 +276,7 @@ def node_input_identity(
             key: normalize_for_identity(value, output)
             for key, value in sorted(variables.items())
             if key != "out"
+            and (key != "receipt_verifier" or bool(node.get("receipts")))
         },
         "workspace": workspace,
         "host": {
@@ -522,6 +361,32 @@ def expanded_writes(
         if resolved != output and output not in resolved.parents:
             raise GraphError(
                 f"node {node['id']} cache output is outside the run directory: {path}"
+            )
+        paths.append(path)
+    return paths
+
+
+def expanded_receipts(
+    node: dict[str, Any], variables: dict[str, str], output: Path
+) -> list[Path]:
+    paths: list[Path] = []
+    declared_outputs = expanded_writes(node, variables, output)
+    for value in node.get("receipts", []):
+        expanded = value.format_map(variables)
+        path = Path(expanded)
+        if not path.is_absolute():
+            path = SCRIPTS_ROOT / path
+        resolved = path.resolve(strict=False)
+        if resolved != output and output not in resolved.parents:
+            raise GraphError(
+                f"node {node['id']} receipt is outside the run directory: {path}"
+            )
+        if not any(
+            resolved == declared or declared in resolved.parents
+            for declared in declared_outputs
+        ):
+            raise GraphError(
+                f"node {node['id']} receipt is not covered by a declared output: {path}"
             )
         paths.append(path)
     return paths
@@ -653,110 +518,6 @@ def publish_cache_entry(
             shutil.rmtree(temporary)
 
 
-def write_summary(
-    output: Path, records: list[dict[str, Any]], document: dict[str, Any]
-) -> None:
-    summary = output / "summary.md"
-    lines = [
-        "# p101 governed check graph",
-        "",
-        f"- Host: {platform.system()} {platform.release()} {platform.machine()}",
-        f"- Graph: `{document['schema']}`",
-        "",
-        "| Status | Check | Time | Result | Artifact |",
-        "| --- | --- | ---: | --- | --- |",
-    ]
-    for record in sorted(records, key=lambda item: item.get("order", 0)):
-        lines.append(
-            f"| {record['outcome'].upper()} | {record['title']} | "
-            f"{record['duration_ns'] / 1_000_000_000:.3f}s | "
-            f"{markdown_cell(record['result'])} | "
-            f"[log](./logs/{record['id']}.log) |"
-        )
-    lines.extend(["", "## Limits", "", document["does_not_prove"], ""])
-    summary.write_text("\n".join(lines), encoding="utf-8")
-
-
-def markdown_cell(value: str) -> str:
-    return value.replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
-
-
-def log_result(log_path: Path, fallback: str) -> tuple[str, int, int]:
-    try:
-        content = log_path.read_text(encoding="utf-8", errors="replace")
-        size = log_path.stat().st_size
-    except OSError:
-        return fallback, 0, 0
-    lines = content.splitlines()
-    result = fallback
-    for line in lines:
-        stripped = line.strip()
-        if stripped and not stripped.startswith("$ ") and not stripped.startswith("# retry "):
-            result = stripped
-            break
-    return result, size, len(lines)
-
-
-def write_profile(
-    output: Path,
-    records: list[dict[str, Any]],
-    *,
-    mode: str = "functional",
-    elapsed_ns: int | None = None,
-) -> None:
-    total_ns = sum(record["duration_ns"] for record in records)
-    elapsed_ns = total_ns if elapsed_ns is None else elapsed_ns
-    lines = [
-        "# p101 post-update profile",
-        "",
-        f"- Mode: {mode}",
-        f"- Checks invoked: {len(records)}",
-        f"- Sum of check wall times: {total_ns / 1_000_000_000:.3f}s",
-        f"- End-to-end graph time: {elapsed_ns / 1_000_000_000:.3f}s",
-        "- Timing scope: each governed child command, measured with `time.time_ns()`.",
-        (
-            "- Interpretation: isolated sequential measurements; cache reuse is disabled."
-            if mode == "measurement"
-            else "- Interpretation: functional throughput; concurrency and cache reuse may affect individual timings."
-        ),
-        "",
-        "## Invocation order",
-        "",
-        "| # | Check | Outcome | Exit | Time | Log | Result |",
-        "| ---: | --- | --- | ---: | ---: | ---: | --- |",
-    ]
-    for index, record in enumerate(
-        sorted(records, key=lambda item: item.get("order", 0)), start=1
-    ):
-        lines.append(
-            f"| {index} | `{record['id']}` | {record['outcome']} | "
-            f"{record['return_code']} | "
-            f"{record['duration_ns'] / 1_000_000_000:.3f}s | "
-            f"{record['log_bytes']} B / {record['log_lines']} lines | "
-            f"{markdown_cell(record['result'])} |"
-        )
-    lines.extend(
-        [
-            "",
-            "## Slowest checks",
-            "",
-            "| Rank | Check | Time | Share of measured check time |",
-            "| ---: | --- | ---: | ---: |",
-        ]
-    )
-    for rank, record in enumerate(
-        sorted(records, key=lambda item: item["duration_ns"], reverse=True),
-        start=1,
-    ):
-        share = 0.0 if total_ns == 0 else 100.0 * record["duration_ns"] / total_ns
-        lines.append(
-            f"| {rank} | `{record['id']}` | "
-            f"{record['duration_ns'] / 1_000_000_000:.3f}s | {share:.1f}% |"
-        )
-    lines.append("")
-    (output / "profile.md").write_text("\n".join(lines), encoding="utf-8")
-
-
 def print_failure_log(log_path: Path) -> None:
     """Print the complete failure receipt to the calling terminal."""
     try:
@@ -801,6 +562,32 @@ def workspace_lock_identity(output: Path) -> dict[str, Any] | None:
     }
 
 
+def stack_contract_identity(output: Path) -> dict[str, Any] | None:
+    path = output / "stack-contract-receipt.json"
+    if not path.is_file():
+        return None
+    try:
+        receipt = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return {"receipt": path.name, "valid": False}
+    claimed_digest = receipt.get("receipt_digest")
+    unsigned = dict(receipt)
+    unsigned.pop("receipt_digest", None)
+    digest_valid = (
+        isinstance(claimed_digest, str)
+        and claimed_digest == canonical_sha256(unsigned)
+    )
+    return {
+        "receipt": path.name,
+        "valid": receipt.get("schema") == "p101-stack-contract-receipt-v1"
+        and receipt.get("passed") is True
+        and digest_valid,
+        "contract_sha256": receipt.get("contract_sha256", ""),
+        "receipt_digest": claimed_digest if isinstance(claimed_digest, str) else "",
+        "artifact_count": receipt.get("artifact_count", 0),
+    }
+
+
 def paths_overlap(left: Path, right: Path) -> bool:
     left_resolved = left.resolve(strict=False)
     right_resolved = right.resolve(strict=False)
@@ -820,6 +607,8 @@ def execute_node(
     order: int,
     console_lock: threading.Lock,
     declared_outputs: list[Path],
+    declared_receipts: list[Path],
+    receipt_verifier: str,
 ) -> dict[str, Any]:
     log_path = output / "logs" / f"{node['id']}.log"
     attempts = 0
@@ -830,18 +619,61 @@ def execute_node(
         print(f"==> {node['title']}", flush=True)
     while True:
         attempts += 1
+        cleanup_error: OSError | GraphError | None = None
+        if node.get("replace_outputs", False):
+            try:
+                for path in declared_outputs:
+                    remove_owned_output(path, output)
+            except (OSError, GraphError) as error:
+                cleanup_error = error
         with log_path.open("a" if attempts > 1 else "w", encoding="utf-8") as log:
             if attempts > 1:
                 log.write(f"\n# retry {attempts}\n")
             log.write("$ " + " ".join(command) + "\n\n")
-            result = subprocess.run(
-                command,
-                cwd=SCRIPTS_ROOT,
-                stdout=log,
-                stderr=subprocess.STDOUT,
-                check=False,
-                env=os.environ.copy(),
-            )
+            if cleanup_error is not None:
+                log.write(
+                    "declared output cleanup failed: "
+                    f"{cleanup_error}\n"
+                )
+                result = subprocess.CompletedProcess(command, 2)
+            else:
+                result = subprocess.run(
+                    command,
+                    cwd=SCRIPTS_ROOT,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    check=False,
+                    env=os.environ.copy(),
+                )
+        if result.returncode == 0 and declared_receipts:
+            with log_path.open("a", encoding="utf-8") as log:
+                if not receipt_verifier:
+                    log.write(
+                        "\nreceipt verification refused: "
+                        "p101-tool-receipt is not available\n"
+                    )
+                    result = subprocess.CompletedProcess(command, 2)
+                else:
+                    for receipt_path in declared_receipts:
+                        verify_command = [
+                            receipt_verifier,
+                            "require-clean",
+                            os.fspath(receipt_path),
+                        ]
+                        log.write("\n$ " + " ".join(verify_command) + "\n\n")
+                        verified = subprocess.run(
+                            verify_command,
+                            cwd=SCRIPTS_ROOT,
+                            stdout=log,
+                            stderr=subprocess.STDOUT,
+                            check=False,
+                            env=os.environ.copy(),
+                        )
+                        if verified.returncode != 0:
+                            result = subprocess.CompletedProcess(
+                                command, verified.returncode
+                            )
+                            break
         if result.returncode == 0:
             outcome = "clean"
             with console_lock:
@@ -883,6 +715,10 @@ def execute_node(
         "log": f"logs/{node['id']}.log",
         "input_identity": input_identity,
         "evidence": {"source": "executed"},
+        "verified_receipts": [
+            normalize_for_identity(os.fspath(path), output)
+            for path in declared_receipts
+        ],
         "outputs": [
             {
                 "destination": normalize_for_identity(os.fspath(path), output),
@@ -974,8 +810,16 @@ def read_previous_receipt(path: Path | None) -> tuple[dict[str, Any], Path] | No
         document = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise GraphError(f"cannot read resume receipt {path}: {error}") from error
-    if document.get("schema") not in {"p101-tool-run-receipt-v2", RUN_RECEIPT_SCHEMA}:
+    if document.get("schema") != RUN_RECEIPT_SCHEMA:
         raise GraphError(f"{path}: unsupported resume receipt schema")
+    claimed_digest = document.get("receipt_digest")
+    unsigned = dict(document)
+    unsigned.pop("receipt_digest", None)
+    if (
+        not isinstance(claimed_digest, str)
+        or claimed_digest != canonical_sha256(unsigned)
+    ):
+        raise GraphError(f"{path}: resume receipt digest does not match its contents")
     records = document.get("records")
     if not isinstance(records, list):
         raise GraphError(f"{path}: resume receipt has no records")
@@ -1016,6 +860,12 @@ def write_run_receipt(
     receipt = {
         "schema": RUN_RECEIPT_SCHEMA,
         "tool": {"name": "p101-check-graph", "version": "2"},
+        "host": {
+            "system": platform.system(),
+            "release": platform.release(),
+            "machine": platform.machine(),
+            "python": platform.python_version(),
+        },
         "input": {
             "schema": document["schema"],
             "identity": variables.get("graph_identity", str(DEFAULT_GRAPH.resolve())),
@@ -1038,9 +888,11 @@ def write_run_receipt(
         },
         "elapsed_ns": elapsed_ns,
         "workspace_lock": workspace_lock_identity(output),
+        "stack_contract": stack_contract_identity(output),
         "records": ordered_records,
         "does_not_prove": document["does_not_prove"],
     }
+    receipt["receipt_digest"] = canonical_sha256(receipt)
     (output / "receipt.json").write_text(
         json.dumps(receipt, indent=2) + "\n", encoding="utf-8"
     )
@@ -1065,6 +917,9 @@ def run_graph(
     output = output.resolve()
     variables = dict(variables)
     variables["out"] = os.fspath(output)
+    variables["receipt_verifier"] = os.environ.get(
+        "P101_TOOL_RECEIPT", shutil.which("p101-tool-receipt") or ""
+    )
     log_directory = output / "logs"
     log_directory.mkdir(parents=True, exist_ok=True)
     records: list[dict[str, Any]] = []
@@ -1319,6 +1174,8 @@ def run_graph(
                     order_by_id[identifier],
                     console_lock,
                     expanded_writes(node, variables, output),
+                    expanded_receipts(node, variables, output),
+                    variables["receipt_verifier"],
                 )
                 running[future] = (node, node_units(node), writes)
                 del pending[identifier]
@@ -1454,7 +1311,9 @@ def main() -> int:
     output = arguments.out.resolve()
     output.mkdir(parents=True, exist_ok=True)
     variables.setdefault("out", str(output))
-    variables.setdefault("graph_identity", str(arguments.graph.resolve()))
+    variables.setdefault(
+        "graph_identity", "sha256:" + file_sha256(arguments.graph.resolve())
+    )
     resume_path = arguments.resume_receipt
     if arguments.resume and resume_path is None:
         resume_path = output / "receipt.json"

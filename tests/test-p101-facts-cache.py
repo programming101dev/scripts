@@ -33,7 +33,7 @@ class FactsCacheTests(unittest.TestCase):
         self.producer = self.root / "producer"
         self.producer.write_text("producer-v1\n", encoding="utf-8")
         self.facts = self.root / "facts.tsv"
-        self.facts.write_text("P101FACT\t2\tFILE\tdemo.c\tdemo\t0\t1\n", encoding="utf-8")
+        self.facts.write_text("P101FACT\t4\tFILE\tdemo.c\tdemo\t0\t1\n", encoding="utf-8")
 
     def tearDown(self) -> None:
         self.temporary.cleanup()

@@ -12,15 +12,15 @@ from typing import Any
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = SCRIPTS_ROOT.parent
 DEFAULT_REGISTER = SCRIPTS_ROOT / "contracts" / "p101-boundaries.json"
-REQUIRED_TESTS = {"clean", "typed_refusal", "binding_swap"}
-REQUIRED_MATRIX_CASES = {
-    "success",
+REQUIRED_TESTS = {
+    "clean",
     "typed_refusal",
-    "stale_version",
+    "binding_swap",
     "identity_mismatch",
     "resource_limit",
-    "binding_swap",
+    "stale_version",
 }
+EVIDENCE_REQUIRED = REQUIRED_TESTS - {"stale_version"}
 
 
 class BoundaryError(ValueError):
@@ -50,23 +50,9 @@ def read_workspace_file(relative: str, context: str) -> str:
 
 
 def validate(document: dict[str, Any]) -> dict[str, int]:
-    if document.get("schema") != "p101-boundary-register-v1":
+    if document.get("schema") != "p101-boundary-register-v2":
         raise BoundaryError("unexpected boundary-register schema")
     require_text(document, "does_not_prove", "register")
-    matrix = document.get("test_matrix")
-    if not isinstance(matrix, dict) or set(matrix) != REQUIRED_MATRIX_CASES:
-        raise BoundaryError(
-            f"register test_matrix must contain {sorted(REQUIRED_MATRIX_CASES)}"
-        )
-    for case in sorted(REQUIRED_MATRIX_CASES):
-        row = matrix[case]
-        context = f"test_matrix {case}"
-        if not isinstance(row, dict) or set(row) != {"path", "marker"}:
-            raise BoundaryError(f"{context} must contain path and marker")
-        path = require_text(row, "path", context)
-        marker = require_text(row, "marker", context)
-        if marker not in read_workspace_file(path, context):
-            raise BoundaryError(f"{context} marker {marker!r} is absent from {path}")
     boundaries = document.get("boundaries")
     if not isinstance(boundaries, list) or not boundaries:
         raise BoundaryError("register has no boundaries")
@@ -103,23 +89,43 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
             raise BoundaryError(f"{context} has an invalid collaborator")
 
         tests = raw.get("tests")
-        if not isinstance(tests, dict):
+        if not isinstance(tests, dict) or set(tests) != REQUIRED_TESTS:
             raise BoundaryError(f"{context} has no tests")
-        if set(tests) != {"path", *REQUIRED_TESTS}:
-            raise BoundaryError(f"{context} tests must be path plus {sorted(REQUIRED_TESTS)}")
-        test_path = require_text(tests, "path", context)
-        test_text = read_workspace_file(test_path, context)
+        boundary_evidence: set[tuple[str, str]] = set()
         for kind in sorted(REQUIRED_TESTS):
-            marker = require_text(tests, kind, context)
+            evidence = tests[kind]
+            evidence_context = f"{context} {kind}"
+            if not isinstance(evidence, dict):
+                raise BoundaryError(f"{evidence_context} must be an evidence object")
+            if set(evidence) == {"not_applicable", "reason"}:
+                if kind in EVIDENCE_REQUIRED:
+                    raise BoundaryError(f"{evidence_context} requires executable evidence")
+                if evidence.get("not_applicable") is not True:
+                    raise BoundaryError(f"{evidence_context} has invalid not_applicable")
+                require_text(evidence, "reason", evidence_context)
+                continue
+            if set(evidence) != {"path", "marker"}:
+                raise BoundaryError(
+                    f"{evidence_context} must contain path and marker"
+                )
+            test_path = require_text(evidence, "path", evidence_context)
+            marker = require_text(evidence, "marker", evidence_context)
+            evidence_key = (test_path, marker)
+            if evidence_key in boundary_evidence:
+                raise BoundaryError(
+                    f"{evidence_context} reuses another matrix case's evidence"
+                )
+            boundary_evidence.add(evidence_key)
+            test_text = read_workspace_file(test_path, evidence_context)
             if marker not in test_text:
                 raise BoundaryError(
-                    f"{context} {kind} marker {marker!r} is absent from {test_path}"
+                    f"{evidence_context} marker {marker!r} is absent from {test_path}"
                 )
 
     return {
         "boundaries": len(boundaries),
         "owners": len(owners),
-        "matrix_cases": len(matrix),
+        "matrix_cases": len(boundaries) * len(REQUIRED_TESTS),
     }
 
 
@@ -134,7 +140,7 @@ def main() -> int:
     print(
         "p101 boundary register: "
         f"{report['boundaries']} boundaries, {report['owners']} unique owners, "
-        f"{report['matrix_cases']} boundary cases"
+        f"{report['matrix_cases']} per-boundary cases"
     )
     return 0
 

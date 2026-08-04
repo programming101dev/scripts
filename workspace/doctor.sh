@@ -157,9 +157,6 @@ if have clang-format; then printf '    %s clang-format  %s  -> ./build.sh --form
 else printf '    %s clang-format  missing  (optional; ./build.sh --format skips formatting)\n' "$WARN"; fi
 
 # ===================== instrumentation =====================
-# read a bucket: prints AVAIL/na by emptiness
-bucket_state() { if [ -s "$1" ]; then echo avail; else echo na; fi; }
-
 report_instr() {
   local cc="$1" d=".flags/$1"
   line

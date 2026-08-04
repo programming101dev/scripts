@@ -16,6 +16,8 @@ sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 from wrapper_fault_contract import (  # noqa: E402
     current_platform_key,
     fault_domain,
+    has_explicit_platform_faults,
+    has_documented_faults,
     injected_fault_cases,
     load_contract,
 )
@@ -27,6 +29,7 @@ FAULT_CONTRACT_PATH = (
     SCRIPTS_ROOT / "contracts" / "wrapper-platform-faults.json"
 )
 FAILURE_CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-failure-contract.json"
+OUTCOME_CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-outcome-contract.json"
 LIFECYCLE_CONTRACT_PATH = (
     SCRIPTS_ROOT / "contracts" / "wrapper-lifecycle-contract.json"
 )
@@ -70,6 +73,25 @@ def main() -> int:
         print("FAIL: unsupported wrapper failure contract")
         return 1
     failure_wrappers = failure_contract.get("wrappers", {})
+    outcome_contract = json.loads(
+        OUTCOME_CONTRACT_PATH.read_text(encoding="utf-8")
+    )
+    if outcome_contract.get("schema") != "p101-wrapper-outcome-contract-v1":
+        print("FAIL: unsupported wrapper outcome contract")
+        return 1
+    outcome_apis = outcome_contract.get("apis", {})
+    valid_outcome_classes = {
+        "direct-hard-failure",
+        "short-partial-result",
+        "delegated-failure",
+        "deterministic-rejection",
+        "genuinely-infallible",
+        "non-returning-cleanup",
+    }
+    outcome_counts = {
+        classification: 0
+        for classification in valid_outcome_classes
+    }
     lifecycle_contract = json.loads(
         LIFECYCLE_CONTRACT_PATH.read_text(encoding="utf-8")
     )
@@ -109,11 +131,33 @@ def main() -> int:
                         f"errno:{function}: unknown {required_platform} "
                         f"error {error_name}"
                     )
+            platform_lacks_explicit_faults = (
+                platform_record.get("status") == "documented"
+                and not has_explicit_platform_faults(
+                    fault_contract,
+                    function,
+                    required_platform,
+                )
+                and bool(posix.get("effective_errors", []))
+            )
             expected_source_kind = (
                 "platform-manual"
-                if platform_record.get("status") == "documented"
+                if (
+                    platform_record.get("status") == "documented"
+                    and not platform_lacks_explicit_faults
+                )
                 else "posix-fallback"
             )
+            expected_errors = (
+                posix.get("effective_errors", [])
+                if platform_lacks_explicit_faults
+                else platform_record.get("effective_errors", [])
+            )
+            if platform_record.get("effective_errors") != expected_errors:
+                failures.append(
+                    f"errno:{function}: {required_platform} manual lacks "
+                    "resolved faults and erases POSIX errors"
+                )
             if (
                 platform_record.get("effective_source_kind")
                 != expected_source_kind
@@ -200,15 +244,18 @@ def main() -> int:
         and binding.get("function") in errno_functions
     ]
     for required_platform in ("linux", "macos", "freebsd"):
-        documented_functions = sum(
-            record["platforms"][required_platform]["status"] == "documented"
+        manual_functions = sum(
+            record["platforms"][required_platform][
+                "effective_source_kind"
+            ]
+            == "platform-manual"
             for record in errno_functions.values()
         )
         manual_wrappers = sum(
             errno_functions[binding["function"]]["platforms"][
                 required_platform
-            ]["status"]
-            == "documented"
+            ]["effective_source_kind"]
+            == "platform-manual"
             for binding in native_bindings
         )
         expected_coverage = {
@@ -220,9 +267,9 @@ def main() -> int:
                     is not None
                 }
             ),
-            "manual_override_functions": documented_functions,
+            "manual_override_functions": manual_functions,
             "posix_fallback_functions": len(errno_functions)
-            - documented_functions,
+            - manual_functions,
             "manual_override_wrappers": manual_wrappers,
             "posix_fallback_wrappers": len(native_bindings)
             - manual_wrappers,
@@ -261,6 +308,55 @@ def main() -> int:
         expected.discard("")
         expected_total += len(expected)
         for name in sorted(expected):
+            outcome = outcome_apis.get(name)
+            if outcome is None:
+                failures.append(
+                    f"{library}:{name}: absent from wrapper outcome contract"
+                )
+            else:
+                classification = outcome.get("classification")
+                if classification not in valid_outcome_classes:
+                    failures.append(
+                        f"{library}:{name}: invalid outcome classification "
+                        f"{classification!r}"
+                    )
+                else:
+                    outcome_counts[classification] += 1
+                if outcome.get("library") != library:
+                    failures.append(
+                        f"{library}:{name}: outcome contract assigns "
+                        f"{outcome.get('library')!r}"
+                    )
+                if not outcome.get("rationale"):
+                    failures.append(
+                        f"{library}:{name}: outcome contract lacks rationale"
+                    )
+                if (
+                    outcome.get("accepts_error")
+                    and classification
+                    not in {
+                        "direct-hard-failure",
+                        "short-partial-result",
+                    }
+                ):
+                    failures.append(
+                        f"{library}:{name}: APIs accepting p101_error must "
+                        "be directly injectable"
+                    )
+                binding = fault_wrappers_by_name.get(name, {})
+                native_function = binding.get("function")
+                if (
+                    binding.get("role") == "native-wrapper"
+                    and has_documented_faults(
+                        fault_contract,
+                        native_function,
+                    )
+                    and not outcome.get("accepts_error")
+                ):
+                    failures.append(
+                        f"{library}:{name}: {native_function} has "
+                        "documented failures but no p101_error parameter"
+                    )
             binding = fault_wrappers_by_name.get(name)
             if binding is None:
                 failures.append(
@@ -541,6 +637,26 @@ def main() -> int:
                     )
 
         for name in sorted(expected & actual.keys()):
+            outcome = outcome_apis.get(name, {})
+            classification = outcome.get("classification")
+            test_kind = actual[name].get("test_kind")
+            if classification in {
+                "direct-hard-failure",
+                "short-partial-result",
+            }:
+                if test_kind != "fault":
+                    failures.append(
+                        f"{library}:{name}: {classification} requires a "
+                        "generated fault test"
+                    )
+            elif (
+                classification in valid_outcome_classes
+                and test_kind == "fault"
+            ):
+                failures.append(
+                    f"{library}:{name}: {classification} must use a "
+                    "behavior test"
+                )
             binding = fault_wrappers_by_name.get(name)
             if binding is None:
                 continue
@@ -640,17 +756,31 @@ def main() -> int:
     )
     print(
         f"injectable APIs: {len(fault_wrappers)}/{len(fault_wrappers)}; "
-        "classified non-injectable APIs: "
+        "explicitly classified non-direct APIs: "
         f"{expected_total - len(fault_wrappers)}/"
         f"{expected_total - len(fault_wrappers)}"
+    )
+    print(
+        "explicit API outcome classes: "
+        + ", ".join(
+            f"{classification}={outcome_counts[classification]}"
+            for classification in (
+                "direct-hard-failure",
+                "short-partial-result",
+                "delegated-failure",
+                "deterministic-rejection",
+                "genuinely-infallible",
+                "non-returning-cleanup",
+            )
+        )
     )
     platform_documented_case_total = 0
     for reported_platform in ("linux", "macos", "freebsd"):
         manual_count = sum(
             errno_functions[binding["function"]]["platforms"][
                 reported_platform
-            ]["status"]
-            == "documented"
+            ]["effective_source_kind"]
+            == "platform-manual"
             for binding in native_bindings
         )
         fallback_count = len(native_bindings) - manual_count
@@ -732,6 +862,15 @@ def main() -> int:
     for name in sorted(extra_fault_bindings):
         failures.append(
             f"platform-fault:{name}: binding has no active public API"
+        )
+    active_public_apis = {
+        row["function"]
+        for repo in libraries.values()
+        for row in table(repo / "api-manifest.tsv")
+    }
+    for name in sorted(outcome_apis.keys() - active_public_apis):
+        failures.append(
+            f"outcome:{name}: classification has no active public API"
         )
     missing_failure_wrappers = fault_wrappers - failure_wrappers.keys()
     extra_failure_wrappers = failure_wrappers.keys() - fault_wrappers

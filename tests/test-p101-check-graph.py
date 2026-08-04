@@ -6,6 +6,8 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -54,6 +56,34 @@ class CheckGraphTests(unittest.TestCase):
             [node["id"] for node in ordered].index("tool-audit"),
         )
 
+    def test_post_update_wrapper_propagates_graph_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            graph = root / "failing-graph"
+            graph.write_text("#!/bin/sh\nexit 7\n", encoding="utf-8")
+            graph.chmod(0o755)
+            environment = os.environ.copy()
+            environment["P101_CHECK_GRAPH"] = str(graph)
+            result = subprocess.run(
+                [
+                    str(SCRIPTS_ROOT / "check-after-update-all.sh"),
+                    "-c",
+                    "/usr/bin/true",
+                    "-x",
+                    "/usr/bin/true",
+                    "-o",
+                    str(root / "output"),
+                ],
+                cwd=SCRIPTS_ROOT,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 7)
+            self.assertIn("post-update-all checks failed", result.stderr)
+            self.assertNotIn("post-update-all checks passed", result.stdout)
+
     def test_cycle_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)
         document["nodes"][0]["depends_on"] = [document["nodes"][-1]["id"]]
@@ -68,6 +98,8 @@ class CheckGraphTests(unittest.TestCase):
             [
                 "repository-lock-tests",
                 "workspace-lock",
+                "stack-contract-tests",
+                "stack-contract",
                 "check-graph-tests",
                 "boundaries",
                 "boundary-tests",
@@ -99,6 +131,7 @@ class CheckGraphTests(unittest.TestCase):
         dependencies: list[str] | None = None,
         writes: list[str] | None = None,
         units: dict[str, int] | None = None,
+        receipts: list[str] | None = None,
     ) -> dict:
         return {
             "id": identifier,
@@ -108,6 +141,7 @@ class CheckGraphTests(unittest.TestCase):
             "command": [sys.executable, "-c", code],
             "depends_on": dependencies or [],
             "resources": {"writes": writes or [], "units": units or {}},
+            "receipts": receipts or [],
             "guarantee": f"{identifier} test guarantee",
         }
 
@@ -152,7 +186,10 @@ class CheckGraphTests(unittest.TestCase):
                 status = MODULE.run_graph(document, nodes, output, {}, True)
             self.assertEqual(status, 0)
             receipt = json.loads((output / "receipt.json").read_text())
-            self.assertEqual(receipt["schema"], "p101-tool-run-receipt-v3")
+            self.assertEqual(receipt["schema"], "p101-check-graph-receipt-v2")
+            self.assertTrue(receipt["host"]["system"])
+            self.assertTrue(receipt["host"]["machine"])
+            self.assertTrue(receipt["receipt_digest"].startswith("sha256:"))
             self.assertEqual(receipt["failure"]["reason"], "none")
             self.assertEqual(receipt["records"][0]["attempts"], 2)
             self.assertEqual(receipt["records"][0]["outcome"], "clean")
@@ -163,6 +200,75 @@ class CheckGraphTests(unittest.TestCase):
             profile = (output / "profile.md").read_text(encoding="utf-8")
             self.assertIn("## Invocation order", profile)
             self.assertIn("## Slowest checks", profile)
+
+    def test_declared_receipt_is_verified_and_recorded(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            verifier = output / "verify-receipt"
+            verifier.write_text(
+                "#!/bin/sh\n"
+                "[ \"$1\" = require-clean ] || exit 2\n"
+                "grep -q '^valid$' \"$2\"\n",
+                encoding="utf-8",
+            )
+            verifier.chmod(0o755)
+            receipt_path = output / "evidence" / "tool-receipt.json"
+            code = (
+                "from pathlib import Path; "
+                f"p=Path({str(receipt_path)!r}); "
+                "p.parent.mkdir(parents=True); p.write_text('valid\\n')"
+            )
+            nodes = [
+                self.node(
+                    "receipted",
+                    code,
+                    writes=["{out}/evidence"],
+                    receipts=["{out}/evidence/tool-receipt.json"],
+                )
+            ]
+            document = self.make_document(nodes)
+            with patch.dict(
+                "os.environ", {"P101_TOOL_RECEIPT": str(verifier)}, clear=False
+            ):
+                status = MODULE.run_graph(
+                    document, nodes, output, {"out": str(output)}, False, jobs=1
+                )
+            self.assertEqual(status, 0)
+            receipt = json.loads((output / "receipt.json").read_text())
+            self.assertEqual(
+                receipt["records"][0]["verified_receipts"],
+                ["{out}/evidence/tool-receipt.json"],
+            )
+
+    def test_missing_declared_receipt_fails_the_node(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            verifier = output / "verify-receipt"
+            verifier.write_text(
+                "#!/bin/sh\n"
+                "[ \"$1\" = require-clean ] || exit 2\n"
+                "[ -f \"$2\" ]\n",
+                encoding="utf-8",
+            )
+            verifier.chmod(0o755)
+            nodes = [
+                self.node(
+                    "missing-receipt",
+                    "print('command completed')",
+                    writes=["{out}/evidence"],
+                    receipts=["{out}/evidence/tool-receipt.json"],
+                )
+            ]
+            document = self.make_document(nodes)
+            with patch.dict(
+                "os.environ", {"P101_TOOL_RECEIPT": str(verifier)}, clear=False
+            ):
+                status = MODULE.run_graph(
+                    document, nodes, output, {"out": str(output)}, False, jobs=1
+                )
+            self.assertEqual(status, 1)
+            receipt = json.loads((output / "receipt.json").read_text())
+            self.assertEqual(receipt["records"][0]["outcome"], "tool-error")
 
     def test_noninteractive_failure_prints_complete_log(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -283,6 +389,46 @@ class CheckGraphTests(unittest.TestCase):
             self.assertEqual(measured["mode"], "measurement")
             self.assertEqual(measured["records"][0]["outcome"], "clean")
 
+    def test_replace_outputs_makes_fresh_rerun_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            artifact = output / "evidence"
+            code = (
+                "from pathlib import Path; "
+                f"p=Path({str(artifact)!r}); "
+                "p.mkdir(); (p / 'current').write_text('fresh')"
+            )
+            node = self.node(
+                "fresh-output",
+                code,
+                writes=["{out}/evidence"],
+            )
+            node["replace_outputs"] = True
+            document = self.make_document([node], jobs=1)
+
+            first_status = MODULE.run_graph(
+                document,
+                [node],
+                output,
+                {"out": str(output)},
+                False,
+                use_cache=False,
+            )
+            (artifact / "stale").write_text("old", encoding="utf-8")
+            second_status = MODULE.run_graph(
+                document,
+                [node],
+                output,
+                {"out": str(output)},
+                False,
+                use_cache=False,
+            )
+
+            self.assertEqual(first_status, 0)
+            self.assertEqual(second_status, 0)
+            self.assertTrue((artifact / "current").is_file())
+            self.assertFalse((artifact / "stale").exists())
+
     def test_from_requires_current_receipted_prerequisite(self) -> None:
         first = self.node("first", "print('first')")
         second = self.node(
@@ -365,6 +511,41 @@ class CheckGraphTests(unittest.TestCase):
             receipt = json.loads((output / "receipt.json").read_text())
             self.assertEqual(receipt["records"][0]["outcome"], "clean")
             self.assertEqual(counter.read_text(), "2")
+
+    def test_resume_refuses_a_modified_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            node = self.node("resume", "print('clean')")
+            document = self.make_document([node], jobs=1)
+            self.assertEqual(
+                MODULE.run_graph(document, [node], output, {}, False), 0
+            )
+            path = output / "receipt.json"
+            receipt = json.loads(path.read_text(encoding="utf-8"))
+            receipt["records"][0]["outcome"] = "reused"
+            path.write_text(json.dumps(receipt), encoding="utf-8")
+            with self.assertRaisesRegex(
+                MODULE.GraphError, "receipt digest does not match"
+            ):
+                MODULE.read_previous_receipt(path)
+
+    def test_stack_contract_identity_rejects_modified_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            receipt = {
+                "schema": "p101-stack-contract-receipt-v1",
+                "passed": True,
+                "contract_sha256": "a" * 64,
+                "artifact_count": 3,
+            }
+            receipt["receipt_digest"] = MODULE.canonical_sha256(receipt)
+            path = output / "stack-contract-receipt.json"
+            path.write_text(json.dumps(receipt), encoding="utf-8")
+            self.assertTrue(MODULE.stack_contract_identity(output)["valid"])
+
+            receipt["artifact_count"] = 4
+            path.write_text(json.dumps(receipt), encoding="utf-8")
+            self.assertFalse(MODULE.stack_contract_identity(output)["valid"])
 
 
 if __name__ == "__main__":

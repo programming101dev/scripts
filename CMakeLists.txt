@@ -269,6 +269,23 @@ if (DEFINED ENV{P101_NO_FLAGS}
 endif ()
 message(STATUS "Flag dirs used:    ${_FLAG_DIRS_USED}")
 
+# Flag probes are generated outside CMake. Treat every cache record and its
+# compiler fingerprint as configure inputs so `cmake --build` automatically
+# reconfigures after a toolchain change or a repaired probe. Without this,
+# an interactive build retry can retain unsupported flags in its generated
+# build rules even after the shared cache has been corrected.
+if (_FLAG_DIRS_USED)
+    file(GLOB _P101_FLAG_CACHE_INPUTS "${_FLAG_DIRS_USED}/*.txt")
+    if (EXISTS "${_FLAG_DIRS_USED}/.compiler-fingerprint")
+        list(APPEND _P101_FLAG_CACHE_INPUTS
+                "${_FLAG_DIRS_USED}/.compiler-fingerprint")
+    endif ()
+    if (_P101_FLAG_CACHE_INPUTS)
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+                ${_P101_FLAG_CACHE_INPUTS})
+    endif ()
+endif ()
+
 # Helper to read flags into list
 function(_p101_read_flags FILE OUTVAR)
     if (EXISTS "${FILE}")
@@ -510,22 +527,20 @@ set(_P101_WORKSPACE_ROOT_CANDIDATES
         "${CMAKE_CURRENT_SOURCE_DIR}/.."
         "${CMAKE_CURRENT_SOURCE_DIR}/../../.."
 )
-set(_P101_LOCAL_INCLUDE_DIRS "")
 set(_P101_LOCAL_LINK_DIRS "")
 set(_P101_LOCAL_FALLBACK_LINK_DIRS "")
+set(_P101_WORKSPACE_ROOT "")
 get_filename_component(_P101_COMPILER_BASENAME "${CMAKE_C_COMPILER}" NAME)
 foreach (_p101_root IN LISTS _P101_WORKSPACE_ROOT_CANDIDATES)
     get_filename_component(_p101_root_abs "${_p101_root}" ABSOLUTE)
     if (IS_DIRECTORY "${_p101_root_abs}/libraries")
+        set(_P101_WORKSPACE_ROOT "${_p101_root_abs}")
         file(GLOB _p101_library_repos LIST_DIRECTORIES true "${_p101_root_abs}/libraries/lib_*")
         list(SORT _p101_library_repos)
         foreach (_p101_library_repo IN LISTS _p101_library_repos)
             get_filename_component(_p101_library_name "${_p101_library_repo}" NAME)
             if (_p101_library_name MATCHES "^lib_(posix|posix_optional|posix_xsi|unix)$")
                 continue()
-            endif ()
-            if (IS_DIRECTORY "${_p101_library_repo}/include")
-                list(APPEND _P101_LOCAL_INCLUDE_DIRS "${_p101_library_repo}/include")
             endif ()
             if (IS_DIRECTORY "${_p101_library_repo}/build-${_P101_COMPILER_BASENAME}")
                 list(APPEND _P101_LOCAL_LINK_DIRS "${_p101_library_repo}/build-${_P101_COMPILER_BASENAME}")
@@ -548,15 +563,44 @@ foreach (_p101_root IN LISTS _P101_WORKSPACE_ROOT_CANDIDATES)
         break()
     endif ()
 endforeach ()
-list(REMOVE_DUPLICATES _P101_LOCAL_INCLUDE_DIRS)
 list(REMOVE_DUPLICATES _P101_LOCAL_LINK_DIRS)
 list(REMOVE_DUPLICATES _P101_LOCAL_FALLBACK_LINK_DIRS)
 list(APPEND _P101_LOCAL_LINK_DIRS ${_P101_LOCAL_FALLBACK_LINK_DIRS})
 list(REMOVE_DUPLICATES _P101_LOCAL_LINK_DIRS)
 
+function(_p101_target_local_include_dirs OUT TARGET_NAME)
+    set(_p101_target_dirs "")
+    if (_P101_WORKSPACE_ROOT)
+        foreach (_p101_link_token IN LISTS ${TARGET_NAME}_LINK_LIBRARIES)
+            if (_p101_link_token MATCHES "^p101_([A-Za-z0-9_]+)$")
+                set(_p101_dependency_repo "lib_${CMAKE_MATCH_1}")
+                # p101_record is a second public library owned by
+                # lib_tool_event rather than a standalone lib_record repo.
+                if (_p101_link_token STREQUAL "p101_record")
+                    set(_p101_dependency_repo "lib_tool_event")
+                endif ()
+                set(_p101_dependency_include
+                        "${_P101_WORKSPACE_ROOT}/libraries/${_p101_dependency_repo}/include")
+                if (IS_DIRECTORY "${_p101_dependency_include}")
+                    list(APPEND _p101_target_dirs "${_p101_dependency_include}")
+                endif ()
+            endif ()
+        endforeach ()
+    endif ()
+    list(REMOVE_DUPLICATES _p101_target_dirs)
+    set(${OUT} "${_p101_target_dirs}" PARENT_SCOPE)
+endfunction()
+
+set(_P101_REQUIRED_LOCAL_INCLUDE_DIRS "")
+foreach (_p101_target IN LISTS LIBRARY_TARGETS EXECUTABLE_TARGETS)
+    _p101_target_local_include_dirs(_p101_target_dirs "${_p101_target}")
+    list(APPEND _P101_REQUIRED_LOCAL_INCLUDE_DIRS ${_p101_target_dirs})
+endforeach ()
+list(REMOVE_DUPLICATES _P101_REQUIRED_LOCAL_INCLUDE_DIRS)
+
 set(_INC_CANDIDATES
         "${PUBLIC_INC_DIR}"
-        ${_P101_LOCAL_INCLUDE_DIRS}
+        ${_P101_REQUIRED_LOCAL_INCLUDE_DIRS}
         ${P101_PUBLIC_INCLUDE_DIRS_LIST}
         "/usr/local/include"
 )
@@ -600,7 +644,7 @@ if (IS_DIRECTORY "${PUBLIC_INC_DIR}")
     set(P101_PROJECT_INC_DIR "${PUBLIC_INC_DIR}")
 endif ()
 
-set(_LOCAL_INC_DIRS ${_P101_LOCAL_INCLUDE_DIRS})
+set(_LOCAL_INC_DIRS ${_P101_REQUIRED_LOCAL_INCLUDE_DIRS})
 if (P101_PROJECT_INC_DIR)
     list(REMOVE_ITEM _LOCAL_INC_DIRS "${P101_PROJECT_INC_DIR}")
 endif ()
@@ -651,93 +695,8 @@ foreach (_d IN LISTS _LOCAL_INC_DIRS)
 endforeach ()
 string(JOIN " " _LOCAL_I_CMD ${_LOCAL_I_LIST})
 
-# =========================
-# Iconv (portable, **opt-in via "iconv" token in config.cmake**)
-# =========================
-# Always provide an interface target; it will add a real lib only where needed.
-if(NOT TARGET p101::iconv)
-    add_library(p101::iconv INTERFACE IMPORTED)
-endif()
-
-# Try to locate a concrete libiconv first (BSD/macOS/Homebrew/MacPorts, etc.)
-find_library(P101_ICONV_LIB
-        NAMES iconv libiconv
-        PATHS ${P101_PUBLIC_LINK_DIRS_EXISTING}
-        NO_DEFAULT_PATH
-)
-if(NOT P101_ICONV_LIB)
-    find_library(P101_ICONV_LIB NAMES iconv libiconv)
-endif()
-
-if(P101_ICONV_LIB)
-    set_property(TARGET p101::iconv PROPERTY INTERFACE_LINK_LIBRARIES "${P101_ICONV_LIB}")
-    message(STATUS "[iconv] using concrete library: ${P101_ICONV_LIB}")
-elseif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD|DragonFly|OpenBSD|NetBSD|Darwin")
-    # Best-effort: request -liconv (on some platforms it may be folded into libc).
-    set_property(TARGET p101::iconv PROPERTY INTERFACE_LINK_LIBRARIES "iconv")
-    message(STATUS "[iconv] linking as -liconv on ${CMAKE_SYSTEM_NAME}")
-else()
-    message(STATUS "[iconv] no separate lib needed on this platform")
-endif()
-
-# Resolve link items from config.cmake:
-# - "iconv" token -> p101::iconv
-# - targets stay targets
-# - absolute existing paths stay as-is
-# - "-lfoo" / "foo" are resolved via find_library in known roots when possible
-# - unknown items are preserved as-is (e.g., linker flags)
-function(_p101_resolve_link_items OUT)
-    set(_accum "")
-
-    foreach(_L IN LISTS ARGN)
-        if(_L STREQUAL "")
-            continue()
-        endif()
-
-        if(_L STREQUAL "iconv")
-            list(APPEND _accum p101::iconv)
-            continue()
-        endif()
-
-        if(TARGET "${_L}")
-            list(APPEND _accum "${_L}")
-            continue()
-        endif()
-
-        if(IS_ABSOLUTE "${_L}" AND EXISTS "${_L}")
-            list(APPEND _accum "${_L}")
-            continue()
-        endif()
-
-        set(_name "${_L}")
-        if(_name MATCHES "^-l(.+)$")
-            set(_name "${CMAKE_MATCH_1}")
-        endif()
-
-        find_library(_FOUND_LIB
-                NAMES "${_name}" "lib${_name}"
-                PATHS ${P101_PUBLIC_LINK_DIRS_EXISTING}
-                NO_DEFAULT_PATH
-        )
-        if(NOT _FOUND_LIB)
-            find_library(_FOUND_LIB
-                    NAMES "${_name}" "lib${_name}"
-            )
-        endif()
-
-        if(_FOUND_LIB)
-            list(APPEND _accum "${_FOUND_LIB}")
-        else()
-            list(APPEND _accum "${_L}")
-        endif()
-
-        unset(_FOUND_LIB CACHE)
-        unset(_FOUND_LIB)
-    endforeach()
-
-    list(REMOVE_DUPLICATES _accum)
-    set(${OUT} "${_accum}" PARENT_SCOPE)
-endfunction()
+# External library policy and logical-token resolution are owned separately.
+include("${P101_CMAKE_DIR}/P101Linking.cmake")
 
 # =========================
 # Targets from config.cmake
@@ -832,8 +791,9 @@ foreach (_lib IN LISTS LIBRARY_TARGETS)
         target_include_directories(${_lib} PUBLIC "${P101_PROJECT_INC_DIR}")
     endif ()
     # Local p101 workspace libraries as normal (-I), before installed prefixes.
-    if (_LOCAL_INC_DIRS)
-        target_include_directories(${_lib} PUBLIC ${_LOCAL_INC_DIRS})
+    _p101_target_local_include_dirs(_p101_target_include_dirs "${_lib}")
+    if (_p101_target_include_dirs)
+        target_include_directories(${_lib} PUBLIC ${_p101_target_include_dirs})
     endif ()
     # External as SYSTEM (-isystem)
     if (_EXT_INC_DIRS)
@@ -877,8 +837,9 @@ foreach (_exe IN LISTS EXECUTABLE_TARGETS)
         target_include_directories(${_exe} PRIVATE "${P101_PROJECT_INC_DIR}")
     endif ()
     # Local p101 workspace libraries as normal (-I), before installed prefixes.
-    if (_LOCAL_INC_DIRS)
-        target_include_directories(${_exe} PRIVATE ${_LOCAL_INC_DIRS})
+    _p101_target_local_include_dirs(_p101_target_include_dirs "${_exe}")
+    if (_p101_target_include_dirs)
+        target_include_directories(${_exe} PRIVATE ${_p101_target_include_dirs})
     endif ()
     # External as SYSTEM (-isystem)
     if (_EXT_INC_DIRS)
@@ -1529,62 +1490,7 @@ elseif (_COMPILER_ID MATCHES "Clang" AND P101_IS_RASPBERRY_PI)
 endif ()
 
 
-# =========================
-# Install
-# =========================
-if (_ALL_HEADERS_FOR_INSTALL)
-    foreach (_h IN LISTS _ALL_HEADERS_FOR_INSTALL)
-        if (NOT IS_ABSOLUTE "${_h}")
-            set(_habspath "${CMAKE_CURRENT_SOURCE_DIR}/${_h}")
-        else ()
-            set(_habspath "${_h}")
-        endif ()
-        string(FIND "${_habspath}" "${PUBLIC_INC_DIR}/" _pfx)
-        if (_pfx EQUAL 0)
-            file(RELATIVE_PATH _rel_inside_inc "${PUBLIC_INC_DIR}" "${_habspath}")
-            get_filename_component(_dest_subdir "${_rel_inside_inc}" DIRECTORY)
-        else ()
-            get_filename_component(_bn "${_habspath}" NAME)
-            set(_dest_subdir "extra")
-        endif ()
-        install(FILES "${_habspath}" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${_dest_subdir}")
-    endforeach ()
-endif ()
-
-foreach (_lib IN LISTS LIBRARY_TARGETS)
-    install(TARGETS ${_lib}
-            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
-endforeach ()
-
-foreach (_exe IN LISTS EXECUTABLE_TARGETS)
-    install(TARGETS ${_exe}
-            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
-endforeach ()
-
-# =========================
-# Summary banner
-# =========================
-message(STATUS "")
-message(STATUS "-- Configuring with:")
-if (DEFINED CMAKE_C_COMPILER)
-    message(STATUS "--   CC               = ${CMAKE_C_COMPILER}")
-endif ()
-if (DEFINED CMAKE_CXX_COMPILER)
-    message(STATUS "--   CXX              = ${CMAKE_CXX_COMPILER}")
-endif ()
-message(STATUS "--   clang-format     = ${CLANG_FORMAT_NAME}")
-message(STATUS "--   clang-tidy       = ${CLANG_TIDY_NAME} (custom target over sanitized DB)")
-message(STATUS "--   cppcheck         = ${CPPCHECK_NAME} (REQUIRED)")
-message(STATUS "--   scan-build       = ${SCAN_BUILD_NAME} (optional target)")
-message(STATUS "--   sanitizers       = ${SANITIZER_LIST}")
-message(STATUS "--   analyze fail?    = ${P101_ANALYZE_FAIL_ON_DIAGNOSTICS}")
-message(STATUS "--   CSA profile      = ${P101_CLANG_SA_PROFILE}")
-message(STATUS "--   CSA disabled     = ${P101_CLANG_SA_DISABLE_CHECKERS}")
-message(STATUS "--   CSA fail?        = ${P101_CLANG_SA_FAIL_ON_DIAGNOSTICS}")
-if (APPLE)
-    message(STATUS "--   macOS SDK        = ${MAC_SYSROOT}")
-endif ()
-message(STATUS "--   build dir        = ${CMAKE_BINARY_DIR}")
-message(STATUS "")
+# Installation and the configure receipt are separate policy modules. Keeping
+# them out of this orchestration file makes their inputs and ownership clear.
+include("${P101_CMAKE_DIR}/P101Install.cmake")
+include("${P101_CMAKE_DIR}/P101Summary.cmake")

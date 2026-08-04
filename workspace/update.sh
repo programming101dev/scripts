@@ -1,12 +1,30 @@
 #!/usr/bin/env bash
 # update.sh — Orchestrate tool discovery, flag probing, linking, and building all repos
 
+# Interactive runs may remain paused while this repository is edited or
+# fast-forwarded. Bash reads a script incrementally, so changing the active
+# file can otherwise leave the running shell at stale byte offsets and produce
+# a spurious parse error after the repository build completes. Re-execute one
+# immutable snapshot and retain the original workspace root explicitly.
+if [[ -z "${P101_UPDATE_SNAPSHOT:-}" ]]; then
+  P101_UPDATE_ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+  P101_UPDATE_SNAPSHOT="$(mktemp "${TMPDIR:-/tmp}/p101-update.XXXXXX")"
+  cp -- "${BASH_SOURCE[0]}" "$P101_UPDATE_SNAPSHOT"
+  export P101_UPDATE_ROOT P101_UPDATE_SNAPSHOT
+  exec bash "$P101_UPDATE_SNAPSHOT" "$@"
+fi
+
+cleanup_update_snapshot() {
+  rm -f -- "$P101_UPDATE_SNAPSHOT"
+}
+trap cleanup_update_snapshot EXIT
+
 # Strict mode
 set -euo pipefail
 IFS=$' \t\n'
 
-# Always operate from the directory this script lives in.
-CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+# Always operate from the original scripts repository.
+CDPATH='' cd -- "$P101_UPDATE_ROOT"
 
 # ----------------- globals and defaults -----------------
 c_compiler=""
@@ -40,6 +58,7 @@ PULL_SH="./distribution/pull.sh"
 CHECK_ENV_SH="./workspace/check-env.sh"
 CLONE_REPOS_SH="./distribution/clone-repos.sh"
 CHECK_COMPILERS_SH="./workspace/check-compilers.sh"
+COMPILER_FINGERPRINT_SH="./workspace/compiler-fingerprint.sh"
 GENERATE_FLAGS_SH="./generators/generate-flags.sh"
 LINK_FLAGS_SH="./distribution/link-flags.sh"
 LINK_COMPILERS_SH="./distribution/link-compilers.sh"
@@ -319,7 +338,7 @@ fi
 [[ -n "$cxx_compiler" ]] || { printf "Error: -x (C++ compiler) is required\n" >&2; usage; }
 
 # ----------------- sanity: required helper scripts present -----------------
-for f in "$PULL_SH" "$CHECK_ENV_SH" "$CLONE_REPOS_SH" "$CHECK_COMPILERS_SH" "$GENERATE_FLAGS_SH" "$LINK_FLAGS_SH" "$LINK_COMPILERS_SH" "$LINK_CMAKE_SH" "$BUILD_REPO_SH" "$REMOVE_RETIRED_REPOS_SH"; do
+for f in "$PULL_SH" "$CHECK_ENV_SH" "$CLONE_REPOS_SH" "$CHECK_COMPILERS_SH" "$COMPILER_FINGERPRINT_SH" "$GENERATE_FLAGS_SH" "$LINK_FLAGS_SH" "$LINK_COMPILERS_SH" "$LINK_CMAKE_SH" "$BUILD_REPO_SH" "$REMOVE_RETIRED_REPOS_SH"; do
   [[ -x "$f" ]] || die "required helper script missing or not executable: $f"
 done
 
@@ -502,6 +521,22 @@ if ! $update; then
       done
       if ! $_have_cache; then
         note "compiler '$_name' has no probed flag cache yet — forcing re-probe."
+        update=true
+        break 2
+      fi
+      _compiler_path=""
+      if [[ "$_name" = /* ]]; then
+        _compiler_path="$_name"
+      else
+        _compiler_path="$(map_lookup "$_name" || true)"
+        if [[ -z "$_compiler_path" ]]; then
+          _compiler_path="$(command -v "$_name" 2>/dev/null || true)"
+        fi
+      fi
+      if [[ -z "$_compiler_path" ]] ||
+         ! "$COMPILER_FINGERPRINT_SH" check "$_compiler_path" \
+             "${CACHE_ROOT}/$_cache_name/.compiler-fingerprint"; then
+        note "compiler '$_name' does not match its probed flag cache — forcing re-probe."
         update=true
         break 2
       fi

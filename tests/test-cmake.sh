@@ -10,6 +10,8 @@
 #   missing-flags      no .flags/<compiler> cache -> configure MUST fail
 #                      unless the caller explicitly opts out
 #   no-flags           P101_NO_FLAGS suppresses probed flags when a cache exists
+#   flag-cache-refresh changing a probed cache file automatically reconfigures
+#                      an existing build tree before compilation
 #   lib-exe-shared     a source listed in BOTH a library and an executable,
 #                      plus a header given as a RELATIVE path
 #                      (regressions: duplicate stamp OUTPUT was a fatal
@@ -236,6 +238,27 @@ else
   bad "no-flags: env gate (unset-rc=$RC_A unset-loaded=$loaded_when_unset set-rc=$RC_B set-suppressed=$suppressed_when_set)" "$PROJ/configure.log"
 fi
 
+# ---------- case: flag-cache-refresh ----------
+new_proj flag-cache-refresh
+write_c_config_exe "$PROJ"
+printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
+flag_cache="$PROJ/.flags/$(basename "$c_compiler")/code_generation_flags.txt"
+printf '%s' "-DP101_CACHE_SENTINEL=1" > "$flag_cache"
+configure "$PROJ"
+if (( RC == 0 )); then
+  printf '%s' "-DP101_CACHE_SENTINEL=2" > "$flag_cache"
+  build "$PROJ"
+  if (( RC == 0 )) &&
+     grep -q 'Extra CFLAGS:.*P101_CACHE_SENTINEL=2' "$PROJ/build.log" &&
+     grep -q -- '-DP101_CACHE_SENTINEL=2' "$PROJ/build/compile_commands.json"; then
+    ok "flag-cache-refresh: cache edit automatically reconfigures the build"
+  else
+    bad "flag-cache-refresh: build retained stale probed flags" "$PROJ/build.log"
+  fi
+else
+  bad "flag-cache-refresh: configure failed" "$PROJ/configure.log"
+fi
+
 # ---------- case: lib-exe-shared ----------
 new_proj lib-exe-shared
 cat > "$PROJ/config.cmake" <<'EOF'
@@ -431,7 +454,7 @@ fi
 # which probes fine but hard-errors on any function that calls setjmp. Needs a
 # gcc that actually has the flag; skipped otherwise.
 _sjsrc='#include <setjmp.h>\nint main(void)\n{\n    jmp_buf b;\n\n    if(setjmp(b))\n    {\n        return 1;\n    }\n    return 0;\n}\n'
-if [[ "$c_compiler" == *gcc* ]] && have "$c_compiler" \
+if [[ "$(uname -s)" == Linux ]] && [[ "$c_compiler" == *gcc* ]] && have "$c_compiler" \
    && printf 'int main(void){return 0;}\n' | "$c_compiler" -fharden-control-flow-redundancy -Werror -x c -c - -o /dev/null 2>/dev/null; then
   _ccbase="$(basename "$c_compiler")"
   # with the opt-out: builds clean
@@ -485,7 +508,7 @@ EOF
     bad "file-flag-optout(control): configure failed" "$PROJ/configure.log"
   fi
 else
-  echo "note: no gcc with -fharden-control-flow-redundancy; skipping file-flag-optout case."
+  echo "note: no Linux gcc with enforced -fharden-control-flow-redundancy; skipping file-flag-optout case."
 fi
 
 # Coverage/profiling are now applied from PROBED per-compiler buckets
@@ -500,6 +523,13 @@ scaffold_instrumentation() {
   printf -- '--coverage\n' > "$proj/.flags/$ccbase/coverage_flags.txt"
   printf -- '-pg\n'         > "$proj/.flags/$ccbase/profile_flags.txt"
 }
+
+profile_supported=false
+if printf 'int main(void){return 0;}\n' |
+   "$c_compiler" -x c - -pg -o "$SANDBOX/profile-probe" >/dev/null 2>&1
+then
+  profile_supported=true
+fi
 
 # ---------- case: coverage opt-in via --coverage/P101_COVERAGE env ----------
 # Off by default; when selected the build instruments with the probed coverage
@@ -551,32 +581,39 @@ else
 fi
 
 # ---------- case: profiling opt-in (P101_PROFILE) ----------
-new_proj profile
-write_c_config_exe "$PROJ"
-scaffold_instrumentation "$PROJ"
-printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
-P101_PROFILE=1 configure "$PROJ"
-if (( RC == 0 )); then
-  P101_PROFILE=1 build "$PROJ"
-  profile_compile_db="$PROJ/build/compile_commands.json"
-  if (( RC == 0 )) && [ -f "$profile_compile_db" ] && grep -q -- '-pg' "$profile_compile_db"; then
-    ok "profile: P101_PROFILE reads probed profile_flags.txt, instruments with -pg"
-  elif (( RC == 0 )); then
-    bad "profile: built but -pg not in compile_commands.json" "$PROJ/build.log"
+if $profile_supported; then
+  new_proj profile
+  write_c_config_exe "$PROJ"
+  scaffold_instrumentation "$PROJ"
+  printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
+  P101_PROFILE=1 configure "$PROJ"
+  if (( RC == 0 )); then
+    P101_PROFILE=1 build "$PROJ"
+    profile_compile_db="$PROJ/build/compile_commands.json"
+    if (( RC == 0 )) && [ -f "$profile_compile_db" ] && grep -q -- '-pg' "$profile_compile_db"; then
+      ok "profile: P101_PROFILE reads probed profile_flags.txt, instruments with -pg"
+    elif (( RC == 0 )); then
+      bad "profile: built but -pg not in compile_commands.json" "$PROJ/build.log"
+    else
+      bad "profile: build failed" "$PROJ/build.log"
+    fi
   else
-    bad "profile: build failed" "$PROJ/build.log"
+    bad "profile: configure failed" "$PROJ/configure.log"
   fi
 else
-  bad "profile: configure failed" "$PROJ/configure.log"
+  echo "note: compiler cannot link a -pg executable; skipping profile case."
 fi
 
-# ---------- case: nested workspace local-header precedence ----------
+# ---------- case: nested workspace declared local-header precedence ----------
 # Playground tracks are one level deeper than libraries/programs. Their local
-# checked-out headers must still use -I and win over stale installed headers.
+# checked-out, declared dependency headers must use -I and win over stale
+# installed headers. Unrelated workspace libraries must not be exposed.
 nested_root="$SANDBOX/nested-workspace"
 PROJ="$nested_root/playgrounds/tracks/sample"
 mkdir -p "$PROJ/src" "$PROJ/include" "$PROJ/.flags/$(basename "$c_compiler")"
 mkdir -p "$nested_root/libraries/lib_fixture/include"
+mkdir -p "$nested_root/libraries/lib_tool_event/include"
+mkdir -p "$nested_root/libraries/lib_unrelated/include"
 cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
 ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
 printf 'BasedOnStyle: LLVM\nIndentWidth: 4\n' > "$PROJ/.clang-format"
@@ -586,19 +623,30 @@ set(PROJECT_VERSION 1.0.0)
 set(PROJECT_DESCRIPTION "nested workspace precedence")
 set(PROJECT_LANGUAGE C)
 set(STANDARD_FLAGS -std=c17 -Werror)
+set(LIBRARY_TARGETS p101_fixture p101_record)
 set(EXECUTABLE_TARGETS hello)
+set(p101_fixture_SOURCES src/fixture.c)
+set(p101_record_SOURCES src/record.c)
 set(hello_SOURCES src/main.c)
+set(hello_LINK_LIBRARIES p101_fixture p101_record)
 EOF
-printf '#ifndef LOCAL_ONLY_H\n#define LOCAL_ONLY_H\n#define LOCAL_VALUE 0\n#endif\n' > "$nested_root/libraries/lib_fixture/include/local_only.h"
-printf '#include <local_only.h>\nint main(void)\n{\n    return LOCAL_VALUE;\n}\n' > "$PROJ/src/main.c"
+printf '#include <local_only.h>\nint fixture_anchor(void)\n{\n    return 0;\n}\n' > "$PROJ/src/fixture.c"
+printf '#include "record_decl.h"\nint record_anchor(void)\n{\n    return 0;\n}\n' > "$PROJ/src/record.c"
+printf '#ifndef RECORD_DECL_H\n#define RECORD_DECL_H\nint record_anchor(void);\n#endif\n' > "$PROJ/include/record_decl.h"
+printf '#ifndef LOCAL_ONLY_H\n#define LOCAL_ONLY_H\n#define LOCAL_VALUE 0\nint fixture_anchor(void);\n#endif\n' > "$nested_root/libraries/lib_fixture/include/local_only.h"
+printf '#ifndef RECORD_ONLY_H\n#define RECORD_ONLY_H\nint record_anchor(void);\n#endif\n' > "$nested_root/libraries/lib_tool_event/include/record_only.h"
+printf '#ifndef UNRELATED_H\n#define UNRELATED_H\n#endif\n' > "$nested_root/libraries/lib_unrelated/include/unrelated.h"
+printf '#include <local_only.h>\n#include <record_only.h>\nint main(void)\n{\n    return LOCAL_VALUE + fixture_anchor() + record_anchor();\n}\n' > "$PROJ/src/main.c"
 configure "$PROJ"
 if (( RC == 0 )); then
   build "$PROJ"
   nested_compile_db="$PROJ/build/compile_commands.json"
   if (( RC == 0 )) && [ -f "$nested_compile_db" ] \
      && grep -q -- "-I$nested_root/libraries/lib_fixture/include" "$nested_compile_db" \
-     && ! grep -q -- "-isystem $nested_root/libraries/lib_fixture/include" "$nested_compile_db"; then
-    ok "nested-local-precedence: workspace headers use -I ahead of installed prefixes"
+     && grep -q -- "-I$nested_root/libraries/lib_tool_event/include" "$nested_compile_db" \
+     && ! grep -q -- "-isystem $nested_root/libraries/lib_fixture/include" "$nested_compile_db" \
+     && ! grep -q -- "$nested_root/libraries/lib_unrelated/include" "$nested_compile_db"; then
+    ok "nested-local-precedence: declared workspace headers use -I; unrelated roots stay hidden"
   elif (( RC == 0 )); then
     bad "nested-local-precedence: local header did not use normal -I precedence" "$nested_compile_db"
   else

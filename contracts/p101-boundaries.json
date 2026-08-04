@@ -1,32 +1,6 @@
 {
-  "schema": "p101-boundary-register-v1",
-  "does_not_prove": "This register proves that the declared owner symbols and boundary tests remain present. It does not prove that every workspace boundary was discovered or that the named tests completely establish the documented semantics.",
-  "test_matrix": {
-    "success": {
-      "path": "libraries/lib_tool_event/test/test_event_protocol.c",
-      "marker": "test_valid_parser_records"
-    },
-    "typed_refusal": {
-      "path": "libraries/lib_tool_event/test/test_event_protocol.c",
-      "marker": "test_malformed_parser_records"
-    },
-    "stale_version": {
-      "path": "libraries/lib_tool_event/test/test_event_protocol.c",
-      "marker": "P101_TOOL_EVENT_PARSE_BAD_VERSION"
-    },
-    "identity_mismatch": {
-      "path": "libraries/lib_tool_event/test/test_health.c",
-      "marker": "mixed_run_ids"
-    },
-    "resource_limit": {
-      "path": "libraries/lib_tool_event/test/test_event_protocol.c",
-      "marker": "123456789"
-    },
-    "binding_swap": {
-      "path": "libraries/lib_tool_event/test/test_event_protocol.c",
-      "marker": "p101_tool_event_test_parse_unknown_payload"
-    }
-  },
+  "schema": "p101-boundary-register-v2",
+  "does_not_prove": "This register proves that each declared boundary has one owner and a complete clean, refusal, binding, identity, resource, and version-applicability matrix. It does not prove that every workspace boundary was discovered or that one named test completely establishes its axis.",
   "boundaries": [
     {
       "id": "boundary:c-fact-analysis",
@@ -42,10 +16,12 @@
         "p101-error-contract owns error-contract policy"
       ],
       "tests": {
-        "path": "libraries/lib_c_facts/test/test_analysis.c",
-        "clean": "test_analysis_and_compile_command",
-        "typed_refusal": "test_invalid_analysis_arguments",
-        "binding_swap": "test_clang_error_diagnostic_is_observable"
+        "clean": {"path": "libraries/lib_c_facts/test/test_analysis.c", "marker": "test_analysis_and_compile_command"},
+        "typed_refusal": {"path": "libraries/lib_c_facts/test/test_analysis.c", "marker": "test_invalid_analysis_arguments"},
+        "binding_swap": {"path": "libraries/lib_c_facts/test/test_analysis.c", "marker": "test_clang_error_diagnostic_is_observable"},
+        "identity_mismatch": {"path": "libraries/lib_c_facts/test/test_analysis.c", "marker": "test_directory_analysis_exercises_semantic_records"},
+        "resource_limit": {"path": "libraries/lib_c_facts/test/test_analysis.c", "marker": "test_analysis_failures_and_faults"},
+        "stale_version": {"not_applicable": true, "reason": "The native analysis API is linked C ABI rather than a versioned record boundary."}
       }
     },
     {
@@ -62,10 +38,12 @@
         "tools consume records without private parsers"
       ],
       "tests": {
-        "path": "libraries/lib_tool_event/test/test_event_protocol.c",
-        "clean": "test_valid_parser_records",
-        "typed_refusal": "test_malformed_parser_records",
-        "binding_swap": "test_small_helpers"
+        "clean": {"path": "libraries/lib_tool_event/test/test_event_protocol.c", "marker": "test_valid_parser_records"},
+        "typed_refusal": {"path": "libraries/lib_tool_event/test/test_event_protocol.c", "marker": "test_malformed_parser_records"},
+        "binding_swap": {"path": "libraries/lib_tool_event/test/test_event_protocol.c", "marker": "p101_tool_event_test_parse_unknown_payload"},
+        "identity_mismatch": {"path": "libraries/lib_tool_event/test/test_health.c", "marker": "mixed_run_ids"},
+        "resource_limit": {"path": "libraries/lib_tool_event/test/test_event_protocol.c", "marker": "test_writer_failures_and_field_boundaries"},
+        "stale_version": {"path": "libraries/lib_tool_event/test/test_event_protocol.c", "marker": "P101_TOOL_EVENT_PARSE_BAD_VERSION"}
       }
     },
     {
@@ -82,10 +60,34 @@
         "scripts/runtime/p101-view.py owns presentation and teaching advice"
       ],
       "tests": {
-        "path": "libraries/lib_tool_event/test/test_lifecycle.c",
-        "clean": "test_release_and_replace_findings",
-        "typed_refusal": "test_public_boundaries",
-        "binding_swap": "test_failure_propagation"
+        "clean": {"path": "libraries/lib_tool_event/test/test_lifecycle.c", "marker": "test_release_and_replace_findings"},
+        "typed_refusal": {"path": "libraries/lib_tool_event/test/test_lifecycle.c", "marker": "test_public_boundaries"},
+        "binding_swap": {"path": "libraries/lib_tool_event/test/test_lifecycle.c", "marker": "test_failure_propagation"},
+        "identity_mismatch": {"path": "libraries/lib_tool_event/test/test_lifecycle.c", "marker": "test_rejects_mixed_run_identity"},
+        "resource_limit": {"path": "libraries/lib_tool_event/test/test_lifecycle.c", "marker": "test_capacity_growth"},
+        "stale_version": {"not_applicable": true, "reason": "Lifecycle replay admits already-version-validated event records."}
+      }
+    },
+    {
+      "id": "boundary:durable-tool-receipt",
+      "owner_repo": "libraries/lib_tool_event",
+      "owner_source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "owner_symbol": "p101_tool_run_receipt_validate_file",
+      "input": "one bounded p101-tool-run-receipt-v4 JSON document",
+      "output": "typed receipt validation status and admitted outcome summary",
+      "refusal": "p101_tool_receipt_validation_status or p101_error for I/O failure",
+      "evidence": "semantic receipt digest plus optional admitted-artifact fingerprint",
+      "collaborators": [
+        "durable tools own their policy and outcome",
+        "the governed check graph requires declared producer receipts"
+      ],
+      "tests": {
+        "clean": {"path": "libraries/lib_tool_event/test/test_receipt_cli.sh", "marker": "valid receipt"},
+        "typed_refusal": {"path": "libraries/lib_tool_event/test/test_receipt_cli.sh", "marker": "truncated receipt"},
+        "binding_swap": {"path": "libraries/lib_tool_event/test/test_receipt_cli.sh", "marker": "tampered receipt"},
+        "identity_mismatch": {"path": "libraries/lib_tool_event/test/test_receipt.c", "marker": "P101_TOOL_RECEIPT_BAD_DIGEST"},
+        "resource_limit": {"path": "libraries/lib_tool_event/test/test_receipt.c", "marker": "test_record_and_byte_limits"},
+        "stale_version": {"path": "libraries/lib_tool_event/test/test_receipt_cli.sh", "marker": "old receipt"}
       }
     },
     {
@@ -101,10 +103,12 @@
         "tools construct argv but do not construct shell command strings"
       ],
       "tests": {
-        "path": "libraries/lib_util/test/test_lib_util.c",
-        "clean": "test_tool_run",
-        "typed_refusal": "missing_argv",
-        "binding_swap": "success_argv"
+        "clean": {"path": "libraries/lib_util/test/test_lib_util.c", "marker": "test_tool_run"},
+        "typed_refusal": {"path": "libraries/lib_util/test/test_lib_util.c", "marker": "missing_argv"},
+        "binding_swap": {"path": "libraries/lib_util/test/test_lib_util.c", "marker": "success_argv"},
+        "identity_mismatch": {"path": "libraries/lib_util/test/test_lib_util.c", "marker": "echo_argv"},
+        "resource_limit": {"path": "libraries/lib_util/test/test_fault_wrappers.c", "marker": "test_p101_tool_argv_append"},
+        "stale_version": {"not_applicable": true, "reason": "The subprocess boundary accepts argv and options rather than a versioned protocol."}
       }
     },
     {
@@ -121,10 +125,12 @@
         "lib_tool_event owns record representation and replay"
       ],
       "tests": {
-        "path": "libraries/lib_env/test/test_env.c",
-        "clean": "test_generic_resource_round_trip",
-        "typed_refusal": "test_event_write_failure_is_sticky",
-        "binding_swap": "test_distinct_manual_streams_receive_completion"
+        "clean": {"path": "libraries/lib_env/test/test_env.c", "marker": "test_generic_resource_round_trip"},
+        "typed_refusal": {"path": "libraries/lib_env/test/test_env.c", "marker": "test_event_write_failure_is_sticky"},
+        "binding_swap": {"path": "libraries/lib_env/test/test_env.c", "marker": "test_distinct_manual_streams_receive_completion"},
+        "identity_mismatch": {"path": "libraries/lib_env/test/test_env.c", "marker": "test_event_run_identity"},
+        "resource_limit": {"path": "libraries/lib_env/test/test_env.c", "marker": "test_long_record_round_trip"},
+        "stale_version": {"path": "libraries/lib_env/test/test_env.c", "marker": "test_event_parser_contract"}
       }
     },
     {
@@ -141,10 +147,12 @@
         "p101_fsm_run is only a convenience loop"
       ],
       "tests": {
-        "path": "libraries/lib_fsm/test/test_fsm.c",
-        "clean": "test_step_commit_and_terminal_result",
-        "typed_refusal": "test_typed_refusals",
-        "binding_swap": "test_run_is_step_loop"
+        "clean": {"path": "libraries/lib_fsm/test/test_fsm.c", "marker": "test_step_commit_and_terminal_result"},
+        "typed_refusal": {"path": "libraries/lib_fsm/test/test_fsm.c", "marker": "test_typed_refusals"},
+        "binding_swap": {"path": "libraries/lib_fsm/test/test_fsm.c", "marker": "test_run_is_step_loop"},
+        "identity_mismatch": {"path": "libraries/lib_fsm/test/test_fsm.c", "marker": "test_create_and_bound_table"},
+        "resource_limit": {"path": "libraries/lib_fsm/test/test_fsm.c", "marker": "test_create_error_paths"},
+        "stale_version": {"not_applicable": true, "reason": "The FSM step API is linked C ABI and has no serialized version boundary."}
       }
     }
   ]

@@ -1,0 +1,441 @@
+{
+  "schema": "p101-quality-contract-v1",
+  "does_not_prove": "This catalog proves that declared quality responsibilities remain owned and bound to existing executable oracles and, when checked against library-audit facts, that every lib_c_facts-discovered public enum is classified. It does not prove that non-enum responsibilities were exhaustively discovered, that an oracle is independently sufficient, or that an unexecuted platform passes.",
+  "public_surfaces": [
+    {
+      "id": "public:wrapper-api",
+      "owner": "functional wrapper libraries",
+      "contract": "scripts/contracts/wrapper-outcome-contract.json",
+      "checker": "scripts/checks/check-wrapper-unit-tests.py",
+      "oracle": "wrapper-unit-tests"
+    },
+    {
+      "id": "public:instrumented-api",
+      "owner": "lib_env and wrapper libraries",
+      "contract": "scripts/contracts/instrumentation-contract.json",
+      "checker": "scripts/checks/check-p101-instrumentation.py",
+      "oracle": "instrumentation"
+    },
+    {
+      "id": "public:workspace-library-api",
+      "owner": "library repositories",
+      "contract": "scripts/contracts/p101-source-responsibilities.json",
+      "checker": "scripts/checks/check-workspace-public-api.sh",
+      "oracle": "workspace-api"
+    },
+    {
+      "id": "public:tool-cli",
+      "owner": "programs/p101-*",
+      "contract": "scripts/docs/p101-tool-design-contract.md",
+      "checker": "scripts/checks/check-p101-tool-contracts.sh",
+      "oracle": "tool-contracts"
+    }
+  ],
+  "typed_outcome_sets": [
+    {
+      "source": "libraries/lib_error/include/p101_error/error.h",
+      "type": "p101_error_type",
+      "owner": "lib_error",
+      "oracle": "repository-tests",
+      "variants": [
+        "P101_ERROR_NONE",
+        "P101_ERROR_CHECK",
+        "P101_ERROR_ERRNO",
+        "P101_ERROR_SYSTEM",
+        "P101_ERROR_USER"
+      ]
+    },
+    {
+      "source": "libraries/lib_c_facts/include/p101_c_facts/facts.h",
+      "type": "p101_c_fact_status",
+      "owner": "lib_c_facts",
+      "oracle": "boundaries",
+      "variants": [
+        "P101_C_FACT_OK",
+        "P101_C_FACT_OTHER",
+        "P101_C_FACT_BAD_VERSION",
+        "P101_C_FACT_MALFORMED"
+      ]
+    },
+    {
+      "source": "libraries/lib_convert/include/p101_convert/errors.h",
+      "type": "p101_convert_error",
+      "owner": "lib_convert",
+      "oracle": "repository-tests",
+      "variants": [
+        "P101_CONVERT_ERROR_SYNTAX",
+        "P101_CONVERT_ERROR_RANGE",
+        "P101_CONVERT_ERROR_ADDRESS"
+      ]
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "type": "p101_tool_event_line_status",
+      "owner": "lib_tool_event",
+      "oracle": "repository-tests",
+      "variants": [
+        "P101_TOOL_EVENT_LINE_EOF",
+        "P101_TOOL_EVENT_LINE_OK",
+        "P101_TOOL_EVENT_LINE_MALFORMED",
+        "P101_TOOL_EVENT_LINE_ERROR"
+      ]
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "type": "p101_tool_event_parse_status",
+      "owner": "lib_tool_event",
+      "oracle": "boundaries",
+      "variants": [
+        "P101_TOOL_EVENT_PARSE_OTHER",
+        "P101_TOOL_EVENT_PARSE_OK",
+        "P101_TOOL_EVENT_PARSE_MALFORMED",
+        "P101_TOOL_EVENT_PARSE_BAD_VERSION"
+      ]
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "type": "p101_tool_outcome",
+      "owner": "lib_tool_event",
+      "oracle": "tool-receipt-contract",
+      "variants": [
+        "P101_TOOL_OUTCOME_CLEAN",
+        "P101_TOOL_OUTCOME_FINDINGS",
+        "P101_TOOL_OUTCOME_REFUSED",
+        "P101_TOOL_OUTCOME_INCOMPLETE",
+        "P101_TOOL_OUTCOME_UNSUPPORTED",
+        "P101_TOOL_OUTCOME_TOOL_ERROR"
+      ]
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "type": "p101_tool_failure_reason",
+      "owner": "lib_tool_event",
+      "oracle": "tool-receipt-contract",
+      "variants": [
+        "P101_TOOL_FAILURE_NONE",
+        "P101_TOOL_FAILURE_FINDINGS_PRESENT",
+        "P101_TOOL_FAILURE_INPUT_REFUSED",
+        "P101_TOOL_FAILURE_EVIDENCE_INCOMPLETE",
+        "P101_TOOL_FAILURE_UNSUPPORTED_INPUT",
+        "P101_TOOL_FAILURE_TOOL_ERROR"
+      ]
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "type": "p101_tool_receipt_validation_status",
+      "owner": "lib_tool_event",
+      "oracle": "tool-receipt-contract",
+      "variants": [
+        "P101_TOOL_RECEIPT_VALID",
+        "P101_TOOL_RECEIPT_INVALID",
+        "P101_TOOL_RECEIPT_BAD_VERSION",
+        "P101_TOOL_RECEIPT_BAD_DIGEST"
+      ]
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/lifecycle.h",
+      "type": "p101_tool_event_lifecycle_finding_kind",
+      "owner": "lib_tool_event",
+      "oracle": "boundaries",
+      "variants": [
+        "P101_TOOL_EVENT_LIFECYCLE_FINDING_LEAK",
+        "P101_TOOL_EVENT_LIFECYCLE_FINDING_DOUBLE_RELEASE",
+        "P101_TOOL_EVENT_LIFECYCLE_FINDING_STRAY_RELEASE",
+        "P101_TOOL_EVENT_LIFECYCLE_FINDING_BAD_REPLACE",
+        "P101_TOOL_EVENT_LIFECYCLE_FINDING_DUPLICATE_ACQUIRE",
+        "P101_TOOL_EVENT_LIFECYCLE_FINDING_EXEC_INHERIT"
+      ]
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/ownership.h",
+      "type": "p101_tool_event_ownership_release_result",
+      "owner": "lib_tool_event",
+      "oracle": "boundaries",
+      "variants": [
+        "P101_TOOL_EVENT_OWNERSHIP_RELEASE_OK",
+        "P101_TOOL_EVENT_OWNERSHIP_RELEASE_STRAY",
+        "P101_TOOL_EVENT_OWNERSHIP_RELEASE_DUPLICATE"
+      ]
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/ownership.h",
+      "type": "p101_tool_event_ownership_replace_result",
+      "owner": "lib_tool_event",
+      "oracle": "boundaries",
+      "variants": [
+        "P101_TOOL_EVENT_OWNERSHIP_REPLACE_OK",
+        "P101_TOOL_EVENT_OWNERSHIP_REPLACE_NEW",
+        "P101_TOOL_EVENT_OWNERSHIP_REPLACE_BAD"
+      ]
+    },
+    {
+      "source": "libraries/lib_fsm/include/p101_fsm/errors.h",
+      "type": "p101_fsm_error",
+      "owner": "lib_fsm",
+      "oracle": "repository-tests",
+      "variants": [
+        "P101_FSM_ERROR_INVALID_ARGUMENT",
+        "P101_FSM_ERROR_INVALID_TRANSITION_TABLE",
+        "P101_FSM_ERROR_UNKNOWN_TRANSITION",
+        "P101_FSM_ERROR_HANDLER_LOOP",
+        "P101_FSM_ERROR_INVALID_DECISION",
+        "P101_FSM_ERROR_REENTRANT_OPERATION",
+        "P101_FSM_ERROR_EFFECT",
+        "P101_FSM_ERROR_EFFECT_CAPACITY",
+        "P101_FSM_ERROR_SEQUENCE_EXHAUSTED"
+      ]
+    },
+    {
+      "source": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "type": "p101_fsm_refusal",
+      "owner": "lib_fsm",
+      "oracle": "boundaries",
+      "variants": [
+        "P101_FSM_REFUSAL_NONE",
+        "P101_FSM_REFUSAL_UNKNOWN_TRANSITION",
+        "P101_FSM_REFUSAL_INVALID_CALLBACK_DECISION",
+        "P101_FSM_REFUSAL_INVALID_HANDLER_DECISION",
+        "P101_FSM_REFUSAL_REDIRECT_CYCLE",
+        "P101_FSM_REFUSAL_TERMINAL_MACHINE",
+        "P101_FSM_REFUSAL_REENTRANT_INVOCATION",
+        "P101_FSM_REFUSAL_EFFECT_CAPACITY",
+        "P101_FSM_REFUSAL_SEQUENCE_EXHAUSTED"
+      ]
+    },
+    {
+      "source": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "type": "p101_fsm_step_status",
+      "owner": "lib_fsm",
+      "oracle": "boundaries",
+      "variants": [
+        "P101_FSM_STEP_TRANSITIONED",
+        "P101_FSM_STEP_PAUSED",
+        "P101_FSM_STEP_EXITED",
+        "P101_FSM_STEP_REFUSED",
+        "P101_FSM_STEP_ERROR"
+      ]
+    },
+    {
+      "source": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "type": "p101_fsm_run_result",
+      "owner": "lib_fsm",
+      "oracle": "boundaries",
+      "variants": [
+        "P101_FSM_RUN_ERROR",
+        "P101_FSM_RUN_PAUSED",
+        "P101_FSM_RUN_EXITED",
+        "P101_FSM_RUN_REFUSED"
+      ]
+    }
+  ],
+  "typed_outcome_exclusions": [
+    {
+      "source": "libraries/lib_c_facts/include/p101_c_facts/analysis.h",
+      "type": "p101_c_analysis_kind",
+      "owner": "lib_c_facts",
+      "reason": "AST record classification, not an operation outcome"
+    },
+    {
+      "source": "libraries/lib_c_facts/include/p101_c_facts/analysis.h",
+      "type": "p101_c_mutation_kind",
+      "owner": "lib_c_facts",
+      "reason": "mutation operator classification, not an operation outcome"
+    },
+    {
+      "source": "libraries/lib_c_facts/include/p101_c_facts/facts.h",
+      "type": "p101_c_fact_kind",
+      "owner": "lib_c_facts",
+      "reason": "serialized fact classification, not an operation outcome"
+    },
+    {
+      "source": "libraries/lib_env/include/p101_env/env.h",
+      "type": "p101_env_call_event",
+      "owner": "lib_env",
+      "reason": "call lifecycle event classification"
+    },
+    {
+      "source": "libraries/lib_env/include/p101_env/env.h",
+      "type": "p101_env_call_log_options",
+      "owner": "lib_env",
+      "reason": "bitmask configuration options"
+    },
+    {
+      "source": "libraries/lib_env/include/p101_env/env.h",
+      "type": "p101_env_fault_kind",
+      "owner": "lib_env",
+      "reason": "fault payload classification"
+    },
+    {
+      "source": "libraries/lib_env/include/p101_env/env.h",
+      "type": "p101_env_fault_phase",
+      "owner": "lib_env",
+      "reason": "fault timing classification"
+    },
+    {
+      "source": "libraries/lib_env/include/p101_env/env.h",
+      "type": "p101_env_fault_disposition",
+      "owner": "lib_env",
+      "reason": "fault retry-policy classification"
+    },
+    {
+      "source": "libraries/lib_env/include/p101_env/env.h",
+      "type": "p101_env_fd_event",
+      "owner": "lib_env",
+      "reason": "descriptor lifecycle event classification"
+    },
+    {
+      "source": "libraries/lib_env/include/p101_env/env.h",
+      "type": "p101_env_alloc_event",
+      "owner": "lib_env",
+      "reason": "allocation lifecycle event classification"
+    },
+    {
+      "source": "libraries/lib_env/include/p101_env/env.h",
+      "type": "p101_env_resource_kind",
+      "owner": "lib_env",
+      "reason": "generic resource lifecycle event classification"
+    },
+    {
+      "source": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "type": "p101_fsm_state",
+      "owner": "lib_fsm",
+      "reason": "machine state identifiers and sentinels"
+    },
+    {
+      "source": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "type": "p101_fsm_decision_kind",
+      "owner": "lib_fsm",
+      "reason": "callback command classification consumed by the step operation"
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "type": "p101_tool_event_record_kind",
+      "owner": "lib_tool_event",
+      "reason": "event record classification"
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "type": "p101_tool_event_fd_kind",
+      "owner": "lib_tool_event",
+      "reason": "descriptor event classification"
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "type": "p101_tool_event_alloc_kind",
+      "owner": "lib_tool_event",
+      "reason": "allocation event classification"
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "type": "p101_tool_event_call_kind",
+      "owner": "lib_tool_event",
+      "reason": "call event classification"
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "type": "p101_tool_event_resource_kind",
+      "owner": "lib_tool_event",
+      "reason": "resource event classification"
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/model.h",
+      "type": "p101_tool_model_node_domain",
+      "owner": "lib_tool_event",
+      "reason": "causal-model node classification"
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/model.h",
+      "type": "p101_tool_model_edge_kind",
+      "owner": "lib_tool_event",
+      "reason": "causal-model edge classification"
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/ownership.h",
+      "type": "p101_tool_event_ownership_state",
+      "owner": "lib_tool_event",
+      "reason": "resource ownership state classification"
+    }
+  ],
+  "audit_responsibilities": [
+    {
+      "id": "audit:wrapper-outcomes",
+      "owner": "scripts wrapper-contract generator",
+      "mode": "local",
+      "source": "scripts/contracts/wrapper-outcome-contract.json",
+      "marker": "p101-wrapper-outcome-contract-v1",
+      "oracle": "wrapper-failure-contract"
+    },
+    {
+      "id": "audit:platform-faults",
+      "owner": "scripts wrapper-platform catalog",
+      "mode": "local",
+      "source": "scripts/contracts/wrapper-platform-faults.json",
+      "marker": "p101-wrapper-platform-faults-v1",
+      "oracle": "wrapper-unit-tests"
+    },
+    {
+      "id": "audit:event-and-receipt-integrity",
+      "owner": "lib_tool_event",
+      "mode": "delegated",
+      "source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "marker": "p101_tool_run_receipt_validate_file",
+      "oracle": "tool-receipt-contract"
+    },
+    {
+      "id": "audit:c-source-semantics",
+      "owner": "lib_c_facts",
+      "mode": "delegated",
+      "source": "libraries/lib_c_facts/include/p101_c_facts/analysis.h",
+      "marker": "p101_c_analysis_scan",
+      "oracle": "tool-audit"
+    },
+    {
+      "id": "audit:source-boundaries",
+      "owner": "scripts architecture contracts",
+      "mode": "local",
+      "source": "scripts/contracts/p101-source-responsibilities.json",
+      "marker": "p101-source-responsibilities-v1",
+      "oracle": "source-responsibilities"
+    },
+    {
+      "id": "audit:lesson-acceptance",
+      "owner": "playgrounds lesson catalog",
+      "mode": "delegated",
+      "source": "playgrounds/lessons/manifest.json",
+      "marker": "p101-finding-lesson-catalog-v2",
+      "oracle": "lesson-acceptance"
+    }
+  ],
+  "boundaries": [
+    {"id": "boundary:c-fact-analysis", "oracle": "boundaries"},
+    {"id": "boundary:durable-tool-receipt", "oracle": "boundaries"},
+    {"id": "boundary:fsm-transition", "oracle": "boundaries"},
+    {"id": "boundary:resource-lifecycle-replay", "oracle": "boundaries"},
+    {"id": "boundary:subprocess-execution", "oracle": "boundaries"},
+    {"id": "boundary:tool-event-record", "oracle": "boundaries"},
+    {"id": "boundary:wrapper-observation", "oracle": "boundaries"}
+  ],
+  "process_termination": {
+    "allowed_owner": "main",
+    "checker": "scripts/checks/check-p101-tool-audit.sh",
+    "oracle": "tool-audit",
+    "policy_source": "programs/p101-error-contract/README.md",
+    "policy_marker": "single-exit"
+  },
+  "platform_evidence": {
+    "required": ["freebsd", "linux", "macos"],
+    "receipt_schema": "p101-check-graph-receipt-v2",
+    "producer": "scripts/checks/p101-check-graph.py",
+    "oracle": "github-workflow-drift",
+    "merge_driver": "scripts/.github/workflows/p101-stack.yml",
+    "merge_marker": "--merge-platform-receipts"
+  },
+  "implementation_oracles": [
+    {"kind": "negative-controls", "oracle": "architecture-contract-tests"},
+    {"kind": "unit-tests", "oracle": "repository-tests"},
+    {"kind": "bounded-fuzz", "oracle": "repository-tests"},
+    {"kind": "cross-platform-wrapper-faults", "oracle": "wrapper-unit-tests"},
+    {"kind": "known-defect-corpus", "oracle": "regression-corpus"},
+    {"kind": "teaching-acceptance", "oracle": "lesson-acceptance"}
+  ]
+}

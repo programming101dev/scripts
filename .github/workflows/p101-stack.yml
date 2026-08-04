@@ -197,10 +197,18 @@ jobs:
           --require-platform Darwin
           --require-platform Linux
           --require-platform FreeBSD
+      - name: Verify supported-platform governed quality receipts
+        id: quality
+        run: >-
+          python3 scripts/checks/check-p101-quality-contract.py
+          --merge-platform-receipts instrumentation-receipts/*/receipt.json
+          --require-platform macos
+          --require-platform linux
+          --require-platform freebsd
       - name: Publish CI summary
         if: ${{ always() }}
         env:
-          CHECK_OUTCOME: ${{ steps.instrumentation.outcome }}
+          CHECK_OUTCOME: ${{ steps.instrumentation.outcome == 'success' && steps.quality.outcome || steps.instrumentation.outcome }}
         run: >-
           scripts/github-actions/publish-ci-summary.sh
           instrumentation-receipts

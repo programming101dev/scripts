@@ -531,6 +531,70 @@ class RuntimePolicyTests(unittest.TestCase):
         }
         self.assertEqual(identifiers, {"P101-TRACE-001", "P101-TRACE-003"})
 
+    def test_trace_policy_inherits_active_outer_calls_across_fork(self) -> None:
+        outer_enter = node(
+            "call",
+            "call-enter",
+            1,
+            name="run_fork_demo",
+            arguments="-",
+            result="-",
+        )
+        fork_enter = node(
+            "call",
+            "call-enter",
+            2,
+            name="p101_fork",
+            arguments="-",
+            result="-",
+        )
+        fork = node(
+            "resource",
+            "fork",
+            3,
+            child_pid=2,
+            source={"file": "wrapper.c", "line": 3, "function": "p101_fork"},
+        )
+        child_outer_exit = node(
+            "call",
+            "call-exit",
+            4,
+            pid=2,
+            name="run_fork_demo",
+            arguments="-",
+            result="0",
+        )
+        parent_fork_exit = node(
+            "call",
+            "call-exit",
+            4,
+            name="p101_fork",
+            arguments="-",
+            result="2",
+        )
+        parent_outer_exit = node(
+            "call",
+            "call-exit",
+            5,
+            name="run_fork_demo",
+            arguments="-",
+            result="0",
+        )
+
+        analysis = analyze_model(
+            model(
+                outer_enter,
+                fork_enter,
+                fork,
+                child_outer_exit,
+                parent_fork_exit,
+                parent_outer_exit,
+            )
+        )
+
+        self.assertEqual(analysis.trace.findings, [])
+        self.assertEqual(len(analysis.trace.summary["contexts"]), 2)
+
     def test_trace_policy_finds_mismatched_exit(self) -> None:
         analysis = analyze_model(
             model(

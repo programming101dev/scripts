@@ -34,8 +34,6 @@ POSIX_INDEX_URL = f"{POSIX_BASE}/idx/functions.html"
 POSIX_ERRNO_URL = f"{POSIX_BASE}/basedefs/errno.h.html"
 
 ALIASES = {
-    "p101_exit_immediately": "_Exit",
-    "p101_posix_exit_immediately": "_exit",
     "p101_semctl_arg": "semctl",
 }
 
@@ -801,7 +799,7 @@ def effective_posix_errors(
     return direct
 
 
-def effective_platform_errors(
+def explicit_platform_errors(
     function: str,
     platform_name: str,
     records_by_function: dict[str, Any],
@@ -812,16 +810,35 @@ def effective_platform_errors(
     function_record = records_by_function[function]
     platform_record = function_record["platforms"].get(platform_name)
     if platform_record is None or platform_record["status"] != "documented":
-        return effective_posix_errors(function, records_by_function, set())
+        return set()
     effective = set(platform_record["errors"])
     for reference in platform_record.get("references", []):
         effective.update(
-            effective_platform_errors(
+            explicit_platform_errors(
                 reference,
                 platform_name,
                 records_by_function,
                 visiting | {function},
             )
+        )
+    return effective
+
+
+def effective_platform_errors(
+    function: str,
+    platform_name: str,
+    records_by_function: dict[str, Any],
+    visiting: set[str],
+) -> set[str]:
+    effective = explicit_platform_errors(
+        function,
+        platform_name,
+        records_by_function,
+        visiting,
+    )
+    if not effective:
+        effective.update(
+            effective_posix_errors(function, records_by_function, set())
         )
     return effective
 
@@ -941,7 +958,23 @@ def main() -> int:
                     set(),
                 )
             )
-            if platform_value["status"] == "documented":
+            platform_has_explicit_faults = bool(
+                explicit_platform_errors(
+                    function,
+                    platform_name,
+                    records_by_function,
+                    set(),
+                )
+            )
+            platform_requires_posix_fallback = (
+                platform_value["status"] == "documented"
+                and not platform_has_explicit_faults
+                and bool(posix["effective_errors"])
+            )
+            if (
+                platform_value["status"] == "documented"
+                and not platform_requires_posix_fallback
+            ):
                 platform_value["effective_source_kind"] = "platform-manual"
                 platform_value["effective_source"] = platform_value["source"]
                 platform_value["effective_source_path"] = platform_value.get(
@@ -971,15 +1004,18 @@ def main() -> int:
         and binding["function"] in records_by_function
     ]
     for platform_name in ("linux", "macos", "freebsd"):
-        documented_functions = sum(
-            record["platforms"][platform_name]["status"] == "documented"
+        manual_functions = sum(
+            record["platforms"][platform_name][
+                "effective_source_kind"
+            ]
+            == "platform-manual"
             for record in records_by_function.values()
         )
         manual_wrapper_count = sum(
             records_by_function[function]["platforms"][platform_name][
-                "status"
+                "effective_source_kind"
             ]
-            == "documented"
+            == "platform-manual"
             for function in native_wrapper_functions
         )
         sources = sorted(
@@ -991,9 +1027,8 @@ def main() -> int:
         )
         platform_coverage[platform_name] = {
             "authoritative_sources": sources,
-            "manual_override_functions": documented_functions,
-            "posix_fallback_functions": len(functions)
-            - documented_functions,
+            "manual_override_functions": manual_functions,
+            "posix_fallback_functions": len(functions) - manual_functions,
             "manual_override_wrappers": manual_wrapper_count,
             "posix_fallback_wrappers": len(native_wrapper_functions)
             - manual_wrapper_count,

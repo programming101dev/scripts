@@ -64,8 +64,13 @@ resolve_list_file() {
 C_LIST_FILE="$(resolve_list_file "$c_list_file")"
 CXX_LIST_FILE="$(resolve_list_file "$cxx_list_file")"
 MAP_FILE="${SCRIPT_DIR}/compiler_paths.txt"
+COMPILER_FINGERPRINT_SH="${SCRIPT_DIR}/workspace/compiler-fingerprint.sh"
 
 mkdir -p "${OUT_DIR}"
+[[ -x "${COMPILER_FINGERPRINT_SH}" ]] || {
+  echo "Error: compiler fingerprint helper is missing or not executable: ${COMPILER_FINGERPRINT_SH}" >&2
+  exit 1
+}
 
 # Resolve a compiler NAME to its pinned path (compiler_paths.txt written by
 # check-compilers.sh); falls back to PATH. Results are keyed by NAME so the
@@ -683,11 +688,13 @@ if [[ ${#supported_c_compilers[@]} -gt 0 ]]; then
     echo "Checking: $cc [C] ($cc_path)"
     load_family_deny "$(compiler_family "$cc_path")"
     load_lang_deny "c"
-    out="${OUT_DIR}/$(basename "$cc")"; mkdir -p "$out"; rm -f "$out"/* || true
+    out="${OUT_DIR}/$(basename "$cc")"; mkdir -p "$out"
+    rm -f "$out"/* "$out"/.compiler-fingerprint || true
     for f in "${flags_files[@]}"; do
       probe_flags_file "$cc" "$cc_path" "c" "$tmp_c_src" "$f" "$TMP"
     done
     whole_set_check "$cc" "$cc_path" "c" "$tmp_c_src"
+    "${COMPILER_FINGERPRINT_SH}" write "$cc_path" "$out/.compiler-fingerprint"
   done
 fi
 
@@ -697,11 +704,13 @@ if [[ ${#supported_cxx_compilers[@]} -gt 0 ]]; then
     echo "Checking: $cc [C++] ($cc_path)"
     load_family_deny "$(compiler_family "$cc_path")"
     load_lang_deny "c++"
-    out="${OUT_DIR}/$(basename "$cc")"; mkdir -p "$out"; rm -f "$out"/* || true
+    out="${OUT_DIR}/$(basename "$cc")"; mkdir -p "$out"
+    rm -f "$out"/* "$out"/.compiler-fingerprint || true
     for f in "${flags_files[@]}"; do
       probe_flags_file "$cc" "$cc_path" "c++" "$tmp_cxx_src" "$f" "$TMP"
     done
     whole_set_check "$cc" "$cc_path" "c++" "$tmp_cxx_src"
+    "${COMPILER_FINGERPRINT_SH}" write "$cc_path" "$out/.compiler-fingerprint"
   done
 fi
 

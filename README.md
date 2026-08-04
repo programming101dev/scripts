@@ -208,8 +208,22 @@ platform-specific headers, kernels, runtimes, packages, and tool versions.
 
 This delegates to the governed graph in `contracts/p101-check-graph.json`. Every node
 declares its argv, dependencies, resource effects, guarantee, and limitation;
-the runner writes a log per node plus a `p101-tool-run-receipt-v3` receipt with
-a typed failure reason, failing stage, and first actionable diagnostic.
+the runner writes a log per node plus a `p101-check-graph-receipt-v2` receipt with
+a typed failure reason, failing stage, first actionable diagnostic, canonical
+receipt digest, and the verified `p101-stack-contract-v1` identity. The stack
+contract binds the repository manifest/lock, wrapper and boundary contracts,
+lesson catalog, check graph, and shared build policy to one admitted byte set.
+`contracts/p101-quality-contract.json` is the semantic index over that
+evidence. It accounts for the governed public surfaces and typed outcome/refusal
+sets, distinguishes local from delegated audit ownership, covers every
+registered boundary, retains main-only process termination, and requires
+Linux, macOS, and FreeBSD platform evidence. Its checker follows references
+to the existing contracts and graph nodes; it does not create a second test
+system or claim that the named oracles are independently sufficient.
+After the library audit, the same checker runs a dedicated `lib_c_facts`
+acquisition over every public library header, with all sibling include roots
+admitted. It requires every discovered public enum to be classified as an
+outcome/refusal set or explicitly justified as a non-outcome.
 It also writes `profile.md`, which records every node's elapsed time, result,
 log size, and contribution to the end-to-end governed runtime. The default
 functional run schedules independent nodes concurrently, bounded by `--jobs`,
@@ -231,7 +245,8 @@ The graph includes the shared CMake regression harness, tool and wrapper
 audits, fresh-template standalone checks, every repository-owned unit suite,
 bounded fuzz smoke tests where supported, the playground tour, and the p101
 behavior regression corpus. `contracts/p101-boundaries.json` separately binds shared
-mechanisms to one owner and to clean, typed-refusal, and binding-swap tests.
+mechanisms to one owner and to clean, typed-refusal, binding-swap,
+identity-mismatch, resource-limit, and stale-version tests.
 `contracts/p101-test-inventory.json` prevents a repository or scripts verification entry
 point from silently falling outside the runners.
 
@@ -316,7 +331,7 @@ To replay the source-contract audit over every active wrapper library:
 
 This uses each library's compile database, its optional checked-in
 `.p101-wrapper-audit-allow` boundary ledger, `p101-error-contract`, and
-`p101-module-map -L`. The boundary pass records a P101FACT v2 snapshot and
+`p101-module-map -L`. The boundary pass records a P101FACT v4 snapshot and
 admitted-input manifest; both downstream C policy tools reuse that snapshot.
 Runtime wrapper feature coverage is enforced by each split library's generated
 wrapper tests and `unit-test-manifest.tsv`. Reports are written under one
@@ -465,7 +480,7 @@ wrapper-audit checks over the C tools, and module-map design reports — run:
 By default, module-map design notes fail the audit. Use
 `--allow-module-notes` only for an exploratory report that should not enforce
 the current module-splitting rules. Each C tool is parsed once; module-map
-reuses the recorded P101FACT v2 snapshot, and a checked-in
+reuses the recorded P101FACT v4 snapshot, and a checked-in
 `.p101-wrapper-audit-allow` file is treated as a scoped, stale-checked boundary
 ledger.
 
@@ -613,7 +628,9 @@ workspace-wide contract, including `lib_c`, `lib_c_facts`, `lib_convert`,
 failure outcomes.
 It retains the POSIX.1-2024 `shall fail` and `may fail` sets separately, plus
 documented Linux, macOS, and FreeBSD overrides. A platform manual replaces the
-POSIX set when that manual exists; otherwise the portable POSIX set is used.
+POSIX set when it explicitly documents errors or error references. A page that
+is silent about failures does not erase the portable POSIX set; the POSIX set
+remains the fail-closed fallback.
 References such as “the errors specified for socket() and malloc()” are
 resolved transitively and retained in the JSON. Every platform record names its
 `effective_source_kind` (`platform-manual` or `posix-fallback`) and exact
@@ -660,14 +677,33 @@ writable-argument canaries, and no descriptor/allocation/generic-resource
 event. The generated executable tests assert those obligations for every
 injected fault. An injectable interface with no finite documented fault code
 still receives one `EIO` injection smoke case; that case is labeled by the
-empty manual set rather than misrepresented as a documented failure. APIs
-without an injectable failure boundary are assigned to an existing behavior
-test or the owning library's handwritten `test/test_behavior.c`.
+empty manual set rather than misrepresented as a documented failure.
 
-There is no behavior-test exemption for a native interface with a documented
-failure on any supported platform. Such a wrapper must expose the injectable
-error boundary and must have a generated fault test. The static check validates
-the Linux, macOS, and FreeBSD arrays on every host, so a missing FreeBSD case is
+`contracts/wrapper-outcome-contract.json` is the exhaustive disposition of
+the full public API, rather than a residual list inferred from which
+implementations happen to contain a fault check. Each of the 1,104 APIs has
+exactly one reviewed class and rationale:
+
+- direct hard-failure injection;
+- short/partial-result injection;
+- delegated failure through an actual call to an injectable wrapper;
+- deterministic rejection;
+- genuinely infallible behavior;
+- non-returning or cleanup behavior.
+
+Every public API accepting `struct p101_error *` must be in one of the first
+two classes and must place its injection boundary before observable work.
+Clang AST checks reject a direct class without the corresponding fault
+operation, a delegated class that merely takes the address of another
+function, and a `_Noreturn` API outside the final class. Non-direct APIs must
+have a compiled behavior test. A newly added API therefore fails closed until
+its outcome is explicitly classified; it cannot silently fall into an
+inferred “non-injectable” remainder.
+
+A native interface with a documented failure on any supported platform must
+accept `struct p101_error *` and expose an injectable error boundary; an outcome
+classification cannot waive that requirement. The static check validates the
+Linux, macOS, and FreeBSD arrays on every host, so a missing FreeBSD case is
 caught on macOS rather than deferred to FreeBSD CI. The runtime suite then
 executes the selected host array. The check requires every public manifest API
 to be invoked by exactly one compiled test source, validates all 1,104 JSON

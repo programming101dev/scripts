@@ -671,7 +671,25 @@ def analyze_trace(model: dict[str, Any]) -> tuple[PolicyResult, str]:
     findings: list[Finding] = []
     tree: list[str] = []
 
-    for node in _call_nodes(model):
+    for node in model["nodes"]:
+        if node["domain"] == "resource" and node["kind"] == "fork":
+            parent_context = (node["pid"], node["context"])
+            child_pid = node.get("child_pid")
+            if not isinstance(child_pid, int):
+                raise RuntimeModelError("fork node does not contain an integer child_pid")
+            child_context = (child_pid, node["context"])
+            inherited_stack = list(stacks[parent_context])
+            fork_function = _source(node)["function"]
+            if inherited_stack and inherited_stack[-1].get("name") == fork_function:
+                inherited_stack.pop()
+            stacks[child_context] = inherited_stack
+            metrics[child_context]["max_depth"] = max(
+                metrics[child_context]["max_depth"], len(inherited_stack)
+            )
+            continue
+        if node["domain"] != "call":
+            continue
+
         context = (node["pid"], node["context"])
         stack = stacks[context]
         source = _source(node)

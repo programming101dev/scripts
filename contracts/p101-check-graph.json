@@ -9,15 +9,21 @@
     "required_nodes": [
       "repository-lock-tests",
       "workspace-lock",
+      "stack-contract-tests",
+      "stack-contract",
       "check-graph-tests",
       "boundaries",
       "boundary-tests",
+      "quality-contract-tests",
+      "quality-contract",
+      "quality-discovery",
       "test-inventory",
       "source-responsibilities",
       "facts-cache-tests",
       "architecture-contract-tests",
       "shell-scripts",
       "repository-refresh",
+      "compiler-cache-tests",
       "retired-repository-cleanup",
       "interactive-build-retry",
       "github-workflow-drift",
@@ -29,6 +35,7 @@
       "playground-script-distribution",
       "shared-links",
       "analyze-receipts",
+      "tool-receipt-contract",
       "capture-composition",
       "causal-model",
       "runtime-policy",
@@ -87,12 +94,33 @@
       "guarantee": "Every configured repository URL and HEAD matches the immutable revision set recorded in repos.lock."
     },
     {
+      "id": "stack-contract-tests",
+      "title": "p101 stack policy identity tests",
+      "group": "architecture",
+      "required": true,
+      "command": ["./tests/test-stack-contract.py"],
+      "depends_on": ["workspace-lock"],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "Stack policy refresh is deterministic and altered, substituted, missing, or escaping artifacts are refused."
+    },
+    {
+      "id": "stack-contract",
+      "title": "p101 exact stack policy identity",
+      "group": "architecture",
+      "required": true,
+      "cacheable": false,
+      "command": ["./workspace/stack-contract.py", "verify", "--receipt", "{out}/stack-contract-receipt.json"],
+      "depends_on": ["stack-contract-tests"],
+      "resources": {"writes": ["{out}/stack-contract-receipt.json"], "units": {}},
+      "guarantee": "The repository lock, check graph, boundary register, wrapper contracts, lesson catalog, and shared build policy match one admitted byte set."
+    },
+    {
       "id": "check-graph-tests",
       "title": "p101 governed check-graph tests",
       "group": "architecture",
       "required": true,
       "command": ["./tests/test-p101-check-graph.py"],
-      "depends_on": ["workspace-lock"],
+      "depends_on": ["stack-contract"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Graph validation, dependency closure, resume selection, and argv substitution pass their negative and positive controls."
     },
@@ -104,7 +132,7 @@
       "command": ["./checks/check-p101-boundaries.py"],
       "depends_on": ["check-graph-tests"],
       "resources": {"writes": [], "units": {}},
-      "guarantee": "Every declared boundary still has one owner, an admitted contract, and clean/refusal/binding-swap evidence."
+      "guarantee": "Every declared boundary still has one owner, an admitted contract, and clean, typed-refusal, binding-swap, identity-mismatch, resource-limit, and stale-version evidence or an explicit stale-version non-applicability reason."
     },
     {
       "id": "boundary-tests",
@@ -117,12 +145,32 @@
       "guarantee": "Boundary drift and missing evidence are rejected by executable negative controls."
     },
     {
+      "id": "quality-contract-tests",
+      "title": "p101 governed quality-catalog negative controls",
+      "group": "architecture",
+      "required": true,
+      "command": ["./tests/test-p101-quality-contract.py"],
+      "depends_on": ["boundary-tests"],
+      "resources": {"writes": [], "units": {}},
+      "guarantee": "Missing public-surface oracles, refusal variants, boundary cases, platform evidence, and invalid audit delegation are rejected."
+    },
+    {
+      "id": "quality-contract",
+      "title": "p101 governed quality catalog",
+      "group": "architecture",
+      "required": true,
+      "command": ["./checks/check-p101-quality-contract.py"],
+      "depends_on": ["quality-contract-tests"],
+      "resources": {"writes": [], "units": {}},
+      "guarantee": "Public surfaces, typed refusals, local and delegated audit ownership, boundaries, main-only termination, platform evidence, and implementation oracles remain explicitly governed."
+    },
+    {
       "id": "test-inventory",
       "title": "p101 governed test inventory",
       "group": "architecture",
       "required": true,
       "command": ["./checks/check-p101-test-inventory.py"],
-      "depends_on": ["boundary-tests"],
+      "depends_on": ["quality-contract"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Every repository and stack verification entry point is classified, owned, and covered by the central runner."
     },
@@ -167,12 +215,22 @@
       "guarantee": "Repository refresh explicitly fetches the configured upstream, fast-forwards updates, preserves local commits, and refuses divergence."
     },
     {
+      "id": "compiler-cache-tests",
+      "title": "compiler flag-cache identity tests",
+      "group": "build",
+      "required": true,
+      "command": ["./tests/test-compiler-fingerprint.sh"],
+      "depends_on": ["repository-refresh"],
+      "resources": {"writes": ["/tmp"], "units": {}},
+      "guarantee": "Probed flag caches are invalidated when the compiler executable, reported version, or target changes."
+    },
+    {
       "id": "retired-repository-cleanup",
       "title": "retired repository cleanup safety",
       "group": "distribution",
       "required": true,
       "command": ["./tests/test-remove-retired-repos.sh"],
-      "depends_on": ["repository-refresh"],
+      "depends_on": ["compiler-cache-tests"],
       "resources": {"writes": ["/tmp"], "units": {}},
       "guarantee": "Manifest-retired repositories are removed only when clean and fully represented by their configured upstream."
     },
@@ -290,12 +348,25 @@
       "guarantee": "Capture and deferred analysis compose through their declared receipts."
     },
     {
+      "id": "tool-receipt-contract",
+      "title": "shared durable tool receipt contract",
+      "group": "receipts",
+      "required": true,
+      "cacheable": false,
+      "command": ["./checks/check-p101-tool-receipts.sh", "-o", "{out}/tool-receipt-contract"],
+      "depends_on": ["capture-composition"],
+      "replace_outputs": true,
+      "resources": {"writes": ["{out}/tool-receipt-contract"], "units": {}},
+      "receipts": ["{out}/tool-receipt-contract/capture/tool-receipt.json"],
+      "guarantee": "Durable capture evidence emits a current shared receipt whose semantic digest verifies, while a changed receipt is rejected."
+    },
+    {
       "id": "causal-model",
       "title": "p101 causal-model verify and compare tests",
       "group": "receipts",
       "required": true,
       "command": ["./tests/test-p101-model.py"],
-      "depends_on": ["capture-composition"],
+      "depends_on": ["tool-receipt-contract"],
       "resources": {"writes": ["/tmp"], "units": {}},
       "guarantee": "The causal model verifies and compares only bound analysis artifacts."
     },
@@ -386,6 +457,7 @@
       "required": true,
       "command": ["./p101", "lessons", "verify", "--full", "-o", "{out}/lesson-acceptance"],
       "depends_on": ["lesson-completeness", "external-facts-manifest"],
+      "replace_outputs": true,
       "resources": {"writes": ["{out}/lesson-acceptance"], "units": {}},
       "guarantee": "Lesson controls and intended fixes execute against the current tools."
     },
@@ -427,7 +499,7 @@
       "command": ["./checks/check-p101-tool-audit.sh", "--skip-contracts", "--facts-cache", "{out}/c-facts-cache", "-o", "{out}/tool-audit"],
       "depends_on": ["tool-contracts", "facts-cache-tests"],
       "resources": {"writes": ["{out}/tool-audit", "{out}/c-facts-cache"], "units": {"compiler": 1}},
-      "guarantee": "Tool wrapper usage, module boundaries, error handling, and portability checks pass."
+      "guarantee": "Tool wrapper usage, module boundaries, error handling, portability checks, and main-only process termination pass."
     },
     {
       "id": "functional-library-split",
@@ -474,7 +546,7 @@
       ],
       "depends_on": ["wrapper-failure-contract-tests"],
       "resources": {"writes": [], "units": {"compiler": 1}},
-      "guarantee": "Every injectable wrapper checks faults before observable work and its generated return, errno, output-canary, and resource-event assertions match the Clang-derived source contract."
+      "guarantee": "Every public API has an explicit reviewed outcome class; every API accepting p101_error is directly injectable before observable work; and generated return, errno, output-canary, and resource-event assertions match the Clang-derived source contract."
     },
     {
       "id": "wrapper-fault-semantics-tests",
@@ -514,7 +586,7 @@
       "command": ["./checks/check-p101-library-audit.sh", "--facts-cache", "{out}/c-facts-cache", "-o", "{out}/library-audit"],
       "depends_on": ["wrapper-unit-tests", "facts-cache-tests"],
       "resources": {"writes": ["{out}/library-audit", "{out}/c-facts-cache"], "units": {"compiler": 1}},
-      "guarantee": "Library wrapper, error, module, and portability contracts pass."
+      "guarantee": "Library wrapper, error, module, and portability contracts pass; libraries cannot terminate their caller's process."
     },
     {
       "id": "instrumentation",
@@ -522,9 +594,20 @@
       "group": "library-audit",
       "required": true,
       "command": ["./checks/check-p101-instrumentation.py", "--facts-cache", "{out}/c-facts-cache", "--receipt", "{out}/instrumentation-receipt.json"],
-      "depends_on": ["library-audit"],
+      "depends_on": ["library-audit", "quality-discovery"],
       "resources": {"writes": ["{out}/instrumentation-receipt.json", "{out}/c-facts-cache"], "units": {}},
       "guarantee": "Applicable wrappers declare tracing, fault, and lifecycle instrumentation."
+    },
+    {
+      "id": "quality-discovery",
+      "title": "lib_c_facts public outcome catalog completeness",
+      "group": "library-audit",
+      "required": true,
+      "command": ["./checks/check-p101-quality-contract.py", "--discover-workspace", "{out}/quality-discovery"],
+      "depends_on": ["library-audit"],
+      "replace_outputs": true,
+      "resources": {"writes": ["{out}/quality-discovery"], "units": {"compiler": 1}},
+      "guarantee": "Every public library enum discovered by lib_c_facts is either governed as a typed outcome/refusal set or carries an explicit reviewed non-outcome justification."
     },
     {
       "id": "wrapper-conformance-output-tests",
@@ -553,6 +636,7 @@
       "required": true,
       "command": ["./checks/check-wrapper-conformance.py", "-o", "{out}/wrapper-conformance"],
       "depends_on": ["wrapper-conformance-output-tests", "native-wrapper-parity"],
+      "replace_outputs": true,
       "resources": {"writes": ["{out}/wrapper-conformance"], "units": {"compiler": 1}},
       "guarantee": "Every public API is invoked with balanced tracing, and every expected platform fault has one direct passing symbolic outcome receipt."
     },
@@ -573,6 +657,7 @@
       "required": true,
       "command": ["./checks/check-wrapper-lifecycles.py", "-c", "{cc}", "--cases", "2", "--max-steps", "6", "-o", "{out}/wrapper-lifecycles"],
       "depends_on": ["wrapper-lifecycle-driver-tests"],
+      "replace_outputs": true,
       "resources": {"writes": ["{out}/wrapper-lifecycles"], "units": {"compiler": 1}},
       "guarantee": "Generated wrapper operation histories preserve lifecycle invariants under injected faults."
     },
@@ -604,6 +689,7 @@
       "cacheable": false,
       "command": ["./checks/check-repository-tests.sh", "-c", "{cc}", "-x", "{cxx}", "-o", "{out}/repository-tests", "--fuzz-secs", "{fuzz_secs}"],
       "depends_on": ["cmake-regression", "tool-audit", "wrapper-lifecycles", "repository-tests-runner-tests", "fuzz-dispatch-tests", "fault-campaign-tests", "interleaving-walk-tests", "api-diff-tests"],
+      "replace_outputs": true,
       "resources": {"writes": ["{out}/repository-tests"], "units": {"compiler": 1}},
       "guarantee": "Every declared repository unit suite and available bounded fuzz target executes."
     },
@@ -615,6 +701,7 @@
       "cacheable": false,
       "command": ["./checks/check-p101-stack.sh", "--skip-repo-build", "-c", "{cc}", "-x", "{cxx}", "-o", "{out}/stack", "-n", "{fault_count}", "--fuzz-secs", "{fuzz_secs}", "{template_no_tests}", "{playground_quality}", "{playground_coverage}", "{playground_fuzz}"],
       "depends_on": ["repository-tests", "lesson-acceptance"],
+      "replace_outputs": true,
       "resources": {"writes": ["{out}/stack"], "units": {"compiler": 1}},
       "guarantee": "Fresh templates and the playground tour compose with the current installed p101 stack."
     },
@@ -625,6 +712,7 @@
       "required": true,
       "command": ["./checks/check-p101-regression-corpus.sh", "-o", "{out}/regression-corpus"],
       "depends_on": ["stack", "causal-model"],
+      "replace_outputs": true,
       "resources": {"writes": ["{out}/regression-corpus"], "units": {}},
       "guarantee": "The cross-tool clean and known-defect corpus produces its expected findings."
     }

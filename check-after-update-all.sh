@@ -53,6 +53,7 @@ cache_dir=""
 no_cache=0
 resume=0
 measure=0
+check_graph="${P101_CHECK_GRAPH:-./checks/p101-check-graph.py}"
 
 usage() {
   cat <<'USAGE'
@@ -185,6 +186,7 @@ run_checks() {
   local playground_fuzz_arg=""
   local profile
   local summary
+  local graph_status
   local -a graph_args
 
   run_out_dir="$(mkdir -p "$run_out_dir" && CDPATH='' cd -P "$run_out_dir" && pwd -P)"
@@ -230,7 +232,14 @@ run_checks() {
   printf 'C compiler:   %s\n' "$run_cc"
   printf 'C++ compiler: %s\n' "$run_cxx"
 
-  ./checks/p101-check-graph.py "${graph_args[@]}"
+  graph_status=0
+  "$check_graph" "${graph_args[@]}" || graph_status=$?
+  if [ "$graph_status" -ne 0 ]; then
+    printf 'p101 post-update-all checks failed: %s\n' "$run_out_dir" >&2
+    printf 'Summary: %s\n' "$summary" >&2
+    printf 'Profile: %s\n' "$profile" >&2
+    return "$graph_status"
+  fi
 
   printf 'p101 post-update-all checks passed: %s\n' "$run_out_dir"
   printf 'Summary: %s\n' "$summary"

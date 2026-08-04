@@ -1,0 +1,191 @@
+{
+  "artifacts": [
+    {
+      "bytes": 796,
+      "path": "../libraries/lib_c_facts/include/p101_c_facts/compile_command.h",
+      "sha256": "0a2e9db7e0d451dd0b3e04efba3a02e2f3bd96e62e6f5f5ca1d99b56986bf916"
+    },
+    {
+      "bytes": 25065,
+      "path": "../libraries/lib_env/include/p101_env/env.h",
+      "sha256": "f09f2f99149e65d261bdc2d4169ec197adab77c37cba9221da8c867da803def2"
+    },
+    {
+      "bytes": 11038,
+      "path": "../libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "sha256": "381eae79b77f9d53cea15b4f8b5095551299fba5a36d11da3270f4412d5ffa2c"
+    },
+    {
+      "bytes": 8206,
+      "path": "../libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "sha256": "645197c8d26301c1b59f6c7b62faef69d5e8b5f2673f49ba03dae18875a8eadf"
+    },
+    {
+      "bytes": 4273,
+      "path": "../libraries/lib_tool_event/include/p101_tool_event/lifecycle.h",
+      "sha256": "38f02aa9bf6ad2855e49e1b3a575f745aa19288a74b1c6da880e086e81032abb"
+    },
+    {
+      "bytes": 4043,
+      "path": "../libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "sha256": "3c83b6bb615e415e104993e958ae545f8981230101e0314165ec12803d0d56e8"
+    },
+    {
+      "bytes": 1860,
+      "path": "../libraries/lib_util/include/p101_util/tool_run.h",
+      "sha256": "2ea1d796818e2e5abc4f1a0da537b902e2f6a55b0801f68789727df5ca4032c7"
+    },
+    {
+      "bytes": 12865,
+      "path": "../playgrounds/lessons/manifest.json",
+      "sha256": "547ffd27d32c6ef399a6d63ce14b4e4befb0ff9b8438f5b5dde059072fbe7714"
+    },
+    {
+      "bytes": 65374,
+      "path": "CMakeLists.txt",
+      "sha256": "dca67082ac7d2a1a341089e9e237e6db5ade3562f68573fea28824dff4cd843f"
+    },
+    {
+      "bytes": 12245,
+      "path": "check-after-update-all.sh",
+      "sha256": "4f3048d98917c9595509d98f366eab104eea42a082463be196410c48db769094"
+    },
+    {
+      "bytes": 6003,
+      "path": "checks/check-p101-boundaries.py",
+      "sha256": "8d2231ed6ab5d27f88a4a23d22dadbe1eece211e781517ad0d7a45899b60df56"
+    },
+    {
+      "bytes": 26631,
+      "path": "checks/check-p101-quality-contract.py",
+      "sha256": "0a8792f0cdcb74e260b3df8fb25d74b9093674018bde5bf4d10a49a8560fed0d"
+    },
+    {
+      "bytes": 47580,
+      "path": "checks/p101-check-graph.py",
+      "sha256": "7300ad39c4b844b75fe867bb5804824f8b2fbaf9c7501de93992def13653fc08"
+    },
+    {
+      "bytes": 7592,
+      "path": "checks/p101_check_plan.py",
+      "sha256": "7fdae7d47152414e6ebbaef542c44c07a3f71af290a1c929b9e25df31c85f7a6"
+    },
+    {
+      "bytes": 3984,
+      "path": "checks/p101_check_reporting.py",
+      "sha256": "ce37f81e0fac8ce545dfcd416e8821bf2be9ce0ad4b3fc91f965660f6b9f490f"
+    },
+    {
+      "bytes": 1338,
+      "path": "cmake/P101Install.cmake",
+      "sha256": "cdb614ce14222d9f31242bb4c666a1c13d4aee87da94a27a0acef8338934ca21"
+    },
+    {
+      "bytes": 2283,
+      "path": "cmake/P101Linking.cmake",
+      "sha256": "0fb56869cd6092881af36f52198141f9af4482dc8c8442254003ce1e774857b9"
+    },
+    {
+      "bytes": 1172,
+      "path": "cmake/P101Summary.cmake",
+      "sha256": "bdb23282f1a897dd7bd084ee691f06b99d648704c2a036934f3880a28a16c0a7"
+    },
+    {
+      "bytes": 4740,
+      "path": "cmake/ToolConfig.cmake",
+      "sha256": "ef88d96c21b581bf7d29dc7184c18c99bffbc776b3eef614a22ac766fc05cf9b"
+    },
+    {
+      "bytes": 4503,
+      "path": "contracts/instrumentation-contract.json",
+      "sha256": "b8a3c88bd7d51856b4d3bb89c39a6bda079a82e1e4fbfe48c43f9b87ef6dde72"
+    },
+    {
+      "bytes": 9913,
+      "path": "contracts/p101-boundaries.json",
+      "sha256": "9522bf2e6c9131a151d2e273bb9fc73b52eddade815be9caeb35db1682e80625"
+    },
+    {
+      "bytes": 32085,
+      "path": "contracts/p101-check-graph.json",
+      "sha256": "e944576ef22e08fe6e2ff378f4b0d6e0261c836e21222d283b127d9095a581c3"
+    },
+    {
+      "bytes": 15499,
+      "path": "contracts/p101-quality-contract.json",
+      "sha256": "93453320316f57a3e8091194ff810e8ebc2b926c28ea578d2aa051c95a181402"
+    },
+    {
+      "bytes": 2010,
+      "path": "contracts/p101-source-responsibilities.json",
+      "sha256": "d75c16f55232d7715ec7fdf0532448771b2134ac10d3b490d0c23d356cff4cea"
+    },
+    {
+      "bytes": 1933,
+      "path": "contracts/p101-test-inventory.json",
+      "sha256": "67e2362e5d320082374c31c1dca4000710d37b0c1723a268b089fb31ff901184"
+    },
+    {
+      "bytes": 908,
+      "path": "contracts/wrapper-conformance-contract.json",
+      "sha256": "dc450215c5b85b06e81d28d42887ca9460ae1126592e015dc123ce85def0e4e8"
+    },
+    {
+      "bytes": 303809,
+      "path": "contracts/wrapper-failure-contract.json",
+      "sha256": "f64067e21928769edcb019100c29151944bcbf2f401b91449eb45a2b9d25d7ea"
+    },
+    {
+      "bytes": 2184,
+      "path": "contracts/wrapper-fault-semantics.json",
+      "sha256": "976966fd133f96a6dcd619516d0405600fd9a8ecf6b6f6031c261667d015f489"
+    },
+    {
+      "bytes": 4551,
+      "path": "contracts/wrapper-lifecycle-contract.json",
+      "sha256": "ea63d5654c18ac3e4ac995228e7185d22d4c7d07871b89ddde1c497a3bbc76c8"
+    },
+    {
+      "bytes": 372646,
+      "path": "contracts/wrapper-outcome-contract.json",
+      "sha256": "5d93865f74940aefe2cde5adf22cba777191dbb9357c415fd339c6da45b86a37"
+    },
+    {
+      "bytes": 2778787,
+      "path": "contracts/wrapper-platform-faults.json",
+      "sha256": "679a9b98678e351e3de956e401f6add73b5c39e1183ee5014d2b85a49087da0f"
+    },
+    {
+      "bytes": 5511,
+      "path": "docs/p101-tool-design-contract.md",
+      "sha256": "9f1d77eaa7800d4f6bf8875485b5991fe5d84da111e67f803fb2e478ece9c7c8"
+    },
+    {
+      "bytes": 159166,
+      "path": "flag-selection.json",
+      "sha256": "53e5119a72e7b1857fd4ba9cc81d4c6863e28972c62c16c752e3de5e0f51c435"
+    },
+    {
+      "bytes": 3084,
+      "path": "flag-selection.standard.json",
+      "sha256": "5ed623756eb22b375eeb8c4a93336076db6667baa1c39e01341b8859c2687234"
+    },
+    {
+      "bytes": 9510,
+      "path": "repos.lock",
+      "sha256": "8f6ca7f667fd2222ce97e6163deccaf78407b98da77e0e63bc048675fb38552e"
+    },
+    {
+      "bytes": 3743,
+      "path": "repos.txt",
+      "sha256": "db51c5099139111b97efa75ef96e2ab1651be158974fa4ada38ec9e2e2d388b4"
+    },
+    {
+      "bytes": 8457,
+      "path": "workspace/stack-contract.py",
+      "sha256": "be521737bf0aa8ef8587a1308b820d3dbb4404d60a256b69a651a9261bf83297"
+    }
+  ],
+  "does_not_prove": "This contract binds the declared stack policy bytes. It does not prove that the policy is complete, correct, or sufficient for an undeclared platform.",
+  "schema": "p101-stack-contract-v1"
+}
