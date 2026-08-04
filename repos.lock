@@ -212,7 +212,7 @@
       "url": "https://github.com/programming101dev/p101-doctor.git"
     },
     {
-      "commit": "9f512ed663398fade82cfd26e8cca49799da3b58",
+      "commit": "6c15824005366069790ee598d2818f6e32044edb",
       "path": "../programs/p101-module-map",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-module-map.git"
