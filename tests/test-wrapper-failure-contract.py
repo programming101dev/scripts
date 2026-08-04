@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -47,6 +48,18 @@ def test_macro_reader(generator) -> None:
         arguments[-1] == "((datum){.dptr = NULL, .dsize = 0})",
         "failure expression drifted",
     )
+
+
+def test_versioned_libclang_include_discovery(generator) -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        versioned = root / "lib" / "llvm-18" / "include"
+        local = root / "llvm19" / "include"
+        versioned.mkdir(parents=True)
+        local.mkdir(parents=True)
+        found = set(generator.versioned_libclang_include_dirs(root))
+        check(versioned in found, "versioned Linux libclang include was missed")
+        check(local in found, "prefix-local libclang include was missed")
 
 
 def test_function_pointer_result(generator) -> None:
@@ -273,6 +286,7 @@ def main() -> int:
     generator = load_generator()
     tests = (
         lambda: test_macro_reader(generator),
+        lambda: test_versioned_libclang_include_discovery(generator),
         lambda: test_function_pointer_result(generator),
         lambda: test_single_exit_fault_result(generator),
         lambda: test_va_list_fixture_is_started(generator),

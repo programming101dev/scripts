@@ -111,10 +111,25 @@ def nodes(node: dict[str, Any]) -> Iterator[dict[str, Any]]:
         yield from nodes(child)
 
 
+def versioned_libclang_include_dirs(root: Path) -> tuple[Path, ...]:
+    """Return package-manager libclang include roots below a prefix."""
+    candidates = {
+        *root.glob("lib/llvm-*/include"),
+        *root.glob("llvm*/include"),
+    }
+    return tuple(sorted(path for path in candidates if path.is_dir()))
+
+
 @cache
 def clang_system_include_dirs(clang: str) -> tuple[Path, ...]:
     """Find Clang's builtin and public libclang headers."""
-    candidates = {Path(clang).resolve().parent.parent / "include"}
+    candidates = {
+        Path(clang).resolve().parent.parent / "include",
+        Path("/usr/include"),
+        Path("/usr/local/include"),
+    }
+    candidates.update(versioned_libclang_include_dirs(Path("/usr")))
+    candidates.update(versioned_libclang_include_dirs(Path("/usr/local")))
     llvm_config_names = [
         str(Path(clang).resolve().with_name("llvm-config")),
         "llvm-config",
