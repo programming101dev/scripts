@@ -78,6 +78,35 @@ def test_function_pointer_result(generator) -> None:
     )
 
 
+def test_portable_zero_typedefs(generator) -> None:
+    for qualified, desugared in (
+        ("iconv_t", "void *"),
+        ("nl_catd", "int"),
+        ("pthread_t", "unsigned long"),
+        ("pthread_t", "struct _opaque_pthread_t *"),
+    ):
+        parameter = {
+            "type": {
+                "qualType": qualified,
+                "desugaredQualType": desugared,
+            }
+        }
+        check(
+            generator.argument_expression(parameter)
+            == f"({qualified}){{0}}",
+            f"{qualified}: zero expression depends on underlying type",
+        )
+
+
+def test_bool_result_spelling(generator) -> None:
+    declaration = {"type": {"qualType": "_Bool (void)"}}
+    check(
+        generator.result_declaration(declaration, "result")
+        == "bool result",
+        "_Bool result spelling was not normalized",
+    )
+
+
 def test_single_exit_fault_result(generator) -> None:
     fragment = """
         fault = p101_env_check_fault(env, "open");
@@ -288,6 +317,8 @@ def main() -> int:
         lambda: test_macro_reader(generator),
         lambda: test_versioned_libclang_include_discovery(generator),
         lambda: test_function_pointer_result(generator),
+        lambda: test_portable_zero_typedefs(generator),
+        lambda: test_bool_result_spelling(generator),
         lambda: test_single_exit_fault_result(generator),
         lambda: test_va_list_fixture_is_started(generator),
         lambda: test_portable_result_assertions(generator),

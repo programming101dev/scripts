@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import difflib
 import json
 import os
 import platform
@@ -69,6 +70,11 @@ AGGREGATE_TYPEDEFS = {
     "imaxdiv_t",
     "ldiv_t",
     "lldiv_t",
+}
+PORTABLE_ZERO_TYPEDEFS = AGGREGATE_TYPEDEFS | {
+    "iconv_t",
+    "nl_catd",
+    "pthread_t",
 }
 AGGREGATE_MEMBERS = {
     "datum": ("dptr", "dsize"),
@@ -297,7 +303,8 @@ def return_type(declaration: dict[str, Any]) -> str:
     marker = qualified.find("(")
     if marker < 0:
         raise RuntimeError(f"cannot determine return type from {qualified!r}")
-    return qualified[:marker].strip()
+    result = qualified[:marker].strip()
+    return "bool" if result == "_Bool" else result
 
 
 def result_declaration(
@@ -373,7 +380,7 @@ def argument_expression(parameter: dict[str, Any]) -> str:
         return 'L"p101"' if "wchar_t" in qualified else '"p101"'
     if "*" in qualified or "[" in qualified:
         return "NULL"
-    if qualified in AGGREGATE_TYPEDEFS:
+    if qualified in PORTABLE_ZERO_TYPEDEFS:
         return f"({qualified}){{0}}"
     stripped = desugared.removeprefix("const ").removeprefix("volatile ")
     if stripped.startswith("struct ") or stripped.startswith("union "):
@@ -1422,7 +1429,32 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                     if fault_path.is_file()
                     else None
                 )
-                if actual_fault_source != expected_fault_source:
+                normalized_actual = (
+                    formatted_source(
+                        formatter,
+                        fault_path,
+                        actual_fault_source,
+                    )
+                    if actual_fault_source is not None
+                    else None
+                )
+                if normalized_actual != expected_fault_source:
+                    if normalized_actual is not None:
+                        print(
+                            "".join(
+                                difflib.unified_diff(
+                                    normalized_actual.splitlines(
+                                        keepends=True
+                                    ),
+                                    expected_fault_source.splitlines(
+                                        keepends=True
+                                    ),
+                                    fromfile=f"{fault_path} (checked in)",
+                                    tofile=f"{fault_path} (generated)",
+                                )
+                            ),
+                            end="",
+                        )
                     drift.append(fault_path)
             else:
                 fault_path.write_text(
