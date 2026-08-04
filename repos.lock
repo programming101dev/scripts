@@ -8,7 +8,7 @@
       "url": "https://github.com/programming101dev/lib_error.git"
     },
     {
-      "commit": "33dae985fa60b50ae490bd7618543942ff4f6457",
+      "commit": "289f195e98aba07e87e3c5a5b4ce06ffe25852e7",
       "path": "../libraries/lib_tool_event",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_tool_event.git"
@@ -26,7 +26,7 @@
       "url": "https://github.com/programming101dev/lib_c.git"
     },
     {
-      "commit": "fd1833e696a374e8ba2bb7d776699461765d0ad5",
+      "commit": "66805b31ef222ebedbb969399a9ac7778ba18319",
       "path": "../libraries/lib_io",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_io.git"
@@ -86,7 +86,7 @@
       "url": "https://github.com/programming101dev/lib_terminal.git"
     },
     {
-      "commit": "6cb4666c849604c91ceb833fee3c70739868c1c8",
+      "commit": "c0b34687b94ab6620386d5d7f55fddabdfa1cf9a",
       "path": "../libraries/lib_time",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_time.git"
@@ -98,7 +98,7 @@
       "url": "https://github.com/programming101dev/lib_identity.git"
     },
     {
-      "commit": "11db24ee6ba9ee6b097bd8c72ef09e5bd6a9ba28",
+      "commit": "d3db7707a00160caef725971c2d362c32e6ed939",
       "path": "../libraries/lib_text",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_text.git"
@@ -158,7 +158,7 @@
       "url": "https://github.com/programming101dev/lib_host.git"
     },
     {
-      "commit": "56250c5a736d20dafc3b4ffc3a465fa0f039a46c",
+      "commit": "45d6e994e610289fa0f4dc92b99fe47905e2bbf6",
       "path": "../libraries/lib_fsm",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_fsm.git"
@@ -206,7 +206,7 @@
       "url": "https://github.com/programming101dev/p101-wrapper-audit.git"
     },
     {
-      "commit": "73a60fd7e5d7bd1c70cb5b9449b15aa825754af4",
+      "commit": "6247d174c34bc736386dfbd64c6ed470d467168a",
       "path": "../programs/p101-doctor",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-doctor.git"
@@ -224,7 +224,7 @@
       "url": "https://github.com/programming101dev/p101-mutation-check.git"
     },
     {
-      "commit": "e3bc5d555a7688e20f3cb276f0a3aec391fc4a70",
+      "commit": "e76d1f846f89f50e16f437dbf11496def266fd48",
       "path": "../playgrounds",
       "type": "c",
       "url": "https://github.com/programming101dev/playgrounds.git"
