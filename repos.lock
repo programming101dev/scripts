@@ -170,7 +170,7 @@
       "url": "https://github.com/programming101dev/lib_util.git"
     },
     {
-      "commit": "278f5554f52e50f67fbe496cd884b17ef0ff6047",
+      "commit": "7cac8d85a694a34fffb1e10677686f7c4619c2b6",
       "path": "../libraries/lib_convert",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_convert.git"
