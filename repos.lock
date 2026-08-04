@@ -26,7 +26,7 @@
       "url": "https://github.com/programming101dev/lib_c.git"
     },
     {
-      "commit": "e72b88892fc3fd300c535ef8821638d93a4e822b",
+      "commit": "fd1833e696a374e8ba2bb7d776699461765d0ad5",
       "path": "../libraries/lib_io",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_io.git"

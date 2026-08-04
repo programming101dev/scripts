@@ -182,6 +182,8 @@ class RepositoryLockTests(unittest.TestCase):
             git(publisher, "push", "--quiet", "-u", "origin", "main")
             run("git", "--git-dir", remote, "symbolic-ref", "HEAD", "refs/heads/main")
             self.assertEqual(run("git", "clone", "--quiet", remote, consumer).returncode, 0)
+            git(consumer, "config", "user.name", "p101 lock test")
+            git(consumer, "config", "user.email", "lock-test@invalid.example")
 
             manifest = scripts / "repos.txt"
             lock = scripts / "repos.lock"
