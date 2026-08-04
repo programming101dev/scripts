@@ -276,6 +276,7 @@ if [ "$skip_wrapper" -eq 0 ]; then
       facts="$out_dir/${name}-source-facts.tsv"
       inputs="$out_dir/${name}-source-inputs.json"
       allow_file="$tool_dir/.p101-wrapper-audit-allow"
+      platform_allow_file="$tool_dir/.p101-wrapper-audit-allow.$(uname -s)"
       compile_db="$(find_compile_database "$tool_dir" || true)"
       paths=()
       while IFS= read -r path; do
@@ -293,6 +294,9 @@ if [ "$skip_wrapper" -eq 0 ]; then
       wrapper_args=(-e --compile-db "$compile_db" --compile-db-only --facts-output "$facts" --input-manifest "$inputs")
       if [ -f "$allow_file" ]; then
         wrapper_args+=(--allow-file "$allow_file")
+      fi
+      if [ -f "$platform_allow_file" ]; then
+        wrapper_args+=(--allow-file "$platform_allow_file")
       fi
 
       if run_logged "strict wrapper audit: $name" "$log" "$wrapper_audit" "${wrapper_args[@]}" "${paths[@]}"; then

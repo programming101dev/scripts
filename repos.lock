@@ -20,7 +20,7 @@
       "url": "https://github.com/programming101dev/lib_env.git"
     },
     {
-      "commit": "7eda6a377bf360d3225fff3107f863eb1e18f733",
+      "commit": "26c1826e40999caed2290a6138a01c1aebf6188b",
       "path": "../libraries/lib_c",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_c.git"
@@ -74,7 +74,7 @@
       "url": "https://github.com/programming101dev/lib_ipc.git"
     },
     {
-      "commit": "16b4ba1e72201f78d6b990aa19415eb9156b6343",
+      "commit": "746ceb0b862c8f9664d5fc8c9f5283a63894f104",
       "path": "../libraries/lib_network",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_network.git"
@@ -134,7 +134,7 @@
       "url": "https://github.com/programming101dev/lib_diagnostics.git"
     },
     {
-      "commit": "76ea46900cae66a53182f68968c6d7decc250a55",
+      "commit": "f39a8b7331a0e1cef717cfa5d9bc2e53ef0b1b93",
       "path": "../libraries/lib_database",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_database.git"
@@ -158,7 +158,7 @@
       "url": "https://github.com/programming101dev/lib_host.git"
     },
     {
-      "commit": "0e6a5b770ede92988c6f95d68193c0a57200cd99",
+      "commit": "56250c5a736d20dafc3b4ffc3a465fa0f039a46c",
       "path": "../libraries/lib_fsm",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_fsm.git"
@@ -218,7 +218,7 @@
       "url": "https://github.com/programming101dev/p101-module-map.git"
     },
     {
-      "commit": "8cdfdebf8dddc18db76ca9e64dc6397add74baa1",
+      "commit": "252374f2ac66e1733fbd06516ce4adf880dfb030",
       "path": "../programs/p101-mutation-check",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-mutation-check.git"

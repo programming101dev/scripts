@@ -70,6 +70,13 @@ AGGREGATE_TYPEDEFS = {
     "ldiv_t",
     "lldiv_t",
 }
+AGGREGATE_MEMBERS = {
+    "datum": ("dptr", "dsize"),
+    "div_t": ("quot", "rem"),
+    "imaxdiv_t": ("quot", "rem"),
+    "ldiv_t": ("quot", "rem"),
+    "lldiv_t": ("quot", "rem"),
+}
 OPAQUE_POINTEE_TYPES = {
     "DBM",
     "DIR",
@@ -667,7 +674,7 @@ def result_assertion(
     expression = failure["expression"]
     expression = expression.replace(
         "P101_INET_ADDR_NONE_VALUE",
-        "INADDR_NONE",
+        "-1",
     )
     result = return_type(declaration)
     if "p101_nan(" in expression:
@@ -675,11 +682,17 @@ def result_assertion(
     if "mutable_fallback(" in expression:
         return "        EXPECT(result == NULL);\n"
     if is_aggregate_return(declaration):
-        return (
-            f"        {result} expected_result = {expression};\n"
-            "        EXPECT(memcmp(&result, &expected_result, "
-            "sizeof(result)) == 0);\n"
+        members = AGGREGATE_MEMBERS.get(result)
+        if members is None:
+            raise RuntimeError(
+                f"{declaration.get('name', '?')}: aggregate result {result} "
+                "has no field-wise assertion contract"
+            )
+        assertions = "".join(
+            f"        EXPECT(result.{member} == expected_result.{member});\n"
+            for member in members
         )
+        return f"        {result} expected_result = {expression};\n" + assertions
     return f"        EXPECT(result == ({expression}));\n"
 
 

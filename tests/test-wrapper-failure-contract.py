@@ -136,6 +136,46 @@ def test_va_list_fixture_is_started(generator) -> None:
     )
 
 
+def test_portable_result_assertions(generator) -> None:
+    datum_declaration = {
+        "name": "p101_dbm_fetch",
+        "type": {"qualType": "datum (void)"},
+    }
+    datum_assertion = generator.result_assertion(
+        datum_declaration,
+        {
+            "kind": "value",
+            "expression": "((datum){.dptr = NULL, .dsize = 0})",
+        },
+    )
+    check(
+        "result.dptr == expected_result.dptr" in datum_assertion
+        and "result.dsize == expected_result.dsize" in datum_assertion,
+        "aggregate results are not compared field by field",
+    )
+    check(
+        "memcmp" not in datum_assertion,
+        "aggregate result assertion compares indeterminate padding",
+    )
+
+    address_declaration = {
+        "name": "p101_inet_addr",
+        "type": {"qualType": "in_addr_t (void)"},
+    }
+    address_assertion = generator.result_assertion(
+        address_declaration,
+        {
+            "kind": "value",
+            "expression": "(in_addr_t)P101_INET_ADDR_NONE_VALUE",
+        },
+    )
+    check(
+        "INADDR_NONE" not in address_assertion
+        and "(in_addr_t)-1" in address_assertion,
+        "network failure assertion still depends on optional INADDR_NONE",
+    )
+
+
 def test_checked_contract() -> None:
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
     check(
@@ -236,6 +276,7 @@ def main() -> int:
         lambda: test_function_pointer_result(generator),
         lambda: test_single_exit_fault_result(generator),
         lambda: test_va_list_fixture_is_started(generator),
+        lambda: test_portable_result_assertions(generator),
         test_checked_contract,
         test_outcome_contract,
     )

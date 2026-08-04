@@ -143,6 +143,11 @@ def main() -> int:
                 allow = repo / ".p101-wrapper-audit-allow"
                 if allow.is_file():
                     command.extend(["--allow-file", str(allow)])
+                platform_allow = repo / (
+                    ".p101-wrapper-audit-allow." + platform.system()
+                )
+                if platform_allow.is_file():
+                    command.extend(["--allow-file", str(platform_allow)])
                 command.extend(str(path) for path in paths)
                 result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, check=False)
                 if result.returncode > 1 or not output.is_file():

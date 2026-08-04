@@ -162,6 +162,9 @@ while IFS='|' read -r _url relative_path language; do
   if [ -f "$repo/.p101-wrapper-audit-allow" ]; then
     wrapper_args+=(--allow-file "$repo/.p101-wrapper-audit-allow")
   fi
+  if [ -f "$repo/.p101-wrapper-audit-allow.$(uname -s)" ]; then
+    wrapper_args+=(--allow-file "$repo/.p101-wrapper-audit-allow.$(uname -s)")
+  fi
 
   wrapper_status="PASS"
   error_status="PASS"

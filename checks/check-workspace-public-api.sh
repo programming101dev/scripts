@@ -96,6 +96,7 @@ while IFS='|' read -r _url relative _language || [ -n "${relative:-}" ]; do
   facts="$out_dir/facts/$name.tsv"
   args=(--compile-db "$db" --compile-db-only --facts-output "$facts")
   [ -f "$repo/.p101-wrapper-audit-allow" ] && args+=(--allow-file "$repo/.p101-wrapper-audit-allow")
+  [ -f "$repo/.p101-wrapper-audit-allow.$(uname -s)" ] && args+=(--allow-file "$repo/.p101-wrapper-audit-allow.$(uname -s)")
   if [[ "$relative" == ../libraries/* ]]; then
     # Libraries own public headers, including declarations that no current
     # translation unit happens to reference. Parse those interfaces directly.
