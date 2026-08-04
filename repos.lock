@@ -218,7 +218,7 @@
       "url": "https://github.com/programming101dev/p101-module-map.git"
     },
     {
-      "commit": "252374f2ac66e1733fbd06516ce4adf880dfb030",
+      "commit": "5402cd9b31d9e42d3077afc08490a783c0cc5afc",
       "path": "../programs/p101-mutation-check",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-mutation-check.git"
