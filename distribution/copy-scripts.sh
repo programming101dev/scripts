@@ -224,14 +224,22 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "$REPOS_FILE"
 
 # The scripts and setup repositories are workspace conductors rather than
-# repos.txt entries, but repository policy files must still be byte-identical
-# everywhere.
-for policy_repo in "$SCRIPT_DIR" "$SCRIPT_DIR/../setup"; do
+# repos.txt entries. A scripts-only checkout (including GitHub Actions) does
+# not contain the separate setup repository, so synchronize setup only when it
+# is present in the surrounding workspace.
+sync_policy_repository()
+{
+  policy_repo=$1
   policy_label=$(basename "$policy_repo")
   for s in .gitignore LICENSE; do
     sync_one "$C_SRC" "$policy_repo" "$policy_label" "$s" -
   done
-done
+}
+
+sync_policy_repository "$SCRIPT_DIR"
+if [ -d "$SCRIPT_DIR/../setup" ]; then
+  sync_policy_repository "$SCRIPT_DIR/../setup"
+fi
 
 if [ "$failures" -gt 0 ]; then
   printf 'Shared script distribution failed: %d problem(s).\n' "$failures" >&2

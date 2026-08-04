@@ -54,4 +54,23 @@ grep -Fq 'did not produce a summary' "$sandbox/early-summary.md"
 grep -Fq '<summary>Repository update/build failure</summary>' "$sandbox/early-summary.md"
 grep -Fq "/workspace/tool.c:87:5: error: 'switch' missing 'default' label" "$sandbox/early-summary.md"
 
+mkdir -p "$sandbox/freebsd"
+cat > "$sandbox/freebsd/clone.log" <<'EOF'
+Cloning repositories...
+fatal: repository 'missing' not found
+EOF
+printf 'clone\n' > "$sandbox/freebsd/freebsd-failed-phase"
+printf '1\n' > "$sandbox/freebsd/freebsd-exit-code"
+GITHUB_STEP_SUMMARY="$sandbox/freebsd-summary.md" \
+  ./github-actions/publish-ci-summary.sh \
+  "$sandbox/freebsd" FreeBSD not-run success > "$sandbox/freebsd-stdout"
+grep -Fq '| Repository update/build | failure |' "$sandbox/freebsd-summary.md"
+grep -Fq '| Governed acceptance graph | not-run |' "$sandbox/freebsd-summary.md"
+grep -Fq '<summary>Repository clone failure</summary>' "$sandbox/freebsd-summary.md"
+grep -Fq "fatal: repository 'missing' not found" "$sandbox/freebsd-summary.md"
+grep -Fq '::error title=p101%3A repository update/build::Cloning repositories...' \
+  "$sandbox/freebsd-stdout"
+
+./tests/test-freebsd-result.sh
+
 printf 'PASS: GitHub Actions failures produce annotations and an inline job summary.\n'

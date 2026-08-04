@@ -137,20 +137,37 @@ jobs:
             cd scripts
             export P101_QUIET=1
             status=0
+            failed_phase=none
             mkdir -p ci-output
-            ./p101-workspace clone || status=$?
+            ./p101-workspace clone > ci-output/clone.log 2>&1 || status=$?
+            cat ci-output/clone.log
+            if [ "$status" -ne 0 ]; then
+              failed_phase=clone
+            fi
             if [ "$status" -eq 0 ]; then
-              ./p101-workspace compilers || status=$?
+              ./p101-workspace compilers > ci-output/compilers.log 2>&1 || status=$?
+              cat ci-output/compilers.log
+              if [ "$status" -ne 0 ]; then
+                failed_phase=compilers
+              fi
             fi
             if [ "$status" -eq 0 ]; then
               printf 'clang\n' > ci_c_compilers.txt
               printf 'clang++\n' > ci_cxx_compilers.txt
               ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt > ci-output/update-all.log 2>&1 || status=$?
               cat ci-output/update-all.log
+              if [ "$status" -ne 0 ]; then
+                failed_phase=update
+              fi
             fi
             if [ "$status" -eq 0 ]; then
-              bash ./check-after-update-all.sh -c clang -x clang++ -o ci-output || status=$?
+              bash ./check-after-update-all.sh -c clang -x clang++ -o ci-output > ci-output/check-after-update-all.log 2>&1 || status=$?
+              cat ci-output/check-after-update-all.log
+              if [ "$status" -ne 0 ]; then
+                failed_phase=check
+              fi
             fi
+            printf '%s\n' "$failed_phase" > ci-output/freebsd-failed-phase
             printf '%s\n' "$status" > ci-output/freebsd-exit-code
             exit 0
       - name: Publish CI summary
@@ -159,16 +176,7 @@ jobs:
           VM_OUTCOME: ${{ steps.freebsd-check.outcome }}
         run: cd scripts && ./github-actions/publish-ci-summary.sh ci-output FreeBSD not-run "$VM_OUTCOME"
       - name: Enforce FreeBSD result
-        run: |
-          if [ ! -f scripts/ci-output/freebsd-exit-code ]; then
-            echo "FreeBSD VM did not return an exit-status receipt." >&2
-            exit 2
-          fi
-          status="$(cat scripts/ci-output/freebsd-exit-code)"
-          if [ "$status" -ne 0 ]; then
-            echo "FreeBSD checks failed with exit $status; see the preceding log tail and uploaded evidence." >&2
-          fi
-          exit "$status"
+        run: scripts/github-actions/enforce-freebsd-result.sh scripts/ci-output
       - name: Publish CI evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v6

@@ -16,4 +16,5 @@ if [[ "$#" -ne 0 ]]; then
   exit 2
 fi
 
-exec ./distribution/copy-scripts.sh -c
+./tests/test-copy-scripts-standalone.sh
+./distribution/copy-scripts.sh -c

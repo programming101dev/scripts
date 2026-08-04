@@ -113,10 +113,26 @@ append_failure_log() {
   } >> "$local_summary"
 }
 
+freebsd_phase=""
+if [ -f "$out_dir/freebsd-failed-phase" ]; then
+  freebsd_phase="$(tr -d '[:space:]' < "$out_dir/freebsd-failed-phase")"
+fi
 if [ -f "$out_dir/freebsd-exit-code" ]; then
   freebsd_status="$(tr -d '[:space:]' < "$out_dir/freebsd-exit-code")"
   if [ -n "$freebsd_status" ] && [ "$freebsd_status" -ne 0 ]; then
-    check_outcome="failure"
+    case "$freebsd_phase" in
+      clone|compilers|update)
+        update_outcome="failure"
+        check_outcome="not-run"
+        ;;
+      check)
+        update_outcome="success"
+        check_outcome="failure"
+        ;;
+      *)
+        check_outcome="failure"
+        ;;
+    esac
   fi
 fi
 
@@ -158,13 +174,24 @@ fi
 case "$update_outcome" in
   failure|cancelled)
     update_log="$out_dir/update-all.log"
+    update_title="Repository update/build failure"
+    case "$freebsd_phase" in
+      clone)
+        update_log="$out_dir/clone.log"
+        update_title="Repository clone failure"
+        ;;
+      compilers)
+        update_log="$out_dir/compilers.log"
+        update_title="Compiler discovery failure"
+        ;;
+    esac
     update_detail="The repository update or build phase failed. The complete diagnostic is in the failed GitHub Actions step."
     if [ -f "$update_log" ]; then
       diagnostic="$(first_diagnostic "$update_log")"
       if [ -n "$diagnostic" ]; then
         update_detail="$diagnostic"
       fi
-      append_failure_log "Repository update/build failure" "$update_log"
+      append_failure_log "$update_title" "$update_log"
     fi
     annotate_error "p101: repository update/build" "$update_detail"
     ;;
@@ -173,8 +200,16 @@ esac
 case "$check_outcome" in
   failure|cancelled)
     if [ "$reported_graph_failure" -eq 0 ]; then
-      annotate_error "p101: governed acceptance graph" \
-        "The acceptance phase failed before it produced a governed failure receipt. Inspect the failed GitHub Actions step."
+      check_log="$out_dir/check-after-update-all.log"
+      check_detail="The acceptance phase failed before it produced a governed failure receipt. Inspect the failed GitHub Actions step."
+      if [ -f "$check_log" ]; then
+        diagnostic="$(first_diagnostic "$check_log")"
+        if [ -n "$diagnostic" ]; then
+          check_detail="$diagnostic"
+        fi
+        append_failure_log "Governed acceptance failure" "$check_log"
+      fi
+      annotate_error "p101: governed acceptance graph" "$check_detail"
     fi
     ;;
 esac
