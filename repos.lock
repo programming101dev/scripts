@@ -50,7 +50,7 @@
       "url": "https://github.com/programming101dev/lib_memory.git"
     },
     {
-      "commit": "ac9dc0b102eb3ba69eb5f67cf9ed995bc6b417b8",
+      "commit": "b821db0e7ba9f1728fed334364f3cfc19b1bd309",
       "path": "../libraries/lib_process",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_process.git"
@@ -62,7 +62,7 @@
       "url": "https://github.com/programming101dev/lib_thread.git"
     },
     {
-      "commit": "064d61c30be95b733446c79325427313bb4af579",
+      "commit": "6d54ca3520fe5331bf086a2c93c230cd3786140f",
       "path": "../libraries/lib_sync",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_sync.git"

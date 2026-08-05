@@ -444,6 +444,77 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
         "POSIX alignment contract was not applied by API position",
     )
 
+    spawn_actions = {
+        "name": "renamed_actions",
+        "type": {
+            "qualType": "const posix_spawn_file_actions_t *",
+        },
+    }
+    spawn_null_fixture = generator.native_contract_fixture(
+        "p101_posix_spawnp",
+        spawn_actions,
+        4,
+    )
+    check(
+        spawn_null_fixture is not None
+        and spawn_null_fixture[1] == "NULL",
+        "posix_spawnp does not use the public NULL actions contract",
+    )
+
+    initialized_actions = generator.native_contract_fixture(
+        "p101_posix_spawn_file_actions_addclose",
+        {
+            "name": "renamed_actions",
+            "type": {"qualType": "posix_spawn_file_actions_t *"},
+        },
+        2,
+    )
+    check(
+        initialized_actions is not None
+        and any(
+            "posix_spawn_file_actions_init" in line
+            for line in initialized_actions[2]
+        )
+        and any(
+            "posix_spawn_file_actions_destroy" in line
+            for line in initialized_actions[3]
+        ),
+        "file-actions native fixture does not obey its lifecycle",
+    )
+
+    spawn_environment = generator.native_contract_fixture(
+        "p101_posix_spawnp",
+        {
+            "name": "renamed_vector",
+            "type": {"qualType": "char *const *restrict"},
+        },
+        7,
+    )
+    check(
+        spawn_environment is not None
+        and "PATH=/usr/bin:/bin" in spawn_environment[0][0],
+        "posix_spawnp environment fixture is not a valid environment vector",
+    )
+
+    semaphore = generator.native_contract_fixture(
+        "p101_sem_wait",
+        {
+            "name": "renamed_semaphore",
+            "type": {"qualType": "sem_t *"},
+        },
+        2,
+    )
+    check(
+        semaphore is not None
+        and any(
+            "O_CREAT | O_EXCL" in line and "1U" in line
+            for line in semaphore[0]
+        )
+        and any("sem_close" in line for line in semaphore[3])
+        and any("sem_unlink" in line for line in semaphore[3]),
+        "semaphore wait fixture is not live and nonblocking",
+    )
+
 
 def test_checked_contract() -> None:
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))

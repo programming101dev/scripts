@@ -1201,6 +1201,36 @@ def native_contract_fixture(
     )
     fixture = f"native_argument_{index}"
 
+    if function_name in {"p101_posix_spawn", "p101_posix_spawnp"}:
+        if index == 2:
+            return [
+                f"            pid_t {fixture} = -1;"
+            ], f"&{fixture}", [], [
+                "            if(native_result == 0)",
+                "            {",
+                f"                (void)waitpid({fixture}, NULL, 0);",
+                "            }",
+            ]
+        if index == 3:
+            executable = (
+                '"/bin/true"'
+                if function_name == "p101_posix_spawn"
+                else '"true"'
+            )
+            return [], executable, [], []
+        if index in {4, 5}:
+            return [], "NULL", [], []
+        if index == 6:
+            return [
+                f"            char *{fixture}[2] = "
+                '{(char *)"true", NULL};'
+            ], fixture, [], []
+        if index == 7:
+            return [
+                f"            char *{fixture}[2] = "
+                '{(char *)"PATH=/usr/bin:/bin", NULL};'
+            ], fixture, [], []
+
     if function_name in {"p101_pipe", "p101_pipe2"} and index == 2:
         return [
             f"            int {fixture}[2] = {{-1, -1}};"
@@ -1229,6 +1259,95 @@ def native_contract_fixture(
 
     if function_name == "p101_setrlimit" and index == 2:
         return [], "-1", [], []
+
+    if "posix_spawn_file_actions_t" in qualified and "*" in qualified:
+        declarations = [
+            f"            posix_spawn_file_actions_t {fixture};"
+        ]
+        is_initializer = (
+            function_name == "p101_posix_spawn_file_actions_init"
+        )
+        is_destructor = (
+            function_name == "p101_posix_spawn_file_actions_destroy"
+        )
+        setup = []
+        if not is_initializer:
+            setup = [
+                f"            if(posix_spawn_file_actions_init(&{fixture}) "
+                "!= 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ]
+        cleanup = []
+        if not is_destructor:
+            if is_initializer:
+                cleanup = [
+                    "            if(native_result == 0)",
+                    "            {",
+                    f"                (void)posix_spawn_file_actions_destroy("
+                    f"&{fixture});",
+                    "            }",
+                ]
+            else:
+                cleanup = [
+                    f"            (void)posix_spawn_file_actions_destroy("
+                    f"&{fixture});"
+                ]
+        return declarations, f"&{fixture}", setup, cleanup
+
+    if "posix_spawnattr_t" in qualified and "*" in qualified:
+        declarations = [f"            posix_spawnattr_t {fixture};"]
+        is_initializer = function_name == "p101_posix_spawnattr_init"
+        is_destructor = function_name == "p101_posix_spawnattr_destroy"
+        setup = []
+        if not is_initializer:
+            setup = [
+                f"            if(posix_spawnattr_init(&{fixture}) != 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ]
+        cleanup = []
+        if not is_destructor:
+            if is_initializer:
+                cleanup = [
+                    "            if(native_result == 0)",
+                    "            {",
+                    f"                (void)posix_spawnattr_destroy("
+                    f"&{fixture});",
+                    "            }",
+                ]
+            else:
+                cleanup = [
+                    f"            (void)posix_spawnattr_destroy(&{fixture});"
+                ]
+        return declarations, f"&{fixture}", setup, cleanup
+
+    if re.search(r"\bsem_t\s*\*", qualified):
+        initial_value = (
+            "1U"
+            if function_name in {"p101_sem_trywait", "p101_sem_wait"}
+            else "0U"
+        )
+        declarations = [
+            f"            char {fixture}_name[96];",
+            f"            sem_t *{fixture};",
+            f"            (void)snprintf({fixture}_name, "
+            f"sizeof({fixture}_name), "
+            f"\"/p101-wrapper-sem-%ld\", (long)getpid());",
+            f"            {fixture} = sem_open({fixture}_name, "
+            f"O_CREAT | O_EXCL, 0600, {initial_value});",
+            f"            if({fixture} == SEM_FAILED)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+        ]
+        cleanup = []
+        if function_name != "p101_sem_close":
+            cleanup.append(f"            (void)sem_close({fixture});")
+        cleanup.append(f"            (void)sem_unlink({fixture}_name);")
+        return declarations, fixture, [], cleanup
 
     if qualified == "ENTRY":
         return [
@@ -1747,7 +1866,13 @@ int main(void)
         for name in names
     )
     native_helpers = native_callback_helpers(declarations, names)
+    native_includes = (
+        "#include <fcntl.h>\n"
+        if any(name.startswith("p101_sem_") for name in names)
+        else ""
+    )
     return f"""#include <errno.h>
+{native_includes}
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <fmtmsg.h>
