@@ -125,6 +125,17 @@ compiler matrix continues normally. The same option is available on `setup.sh`,
 after coordinated fixes move repository revisions, refresh and commit
 `repos.lock` before expecting strict workspace acceptance to pass.
 
+For installable C/C++ libraries, the update builds have two deliberate
+artifacts. The normal build remains the strict quality receipt: it uses the
+selected sanitizers and runs the full analyzer pipeline. Before installation,
+the driver creates a lightweight `P101_RUNTIME_ONLY` build with the same
+compiler and hardening flags but without sanitizers, then installs from
+`.last-runtime-build-dir`. This prevents an installed shared library from
+forcing one compiler's private sanitizer runtime into consumers built by a
+different compiler. On macOS, sanitized executables also link their
+compiler-matched ASan dylib before application libraries so its interceptors
+initialize before any p101 dylib.
+
 `repos.txt` uses `c`, `cxx`, and `python` for active projects. A newly created,
 not-yet-populated C repository uses `c-bootstrap`: `clone-repos.sh` keeps it
 present and updated, while build, distribution, test, and audit gates skip it.
@@ -232,14 +243,25 @@ Use `./checks/p101-check-graph.py list` to inspect the graph,
 `./check-after-update-all.sh --only boundaries` for one node and its
 dependencies, or `--resume` to reuse a node only when its prior receipt has the
 same command, graph declaration, tool identity, semantic environment, complete
-workspace source identity, and declared outputs. Restored cache entries are
-subject to the same identity and output checks. This first cache intentionally
-uses coarse workspace-wide invalidation in exchange for a simple exact
-contract. `--from <node>` requires that receipt and validates every omitted
-prerequisite; it is not an unchecked skip. `--measure` disables reuse and runs
-sequentially so timings are comparable. This is wall-clock child-command
-profiling, not CPU sampling inside those commands. With `--interactive`, a
-failure pauses and retries exactly that node after the fix.
+admitted-input identity, dependency identities, and declared outputs. Nodes
+whose input declaration is not yet marked complete invalidate conservatively
+from the whole workspace; a narrow cache key is never inferred from an
+incomplete declaration. Restored cache entries are subject to the same identity
+and output checks. `--changed <path>` selects every node that admits the path,
+every downstream consumer, and conservatively every node without a complete
+input declaration. `--from <node>` requires that receipt and validates every
+omitted prerequisite; it is not an unchecked skip. `--measure` disables reuse
+and runs sequentially so timings are comparable. This is wall-clock
+child-command profiling, not CPU sampling inside those commands. Performance
+claims can be checked with `checks/compare-check-performance.py`, which requires
+at least five result- and identity-matched samples in each population. With
+`--interactive`, a failure pauses and retries exactly that node after the fix.
+
+The graph runs `clang-format` by default before computing downstream source
+identities. If first-party tracked bytes change, the formatting node fails with
+a receipt so the change can be reviewed and committed; a clean rerun then
+continues. Vendored sources, including the checked-in Unity copies, are
+inventory-visible but deliberately excluded.
 
 The graph includes the shared CMake regression harness, tool and wrapper
 audits, fresh-template standalone checks, every repository-owned unit suite,

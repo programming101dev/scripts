@@ -109,9 +109,9 @@ resolve_compiler() {
 
 playground_program() {
   build_dir=""
-  marker="../playgrounds/.last-runtime-build-dir"
+  marker="../playgrounds/.last-build-dir"
   if [ ! -f "$marker" ]; then
-    marker="../playgrounds/.last-build-dir"
+    marker="../playgrounds/.last-runtime-build-dir"
   fi
   if [ -f "$marker" ]; then
     IFS= read -r build_dir < "$marker"

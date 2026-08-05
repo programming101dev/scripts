@@ -19,6 +19,8 @@ repositories that have not yet been added to that manifest. Repositories with a
 fuzz target also receive a bounded fuzz run when a fuzzer-capable compiler is
 available. A missing test suite is reported as NO TEST rather than silently
 treated as tested.
+The --fuzz-secs default is 5. A value of 0 is intentionally unbounded; use
+--skip-fuzz when no fuzz execution is wanted.
 When -c/-x is supplied, unit tests and fuzzing use those compilers. This keeps
 test executables, fuzz executables, and sanitizer-instrumented p101 libraries
 on the same runtime.
@@ -131,6 +133,28 @@ run_repository() {
   printf '%s|%s|%s|%s|%s|%s\n' "$name" "$unit" "$fuzz" "$test_log" "$fuzz_log" "$((SECONDS - started))" > "$result"
 }
 
+run_repository_guarded() {
+  index="$1"
+  relative="$2"
+  started="$SECONDS"
+  result="$results_dir/$(printf '%06d' "$index").result"
+  name="$(basename "$relative")"
+
+  # Background functions inherit errexit. Guarantee one result record even
+  # when an unexpected command escapes the explicitly handled test/fuzz
+  # branches; otherwise the aggregate can finish with a misleading hole.
+  set +e
+  run_repository "$@"
+  status=$?
+  if [ ! -f "$result" ]; then
+    printf '%s|FAIL|UNAVAILABLE|%s||%s\n' \
+      "$name" \
+      "$out_dir/$name-test.log" \
+      "$((SECONDS - started))" > "$result"
+  fi
+  return "$status"
+}
+
 wait_for_any() {
   while :; do
     worker_index=0
@@ -184,7 +208,9 @@ done < <(
 )
 
 while IFS='|' read -r repository_index relative language _cost; do
-  run_repository "$repository_index" "$relative" "$language" &
+  # Workers must not inherit the worklist stream. A repository test that reads
+  # stdin would otherwise consume later work items and create missing receipts.
+  run_repository_guarded "$repository_index" "$relative" "$language" </dev/null &
   worker_pids+=("$!")
   worker_count=$((worker_count + 1))
   if [ "$worker_count" -ge "$jobs" ]; then
@@ -240,4 +266,12 @@ fi
 
 printf 'Repository test workers: %s\n' "$jobs"
 printf 'Repository test summary: %s\n' "$summary"
+receipt_status=0
+./checks/write-repository-test-receipt.py \
+  --results "$results_dir" \
+  --output "$out_dir/receipt.json" || receipt_status=$?
+if [ "$receipt_status" -ne 0 ] && [ "$failed" -eq 0 ]; then
+  printf 'FAIL: repository-test receipt rejected an otherwise clean run\n' >&2
+  failed=1
+fi
 [ "$failed" -eq 0 ]

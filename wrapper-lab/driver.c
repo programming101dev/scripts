@@ -70,8 +70,7 @@ static bool run_short_io(const struct p101_env *env, struct p101_error *err,
                          const char *operation, struct model *model);
 static bool run_positioned_short_io(const struct p101_env *env,
                                     struct p101_error *err,
-                                    const char *operation,
-                                    struct model *model);
+                                    const char *operation, struct model *model);
 static bool io_count_is_expected(const char *call_name, ssize_t actual,
                                  size_t full_count);
 static void *thread_worker(void *argument);
@@ -82,9 +81,8 @@ static bool model_is_clean(const struct model *model);
 int main(int argc, char *argv[]) {
   struct p101_error *err;
   struct p101_env *env;
-  struct model model = {.descriptors = {-1, -1},
-                        .pipe_fds = {-1, -1},
-                        .positioned_fd = -1};
+  struct model model = {
+      .descriptors = {-1, -1}, .pipe_fds = {-1, -1}, .positioned_fd = -1};
   char replay[REPLAY_LENGTH];
   char *save;
   char *operation;
@@ -466,8 +464,7 @@ static bool run_positioned_short_io(const struct p101_env *env,
   if (strcmp(operation, "open") == 0 && model->positioned_stream == NULL) {
     model->positioned_stream = p101_tmpfile(env, err);
     if (model->positioned_stream != NULL) {
-      model->positioned_fd =
-          p101_fileno(env, err, model->positioned_stream);
+      model->positioned_fd = p101_fileno(env, err, model->positioned_stream);
       if (model->positioned_fd < 0) {
         return false;
       }
@@ -488,8 +485,8 @@ static bool run_positioned_short_io(const struct p101_env *env,
   }
   if (strcmp(operation, "read") == 0 && model->positioned_stream != NULL &&
       model->positioned_written) {
-    ssize_t read_count = p101_pread(env, err, model->positioned_fd, buffer,
-                                   sizeof(buffer), 0);
+    ssize_t read_count =
+        p101_pread(env, err, model->positioned_fd, buffer, sizeof(buffer), 0);
     if (io_count_is_expected("p101_pread", read_count,
                              model->positioned_bytes)) {
       model->positioned_written = false;

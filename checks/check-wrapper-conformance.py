@@ -263,7 +263,7 @@ def main() -> int:
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
     fault_contract = load_contract(FAULT_CONTRACT_PATH)
     platform_key = current_platform_key()
-    if contract.get("schema") != "p101-wrapper-conformance-contract-v2":
+    if contract.get("schema") != "p101-wrapper-conformance-contract-v3":
         print("FAIL: unsupported wrapper conformance contract")
         return 2
     selected = active_libraries()

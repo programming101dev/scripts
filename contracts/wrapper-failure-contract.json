@@ -34,7 +34,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "address_len"
+        {
+          "index": 4,
+          "type": "socklen_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -498,7 +501,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "path"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -528,7 +534,10 @@
       "return_expression": "false",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "context"
+        {
+          "index": 4,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -544,7 +553,10 @@
       "return_expression": "P101_C_FACT_MALFORMED",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "line"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -560,7 +572,10 @@
       "return_expression": "false",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "path"
+        {
+          "index": 3,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -576,7 +591,10 @@
       "return_expression": "false",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "context"
+        {
+          "index": 5,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -1292,7 +1310,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "buf"
+        {
+          "index": 3,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -1742,7 +1763,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "path"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -1772,7 +1796,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "handle"
+        {
+          "index": 2,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -1802,7 +1829,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "handle"
+        {
+          "index": 2,
+          "type": "void *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -1972,7 +2002,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "hostname"
+        {
+          "index": 4,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -1988,7 +2021,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "hostname"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -2368,7 +2404,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "envp"
+        {
+          "index": 2,
+          "type": "fenv_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -2384,7 +2423,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "flagp"
+        {
+          "index": 2,
+          "type": "fexcept_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -2414,7 +2456,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "envp"
+        {
+          "index": 2,
+          "type": "fenv_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -2528,7 +2573,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "pos"
+        {
+          "index": 3,
+          "type": "fpos_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -2544,7 +2592,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "s"
+        {
+          "index": 2,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -2574,7 +2625,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "ws"
+        {
+          "index": 2,
+          "type": "wchar_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -2646,7 +2700,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "buf"
+        {
+          "index": 2,
+          "type": "void *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -2858,7 +2915,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "ptr"
+        {
+          "index": 2,
+          "type": "void *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -2986,7 +3046,10 @@
       "return_expression": "void",
       "return_kind": "void",
       "runtime_canary_arguments": [
-        "arg"
+        {
+          "index": 2,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3338,7 +3401,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "buf"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3354,8 +3420,14 @@
       "return_expression": "(ssize_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "lineptr",
-        "n"
+        {
+          "index": 2,
+          "type": "char **restrict"
+        },
+        {
+          "index": 3,
+          "type": "size_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3371,7 +3443,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "name"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3401,7 +3476,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "buffer"
+        {
+          "index": 4,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3417,7 +3495,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "buffer"
+        {
+          "index": 4,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3433,7 +3514,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "grouplist"
+        {
+          "index": 3,
+          "type": "gid_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3449,7 +3533,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "name"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3479,8 +3566,14 @@
       "return_expression": "(ssize_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "lineptr",
-        "n"
+        {
+          "index": 2,
+          "type": "char **restrict"
+        },
+        {
+          "index": 3,
+          "type": "size_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3496,7 +3589,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "loadavg"
+        {
+          "index": 2,
+          "type": "double *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3512,7 +3608,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "name"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3528,8 +3627,14 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "node",
-        "service"
+        {
+          "index": 4,
+          "type": "char *restrict"
+        },
+        {
+          "index": 6,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3545,7 +3650,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "address_len"
+        {
+          "index": 4,
+          "type": "socklen_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3589,7 +3697,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "buffer"
+        {
+          "index": 4,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3605,7 +3716,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "buffer"
+        {
+          "index": 4,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3663,7 +3777,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "address_len"
+        {
+          "index": 4,
+          "type": "socklen_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3679,8 +3796,14 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "option_value",
-        "option_len"
+        {
+          "index": 5,
+          "type": "void *restrict"
+        },
+        {
+          "index": 6,
+          "type": "socklen_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3724,7 +3847,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "pglob"
+        {
+          "index": 5,
+          "type": "glob_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3838,10 +3964,22 @@
       "return_expression": "(size_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "inbuf",
-        "inbytesleft",
-        "outbuf",
-        "outbytesleft"
+        {
+          "index": 3,
+          "type": "char **restrict"
+        },
+        {
+          "index": 4,
+          "type": "size_t *restrict"
+        },
+        {
+          "index": 5,
+          "type": "char **restrict"
+        },
+        {
+          "index": 6,
+          "type": "size_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -3885,7 +4023,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "ifname"
+        {
+          "index": 3,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -4041,7 +4182,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "dst"
+        {
+          "index": 5,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -4057,7 +4201,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "dst"
+        {
+          "index": 4,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -4087,7 +4234,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "dst"
+        {
+          "index": 4,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -4103,7 +4253,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "dst"
+        {
+          "index": 4,
+          "type": "void *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -4119,7 +4272,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "state"
+        {
+          "index": 3,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -4835,8 +4991,14 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "base",
-        "nelp"
+        {
+          "index": 3,
+          "type": "void *"
+        },
+        {
+          "index": 4,
+          "type": "size_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -4908,7 +5070,10 @@
       "return_expression": "(size_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "ps"
+        {
+          "index": 4,
+          "type": "mbstate_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -4924,8 +5089,14 @@
       "return_expression": "(size_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "pwc",
-        "ps"
+        {
+          "index": 2,
+          "type": "wchar_t *restrict"
+        },
+        {
+          "index": 5,
+          "type": "mbstate_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -4941,8 +5112,14 @@
       "return_expression": "(size_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "dst",
-        "ps"
+        {
+          "index": 2,
+          "type": "wchar_t *restrict"
+        },
+        {
+          "index": 6,
+          "type": "mbstate_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -4958,8 +5135,14 @@
       "return_expression": "(size_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "dst",
-        "ps"
+        {
+          "index": 2,
+          "type": "wchar_t *restrict"
+        },
+        {
+          "index": 5,
+          "type": "mbstate_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -4975,7 +5158,10 @@
       "return_expression": "(size_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "pwcs"
+        {
+          "index": 2,
+          "type": "wchar_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -4991,7 +5177,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "pwc"
+        {
+          "index": 2,
+          "type": "wchar_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -5035,7 +5224,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "name_template"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -5079,7 +5271,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "name_template"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -5137,7 +5332,10 @@
       "return_expression": "MAP_FAILED",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "addr"
+        {
+          "index": 2,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -5153,7 +5351,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "addr"
+        {
+          "index": 2,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -5197,7 +5398,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "msgp"
+        {
+          "index": 3,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -5227,7 +5431,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "addr"
+        {
+          "index": 2,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -5271,7 +5478,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "addr"
+        {
+          "index": 2,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -5441,8 +5651,14 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "bufp",
-        "sizep"
+        {
+          "index": 2,
+          "type": "char **"
+        },
+        {
+          "index": 3,
+          "type": "size_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -5458,8 +5674,14 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "bufp",
-        "sizep"
+        {
+          "index": 2,
+          "type": "wchar_t **"
+        },
+        {
+          "index": 3,
+          "type": "size_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6077,7 +6299,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "fildes"
+        {
+          "index": 2,
+          "type": "int *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6121,7 +6346,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "addr"
+        {
+          "index": 2,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6137,7 +6365,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "memptr"
+        {
+          "index": 2,
+          "type": "void **"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6167,7 +6398,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "pid"
+        {
+          "index": 2,
+          "type": "pid_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6183,7 +6417,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "file_actions"
+        {
+          "index": 2,
+          "type": "posix_spawn_file_actions_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6199,7 +6436,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "file_actions"
+        {
+          "index": 2,
+          "type": "posix_spawn_file_actions_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6215,7 +6455,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "file_actions"
+        {
+          "index": 2,
+          "type": "posix_spawn_file_actions_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6231,7 +6474,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "file_actions"
+        {
+          "index": 2,
+          "type": "posix_spawn_file_actions_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6247,7 +6493,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "file_actions"
+        {
+          "index": 2,
+          "type": "posix_spawn_file_actions_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6263,7 +6512,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "posix_spawnattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6279,7 +6531,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "flags"
+        {
+          "index": 3,
+          "type": "short *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6295,7 +6550,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "pgroup"
+        {
+          "index": 3,
+          "type": "pid_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6311,7 +6569,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "sigdefault"
+        {
+          "index": 3,
+          "type": "sigset_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6327,7 +6588,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "sigmask"
+        {
+          "index": 3,
+          "type": "sigset_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6343,7 +6607,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "posix_spawnattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6359,7 +6626,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "posix_spawnattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6375,7 +6645,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "posix_spawnattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6391,7 +6664,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "posix_spawnattr_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6407,7 +6683,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "posix_spawnattr_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6423,7 +6702,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "pid"
+        {
+          "index": 2,
+          "type": "pid_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6482,7 +6764,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "buf"
+        {
+          "index": 3,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6512,9 +6797,18 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "readfds",
-        "writefds",
-        "errorfds"
+        {
+          "index": 3,
+          "type": "fd_set *restrict"
+        },
+        {
+          "index": 4,
+          "type": "fd_set *restrict"
+        },
+        {
+          "index": 5,
+          "type": "fd_set *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6544,7 +6838,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_attr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6560,7 +6857,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "detachstate"
+        {
+          "index": 3,
+          "type": "int *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6576,7 +6876,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "guardsize"
+        {
+          "index": 3,
+          "type": "size_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6592,7 +6895,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "inheritsched"
+        {
+          "index": 3,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6622,7 +6928,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "policy"
+        {
+          "index": 3,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6638,7 +6947,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "contentionscope"
+        {
+          "index": 3,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6654,8 +6966,14 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "stackaddr",
-        "stacksize"
+        {
+          "index": 3,
+          "type": "void **restrict"
+        },
+        {
+          "index": 4,
+          "type": "size_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6671,7 +6989,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "stacksize"
+        {
+          "index": 3,
+          "type": "size_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6687,7 +7008,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_attr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6703,7 +7027,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_attr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6719,7 +7046,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_attr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6735,7 +7065,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_attr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6751,7 +7084,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_attr_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6767,7 +7103,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_attr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6783,7 +7122,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_attr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6799,8 +7141,14 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr",
-        "stackaddr"
+        {
+          "index": 2,
+          "type": "pthread_attr_t *"
+        },
+        {
+          "index": 3,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6816,7 +7164,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_attr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6846,7 +7197,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "cond"
+        {
+          "index": 2,
+          "type": "pthread_cond_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6862,7 +7216,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "cond"
+        {
+          "index": 2,
+          "type": "pthread_cond_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6878,7 +7235,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "cond"
+        {
+          "index": 2,
+          "type": "pthread_cond_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6894,7 +7254,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "cond"
+        {
+          "index": 2,
+          "type": "pthread_cond_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6910,8 +7273,14 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "cond",
-        "mutex"
+        {
+          "index": 2,
+          "type": "pthread_cond_t *restrict"
+        },
+        {
+          "index": 3,
+          "type": "pthread_mutex_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6927,8 +7296,14 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "cond",
-        "mutex"
+        {
+          "index": 2,
+          "type": "pthread_cond_t *restrict"
+        },
+        {
+          "index": 3,
+          "type": "pthread_mutex_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6944,7 +7319,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_condattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6960,7 +7338,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "pshared"
+        {
+          "index": 3,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6976,7 +7357,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_condattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -6992,7 +7376,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_condattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7008,8 +7395,14 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "thread",
-        "arg"
+        {
+          "index": 2,
+          "type": "pthread_t *restrict"
+        },
+        {
+          "index": 5,
+          "type": "void *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7039,7 +7432,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "policy"
+        {
+          "index": 3,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7055,7 +7451,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "value_ptr"
+        {
+          "index": 3,
+          "type": "void **"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7071,7 +7470,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "key"
+        {
+          "index": 2,
+          "type": "pthread_key_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7115,7 +7517,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "mutex"
+        {
+          "index": 2,
+          "type": "pthread_mutex_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7131,7 +7536,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "prioceiling"
+        {
+          "index": 3,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7147,7 +7555,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "mutex"
+        {
+          "index": 2,
+          "type": "pthread_mutex_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7163,7 +7574,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "mutex"
+        {
+          "index": 2,
+          "type": "pthread_mutex_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7179,8 +7593,14 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "mutex",
-        "old_ceiling"
+        {
+          "index": 2,
+          "type": "pthread_mutex_t *restrict"
+        },
+        {
+          "index": 4,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7196,7 +7616,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "mutex"
+        {
+          "index": 2,
+          "type": "pthread_mutex_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7212,7 +7635,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "mutex"
+        {
+          "index": 2,
+          "type": "pthread_mutex_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7228,7 +7654,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_mutexattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7244,7 +7673,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "prioceiling"
+        {
+          "index": 3,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7260,7 +7692,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "protocol"
+        {
+          "index": 3,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7276,7 +7711,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "pshared"
+        {
+          "index": 3,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7292,7 +7730,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "type"
+        {
+          "index": 3,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7308,7 +7749,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_mutexattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7324,7 +7768,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_mutexattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7340,7 +7787,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_mutexattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7356,7 +7806,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_mutexattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7372,7 +7825,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_mutexattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7388,7 +7844,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "once_control"
+        {
+          "index": 2,
+          "type": "pthread_once_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7404,7 +7863,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "rwlock"
+        {
+          "index": 2,
+          "type": "pthread_rwlock_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7420,7 +7882,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "rwlock"
+        {
+          "index": 2,
+          "type": "pthread_rwlock_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7436,7 +7901,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "rwlock"
+        {
+          "index": 2,
+          "type": "pthread_rwlock_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7452,7 +7920,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "rwlock"
+        {
+          "index": 2,
+          "type": "pthread_rwlock_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7468,7 +7939,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "rwlock"
+        {
+          "index": 2,
+          "type": "pthread_rwlock_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7484,7 +7958,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "rwlock"
+        {
+          "index": 2,
+          "type": "pthread_rwlock_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7500,7 +7977,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "rwlock"
+        {
+          "index": 2,
+          "type": "pthread_rwlock_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7516,7 +7996,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_rwlockattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7532,7 +8015,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "pshared"
+        {
+          "index": 3,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7548,7 +8034,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_rwlockattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7564,7 +8053,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "attr"
+        {
+          "index": 2,
+          "type": "pthread_rwlockattr_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7580,7 +8072,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "oldstate"
+        {
+          "index": 3,
+          "type": "int *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7596,7 +8091,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "oldtype"
+        {
+          "index": 3,
+          "type": "int *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7640,7 +8138,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "oset"
+        {
+          "index": 4,
+          "type": "sigset_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7726,7 +8227,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "string"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7828,7 +8332,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "buf"
+        {
+          "index": 3,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7858,7 +8365,10 @@
       "return_expression": "(ssize_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "buf"
+        {
+          "index": 3,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7874,7 +8384,10 @@
       "return_expression": "(ssize_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "buf"
+        {
+          "index": 4,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7904,7 +8417,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "ptr"
+        {
+          "index": 2,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7920,7 +8436,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "resolved_name"
+        {
+          "index": 3,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7936,7 +8455,10 @@
       "return_expression": "(ssize_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "buffer"
+        {
+          "index": 3,
+          "type": "void *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7952,8 +8474,14 @@
       "return_expression": "(ssize_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "buffer",
-        "address_len"
+        {
+          "index": 3,
+          "type": "void *restrict"
+        },
+        {
+          "index": 7,
+          "type": "socklen_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7983,7 +8511,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "preg"
+        {
+          "index": 2,
+          "type": "regex_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -7999,7 +8530,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "pmatch"
+        {
+          "index": 5,
+          "type": "regmatch_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8071,7 +8605,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "quo"
+        {
+          "index": 4,
+          "type": "int *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8087,7 +8624,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "quo"
+        {
+          "index": 4,
+          "type": "int *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8103,7 +8643,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "quo"
+        {
+          "index": 4,
+          "type": "int *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8315,9 +8858,18 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "readfds",
-        "writefds",
-        "errorfds"
+        {
+          "index": 3,
+          "type": "fd_set *restrict"
+        },
+        {
+          "index": 4,
+          "type": "fd_set *restrict"
+        },
+        {
+          "index": 5,
+          "type": "fd_set *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8333,7 +8885,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "sem"
+        {
+          "index": 2,
+          "type": "sem_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8363,7 +8918,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "sem"
+        {
+          "index": 2,
+          "type": "sem_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8379,7 +8937,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "sem"
+        {
+          "index": 2,
+          "type": "sem_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8409,7 +8970,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "sem"
+        {
+          "index": 2,
+          "type": "sem_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8523,7 +9087,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "buf"
+        {
+          "index": 3,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8777,7 +9344,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "state"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8807,7 +9377,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "buf"
+        {
+          "index": 3,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8935,7 +9508,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "set"
+        {
+          "index": 2,
+          "type": "sigset_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8951,7 +9527,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "oss"
+        {
+          "index": 3,
+          "type": "stack_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8967,7 +9546,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "set"
+        {
+          "index": 2,
+          "type": "sigset_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8983,7 +9565,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "set"
+        {
+          "index": 2,
+          "type": "sigset_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -8999,7 +9584,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "set"
+        {
+          "index": 2,
+          "type": "sigset_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9043,7 +9631,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "set"
+        {
+          "index": 2,
+          "type": "sigset_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9059,7 +9650,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "oset"
+        {
+          "index": 4,
+          "type": "sigset_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9089,7 +9683,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "sig"
+        {
+          "index": 3,
+          "type": "int *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9189,7 +9786,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "s"
+        {
+          "index": 2,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9233,7 +9833,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "socket_vector"
+        {
+          "index": 5,
+          "type": "int *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9389,7 +9992,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "strerrbuf"
+        {
+          "index": 3,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9405,7 +10011,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "buf"
+        {
+          "index": 2,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9421,7 +10030,10 @@
       "return_expression": "0U",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "s"
+        {
+          "index": 2,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9465,7 +10077,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "char **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9481,7 +10096,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "char **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9497,7 +10115,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "char **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9513,7 +10134,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "char **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9529,7 +10153,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "char **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9545,7 +10172,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "char **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9561,7 +10191,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "char **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9577,7 +10210,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "char **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9593,7 +10229,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "char **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9609,7 +10248,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "s1"
+        {
+          "index": 2,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9625,7 +10267,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "s1"
+        {
+          "index": 2,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9641,7 +10286,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "ws"
+        {
+          "index": 2,
+          "type": "wchar_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -9993,7 +10641,10 @@
       "return_expression": "(time_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "tloc"
+        {
+          "index": 2,
+          "type": "time_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10177,7 +10828,10 @@
       "return_expression": "NULL",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "rootp"
+        {
+          "index": 3,
+          "type": "void **"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10193,7 +10847,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "name"
+        {
+          "index": 3,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10433,7 +11090,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "s"
+        {
+          "index": 2,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10463,7 +11123,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "ws"
+        {
+          "index": 2,
+          "type": "wchar_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10521,7 +11184,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "stat_loc"
+        {
+          "index": 2,
+          "type": "int *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10537,7 +11203,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "infop"
+        {
+          "index": 4,
+          "type": "siginfo_t *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10553,7 +11222,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "stat_loc"
+        {
+          "index": 3,
+          "type": "int *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10569,8 +11241,14 @@
       "return_expression": "(size_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "s",
-        "ps"
+        {
+          "index": 2,
+          "type": "char *restrict"
+        },
+        {
+          "index": 4,
+          "type": "mbstate_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10628,7 +11306,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "wcs"
+        {
+          "index": 2,
+          "type": "wchar_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10644,8 +11325,14 @@
       "return_expression": "(size_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "dst",
-        "ps"
+        {
+          "index": 2,
+          "type": "char *restrict"
+        },
+        {
+          "index": 6,
+          "type": "mbstate_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10661,8 +11348,14 @@
       "return_expression": "(size_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "dst",
-        "ps"
+        {
+          "index": 2,
+          "type": "char *restrict"
+        },
+        {
+          "index": 5,
+          "type": "mbstate_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10678,7 +11371,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "wchar_t **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10694,7 +11390,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "wchar_t **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10710,7 +11409,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "wchar_t **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10726,7 +11428,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "wchar_t **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10742,7 +11447,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "wchar_t **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10758,7 +11466,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "wchar_t **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10774,7 +11485,10 @@
       "return_expression": "(size_t)-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "s"
+        {
+          "index": 2,
+          "type": "char *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10790,7 +11504,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "wchar_t **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10806,7 +11523,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "wchar_t **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10822,7 +11542,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "endptr"
+        {
+          "index": 3,
+          "type": "wchar_t **restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10838,7 +11561,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "ws1"
+        {
+          "index": 2,
+          "type": "wchar_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10854,7 +11580,10 @@
       "return_expression": "0",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "ws1"
+        {
+          "index": 2,
+          "type": "wchar_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10870,7 +11599,10 @@
       "return_expression": "-1",
       "return_kind": "value",
       "runtime_canary_arguments": [
-        "s"
+        {
+          "index": 2,
+          "type": "char *"
+        }
       ],
       "writable_arguments": "unchanged"
     },
@@ -10942,7 +11674,10 @@
       "return_expression": "fault-code",
       "return_kind": "error-code",
       "runtime_canary_arguments": [
-        "pwordexp"
+        {
+          "index": 3,
+          "type": "wordexp_t *restrict"
+        }
       ],
       "writable_arguments": "unchanged"
     },

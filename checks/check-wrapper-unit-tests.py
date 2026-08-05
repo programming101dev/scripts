@@ -589,6 +589,10 @@ def main() -> int:
                     "failures == failures_before",
                     "p101_error_reset(err);",
                     "p101_env_set_fault_injector(env, NULL, NULL);",
+                    "pid_t native_pid    = fork();",
+                    "(void)alarm(2U);",
+                    "EXPECT(waitpid(native_pid, &native_status, 0) == native_pid);",
+                    "EXPECT(WIFEXITED(native_status));",
                 )
                 for required_step in required_fault_steps:
                     if required_step not in function_match.group(1):
@@ -759,6 +763,10 @@ def main() -> int:
         "explicitly classified non-direct APIs: "
         f"{expected_total - len(fault_wrappers)}/"
         f"{expected_total - len(fault_wrappers)}"
+    )
+    print(
+        "isolated native smoke paths for fallible APIs: "
+        f"{len(fault_wrappers)}/{len(fault_wrappers)}"
     )
     print(
         "explicit API outcome classes: "

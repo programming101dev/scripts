@@ -84,9 +84,9 @@ find_tool() {
 last_build_tool() {
   repo="$1"
   tool="$2"
-  last_build_file="$repo/.last-runtime-build-dir"
+  last_build_file="$repo/.last-build-dir"
   if [ ! -f "$last_build_file" ]; then
-    last_build_file="$repo/.last-build-dir"
+    last_build_file="$repo/.last-runtime-build-dir"
   fi
 
   if [ -f "$last_build_file" ]; then

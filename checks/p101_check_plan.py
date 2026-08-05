@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 from typing import Any, Iterable
 
 
@@ -92,11 +93,38 @@ def validate(document: dict[str, Any]) -> list[dict[str, Any]]:
             raise GraphError(f"{context} cacheable must be boolean")
         if "replace_outputs" in raw and not isinstance(raw["replace_outputs"], bool):
             raise GraphError(f"{context} replace_outputs must be boolean")
+        if "invalidates_source_identity" in raw and not isinstance(
+            raw["invalidates_source_identity"], bool
+        ):
+            raise GraphError(
+                f"{context} invalidates_source_identity must be boolean"
+            )
         receipts = raw.get("receipts", [])
         if not isinstance(receipts, list) or any(
             not isinstance(path, str) or not path for path in receipts
         ):
             raise GraphError(f"{context} has invalid receipts")
+        inputs = raw.get("inputs")
+        if inputs is not None and (
+            not isinstance(inputs, list)
+            or not inputs
+            or any(
+                not isinstance(pattern, str)
+                or not pattern
+                or pattern.startswith("/")
+                or ".." in pattern.split("/")
+                for pattern in inputs
+            )
+        ):
+            raise GraphError(f"{context} has invalid inputs")
+        if "inputs_complete" in raw and not isinstance(
+            raw["inputs_complete"], bool
+        ):
+            raise GraphError(f"{context} inputs_complete must be boolean")
+        if raw.get("inputs_complete") is True and inputs is None:
+            raise GraphError(
+                f"{context} claims complete inputs without declaring them"
+            )
 
     for node in nodes:
         unknown = set(node["depends_on"]) - identifiers
@@ -160,6 +188,59 @@ def dependency_closure(
                 selected.add(dependency)
                 pending.append(dependency)
     return selected
+
+
+def impact_closure(
+    changed_paths: Iterable[str],
+    nodes: list[dict[str, Any]],
+) -> set[str]:
+    """Return directly affected nodes and every downstream consumer.
+
+    Nodes without an explicit input declaration are selected conservatively.
+    This makes incomplete migration slower, never unsoundly green.
+    """
+    changed = {
+        path.removeprefix("./").rstrip("/")
+        for path in changed_paths
+        if path.removeprefix("./").rstrip("/")
+    }
+    if not changed:
+        raise GraphError("impact selection requires at least one changed path")
+    by_id = {node["id"]: node for node in nodes}
+    impacted: set[str] = set()
+    for node in nodes:
+        patterns = node.get("inputs")
+        if (
+            node.get("inputs_complete") is not True
+            or not isinstance(patterns, list)
+        ):
+            impacted.add(node["id"])
+            continue
+        if any(
+            fnmatch.fnmatch(path, pattern)
+            or (
+                pattern.endswith("/**")
+                and (
+                    path == pattern[:-3]
+                    or path.startswith(pattern[:-2])
+                )
+            )
+            for path in changed
+            for pattern in patterns
+        ):
+            impacted.add(node["id"])
+
+    changed_set = set(impacted)
+    while changed_set:
+        dependency = changed_set.pop()
+        for node in nodes:
+            if (
+                dependency in node.get("depends_on", [])
+                and node["id"] not in impacted
+            ):
+                impacted.add(node["id"])
+                changed_set.add(node["id"])
+    return impacted & by_id.keys()
 
 
 def select_nodes(

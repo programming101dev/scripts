@@ -15,13 +15,19 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 CHECKS_DIR = Path(__file__).resolve().parent
 if os.fspath(CHECKS_DIR) not in sys.path:
     sys.path.insert(0, os.fspath(CHECKS_DIR))
 
-from p101_check_plan import GraphError, expand_command, select_nodes, validate
+from p101_check_plan import (
+    GraphError,
+    expand_command,
+    impact_closure,
+    select_nodes,
+    validate,
+)
 from p101_check_reporting import log_result, write_profile, write_summary
 
 
@@ -136,12 +142,38 @@ def active_repository_roots() -> list[Path]:
     return sorted(set(roots), key=lambda path: os.fspath(path))
 
 
-def workspace_source_identity() -> dict[str, Any]:
+def workspace_source_identity(
+    input_patterns: tuple[str, ...] | None = None,
+) -> dict[str, Any]:
     workspace = SCRIPTS_ROOT.parent.resolve()
     digest = hashlib.sha256()
     file_count = 0
     byte_count = 0
     repositories = active_repository_roots()
+    admitted_files: set[Path] | None = None
+    if input_patterns is not None:
+        admitted_files = set()
+        for pattern in input_patterns:
+            candidates: Iterable[Path]
+            if pattern.endswith("/**"):
+                root = workspace / pattern[:-3]
+                candidates = [root] if root.exists() else []
+            else:
+                candidates = workspace.glob(pattern)
+            for candidate in candidates:
+                if candidate.is_file() or candidate.is_symlink():
+                    admitted_files.add(candidate)
+                elif candidate.is_dir():
+                    admitted_files.update(
+                        path
+                        for path in candidate.rglob("*")
+                        if (path.is_file() or path.is_symlink())
+                        and not source_path_excluded(path.relative_to(workspace))
+                    )
+        if not admitted_files:
+            # A stale declaration must invalidate conservatively rather than
+            # create a content-free cache key.
+            return workspace_source_identity()
     repository_identities = []
     for repository in repositories:
         metadata: dict[str, Any] = {
@@ -164,8 +196,15 @@ def workspace_source_identity() -> dict[str, Any]:
                 check=False,
             )
             metadata[key] = completed.stdout.strip() if completed.returncode == 0 else ""
+        repository_files = repository_source_files(repository)
+        if admitted_files is not None:
+            repository_files = [
+                path for path in repository_files if path in admitted_files
+            ]
+            if not repository_files:
+                continue
         repository_identities.append(metadata)
-        for path in repository_source_files(repository):
+        for path in repository_files:
             relative = path.relative_to(workspace).as_posix()
             if path.is_symlink():
                 payload = os.readlink(path).encode("utf-8", errors="surrogateescape")
@@ -197,6 +236,7 @@ def workspace_source_identity() -> dict[str, Any]:
         "files": file_count,
         "bytes": byte_count,
         "repositories": repository_identities,
+        "inputs": list(input_patterns) if input_patterns is not None else ["**"],
     }
 
 
@@ -256,6 +296,7 @@ def node_input_identity(
     variables: dict[str, str],
     output: Path,
     workspace: dict[str, Any],
+    dependency_identities: dict[str, str] | None = None,
 ) -> str:
     tools = [command[0]]
     for name in ("cc", "cxx"):
@@ -279,6 +320,7 @@ def node_input_identity(
             and (key != "receipt_verifier" or bool(node.get("receipts")))
         },
         "workspace": workspace,
+        "dependencies": dependency_identities or {},
         "host": {
             "system": platform.system(),
             "release": platform.release(),
@@ -691,7 +733,16 @@ def execute_node(
         if not node.get("required", True):
             prompt += ", [s]kip"
         prompt += ", [q]uit: "
-        answer = input(prompt).strip().lower()
+        try:
+            answer = input(prompt).strip().lower()
+        except EOFError:
+            with console_lock:
+                print(
+                    "    interactive input is unavailable; stopping this "
+                    "check without a traceback",
+                    flush=True,
+                )
+            answer = "q"
         if answer in {"", "r", "retry"}:
             continue
         if answer in {"s", "skip"} and not node.get("required", True):
@@ -927,22 +978,45 @@ def run_graph(
     required_previous = set() if required_previous is None else required_previous
     order_by_id = {node["id"]: index for index, node in enumerate(all_nodes)}
     by_id = {node["id"]: node for node in all_nodes}
-    workspace = workspace_source_identity()
     identity_ids = {node["id"] for node in selected} | required_previous
     commands = {
         identifier: expand_command(by_id[identifier]["command"], variables)
         for identifier in identity_ids
     }
-    identities = {
-        identifier: node_input_identity(
-            by_id[identifier],
-            commands[identifier],
-            variables,
-            output,
-            workspace,
+    workspace_identities: dict[tuple[str, ...] | None, dict[str, Any]] = {}
+
+    def identity_scope(node: dict[str, Any]) -> dict[str, Any]:
+        patterns = node.get("inputs")
+        key = (
+            tuple(patterns)
+            if node.get("inputs_complete") is True
+            and isinstance(patterns, list)
+            else None
         )
-        for identifier in identity_ids
-    }
+        if key not in workspace_identities:
+            workspace_identities[key] = workspace_source_identity(key)
+        return workspace_identities[key]
+
+    identities: dict[str, str] = {}
+
+    def identity_for(identifier: str) -> str:
+        if identifier not in identities:
+            identities[identifier] = node_input_identity(
+                by_id[identifier],
+                commands[identifier],
+                variables,
+                output,
+                identity_scope(by_id[identifier]),
+                {
+                    dependency: identity_for(dependency)
+                    for dependency in by_id[identifier].get(
+                        "depends_on", []
+                    )
+                },
+            )
+        return identities[identifier]
+
+    workspace = workspace_source_identity()
     previous_records: dict[str, dict[str, Any]] = {}
     previous_directory: Path | None = None
     if previous is not None:
@@ -960,7 +1034,7 @@ def run_graph(
             if (
                 record is None
                 or record.get("outcome") not in {"clean", "reused"}
-                or record.get("input_identity") != identities[identifier]
+                or record.get("input_identity") != identity_for(identifier)
                 or not declared_outputs_match(
                     record, by_id[identifier], variables, output
                 )
@@ -989,7 +1063,7 @@ def run_graph(
             reused_record(
                 by_id[identifier],
                 commands[identifier],
-                identities[identifier],
+                identity_for(identifier),
                 order_by_id[identifier],
                 output,
                 variables,
@@ -1086,7 +1160,7 @@ def run_graph(
                     record = blocked_record(
                         node,
                         commands[identifier],
-                        identities[identifier],
+                        identity_for(identifier),
                         order_by_id[identifier],
                         output,
                         failed_dependencies,
@@ -1103,7 +1177,8 @@ def run_graph(
                     previous_directory == output
                     and previous_record is not None
                     and previous_record.get("outcome") in {"clean", "reused"}
-                    and previous_record.get("input_identity") == identities[identifier]
+                    and previous_record.get("input_identity")
+                    == identity_for(identifier)
                     and declared_outputs_match(
                         previous_record, node, variables, output
                     )
@@ -1111,7 +1186,7 @@ def run_graph(
                     record = reused_record(
                         node,
                         commands[identifier],
-                        identities[identifier],
+                        identity_for(identifier),
                         order_by_id[identifier],
                         output,
                         variables,
@@ -1133,7 +1208,7 @@ def run_graph(
                     and cacheable
                     and restore_cache_entry(
                         active_cache,
-                        identities[identifier],
+                        identity_for(identifier),
                         node,
                         variables,
                         output,
@@ -1144,12 +1219,12 @@ def run_graph(
                     record = reused_record(
                         node,
                         commands[identifier],
-                        identities[identifier],
+                        identity_for(identifier),
                         order_by_id[identifier],
                         output,
                         variables,
                         "cache",
-                        identities[identifier],
+                        identity_for(identifier),
                     )
                     records.append(record)
                     statuses[identifier] = "reused"
@@ -1169,7 +1244,7 @@ def run_graph(
                     node,
                     commands[identifier],
                     output,
-                    identities[identifier],
+                    identity_for(identifier),
                     interactive,
                     order_by_id[identifier],
                     console_lock,
@@ -1194,12 +1269,19 @@ def run_graph(
                     statuses[node["id"]] = record["outcome"]
                     if (
                         record["outcome"] == "clean"
+                        and node.get("invalidates_source_identity", False)
+                    ):
+                        workspace_identities.clear()
+                        identities.clear()
+                        workspace = workspace_source_identity()
+                    if (
+                        record["outcome"] == "clean"
                         and active_cache is not None
                         and node.get("cacheable", True)
                     ):
                         publish_cache_entry(
                             active_cache,
-                            identities[node["id"]],
+                            identity_for(node["id"]),
                             node,
                             variables,
                             output,
@@ -1278,6 +1360,12 @@ def main() -> int:
     run_parser.add_argument("--resume", action="store_true")
     run_parser.add_argument("--resume-receipt", type=Path)
     run_parser.add_argument("--measure", action="store_true")
+    run_parser.add_argument(
+        "--changed",
+        action="append",
+        default=[],
+        help="run the conservative impact closure for a workspace-relative path",
+    )
     arguments = parser.parse_args()
 
     document = json.loads(arguments.graph.read_text(encoding="utf-8"))
@@ -1300,11 +1388,19 @@ def main() -> int:
         raise GraphError("--measure requires fresh execution and cannot resume")
 
     variables = parse_variables(arguments.var)
+    if arguments.changed and (arguments.only or arguments.start):
+        raise GraphError("--changed cannot be combined with --only or --from")
+    impacted = (
+        impact_closure(arguments.changed, ordered)
+        if arguments.changed
+        else set()
+    )
+    requested = set(arguments.only) | impacted
     base_selected = select_nodes(
-        ordered, set(arguments.only), set(arguments.skip_group), None
+        ordered, requested, set(arguments.skip_group), None
     )
     selected = select_nodes(
-        ordered, set(arguments.only), set(arguments.skip_group), arguments.start
+        ordered, requested, set(arguments.skip_group), arguments.start
     )
     if not selected:
         raise GraphError("selection contains no check nodes")

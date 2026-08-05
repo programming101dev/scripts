@@ -75,9 +75,9 @@ facts_cache_tool="$workspace_dir/scripts/checks/p101-facts-cache.py"
 find_built_tool() {
   repo="$1"
   name="$2"
-  marker="$repo/.last-runtime-build-dir"
+  marker="$repo/.last-build-dir"
   if [ ! -f "$marker" ]; then
-    marker="$repo/.last-build-dir"
+    marker="$repo/.last-runtime-build-dir"
   fi
   if [ -f "$marker" ]; then
     build_dir="$(cat "$marker")"
@@ -103,9 +103,9 @@ find_built_tool() {
 
 find_compile_database() {
   repo="$1"
-  marker="$repo/.last-runtime-build-dir"
+  marker="$repo/.last-build-dir"
   if [ ! -f "$marker" ]; then
-    marker="$repo/.last-build-dir"
+    marker="$repo/.last-runtime-build-dir"
   fi
   if [ -f "$marker" ]; then
     build_dir="$(cat "$marker")"

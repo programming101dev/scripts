@@ -91,6 +91,18 @@ resolve_name() {
   command -v "$v" 2>/dev/null
 }
 
+# Match the actual CMake build on macOS by passing the active SDK explicitly.
+# This also overrides stale SDK paths injected by a packaged Clang driver's
+# default configuration. Keep this as an argv array so paths containing spaces
+# remain one argument and no platform path is hard-coded.
+COMPILER_PLATFORM_ARGS=()
+if [[ "$(uname -s)" == "Darwin" ]] && command -v xcrun >/dev/null 2>&1; then
+  _p101_macos_sysroot="$(xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
+  if [[ -n "$_p101_macos_sysroot" && -d "$_p101_macos_sysroot" ]]; then
+    COMPILER_PLATFORM_ARGS=(-isysroot "$_p101_macos_sysroot")
+  fi
+fi
+
 # ---------- helpers ----------
 trim() {
   local s="${1-}"
@@ -304,21 +316,21 @@ classify_support() {
 
   if [[ "$mode" == "compile" ]]; then
     local obj="$TMP/obj.$RANDOM.o"
-    run_and_check "$cc" -x "$lang" -c -o "$obj" "${ftoks[@]}" "$src" "${extra[@]}" || rc=1
+    run_and_check "$cc" "${COMPILER_PLATFORM_ARGS[@]}" -x "$lang" -c -o "$obj" "${ftoks[@]}" "$src" "${extra[@]}" || rc=1
     if [[ $rc -eq 0 ]]; then
       local exe="$TMP/a.$RANDOM.out"
-      run_and_check "$cc" -x "$lang" "$src" -o "$exe" "${ftoks[@]}" "${extra[@]}" || rc=1
+      run_and_check "$cc" "${COMPILER_PLATFORM_ARGS[@]}" -x "$lang" "$src" -o "$exe" "${ftoks[@]}" "${extra[@]}" || rc=1
       rm -f "$exe"
     fi
     rm -f "$obj"
 
   elif [[ "$mode" == "link" ]]; then
     local exe="$TMP/a.$RANDOM.out"
-    run_and_check "$cc" -x "$lang" "$src" -o "$exe" "${ftoks[@]}" "${extra[@]}" || rc=1
+    run_and_check "$cc" "${COMPILER_PLATFORM_ARGS[@]}" -x "$lang" "$src" -o "$exe" "${ftoks[@]}" "${extra[@]}" || rc=1
     rm -f "$exe"
 
   else # syntax
-    run_and_check "$cc" -x "$lang" -fsyntax-only "${ftoks[@]}" "$src" "${extra[@]}" || rc=1
+    run_and_check "$cc" "${COMPILER_PLATFORM_ARGS[@]}" -x "$lang" -fsyntax-only "${ftoks[@]}" "$src" "${extra[@]}" || rc=1
   fi
 
   if [[ $rc -eq 0 ]]; then
@@ -347,12 +359,12 @@ runtime_smoke_ok() {
   if [[ "$lang" == "c++" ]]; then src="$d/s.cpp"; fi
   printf 'int main(void){return 0;}\n' >"$src"
   # host must run a freshly built PLAIN binary; else assume cross-compile -> keep
-  if ! ( cd "$d" && "$cc" -x "$lang" "$src" -o base >/dev/null 2>&1 && ./base >/dev/null 2>&1 ); then
+  if ! ( cd "$d" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" -x "$lang" "$src" -o base >/dev/null 2>&1 && ./base >/dev/null 2>&1 ); then
     rm -rf "$d"; return 0
   fi
   # build WITH the instrumentation set; a combined-build failure is inconclusive
   # (not proof of breakage) -> keep the compile-verified flags
-  if ! ( cd "$d" && "$cc" -x "$lang" $flags "$src" -o inst >/dev/null 2>&1 ); then
+  if ! ( cd "$d" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" -x "$lang" $flags "$src" -o inst >/dev/null 2>&1 ); then
     rm -rf "$d"; return 0
   fi
   ( cd "$d" && ./inst >/dev/null 2>&1 || true )
@@ -584,12 +596,12 @@ whole_set_check() {
   [[ -n "${all// /}" ]] || return 0
 
   # shellcheck disable=SC2086
-  if ( cd "$TMP" && "$cc" $all "$src" -o "$exe" ) >"$errlog" 2>&1; then
+  if ( cd "$TMP" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" $all "$src" -o "$exe" ) >"$errlog" 2>&1; then
     # p101 libraries are shared libraries, so also prove the accepted compile
     # flag set can produce a shared object. This catches executable-only codegen
     # flags such as -fPIE that can pass an executable probe but break .so links.
     # shellcheck disable=SC2086
-    if ( cd "$TMP" && "$cc" -shared -fPIC $all "$src" -o "$so" ) >>"$errlog" 2>&1; then
+    if ( cd "$TMP" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" -shared -fPIC $all "$src" -o "$so" ) >>"$errlog" 2>&1; then
       return 0
     fi
   fi
@@ -598,9 +610,9 @@ whole_set_check() {
   whole_set_candidate_check() {
     local candidate_flags="$1"
     # shellcheck disable=SC2086
-    ( cd "$TMP" && "$cc" $candidate_flags "$src" -o "$exe" ) >/dev/null 2>&1 || return 1
+    ( cd "$TMP" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" $candidate_flags "$src" -o "$exe" ) >/dev/null 2>&1 || return 1
     # shellcheck disable=SC2086
-    ( cd "$TMP" && "$cc" -shared -fPIC $candidate_flags "$src" -o "$so" ) >/dev/null 2>&1
+    ( cd "$TMP" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" -shared -fPIC $candidate_flags "$src" -o "$so" ) >/dev/null 2>&1
   }
 
   # phase 1 — single-drop: drop one token at a time until the set compiles.

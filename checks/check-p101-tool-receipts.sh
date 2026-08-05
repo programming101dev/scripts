@@ -43,11 +43,11 @@ last_build_tool()
 {
     repository=$1
     tool_name=$2
-    marker=$repository/.last-runtime-build-dir
+    marker=$repository/.last-build-dir
 
     if [ ! -f "$marker" ]
     then
-        marker=$repository/.last-build-dir
+        marker=$repository/.last-runtime-build-dir
     fi
     if [ -f "$marker" ]
     then

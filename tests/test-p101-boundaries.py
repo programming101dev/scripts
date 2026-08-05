@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -59,6 +60,12 @@ class BoundaryTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.BoundaryError, "does_not_prove"):
             MODULE.validate(document)
 
+    def test_missing_authority_contract_is_rejected(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["boundaries"][0]["authority_owner"] = ""
+        with self.assertRaisesRegex(MODULE.BoundaryError, "authority_owner"):
+            MODULE.validate(document)
+
     def test_missing_per_boundary_case_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)
         del document["boundaries"][0]["tests"]["resource_limit"]
@@ -83,6 +90,24 @@ class BoundaryTests(unittest.TestCase):
             MODULE.BoundaryError, "reuses another matrix case"
         ):
             MODULE.validate(document)
+
+    def test_execution_receipt_must_cover_every_owner(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            receipt = Path(directory) / "receipt.json"
+            receipt.write_text(
+                json.dumps(
+                    {
+                        "schema": "p101-repository-test-receipt-v1",
+                        "passed": True,
+                        "repositories": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                MODULE.BoundaryError, "owner test suite did not pass"
+            ):
+                MODULE.validate(copy.deepcopy(self.document), receipt)
 
 
 if __name__ == "__main__":

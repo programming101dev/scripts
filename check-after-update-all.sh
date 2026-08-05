@@ -29,6 +29,7 @@ CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 cc=""
 cxx=""
+formatter="clang-format"
 c_list_file="supported_c_compilers.txt"
 cxx_list_file="supported_cxx_compilers.txt"
 compiler_was_selected=0
@@ -48,6 +49,7 @@ fuzz_secs=5
 interactive=0
 from_node=""
 only_node=""
+changed_paths=()
 jobs=""
 cache_dir=""
 no_cache=0
@@ -65,6 +67,7 @@ the workspace. The script does not run build-repo.sh.
 Options:
   -c <cc>          Select one C compiler instead of the full compiler matrix.
   -x <cxx>         Select one C++ compiler instead of the full compiler matrix.
+  -f <formatter>   clang-format executable. Default: clang-format.
   -C <file>        C compiler list. Default: supported_c_compilers.txt.
   -X <file>        C++ compiler list. Default: supported_cxx_compilers.txt.
   -o <dir>         Artifact directory. Default: /tmp/p101-after-update-all-check-<pid>.
@@ -89,6 +92,7 @@ Options:
   --resume              Reuse only exact clean records from the receipt under -o.
   --from <node>         Resume at the named node after validating omitted prerequisites.
   --only <node>         Run only the named graph node and its dependencies.
+  --changed <path>      Run the conservative impact closure for a workspace-relative path.
   --jobs <count>        Maximum concurrent graph nodes. Default: graph policy.
   --cache-dir <dir>     Exact local evidence cache. Default: scripts/target.
   --no-cache            Execute every selected functional node.
@@ -102,6 +106,7 @@ while [ "$#" -gt 0 ]; do
     -h|--help) usage; exit 0 ;;
     -c) cc="${2:?}"; compiler_was_selected=1; shift 2 ;;
     -x) cxx="${2:?}"; compiler_was_selected=1; shift 2 ;;
+    -f) formatter="${2:?}"; shift 2 ;;
     -C) c_list_file="${2:?}"; shift 2 ;;
     -X) cxx_list_file="${2:?}"; shift 2 ;;
     -o) out_dir="${2:?}"; shift 2 ;;
@@ -121,6 +126,7 @@ while [ "$#" -gt 0 ]; do
     --resume) resume=1; shift ;;
     --from) from_node="${2:?}"; shift 2 ;;
     --only) only_node="${2:?}"; shift 2 ;;
+    --changed) changed_paths+=("${2:?}"); shift 2 ;;
     --jobs) jobs="${2:?}"; shift 2 ;;
     --cache-dir) cache_dir="${2:?}"; shift 2 ;;
     --no-cache) no_cache=1; shift ;;
@@ -204,6 +210,7 @@ run_checks() {
     --out "$run_out_dir"
     --var "cc=$run_cc"
     --var "cxx=$run_cxx"
+    --var "formatter=$formatter"
     --var "fuzz_secs=$fuzz_secs"
     --var "fault_count=$fault_count"
     --var "template_no_tests=$template_no_tests_arg"
@@ -222,6 +229,11 @@ run_checks() {
   [ "$resume" -eq 0 ] || graph_args+=(--resume)
   [ -z "$from_node" ] || graph_args+=(--from "$from_node")
   [ -z "$only_node" ] || graph_args+=(--only "$only_node")
+  if [ "${#changed_paths[@]}" -ne 0 ]; then
+    for changed_path in "${changed_paths[@]}"; do
+      graph_args+=(--changed "$changed_path")
+    done
+  fi
   [ -z "$jobs" ] || graph_args+=(--jobs "$jobs")
   [ -z "$cache_dir" ] || graph_args+=(--cache-dir "$cache_dir")
   [ "$no_cache" -eq 0 ] || graph_args+=(--no-cache)

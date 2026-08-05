@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,12 @@ REQUIRED_TESTS = {
     "stale_version",
 }
 EVIDENCE_REQUIRED = REQUIRED_TESTS - {"stale_version"}
+REQUIRED_CONTRACT_FIELDS = {
+    "authority_owner",
+    "mechanism_owner",
+    "effects",
+    "resource_budget",
+}
 
 
 class BoundaryError(ValueError):
@@ -49,7 +56,87 @@ def read_workspace_file(relative: str, context: str) -> str:
     return resolved.read_text(encoding="utf-8")
 
 
-def validate(document: dict[str, Any]) -> dict[str, int]:
+def inferred_test_entrypoint(text: str, marker: str) -> str | None:
+    """Return the nearest enclosing C test function for a marker."""
+    functions = list(
+        re.finditer(
+            r"(?m)^\s*static\s+void\s+(test_[A-Za-z0-9_]+)\s*"
+            r"\([^;]*\)\s*\{",
+            text,
+        )
+    )
+    for index, function in enumerate(functions):
+        end = (
+            functions[index + 1].start()
+            if index + 1 < len(functions)
+            else len(text)
+        )
+        if marker in text[function.start() : end]:
+            return function.group(1)
+    return None
+
+
+def require_test_wiring(
+    test_path: str,
+    marker: str,
+    text: str,
+    context: str,
+) -> None:
+    """Reject evidence that exists as dead text but is never invoked."""
+    path = WORKSPACE / test_path
+    if path.suffix in {".c", ".cc", ".cpp", ".cxx"}:
+        entrypoint = inferred_test_entrypoint(text, marker)
+        if entrypoint is None:
+            raise BoundaryError(
+                f"{context} marker is not inside a static test function"
+            )
+        if len(re.findall(rf"\b{re.escape(entrypoint)}\b", text)) < 2:
+            raise BoundaryError(
+                f"{context} test entrypoint is not invoked: {entrypoint}"
+            )
+        return
+
+    if path.suffix == ".sh":
+        owner = path.parents[1]
+        launcher = owner / "test.sh"
+        cmake = path.parent / "CMakeLists.txt"
+        if not launcher.is_file():
+            raise BoundaryError(f"{context} owner has no test.sh launcher")
+        if not cmake.is_file() or path.name not in cmake.read_text(
+            encoding="utf-8"
+        ):
+            raise BoundaryError(
+                f"{context} shell evidence is not registered with CTest"
+            )
+        return
+
+    raise BoundaryError(f"{context} has unsupported test evidence: {test_path}")
+
+
+def executed_repositories(receipt_path: Path) -> set[str]:
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise BoundaryError(f"cannot read execution receipt: {error}") from error
+    if (
+        receipt.get("schema") != "p101-repository-test-receipt-v1"
+        or receipt.get("passed") is not True
+    ):
+        raise BoundaryError("repository-test execution receipt is not clean")
+    repositories = receipt.get("repositories")
+    if not isinstance(repositories, list):
+        raise BoundaryError("repository-test execution receipt has no records")
+    return {
+        str(record.get("repository"))
+        for record in repositories
+        if isinstance(record, dict) and record.get("unit") == "PASS"
+    }
+
+
+def validate(
+    document: dict[str, Any],
+    execution_receipt: Path | None = None,
+) -> dict[str, int]:
     if document.get("schema") != "p101-boundary-register-v2":
         raise BoundaryError("unexpected boundary-register schema")
     require_text(document, "does_not_prove", "register")
@@ -72,6 +159,16 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
 
         for key in ("owner_repo", "input", "output", "refusal", "evidence"):
             require_text(raw, key, context)
+        for key in REQUIRED_CONTRACT_FIELDS:
+            require_text(raw, key, context)
+        composition = raw.get("composition")
+        if not isinstance(composition, list) or not composition:
+            raise BoundaryError(f"{context} has no composition contract")
+        if any(
+            not isinstance(value, str) or not value.strip()
+            for value in composition
+        ):
+            raise BoundaryError(f"{context} has invalid composition")
         owner_source = require_text(raw, "owner_source", context)
         owner_symbol = require_text(raw, "owner_symbol", context)
         owner_key = (owner_source, owner_symbol)
@@ -121,6 +218,22 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
                 raise BoundaryError(
                     f"{evidence_context} marker {marker!r} is absent from {test_path}"
                 )
+            require_test_wiring(
+                test_path,
+                marker,
+                test_text,
+                evidence_context,
+            )
+
+    if execution_receipt is not None:
+        executed = executed_repositories(execution_receipt)
+        for raw in boundaries:
+            owner_name = Path(raw["owner_repo"]).name
+            if owner_name not in executed:
+                raise BoundaryError(
+                    f"boundary {raw['id']} owner test suite did not pass: "
+                    f"{owner_name}"
+                )
 
     return {
         "boundaries": len(boundaries),
@@ -134,9 +247,14 @@ def main() -> int:
     parser.add_argument(
         "--register", type=Path, default=DEFAULT_REGISTER, help="boundary register JSON"
     )
+    parser.add_argument(
+        "--execution-receipt",
+        type=Path,
+        help="require each boundary owner's repository test suite to have passed",
+    )
     arguments = parser.parse_args()
     document = json.loads(arguments.register.read_text(encoding="utf-8"))
-    report = validate(document)
+    report = validate(document, arguments.execution_receipt)
     print(
         "p101 boundary register: "
         f"{report['boundaries']} boundaries, {report['owners']} unique owners, "

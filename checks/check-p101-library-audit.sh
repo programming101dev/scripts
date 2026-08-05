@@ -17,6 +17,7 @@ libraries_dir="../libraries"
 programs_dir="../programs"
 out_dir=""
 facts_cache="${P101_C_FACTS_CACHE_DIR:-}"
+jobs=2
 
 usage() {
   cat <<'USAGE'
@@ -32,6 +33,7 @@ Options:
   -o <dir>   Artifact directory. Default: /tmp/p101-library-audit-<pid>
   --facts-cache <dir>
              Publish content-addressed fact and instrumentation evidence.
+  -j <count> Run at most this many library audits concurrently. Default: 2.
   -h         Show this help.
 USAGE
 }
@@ -43,9 +45,16 @@ while [ "$#" -gt 0 ]; do
     -p) programs_dir="${2:?}"; shift 2 ;;
     -o) out_dir="${2:?}"; shift 2 ;;
     --facts-cache) facts_cache="${2:?}"; shift 2 ;;
+    -j) jobs="${2:?}"; shift 2 ;;
     *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
   esac
 done
+case "$jobs" in
+  ''|*[!0-9]*|0)
+    echo "Job count must be a positive integer." >&2
+    exit 2
+    ;;
+esac
 
 if [ -z "$out_dir" ]; then
   out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-library-audit.XXXXXX")"
@@ -133,24 +142,22 @@ printf 'p101 library audit output: %s\n' "$out_dir"
 failed=0
 found=0
 failure_logs=()
+results_dir="$out_dir/.results"
+mkdir -p "$results_dir"
 
-while IFS='|' read -r _url relative_path language; do
-  [ -n "${relative_path:-}" ] || continue
-  case "$language" in c|cxx) ;; *) continue ;; esac
-  repo="$(CDPATH='' cd "$(dirname "$relative_path")" 2>/dev/null && pwd -P)/$(basename "$relative_path")"
-  [ "$(dirname "$repo")" = "$libraries_dir" ] || continue
-  [ -d "$repo/src" ] || continue
-  name="$(basename "$repo")"
+run_library_audit() {
+  index="$1"
+  repo="$2"
+  name="$3"
   repo_out="$out_dir/$name"
   mkdir -p "$repo_out"
-  found=$((found + 1))
+  result="$results_dir/$(printf '%06d' "$index").result"
 
   compile_db="$(find_compile_database "$repo" || true)"
   if [ -z "$compile_db" ]; then
-    printf '==> %-22s FAIL (no compile database)\n' "$name"
-    printf '| %s | FAIL | FAIL | FAIL |\n' "$name" >> "$summary"
-    failed=1
-    continue
+    printf 'No compile database; build %s first.\n' "$repo" > "$repo_out/wrapper-audit.txt"
+    printf '%s|FAIL|FAIL|FAIL\n' "$name" > "$result"
+    return 0
   fi
 
   paths=("$repo/src")
@@ -172,8 +179,6 @@ while IFS='|' read -r _url relative_path language; do
 
   if ! "$wrapper_audit" "${wrapper_args[@]}" "${paths[@]}" > "$repo_out/wrapper-audit.txt" 2>&1; then
     wrapper_status="FAIL"
-    failure_logs+=("$name wrapper boundary|$repo_out/wrapper-audit.txt")
-    failed=1
   elif [ -n "$facts_cache" ]; then
     cache_args=(
       store
@@ -190,37 +195,86 @@ while IFS='|' read -r _url relative_path language; do
     done
     if ! "$facts_cache_tool" "${cache_args[@]}" >> "$repo_out/wrapper-audit.txt" 2>&1; then
       wrapper_status="FAIL"
-      failure_logs+=("$name fact cache|$repo_out/wrapper-audit.txt")
-      failed=1
     fi
   fi
 
   if ! (CDPATH='' cd "$repo" && "$error_contract" -j -i "$repo_out/source-facts.tsv" src include) > "$repo_out/error-contract.json" 2> "$repo_out/error-contract.stderr.txt"; then
     error_status="FAIL"
+  fi
+
+  if ! (CDPATH='' cd "$repo" && "$module_map" -L -i "$repo_out/source-facts.tsv" -o "$repo_out/module-map.md" src include) > "$repo_out/module-map.stdout.txt" 2> "$repo_out/module-map.stderr.txt"; then
+    module_status="FAIL"
+  fi
+  if ! (CDPATH='' cd "$repo" && "$module_map" -j -L -i "$repo_out/source-facts.tsv" -o "$repo_out/module-map.json" src include) >> "$repo_out/module-map.stdout.txt" 2>> "$repo_out/module-map.stderr.txt"; then
+    module_status="FAIL"
+  fi
+
+  printf '%s|%s|%s|%s\n' \
+    "$name" "$wrapper_status" "$error_status" "$module_status" > "$result"
+}
+
+repository_rows=()
+while IFS='|' read -r _url relative_path language; do
+  [ -n "${relative_path:-}" ] || continue
+  case "$language" in c|cxx) ;; *) continue ;; esac
+  repo="$(CDPATH='' cd "$(dirname "$relative_path")" 2>/dev/null && pwd -P)/$(basename "$relative_path")"
+  [ "$(dirname "$repo")" = "$libraries_dir" ] || continue
+  [ -d "$repo/src" ] || continue
+  repository_rows+=("$repo")
+done < repos.txt
+
+found="${#repository_rows[@]}"
+pids=()
+index=0
+for repo in "${repository_rows[@]}"; do
+  name="$(basename "$repo")"
+  run_library_audit "$index" "$repo" "$name" &
+  pids+=("$!")
+  index=$((index + 1))
+  if [ "${#pids[@]}" -ge "$jobs" ]; then
+    for pid in "${pids[@]}"; do
+      wait "$pid" || true
+    done
+    pids=()
+  fi
+done
+for pid in "${pids[@]}"; do
+  wait "$pid" || true
+done
+
+index=0
+while [ "$index" -lt "$found" ]; do
+  result="$results_dir/$(printf '%06d' "$index").result"
+  if [ ! -f "$result" ]; then
+    printf 'FAIL: library audit worker %d produced no result.\n' "$index" >&2
+    failed=1
+    index=$((index + 1))
+    continue
+  fi
+  IFS='|' read -r name wrapper_status error_status module_status < "$result"
+  repo_out="$out_dir/$name"
+  printf '==> %-22s boundary=%s error=%s module=%s\n' "$name" "$wrapper_status" "$error_status" "$module_status"
+  printf '| %s | %s | %s | %s |\n' "$name" "$wrapper_status" "$error_status" "$module_status" >> "$summary"
+  if [ "$wrapper_status" != "PASS" ]; then
+    failure_logs+=("$name wrapper boundary|$repo_out/wrapper-audit.txt")
+    failed=1
+  fi
+  if [ "$error_status" != "PASS" ]; then
     failure_logs+=("$name error contract|$repo_out/error-contract.json")
     if [ -s "$repo_out/error-contract.stderr.txt" ]; then
       failure_logs+=("$name error contract stderr|$repo_out/error-contract.stderr.txt")
     fi
     failed=1
   fi
-
-  if ! (CDPATH='' cd "$repo" && "$module_map" -L -i "$repo_out/source-facts.tsv" -o "$repo_out/module-map.md" src include) > "$repo_out/module-map.stdout.txt" 2> "$repo_out/module-map.stderr.txt"; then
-    module_status="FAIL"
+  if [ "$module_status" != "PASS" ]; then
     failure_logs+=("$name module structure|$repo_out/module-map.md")
     if [ -s "$repo_out/module-map.stderr.txt" ]; then
       failure_logs+=("$name module structure stderr|$repo_out/module-map.stderr.txt")
     fi
     failed=1
   fi
-  if ! (CDPATH='' cd "$repo" && "$module_map" -j -L -i "$repo_out/source-facts.tsv" -o "$repo_out/module-map.json" src include) >> "$repo_out/module-map.stdout.txt" 2>> "$repo_out/module-map.stderr.txt"; then
-    module_status="FAIL"
-    failure_logs+=("$name module structure JSON|$repo_out/module-map.json")
-    failed=1
-  fi
-
-  printf '==> %-22s boundary=%s error=%s module=%s\n' "$name" "$wrapper_status" "$error_status" "$module_status"
-  printf '| %s | %s | %s | %s |\n' "$name" "$wrapper_status" "$error_status" "$module_status" >> "$summary"
-done < repos.txt
+  index=$((index + 1))
+done
 
 if [ "$found" -eq 0 ]; then
   echo "No lib_* repositories found." >&2

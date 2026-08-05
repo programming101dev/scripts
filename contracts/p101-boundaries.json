@@ -11,6 +11,14 @@
       "output": "validated compile-command observation",
       "refusal": "p101_error",
       "evidence": "P101FACT records and admitted-input manifest",
+      "authority_owner": "The caller owns the admitted compile command and source selection.",
+      "mechanism_owner": "lib_c_facts owns Clang invocation, fact extraction, and bounded diagnostics.",
+      "effects": "Reads source and compile-database files and may invoke the configured Clang frontend.",
+      "resource_budget": "The caller supplies the project scope; diagnostics and subprocess completion are bounded by the library contract.",
+      "composition": [
+        "Policy tools consume typed facts and may not privately reinterpret Clang output.",
+        "Analysis failure is returned through p101_error before policy evaluation."
+      ],
       "collaborators": [
         "p101-module-map owns module-design policy",
         "p101-error-contract owns error-contract policy"
@@ -33,6 +41,14 @@
       "output": "typed p101_tool_event_record",
       "refusal": "p101_tool_event_parse_status",
       "evidence": "versioned plain-text event stream",
+      "authority_owner": "The event schema owns admission; producers do not define consumer policy.",
+      "mechanism_owner": "lib_tool_event owns record encoding, bounded parsing, and schema validation.",
+      "effects": "Parsing is memory-local; writing appends one complete record to the caller-owned stream.",
+      "resource_budget": "One record is bounded by the protocol line and field limits.",
+      "composition": [
+        "lib_env emits only schema-valid records.",
+        "Consumers accept typed records and keep analysis policy outside the parser."
+      ],
       "collaborators": [
         "lib_env emits records without owning analysis policy",
         "tools consume records without private parsers"
@@ -55,6 +71,14 @@
       "output": "next lifecycle state and policy-free lifecycle facts",
       "refusal": "p101_error",
       "evidence": "replayable lifecycle entries and findings",
+      "authority_owner": "The validated event stream owns lifecycle facts; reporting tools own findings policy.",
+      "mechanism_owner": "lib_tool_event owns policy-free lifecycle state transitions.",
+      "effects": "Allocates bounded replay state and records lifecycle entries in caller-owned storage.",
+      "resource_budget": "Capacity growth is checked for overflow and limited by admitted input size.",
+      "composition": [
+        "Only version-validated records enter the lifecycle reducer.",
+        "Reports consume lifecycle facts without duplicating resource semantics."
+      ],
       "collaborators": [
         "scripts/runtime/p101_runtime.py owns lifecycle policy",
         "scripts/runtime/p101-view.py owns presentation and teaching advice"
@@ -77,6 +101,14 @@
       "output": "typed receipt validation status and admitted outcome summary",
       "refusal": "p101_tool_receipt_validation_status or p101_error for I/O failure",
       "evidence": "semantic receipt digest plus optional admitted-artifact fingerprint",
+      "authority_owner": "The receipt schema owns admission; the producing tool owns its declared outcome.",
+      "mechanism_owner": "lib_tool_event owns bounded receipt serialization, hashing, and validation.",
+      "effects": "Reads or writes one caller-selected receipt file and fingerprints only admitted artifacts.",
+      "resource_budget": "Receipt bytes, record counts, and artifact admission are explicitly bounded.",
+      "composition": [
+        "The check graph verifies declared receipts before accepting a producer node.",
+        "Consumers may trust only fields covered by the validated receipt digest."
+      ],
       "collaborators": [
         "durable tools own their policy and outcome",
         "the governed check graph requires declared producer receipts"
@@ -99,6 +131,14 @@
       "output": "child exit status and redirected artifacts",
       "refusal": "p101_error",
       "evidence": "explicit argv and output files",
+      "authority_owner": "The caller owns argv, environment policy, and the meaning of the child result.",
+      "mechanism_owner": "lib_util owns fork/exec, descriptor plumbing, bounded capture, and wait semantics.",
+      "effects": "Creates a child process and caller-declared output files without invoking a shell.",
+      "resource_budget": "Capture limits and process completion policy are supplied in bounded execution options.",
+      "composition": [
+        "Callers construct argv arrays rather than shell command strings.",
+        "Child status and capture failures remain distinct typed outcomes."
+      ],
       "collaborators": [
         "tools construct argv but do not construct shell command strings"
       ],
@@ -120,6 +160,14 @@
       "output": "ordered observer notification",
       "refusal": "p101_error or producer completion failure",
       "evidence": "P101CALL, P101RESOURCE, and P101COMPLETE records",
+      "authority_owner": "The wrapper operation owns event meaning; the environment owns observer delivery order.",
+      "mechanism_owner": "lib_env owns sequence allocation, observer dispatch, completion, and sticky write failure.",
+      "effects": "Emits ordered records to caller-selected streams and updates synchronized observer state.",
+      "resource_budget": "Record fields are bounded by the event protocol and stream failures become sticky.",
+      "composition": [
+        "Wrapper libraries describe operations through lib_env hooks.",
+        "lib_tool_event owns representation and replay while tools own findings policy."
+      ],
       "collaborators": [
         "wrapper libraries describe operations",
         "lib_tool_event owns record representation and replay"
@@ -142,6 +190,14 @@
       "output": "typed step result and emitted effects",
       "refusal": "p101_fsm_refusal",
       "evidence": "sequence-numbered p101_fsm_step_result",
+      "authority_owner": "The bound transition table owns allowed transitions; the application owns effect execution.",
+      "mechanism_owner": "lib_fsm owns one-step validation, transition commitment, refusal, and sequencing.",
+      "effects": "Produces typed effects through the caller-selected sink but does not execute application policy.",
+      "resource_budget": "Machine and effect capacities are checked; one step executes at most one callback decision.",
+      "composition": [
+        "p101_fsm_run is a convenience loop over p101_fsm_step.",
+        "Applications interpret effects only after a completed typed transition."
+      ],
       "collaborators": [
         "applications own effect execution",
         "p101_fsm_run is only a convenience loop"

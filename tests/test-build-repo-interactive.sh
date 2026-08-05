@@ -94,6 +94,76 @@ set -e
 [[ ! -s "$P101_TEST_REFRESH_LOG" ]]
 grep -Fq 'Aborting at: build' "$sandbox/abort.stderr"
 
+# An installable sanitizer build must be followed by a distinct,
+# sanitizer-free runtime build. The strict marker remains the quality build;
+# the runtime marker and install argument identify the consumer-safe artifact.
+runtime_repo="$sandbox/runtime-repo"
+mkdir -p "$runtime_repo"
+cat > "$sandbox/scripts/repos.txt" <<EOF
+https://example.invalid/runtime.git|$runtime_repo|c
+EOF
+cat > "$runtime_repo/change-compiler.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+build_dir="build-quality"
+sanitizers="<omitted>"
+cmake_arguments=""
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    -b) build_dir="$2"; shift 2 ;;
+    -s) sanitizers="$2"; shift 2 ;;
+    --) shift; cmake_arguments="$*"; break ;;
+    -c|-f|-t|-k) shift 2 ;;
+    *) shift ;;
+  esac
+done
+printf 'build=%s sanitizers=%s cmake=%s\n' \
+  "$build_dir" "$sanitizers" "$cmake_arguments" >> configure-invocations.txt
+mkdir -p "$build_dir"
+printf '%s\n' "$build_dir" > .last-build-dir
+if [[ -z "$sanitizers" ]]; then
+  printf '%s\n' "$build_dir" > .last-runtime-build-dir
+fi
+EOF
+cat > "$runtime_repo/build.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$(cat .last-build-dir)" >> build-invocations.txt
+EOF
+cat > "$runtime_repo/install.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" > install-arguments.txt
+EOF
+chmod +x "$runtime_repo/change-compiler.sh" "$runtime_repo/build.sh" \
+  "$runtime_repo/install.sh"
+"$sandbox/scripts/workspace/build-repo.sh" \
+  -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
+  -s address > "$sandbox/runtime.stdout" 2> "$sandbox/runtime.stderr"
+[[ "$(wc -l < "$runtime_repo/configure-invocations.txt")" -eq 2 ]]
+[[ "$(wc -l < "$runtime_repo/build-invocations.txt")" -eq 2 ]]
+grep -Fq 'build=build-quality sanitizers=address' \
+  "$runtime_repo/configure-invocations.txt"
+grep -Fq 'build=build-quality-runtime sanitizers= cmake=-DP101_RUNTIME_ONLY=ON' \
+  "$runtime_repo/configure-invocations.txt"
+[[ "$(cat "$runtime_repo/.last-build-dir")" == "build-quality" ]]
+[[ "$(cat "$runtime_repo/.last-runtime-build-dir")" == "build-quality-runtime" ]]
+grep -Fxq -- '-b build-quality-runtime' "$runtime_repo/install-arguments.txt"
+
+install_repo="$sandbox/install-selection"
+mkdir -p "$install_repo/build-quality" "$install_repo/build-runtime"
+cp ./shared/library/install.sh "$install_repo/install.sh"
+chmod +x "$install_repo/install.sh"
+printf '%s\n' build-quality > "$install_repo/.last-build-dir"
+printf '%s\n' build-runtime > "$install_repo/.last-runtime-build-dir"
+(
+  cd "$install_repo"
+  ./install.sh -n -v
+) > "$sandbox/install-selection.stdout"
+grep -Eq '^Build dir[[:space:]]*: build-runtime$' \
+  "$sandbox/install-selection.stdout"
+grep -Fq 'cmake --install build-runtime' "$sandbox/install-selection.stdout"
+
 mkdir -p "$sandbox/matrix"
 cp ./update-all.sh "$sandbox/matrix/update-all.sh"
 mkdir -p "$sandbox/matrix/distribution" "$sandbox/matrix/workspace"

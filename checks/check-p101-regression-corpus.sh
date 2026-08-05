@@ -57,9 +57,9 @@ find_tool() {
 last_build_tool() {
   repo="$1"
   name="$2"
-  marker="$repo/.last-runtime-build-dir"
+  marker="$repo/.last-build-dir"
   if [ ! -f "$marker" ]; then
-    marker="$repo/.last-build-dir"
+    marker="$repo/.last-runtime-build-dir"
   fi
   if [ -f "$marker" ]; then
     IFS= read -r build_dir < "$marker"

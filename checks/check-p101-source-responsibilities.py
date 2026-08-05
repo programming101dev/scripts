@@ -112,6 +112,7 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
             )
 
     dependency_configs = 0
+    dependency_edges = 0
     for root_name in CONFIG_ROOTS:
         root = WORKSPACE / root_name
         if not root.exists():
@@ -147,6 +148,49 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
                 raise ResponsibilityError(
                     f"{config.relative_to(WORKSPACE)} uses p101_record without declaring it"
                 )
+            declared_targets = set(
+                re.findall(
+                    r"(?m)^[ \t]+(p101_[A-Za-z0-9_]+)(?:[ \t]|$)",
+                    "\n".join(
+                        match.group(1)
+                        for match in re.finditer(
+                            r"set\([^)\s]*LIBRARIES\b(.*?)\)",
+                            config_text,
+                            re.DOTALL,
+                        )
+                    ),
+                )
+            )
+            included_targets = set(
+                re.findall(
+                    r"(?m)^[ \t]*#[ \t]*include[ \t]*[<\"]"
+                    r"(p101_[A-Za-z0-9_]+)/",
+                    source_text,
+                )
+            )
+            own_targets = set(
+                re.findall(
+                    r"(?m)^[ \t]+(p101_[A-Za-z0-9_]+)(?:[ \t]|$)",
+                    re.search(
+                        r"set\(LIBRARY_TARGETS\b(.*?)\)",
+                        config_text,
+                        re.DOTALL,
+                    ).group(1)
+                    if re.search(
+                        r"set\(LIBRARY_TARGETS\b(.*?)\)",
+                        config_text,
+                        re.DOTALL,
+                    )
+                    else "",
+                )
+            )
+            undeclared = included_targets - declared_targets - own_targets
+            if undeclared:
+                raise ResponsibilityError(
+                    f"{config.relative_to(WORKSPACE)} has undeclared p101 "
+                    f"include boundaries: {sorted(undeclared)}"
+                )
+            dependency_edges += len(included_targets - own_targets)
             dependency_configs += 1
 
     return {
@@ -154,6 +198,7 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
         "facades": len(facades),
         "consumer_files": len(checked_files),
         "dependency_configs": dependency_configs,
+        "dependency_edges": dependency_edges,
     }
 
 
@@ -167,7 +212,8 @@ def main() -> int:
         "p101 source responsibilities: "
         f"{report['owners']} owners, {report['facades']} facade ratchets, "
         f"{report['consumer_files']} consumer source files, "
-        f"{report['dependency_configs']} dependency manifests"
+        f"{report['dependency_configs']} dependency manifests, "
+        f"{report['dependency_edges']} discovered include boundaries"
     )
     return 0
 

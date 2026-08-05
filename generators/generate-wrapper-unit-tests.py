@@ -88,7 +88,150 @@ OPAQUE_POINTEE_TYPES = {
     "DIR",
     "FILE",
     "iconv_t",
+    "struct p101_fsm_effect_batch",
+    "struct p101_fsm_info",
 }
+NATIVE_CALLBACKS = {
+    "int (*)(const char *, int)": "native_path_error_callback",
+    (
+        "int (*)(const char *, const struct stat *, int, struct FTW *)"
+    ): "native_nftw_callback",
+    "int (*)(const struct dirent *)": "native_dirent_filter",
+    (
+        "int (*)(const struct dirent **, const struct dirent **)"
+    ): "native_dirent_compare",
+    "int (*)(const void *, const void *)": "native_compare_callback",
+    "void (*)(int)": "native_signal_callback",
+    "void (*)(void *)": "native_pointer_callback",
+    "void (*)(void)": "native_void_callback",
+    "void *(*)(void *)": "native_thread_callback",
+}
+NATIVE_CALLBACK_DEFINITIONS = {
+    "native_path_error_callback": """
+static int native_path_error_callback(const char *path, int error_code)
+{
+    (void)path;
+    (void)error_code;
+    return 0;
+}
+""",
+    "native_nftw_callback": """
+static int native_nftw_callback(const char *path,
+                                const struct stat *status,
+                                int type,
+                                struct FTW *information)
+{
+    (void)path;
+    (void)status;
+    (void)type;
+    (void)information;
+    return 0;
+}
+""",
+    "native_dirent_filter": """
+static int native_dirent_filter(const struct dirent *entry)
+{
+    (void)entry;
+    return 1;
+}
+""",
+    "native_dirent_compare": """
+static int native_dirent_compare(const struct dirent **left,
+                                 const struct dirent **right)
+{
+    (void)left;
+    (void)right;
+    return 0;
+}
+""",
+    "native_compare_callback": """
+static int native_compare_callback(const void *left, const void *right)
+{
+    (void)left;
+    (void)right;
+    return 0;
+}
+""",
+    "native_signal_callback": """
+static void native_signal_callback(int signal_number)
+{
+    (void)signal_number;
+}
+""",
+    "native_pointer_callback": """
+static void native_pointer_callback(void *value)
+{
+    (void)value;
+}
+""",
+    "native_void_callback": """
+static void native_void_callback(void)
+{
+}
+""",
+    "native_thread_callback": """
+static void *native_thread_callback(void *value)
+{
+    return value;
+}
+""",
+    "native_condition_signal_thread": """
+struct native_condition_signal_context
+{
+    pthread_cond_t *condition;
+    pthread_mutex_t *mutex;
+};
+
+static void *native_condition_signal_thread(void *value)
+{
+    struct native_condition_signal_context *context = value;
+
+    (void)pthread_mutex_lock(context->mutex);
+    (void)pthread_cond_signal(context->condition);
+    (void)pthread_mutex_unlock(context->mutex);
+    return NULL;
+}
+""",
+}
+NATIVE_PTHREAD_OBJECTS = {
+    "pthread_attr_t": ("pthread_attr_init", "pthread_attr_destroy", ""),
+    "pthread_cond_t": ("pthread_cond_init", "pthread_cond_destroy", ", NULL"),
+    "pthread_condattr_t": (
+        "pthread_condattr_init",
+        "pthread_condattr_destroy",
+        "",
+    ),
+    "pthread_mutex_t": (
+        "pthread_mutex_init",
+        "pthread_mutex_destroy",
+        ", NULL",
+    ),
+    "pthread_mutexattr_t": (
+        "pthread_mutexattr_init",
+        "pthread_mutexattr_destroy",
+        "",
+    ),
+    "pthread_rwlock_t": (
+        "pthread_rwlock_init",
+        "pthread_rwlock_destroy",
+        ", NULL",
+    ),
+    "pthread_rwlockattr_t": (
+        "pthread_rwlockattr_init",
+        "pthread_rwlockattr_destroy",
+        "",
+    ),
+}
+
+
+def normalized_c_type(qualified: str) -> str:
+    """Normalize insignificant spelling without changing C qualifiers."""
+    without_restrict = re.sub(r"\brestrict\b", "", qualified)
+    return re.sub(r"\s+", " ", without_restrict).strip()
+
+
+def function_pointer_type(qualified: str) -> bool:
+    return re.search(r"\(\s*\*", qualified) is not None
 
 
 def records(path: Path) -> list[dict[str, str]]:
@@ -369,15 +512,12 @@ def argument_expression(parameter: dict[str, Any]) -> str:
     type_info = parameter["type"]
     qualified = type_info["qualType"]
     desugared = type_info.get("desugaredQualType", qualified)
-    name = parameter.get("name", "")
     if "p101_env" in qualified and "*" in qualified:
         return "env"
     if "p101_error" in qualified and "*" in qualified:
         return "err"
     if "va_list" in qualified:
         return "arguments"
-    if name in {"format", "fmt"} and "*" in qualified:
-        return 'L"p101"' if "wchar_t" in qualified else '"p101"'
     if "*" in qualified or "[" in qualified:
         return "NULL"
     if qualified in PORTABLE_ZERO_TYPEDEFS:
@@ -473,6 +613,42 @@ def explicit_fault_result(fragment: str) -> str | None:
     return match.group(1).strip() if match is not None else None
 
 
+def indexed_fallback_expression(
+    declaration: dict[str, Any],
+    macro_name: str,
+    arguments: list[str],
+) -> str | None:
+    """Resolve an explicitly indexed fallback from parameter types.
+
+    The macro name carries the zero-based parameter position. The source
+    spelling and parameter name are deliberately irrelevant: the generated
+    fixture comes from the selected parameter's resolved C type.
+    """
+    fallback_match = re.fullmatch(
+        r"P101_FAULT_RETURN_PARSED_ARG([0-9]+)",
+        macro_name,
+    )
+    if fallback_match is None:
+        return None
+    if len(arguments) != 4:
+        raise RuntimeError(
+            f"{declaration.get('name', '?')} uses {macro_name} "
+            "with an invalid argument count"
+        )
+    parameters = [
+        child
+        for child in declaration.get("inner", [])
+        if child.get("kind") == "ParmVarDecl"
+    ]
+    fallback_index = int(fallback_match.group(1))
+    if fallback_index >= len(parameters):
+        raise RuntimeError(
+            f"{declaration.get('name', '?')} uses {macro_name}, "
+            f"but has only {len(parameters)} parameters"
+        )
+    return argument_expression(parameters[fallback_index])
+
+
 def fault_return_contract(
     declaration: dict[str, Any],
     source: Path,
@@ -513,24 +689,15 @@ def fault_return_contract(
                     "expression": "void",
                     "error_domain": domain,
                 }
-            if macro_name == "P101_FAULT_RETURN_PARSED":
-                default_parameter = next(
-                    (
-                        parameter
-                        for parameter in declaration.get("inner", [])
-                        if parameter.get("kind") == "ParmVarDecl"
-                        and parameter.get("name") == "default_value"
-                    ),
-                    None,
-                )
-                if default_parameter is None:
-                    raise RuntimeError(
-                        f"{declaration.get('name', '?')} uses "
-                        "P101_FAULT_RETURN_PARSED without default_value"
-                    )
+            fallback_expression = indexed_fallback_expression(
+                declaration,
+                macro_name,
+                arguments,
+            )
+            if fallback_expression is not None:
                 return {
                     "kind": "value",
-                    "expression": argument_expression(default_parameter),
+                    "expression": fallback_expression,
                     "error_domain": domain,
                 }
             if arguments:
@@ -573,24 +740,15 @@ def fault_return_contract(
                         "expression": "void",
                         "error_domain": domain,
                     }
-                if macro_name == "P101_FAULT_RETURN_PARSED":
-                    default_parameter = next(
-                        (
-                            parameter
-                            for parameter in declaration.get("inner", [])
-                            if parameter.get("kind") == "ParmVarDecl"
-                            and parameter.get("name") == "default_value"
-                        ),
-                        None,
-                    )
-                    if default_parameter is None:
-                        raise RuntimeError(
-                            f"{declaration.get('name', '?')} uses "
-                            "P101_FAULT_RETURN_PARSED without default_value"
-                        )
+                fallback_expression = indexed_fallback_expression(
+                    declaration,
+                    macro_name,
+                    arguments,
+                )
+                if fallback_expression is not None:
                     return {
                         "kind": "value",
-                        "expression": argument_expression(default_parameter),
+                        "expression": fallback_expression,
                         "error_domain": domain,
                     }
                 if (
@@ -765,6 +923,304 @@ def writable_fixture(
     return declarations, name, assertions
 
 
+def native_pointer_fixture(
+    function_name: str,
+    parameter: dict[str, Any],
+    index: int,
+) -> tuple[list[str], str, list[str], list[str]] | None:
+    """Build a native-path fixture from the resolved C type.
+
+    Variable names are deliberately ignored. Opaque resource types use an
+    explicit type contract; complete object pointers use zero-initialized
+    storage. Function-specific cleanup exceptions are limited to wrappers
+    whose native operation itself consumes the typed resource.
+    """
+    qualified = parameter.get("type", {}).get("qualType", "")
+    normalized = normalized_c_type(qualified)
+    if function_pointer_type(normalized):
+        callback = NATIVE_CALLBACKS.get(normalized)
+        if callback is None:
+            raise RuntimeError(
+                f"{function_name}: native fixture has no callback contract "
+                f"for {qualified!r}"
+            )
+        return [], callback, [], []
+    if "*" not in qualified:
+        return None
+    pointer_depth = normalized.count("*")
+    fixture = f"native_argument_{index}"
+
+    if re.search(r"\bDBM\s*\*", normalized):
+        declarations = [
+            f"            char {fixture}_path[96];",
+            f"            DBM *{fixture};",
+            f"            (void)snprintf({fixture}_path, sizeof({fixture}_path), "
+            f"\"/tmp/p101-wrapper-dbm-%ld\", (long)getpid());",
+            f"            {fixture} = dbm_open({fixture}_path, "
+            "O_RDWR | O_CREAT, 0600);",
+            f"            if({fixture} == NULL)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+        ]
+        cleanup = []
+        if function_name != "p101_dbm_close":
+            cleanup.append(f"            dbm_close({fixture});")
+        cleanup.extend(
+            [
+                f"            (void)unlink({fixture}_path);",
+                f"            (void)unlink(strcat({fixture}_path, \".db\"));",
+            ]
+        )
+        return declarations, fixture, [], cleanup
+
+    if re.search(r"\bDIR\s*\*", normalized):
+        declarations = [
+            f"            DIR *{fixture} = opendir(\".\");",
+            f"            if({fixture} == NULL)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+        ]
+        cleanup = (
+            []
+            if function_name == "p101_closedir"
+            else [f"            (void)closedir({fixture});"]
+        )
+        return declarations, fixture, [], cleanup
+
+    if "regex_t" in normalized and pointer_depth == 1:
+        declarations = [f"            regex_t {fixture};"]
+        if re.search(r"\bconst\b", normalized):
+            declarations.extend(
+                [
+                    f"            if(regcomp(&{fixture}, \".*\", "
+                    "REG_EXTENDED) != 0)",
+                    "            {",
+                    "                _Exit(77);",
+                    "            }",
+                ]
+            )
+        return declarations, f"&{fixture}", [], [
+            f"            regfree(&{fixture});"
+        ]
+
+    if "struct ether_addr" in normalized and pointer_depth == 1:
+        declarations = [
+            f"            struct ether_addr *{fixture};",
+            f"            {fixture} = p101_ether_aton("
+            "native_env, native_err, \"00:00:00:00:00:00\");",
+            f"            if({fixture} == NULL)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+        ]
+        return declarations, fixture, [], []
+
+    if "struct ifaddrs" in normalized and pointer_depth == 2:
+        declarations = [f"            struct ifaddrs *{fixture} = NULL;"]
+        return declarations, f"&{fixture}", [], [
+            f"            if({fixture} != NULL)",
+            "            {",
+            f"                freeifaddrs({fixture});",
+            "            }",
+        ]
+
+    pointee = normalized.rsplit("*", 1)[0].strip()
+    bare_pointee = re.sub(
+        r"\b(?:const|volatile|_Atomic)\b",
+        "",
+        pointee,
+    ).strip()
+    if bare_pointee == "pthread_once_t" and pointer_depth == 1:
+        return [
+            f"            pthread_once_t {fixture} = PTHREAD_ONCE_INIT;"
+        ], f"&{fixture}", [], []
+
+    pthread_contract = NATIVE_PTHREAD_OBJECTS.get(bare_pointee)
+    if pthread_contract is not None and pointer_depth == 1:
+        initializer, destructor, initializer_suffix = pthread_contract
+        declarations = [f"            {bare_pointee} {fixture};"]
+        cleanup: list[str] = []
+        is_initializer = function_name == f"p101_{initializer}"
+        is_destructor = function_name == f"p101_{destructor}"
+        if not is_initializer:
+            declarations.extend(
+                [
+                    f"            if({initializer}(&{fixture}"
+                    f"{initializer_suffix}) != 0)",
+                    "            {",
+                    "                _Exit(77);",
+                    "            }",
+                ]
+            )
+        if not is_destructor:
+            cleanup.append(f"            (void){destructor}(&{fixture});")
+        return declarations, f"&{fixture}", [], cleanup
+
+    if pointer_depth >= 2:
+        pointee = normalized.rsplit("*", 1)[0].strip()
+        if pointee == "char *const":
+            return [
+                f'            char *{fixture}[2] = '
+                '{(char *)"p101", NULL};'
+            ], fixture, [], []
+        if pointee == "const char *":
+            return [
+                f'            const char *{fixture}[2] = {{"p101", NULL}};'
+            ], fixture, [], []
+        if pointee == "const wchar_t *":
+            return [
+                f'            const wchar_t *{fixture}[2] = '
+                '{L"p101", NULL};'
+            ], fixture, [], []
+        # Preserve qualifiers on the pointed-to object. Removing the inner
+        # pointer's `const` changes `char *const *` into incompatible
+        # `char **`.
+        element_type = pointee
+        return [
+            f"            {element_type} {fixture} = NULL;"
+        ], f"&{fixture}", [], []
+
+    if re.search(r"\bwchar_t\b", pointee):
+        if re.search(r"\bconst\b", pointee):
+            return None
+        return [
+            f"            wchar_t {fixture}[PATH_MAX] = {{0}};"
+        ], fixture, [], []
+    if re.search(r"\bchar\b", pointee):
+        if re.search(r"\bconst\b", pointee):
+            return None
+        return [
+            f"            char {fixture}[PATH_MAX] = {{0}};"
+        ], fixture, [], []
+    if re.sub(r"\b(?:const|volatile|_Atomic)\b", "", pointee).strip() == "void":
+        if re.search(r"\bconst\b", pointee):
+            return None
+        return [
+            f"            unsigned char {fixture}[4096] = {{0}};"
+        ], fixture, [], []
+    bare = re.sub(
+        r"\b(?:const|volatile|restrict|_Atomic)\b",
+        "",
+        pointee,
+    ).strip()
+    if bare in OPAQUE_POINTEE_TYPES:
+        return None
+    return [f"            {bare} {fixture} = {{0}};"], f"&{fixture}", [], []
+
+
+def native_contract_fixture(
+    function_name: str,
+    parameter: dict[str, Any],
+    index: int,
+) -> tuple[list[str], str, list[str], list[str]] | None:
+    """Provide semantic fixtures that a C parameter type cannot express.
+
+    C adjusts array parameters to pointers in the AST, and scalar types do
+    not retain constraints such as POSIX alignment. These contracts are
+    therefore identified by public API plus parameter position, never by a
+    source-level variable name.
+    """
+    qualified = normalized_c_type(
+        parameter.get("type", {}).get("qualType", "")
+    )
+    fixture = f"native_argument_{index}"
+
+    if function_name in {"p101_pipe", "p101_pipe2"} and index == 2:
+        return [
+            f"            int {fixture}[2] = {{-1, -1}};"
+        ], fixture, [], [
+            f"            if({fixture}[0] >= 0)",
+            "            {",
+            f"                (void)close({fixture}[0]);",
+            "            }",
+            f"            if({fixture}[1] >= 0)",
+            "            {",
+            f"                (void)close({fixture}[1]);",
+            "            }",
+        ]
+
+    if function_name == "p101_posix_memalign":
+        if index == 2:
+            return [
+                f"            void *{fixture} = NULL;"
+            ], f"&{fixture}", [], [
+                f"            free({fixture});"
+            ]
+        if index == 3:
+            return [], "sizeof(void *)", [], []
+        if index == 4:
+            return [], "16U", [], []
+
+    if function_name == "p101_setrlimit" and index == 2:
+        return [], "-1", [], []
+
+    if qualified == "ENTRY":
+        return [
+            f'            ENTRY {fixture} = '
+            '{(char *)"p101", NULL};'
+        ], fixture, [
+            "            if(hcreate(8U) == 0)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+        ], [
+            "            hdestroy();"
+        ]
+
+    if qualified == "pthread_t":
+        if function_name in {
+            "p101_pthread_cancel",
+            "p101_pthread_detach",
+            "p101_pthread_join",
+        }:
+            return [
+                f"            pthread_t {fixture};",
+                f"            if(pthread_create(&{fixture}, NULL, "
+                "native_thread_callback, NULL) != 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ], fixture, [], (
+                [f"            (void)pthread_join({fixture}, NULL);"]
+                if function_name == "p101_pthread_cancel"
+                else []
+            )
+        return [], "pthread_self()", [], []
+
+    if "sigset_t" in qualified and "*" in qualified:
+        return [
+            f"            sigset_t {fixture};",
+            f"            if(sigemptyset(&{fixture}) != 0)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+        ], f"&{fixture}", [], []
+
+    if qualified == "iconv_t":
+        declarations = [
+            f"            iconv_t {fixture};",
+            f"            {fixture} = p101_iconv_open("
+            'native_env, native_err, "UTF-8", "UTF-8");',
+            f"            if({fixture} == (iconv_t)-1)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+        ]
+        cleanup = (
+            []
+            if function_name == "p101_iconv_close"
+            else [
+                f"            (void)p101_iconv_close("
+                f"native_env, native_err, {fixture});"
+            ]
+        )
+        return declarations, fixture, [], cleanup
+
+    return None
+
+
 def fault_test(
     name: str,
     declaration: dict[str, Any],
@@ -779,10 +1235,22 @@ def fault_test(
     argument_setup = va_list_setup(declaration)
     fixture_declarations: list[str] = []
     argument_values: list[str] = []
+    native_argument_values: list[str] = []
+    native_setup: list[str] = []
+    native_fixture_declarations: list[str] = []
+    native_cleanup: list[str] = []
+    needs_native_stream = False
+    needs_native_fenv = False
+    needs_native_fexcept = False
+    needs_native_fpos = False
     fixture_assertions: list[str] = []
     for index, parameter in enumerate(parameters):
-        if parameter.get("name") in {"env", "err"}:
-            argument_values.append(argument_expression(parameter))
+        expression = argument_expression(parameter)
+        if expression in {"env", "err"}:
+            argument_values.append(expression)
+            native_argument_values.append(
+                "native_env" if expression == "env" else "native_err"
+            )
             continue
         declarations, expression, assertions = writable_fixture(
             parameter,
@@ -791,7 +1259,174 @@ def fault_test(
         fixture_declarations.extend(declarations)
         argument_values.append(expression)
         fixture_assertions.extend(assertions)
+        qualified = parameter.get("type", {}).get("qualType", "")
+        pointer_depth = qualified.count("*")
+        if (
+            fixture := native_contract_fixture(name, parameter, index)
+        ) is not None:
+            declarations, native_expression, setup, cleanup = fixture
+            native_fixture_declarations.extend(declarations)
+            native_argument_values.append(native_expression)
+            native_setup.extend(setup)
+            native_cleanup.extend(cleanup)
+        elif qualified == "locale_t":
+            native_fixture_declarations.extend(
+                [
+                    f"            locale_t native_argument_{index};",
+                    f"            native_argument_{index} = "
+                    "newlocale(LC_ALL_MASK, \"C\", (locale_t)0);",
+                    f"            if(native_argument_{index} == (locale_t)0)",
+                    "            {",
+                    "                _Exit(77);",
+                    "            }",
+                ]
+            )
+            native_argument_values.append(f"native_argument_{index}")
+            native_cleanup.append(
+                f"            freelocale(native_argument_{index});"
+            )
+        elif "FILE" in qualified and "*" in qualified:
+            native_argument_values.append("native_stream")
+            needs_native_stream = True
+        elif "fenv_t" in qualified and "*" in qualified:
+            native_argument_values.append("&native_fenv")
+            needs_native_fenv = True
+        elif "fexcept_t" in qualified and "*" in qualified:
+            native_argument_values.append("&native_fexcept")
+            needs_native_fexcept = True
+        elif "fpos_t" in qualified and "*" in qualified:
+            native_argument_values.append("&native_fpos")
+            needs_native_fpos = True
+        elif (
+            fixture := native_pointer_fixture(name, parameter, index)
+        ) is not None:
+            declarations, native_expression, setup, cleanup = fixture
+            native_fixture_declarations.extend(declarations)
+            native_argument_values.append(native_expression)
+            native_setup.extend(setup)
+            native_cleanup.extend(cleanup)
+        elif (
+            pointer_depth == 1
+            and re.search(r"\bconst\b", qualified)
+            and re.search(r"\bchar\s*\*", qualified)
+        ):
+            native_argument_values.append('"p101"')
+        elif (
+            pointer_depth == 1
+            and "wchar_t" in qualified
+            and re.search(r"\bconst\b", qualified)
+        ):
+            native_argument_values.append('L"p101"')
+        else:
+            native_argument_values.append(expression)
+            if expression.startswith("argument_"):
+                native_setup.append(
+                    f"            memset({expression}, 0, "
+                    f"sizeof({expression}));"
+                )
+    if name in {"p101_pause", "p101_sigsuspend"}:
+        native_setup.extend(
+            [
+                "            if(signal(SIGALRM, "
+                "native_signal_callback) == SIG_ERR)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+                "            (void)alarm(1U);",
+            ]
+        )
+    if name in {"p101_pthread_cond_timedwait", "p101_pthread_cond_wait"}:
+        native_setup.extend(
+            [
+                "            if(pthread_mutex_lock("
+                "&native_argument_3) != 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ]
+        )
+        native_cleanup.insert(
+            0,
+            "            (void)pthread_mutex_unlock(&native_argument_3);",
+        )
+    if name == "p101_pthread_cond_wait":
+        native_fixture_declarations.extend(
+            [
+                "            pthread_t native_condition_thread;",
+                "            struct native_condition_signal_context "
+                "native_condition_context = {",
+                "                &native_argument_2,",
+                "                &native_argument_3,",
+                "            };",
+            ]
+        )
+        native_setup.extend(
+            [
+                "            if(pthread_create(&native_condition_thread, "
+                "NULL, native_condition_signal_thread, "
+                "&native_condition_context) != 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ]
+        )
+        native_cleanup.insert(
+            0,
+            "            (void)pthread_join(native_condition_thread, NULL);",
+        )
+    if name == "p101_pthread_mutex_unlock":
+        native_setup.extend(
+            [
+                "            if(pthread_mutex_lock("
+                "&native_argument_2) != 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ]
+        )
+    if name in {"p101_pthread_mutex_lock", "p101_pthread_mutex_trylock"}:
+        native_cleanup.insert(
+            0,
+            "            (void)pthread_mutex_unlock(&native_argument_2);",
+        )
+    if name == "p101_pthread_rwlock_unlock":
+        native_setup.extend(
+            [
+                "            if(pthread_rwlock_rdlock("
+                "&native_argument_2) != 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ]
+        )
+    if name in {
+        "p101_pthread_rwlock_rdlock",
+        "p101_pthread_rwlock_tryrdlock",
+        "p101_pthread_rwlock_trywrlock",
+        "p101_pthread_rwlock_wrlock",
+    }:
+        native_cleanup.insert(
+            0,
+            "            (void)pthread_rwlock_unlock(&native_argument_2);",
+        )
+    if name == "p101_pthread_create":
+        native_cleanup.insert(
+            0,
+            "            if(native_result == 0)\n"
+            "            {\n"
+            "                (void)pthread_join(native_argument_2, NULL);\n"
+            "            }",
+        )
+    if name == "p101_pthread_key_create":
+        native_cleanup.insert(
+            0,
+            "            if(native_result == 0)\n"
+            "            {\n"
+            "                (void)pthread_key_delete(native_argument_2);\n"
+            "            }",
+        )
     arguments = ", ".join(argument_values)
+    native_arguments = ", ".join(native_argument_values)
     if failure["kind"] == "void":
         invocation = f"    {name}({arguments});"
     else:
@@ -799,6 +1434,14 @@ def fault_test(
             f"    {result_declaration(declaration, 'result')} = "
             f"{name}({arguments});\n"
             "    (void)result;"
+        )
+    if failure["kind"] == "void":
+        native_call = f"            {name}({native_arguments});"
+    else:
+        native_call = (
+            f"            {result_declaration(declaration, 'native_result')} = "
+            f"{name}({native_arguments});\n"
+            "            (void)native_result;"
         )
     fixture_setup = (
         "\n".join(fixture_declarations) + "\n"
@@ -827,6 +1470,50 @@ def fault_test(
         )
         for key in ("linux", "macos", "freebsd", "posix")
     }
+    native_declarations = ""
+    if needs_native_stream:
+        native_declarations += (
+            "            FILE *native_stream = tmpfile();\n"
+            "            if(native_stream == NULL)\n"
+            "            {\n"
+            "                _Exit(77);\n"
+            "            }\n"
+        )
+    if needs_native_fenv:
+        native_declarations += (
+            "            fenv_t native_fenv;\n"
+            "            if(fegetenv(&native_fenv) != 0)\n"
+            "            {\n"
+            "                _Exit(77);\n"
+            "            }\n"
+        )
+    if needs_native_fexcept:
+        native_declarations += (
+            "            fexcept_t native_fexcept;\n"
+            "            if(fegetexceptflag(&native_fexcept, FE_ALL_EXCEPT) != 0)\n"
+            "            {\n"
+            "                _Exit(77);\n"
+            "            }\n"
+        )
+    if needs_native_fpos:
+        native_declarations += (
+            "            fpos_t native_fpos;\n"
+            "            if(fgetpos(native_stream, &native_fpos) != 0)\n"
+            "            {\n"
+            "                _Exit(77);\n"
+            "            }\n"
+        )
+    native_setup_text = (
+        "\n".join(native_setup) + "\n" if native_setup else ""
+    )
+    native_fixture_text = (
+        "\n".join(native_fixture_declarations) + "\n"
+        if native_fixture_declarations
+        else ""
+    )
+    native_cleanup_text = (
+        "\n".join(native_cleanup) + "\n" if native_cleanup else ""
+    )
     return f"""/* P101_TEST_CASE({name}) */
 static void test_{name}(struct p101_env *env, struct p101_error *err{fault_test_signature_suffix(declaration)})
 {{
@@ -871,9 +1558,78 @@ static void test_{name}(struct p101_env *env, struct p101_error *err{fault_test_
         p101_error_reset(err);
     }}
     p101_env_set_fault_injector(env, NULL, NULL);
+    {{
+        int   native_status = 0;
+        pid_t native_pid    = fork();
+
+        EXPECT(native_pid >= 0);
+        if(native_pid == 0)
+        {{
+            struct p101_error *native_err;
+            struct p101_env   *native_env;
+
+            (void)alarm(2U);
+            (void)unsetenv("P101_CALL_LOG");
+            (void)unsetenv("P101_RESOURCE_LOG");
+            native_err = p101_error_create(false);
+            if(native_err == NULL)
+            {{
+                _Exit(77);
+            }}
+            native_env = p101_env_create(native_err, NULL);
+            if(native_env == NULL)
+            {{
+                p101_error_destroy(native_err);
+                _Exit(77);
+            }}
+{native_declarations}\
+{native_fixture_text}\
+{native_setup_text}\
+{native_call}
+{native_cleanup_text}\
+            p101_env_destroy(native_env);
+            p101_error_destroy(native_err);
+            _Exit(EXIT_SUCCESS);
+        }}
+        if(native_pid > 0)
+        {{
+            EXPECT(waitpid(native_pid, &native_status, 0) == native_pid);
+            EXPECT(WIFEXITED(native_status));
+            if(WIFEXITED(native_status))
+            {{
+                EXPECT(WEXITSTATUS(native_status) == EXIT_SUCCESS);
+            }}
+        }}
+        p101_error_reset(err);
+    }}
 {va_list_teardown(declaration)}\
 }}
 """
+
+
+def native_callback_helpers(
+    declarations: dict[str, dict[str, Any]],
+    names: list[str],
+) -> str:
+    helpers: set[str] = set()
+    for name in names:
+        for parameter in declarations[name].get("inner", []):
+            if parameter.get("kind") != "ParmVarDecl":
+                continue
+            qualified = normalized_c_type(
+                parameter.get("type", {}).get("qualType", "")
+            )
+            callback = NATIVE_CALLBACKS.get(qualified)
+            if callback is not None:
+                helpers.add(callback)
+    if {"p101_pause", "p101_sigsuspend"} & set(names):
+        helpers.add("native_signal_callback")
+    if "p101_pthread_cond_wait" in names:
+        helpers.add("native_condition_signal_thread")
+    return "\n".join(
+        NATIVE_CALLBACK_DEFINITIONS[helper].strip()
+        for helper in sorted(helpers)
+    )
 
 
 def fault_source(
@@ -906,24 +1662,36 @@ int main(void)
         f"    test_{name}(env, err{fault_test_call_suffix(declarations[name])});"
         for name in names
     )
+    native_helpers = native_callback_helpers(declarations, names)
     return f"""#include <errno.h>
 #include <arpa/inet.h>
+#include <dirent.h>
 #include <fmtmsg.h>
 #include <fnmatch.h>
+#include <ftw.h>
 {includes}
 #include <p101_env/env.h>
 #include <p101_error/error.h>
+#include <limits.h>
 #include <math.h>
+#include <pthread.h>
+#include <search.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <utmpx.h>
 
 static int failures;
 static size_t fault_resource_events;
 static FILE *outcome_stream;
+{native_helpers}
 
 #define P101_TEST_ERRNO_SENTINEL 0x5A5A
 
@@ -1382,9 +2150,15 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                 if child.get("kind") == "ParmVarDecl"
             ]
             canary_arguments = [
-                parameter.get("name", f"argument-{index}")
+                {
+                    "index": index,
+                    "type": parameter.get("type", {}).get(
+                        "desugaredQualType",
+                        parameter.get("type", {}).get("qualType", ""),
+                    ),
+                }
                 for index, parameter in enumerate(parameters)
-                if parameter.get("name") not in {"env", "err"}
+                if argument_expression(parameter) not in {"env", "err"}
                 and writable_fixture(parameter, index)[0]
             ]
             library_failures[name] = failure

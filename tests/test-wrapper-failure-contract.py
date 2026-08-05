@@ -218,6 +218,161 @@ def test_portable_result_assertions(generator) -> None:
     )
 
 
+def test_fallible_wrapper_has_isolated_native_smoke(generator) -> None:
+    declaration = {
+        "name": "p101_example",
+        "type": {"qualType": "int (const struct p101_env *, struct p101_error *)"},
+        "inner": [
+            {
+                "kind": "ParmVarDecl",
+                "name": "env",
+                "type": {"qualType": "const struct p101_env *"},
+            },
+            {
+                "kind": "ParmVarDecl",
+                "name": "err",
+                "type": {"qualType": "struct p101_error *"},
+            },
+        ],
+    }
+    source = generator.fault_test(
+        "p101_example",
+        declaration,
+        {
+            "linux": ["EIO"],
+            "macos": ["EIO"],
+            "freebsd": ["EIO"],
+            "posix": ["EIO"],
+        },
+        {
+            "kind": "value",
+            "expression": "-1",
+            "error_domain": "errno",
+        },
+    )
+    for marker in (
+        "pid_t native_pid    = fork();",
+        "(void)alarm(2U);",
+        "p101_env_set_fault_injector(env, NULL, NULL);",
+        "p101_example(env, err);",
+        "waitpid(native_pid, &native_status, 0)",
+        "WIFEXITED(native_status)",
+    ):
+        check(marker in source, f"native smoke omits {marker}")
+
+
+def test_fixture_roles_do_not_depend_on_parameter_names(generator) -> None:
+    env_parameter = {
+        "name": "renamed_context",
+        "type": {"qualType": "const struct p101_env *"},
+    }
+    error_parameter = {
+        "name": "renamed_failure",
+        "type": {"qualType": "struct p101_error *"},
+    }
+    text_parameter = {
+        "name": "renamed_text",
+        "type": {"qualType": "const char *"},
+    }
+    check(
+        generator.argument_expression(env_parameter) == "env",
+        "environment fixture depends on the parameter name",
+    )
+    check(
+        generator.argument_expression(error_parameter) == "err",
+        "error fixture depends on the parameter name",
+    )
+    check(
+        generator.argument_expression(text_parameter) == "NULL",
+        "text fault fixture depends on a format/path variable name",
+    )
+    declaration = {
+        "name": "p101_parse_renamed",
+        "inner": [
+            {"kind": "ParmVarDecl", **env_parameter},
+            {"kind": "ParmVarDecl", **error_parameter},
+            {"kind": "ParmVarDecl", **text_parameter},
+            {
+                "kind": "ParmVarDecl",
+                "name": "renamed_fallback",
+                "type": {"qualType": "int"},
+            },
+        ],
+    }
+    check(
+        generator.indexed_fallback_expression(
+            declaration,
+            "P101_FAULT_RETURN_PARSED_ARG3",
+            ["renamed_context", "int", "renamed_fallback", "expression"],
+        )
+        == "0",
+        "indexed fallback fixture depends on the parameter name",
+    )
+
+
+def test_native_fixtures_use_types_and_api_positions(generator) -> None:
+    callback = {
+        "name": "renamed_callback",
+        "type": {"qualType": "int (*)(const char *, int)"},
+    }
+    callback_fixture = generator.native_pointer_fixture(
+        "p101_glob",
+        callback,
+        4,
+    )
+    check(callback_fixture is not None, "callback fixture was not recognized")
+    check(
+        callback_fixture[1] == "native_path_error_callback",
+        "callback fixture depends on its parameter name",
+    )
+
+    vector = {
+        "name": "renamed_vector",
+        "type": {"qualType": "char *const *restrict"},
+    }
+    vector_fixture = generator.native_pointer_fixture(
+        "p101_execv",
+        vector,
+        3,
+    )
+    check(vector_fixture is not None, "argument vector fixture was not built")
+    check(
+        "char *native_argument_3[2]" in vector_fixture[0][0]
+        and vector_fixture[1] == "native_argument_3",
+        "argument vector does not preserve its resolved C type",
+    )
+
+    pipe_parameter = {
+        "name": "renamed_output",
+        "type": {"qualType": "int *"},
+    }
+    pipe_fixture = generator.native_contract_fixture(
+        "p101_pipe",
+        pipe_parameter,
+        2,
+    )
+    check(pipe_fixture is not None, "pipe output contract was not applied")
+    check(
+        "int native_argument_2[2]" in pipe_fixture[0][0],
+        "array extent contract depends on a parameter name",
+    )
+
+    alignment = {
+        "name": "renamed_scalar",
+        "type": {"qualType": "size_t"},
+    }
+    alignment_fixture = generator.native_contract_fixture(
+        "p101_posix_memalign",
+        alignment,
+        3,
+    )
+    check(
+        alignment_fixture is not None
+        and alignment_fixture[1] == "sizeof(void *)",
+        "POSIX alignment contract was not applied by API position",
+    )
+
+
 def test_checked_contract() -> None:
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
     check(
@@ -264,6 +419,17 @@ def test_checked_contract() -> None:
             record["resource_events"] == "none",
             f"{name}: resource policy drifted",
         )
+        for canary in record["runtime_canary_arguments"]:
+            check(
+                set(canary) == {"index", "type"},
+                f"{name}: canary identity must use index and resolved type",
+            )
+            check(
+                isinstance(canary["index"], int)
+                and isinstance(canary["type"], str)
+                and bool(canary["type"]),
+                f"{name}: invalid type-based canary identity",
+            )
 
 
 def test_outcome_contract() -> None:
@@ -322,6 +488,9 @@ def main() -> int:
         lambda: test_single_exit_fault_result(generator),
         lambda: test_va_list_fixture_is_started(generator),
         lambda: test_portable_result_assertions(generator),
+        lambda: test_fallible_wrapper_has_isolated_native_smoke(generator),
+        lambda: test_fixture_roles_do_not_depend_on_parameter_names(generator),
+        lambda: test_native_fixtures_use_types_and_api_positions(generator),
         test_checked_contract,
         test_outcome_contract,
     )

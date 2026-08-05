@@ -7,6 +7,10 @@
 #
 #   exe-simple         configure+build succeed (baseline pipeline:
 #                      compile -> analyze -> tidy -> cppcheck)
+#   runtime-only       consumer artifact builds without rerunning the analyzer
+#                      pipeline and rejects sanitizer-bearing configurations
+#   macos-asan-order   a sanitized executable records its compiler-matched ASan
+#                      runtime before user shared libraries
 #   missing-flags      no .flags/<compiler> cache -> configure MUST fail
 #                      unless the caller explicitly opts out
 #   no-flags           P101_NO_FLAGS suppresses probed flags when a cache exists
@@ -134,7 +138,7 @@ new_proj() {
   if [[ -n "$cxx_compiler" ]]; then
     mkdir -p "$PROJ/.flags/$(basename "$cxx_compiler")"
   fi
-  printf 'BasedOnStyle: LLVM\nIndentWidth: 4\n' > "$PROJ/.clang-format"
+  printf 'BasedOnStyle: LLVM\nIndentWidth: 4\nBreakBeforeBraces: Allman\nAllowShortFunctionsOnASingleLine: None\n' > "$PROJ/.clang-format"
 }
 
 # configure <proj> [extra cmake args...] ; rc in $RC, log in <proj>/configure.log
@@ -190,6 +194,78 @@ else
   bad "exe-simple: configure failed" "$PROJ/configure.log"
 fi
 
+# ---------- case: sanitizer-free runtime artifact ----------
+new_proj runtime-only
+write_c_config_exe "$PROJ"
+printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
+configure "$PROJ" -DP101_RUNTIME_ONLY=ON -DSANITIZER_LIST=
+if (( RC == 0 )); then
+  build "$PROJ"
+  if (( RC == 0 )) &&
+     grep -q 'P101_RUNTIME_ONLY: building installable targets' "$PROJ/configure.log" &&
+     ! grep -Eq 'clang-tidy|cppcheck|static analyzer|analyze stage' "$PROJ/build.log"; then
+    ok "runtime-only: builds primary artifact without quality-analysis targets"
+  elif (( RC == 0 )); then
+    bad "runtime-only: quality-analysis target ran in consumer build" "$PROJ/build.log"
+  else
+    bad "runtime-only: build failed" "$PROJ/build.log"
+  fi
+else
+  bad "runtime-only: configure failed" "$PROJ/configure.log"
+fi
+
+# ---------- case: macOS ASan must load before user dylibs ----------
+if [[ "$(uname -s)" == "Darwin" ]] &&
+   "$c_compiler" --version 2>/dev/null | grep -qi clang &&
+   printf 'int main(void){return 0;}\n' |
+     "$c_compiler" -x c - -fsanitize=address \
+       -o "$SANDBOX/asan-probe" >/dev/null 2>&1; then
+  new_proj macos-asan-order
+  cat > "$PROJ/config.cmake" <<'EOF'
+set(PROJECT_NAME sample)
+set(PROJECT_VERSION 1.0.0)
+set(PROJECT_DESCRIPTION "macOS ASan load-order sample")
+set(PROJECT_LANGUAGE C)
+set(STANDARD_FLAGS -std=c17 -Werror)
+set(LIBRARY_TARGETS sample_runtime)
+set(EXECUTABLE_TARGETS hello)
+set(sample_runtime_SOURCES src/runtime.c)
+set(sample_runtime_HEADERS include/runtime.h)
+set(sample_runtime_LINK_LIBRARIES "")
+set(hello_SOURCES src/main.c)
+set(hello_LINK_LIBRARIES sample_runtime)
+EOF
+  printf '#ifndef RUNTIME_H\n#define RUNTIME_H\nint runtime_value(void);\n#endif\n' \
+    > "$PROJ/include/runtime.h"
+  printf '#include "runtime.h"\nint runtime_value(void)\n{\n    return 0;\n}\n' \
+    > "$PROJ/src/runtime.c"
+  printf '#include "runtime.h"\nint main(void)\n{\n    return runtime_value();\n}\n' \
+    > "$PROJ/src/main.c"
+  printf '%s\n' '-fsanitize=address' \
+    > "$PROJ/.flags/$(basename "$c_compiler")/address_sanitizer_flags.txt"
+  configure "$PROJ" -DSANITIZER_LIST=address
+  if (( RC == 0 )); then
+    build "$PROJ"
+    asan_first_dependency="$(
+      otool -L "$PROJ/build/hello" 2>/dev/null | sed -n '2p'
+    )"
+    if (( RC == 0 )) &&
+       [[ "$asan_first_dependency" == *libclang_rt.asan_osx_dynamic.dylib* ]] &&
+       "$PROJ/build/hello" >/dev/null 2>&1; then
+      ok "macos-asan-order: compiler ASan runtime precedes user dylibs"
+    elif (( RC == 0 )); then
+      bad "macos-asan-order: ASan is not the first Mach-O dependency" \
+        "$PROJ/build.log"
+    else
+      bad "macos-asan-order: build failed" "$PROJ/build.log"
+    fi
+  else
+    bad "macos-asan-order: configure failed" "$PROJ/configure.log"
+  fi
+else
+  echo "note: macOS Clang ASan unavailable; skipping dylib load-order case."
+fi
+
 # ---------- case: missing-flags env gate ----------
 # A normal project must not silently configure without its probed flag cache.
 new_proj missing-flags
@@ -236,6 +312,27 @@ if (( RC_A == 0 && RC_B == 0 && loaded_when_unset == 1 && suppressed_when_set ==
   ok "no-flags: P101_NO_FLAGS suppresses flags, configure still succeeds"
 else
   bad "no-flags: env gate (unset-rc=$RC_A unset-loaded=$loaded_when_unset set-rc=$RC_B set-suppressed=$suppressed_when_set)" "$PROJ/configure.log"
+fi
+
+# ---------- case: requested sanitizer must exist ----------
+# An explicitly requested sanitizer must never disappear silently. The
+# bring-up escape hatch is deliberately opt-in and visibly warns.
+new_proj missing-sanitizer
+write_c_config_exe "$PROJ"
+printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
+configure "$PROJ" -DSANITIZER_LIST=p101_missing
+if (( RC != 0 )) && grep -q "Requested sanitizer 'p101_missing'" "$PROJ/configure.log"; then
+  ok "missing-sanitizer: requested unavailable sanitizer fails configure"
+else
+  bad "missing-sanitizer: requested unavailable sanitizer was silently ignored" "$PROJ/configure.log"
+fi
+
+rm -rf "$PROJ/build"
+configure "$PROJ" -DSANITIZER_LIST=p101_missing -DP101_ALLOW_MISSING_SANITIZERS=ON
+if (( RC == 0 )) && grep -q "P101_ALLOW_MISSING_SANITIZERS is ON" "$PROJ/configure.log"; then
+  ok "missing-sanitizer(opt-out): explicit bring-up flag permits configure"
+else
+  bad "missing-sanitizer(opt-out): explicit bring-up flag did not permit configure" "$PROJ/configure.log"
 fi
 
 # ---------- case: flag-cache-refresh ----------
@@ -351,6 +448,41 @@ elif (( RC != 0 )); then
   bad "out-of-tree: configure failed but not from the out-of-tree gate" "$PROJ/configure.log"
 else
   bad "out-of-tree: out-of-tree source was accepted (gate is broken)" "$PROJ/configure.log"
+fi
+
+# ---------- case: format-check ----------
+# A normal build checks formatting but must not rewrite tracked source. The
+# explicit format target owns mutation.
+if have clang-format; then
+  new_proj format-check
+  write_c_config_exe "$PROJ"
+  printf 'int main(void){return 0;}\n' > "$PROJ/src/main.c"
+  format_before="$(cksum "$PROJ/src/main.c")"
+  configure "$PROJ"
+  if (( RC == 0 )); then
+    build "$PROJ"
+    format_after="$(cksum "$PROJ/src/main.c")"
+    if (( RC != 0 )) && [[ "$format_before" == "$format_after" ]] \
+       && grep -qi 'clang-format' "$PROJ/build.log"; then
+      if cmake --build "$PROJ/build" --target sample_format_all \
+           > "$PROJ/format.log" 2>&1; then
+        build "$PROJ"
+        if (( RC == 0 )); then
+          ok "format-check: default build is check-only; explicit target formats"
+        else
+          bad "format-check: formatted source did not pass the build" "$PROJ/build.log"
+        fi
+      else
+        bad "format-check: explicit format target failed" "$PROJ/format.log"
+      fi
+    elif (( RC == 0 )); then
+      bad "format-check: unformatted source passed the default build" "$PROJ/build.log"
+    else
+      bad "format-check: build rewrote source or failed for another reason" "$PROJ/build.log"
+    fi
+  else
+    bad "format-check: configure failed" "$PROJ/configure.log"
+  fi
 fi
 
 # ---------- case: tidy-gate ----------
@@ -616,7 +748,7 @@ mkdir -p "$nested_root/libraries/lib_tool_event/include"
 mkdir -p "$nested_root/libraries/lib_unrelated/include"
 cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
 ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
-printf 'BasedOnStyle: LLVM\nIndentWidth: 4\n' > "$PROJ/.clang-format"
+printf 'BasedOnStyle: LLVM\nIndentWidth: 4\nBreakBeforeBraces: Allman\nAllowShortFunctionsOnASingleLine: None\n' > "$PROJ/.clang-format"
 cat > "$PROJ/config.cmake" <<'EOF'
 set(PROJECT_NAME nested)
 set(PROJECT_VERSION 1.0.0)

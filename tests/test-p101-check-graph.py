@@ -98,9 +98,11 @@ class CheckGraphTests(unittest.TestCase):
             [
                 "repository-lock-tests",
                 "workspace-lock",
+                "format-workspace",
                 "stack-contract-tests",
                 "stack-contract",
                 "check-graph-tests",
+                "performance-contract-tests",
                 "boundaries",
                 "boundary-tests",
             ],
@@ -122,6 +124,28 @@ class CheckGraphTests(unittest.TestCase):
             {"required": "value", "optional": ""},
         )
         self.assertEqual(command, ["tool", "value"])
+
+    def test_impact_selection_is_conservative_and_flows_downstream(self) -> None:
+        nodes = [
+            self.node("scoped", "pass"),
+            self.node("unknown", "pass"),
+            self.node("consumer", "pass", dependencies=["scoped"]),
+        ]
+        nodes[0]["inputs"] = ["libraries/lib_env/**"]
+        nodes[0]["inputs_complete"] = True
+        nodes[2]["inputs"] = ["programs/p101-observe/**"]
+        nodes[2]["inputs_complete"] = True
+        impacted = MODULE.impact_closure(
+            ["libraries/lib_env/src/env.c"],
+            nodes,
+        )
+        self.assertEqual(impacted, {"scoped", "unknown", "consumer"})
+
+    def test_invalid_input_scope_is_rejected(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["nodes"][0]["inputs"] = ["../outside"]
+        with self.assertRaisesRegex(MODULE.GraphError, "invalid inputs"):
+            MODULE.validate(document)
 
     @staticmethod
     def node(
@@ -200,6 +224,35 @@ class CheckGraphTests(unittest.TestCase):
             profile = (output / "profile.md").read_text(encoding="utf-8")
             self.assertIn("## Invocation order", profile)
             self.assertIn("## Slowest checks", profile)
+
+    def test_interactive_eof_stops_cleanly(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            document = {
+                "schema": "p101-check-graph-v1",
+                "does_not_prove": "test receipt only",
+            }
+            nodes = [
+                {
+                    "id": "failure",
+                    "title": "failure",
+                    "required": True,
+                    "command": [sys.executable, "-c", "raise SystemExit(7)"],
+                    "guarantee": "EOF is handled",
+                }
+            ]
+            with patch("builtins.input", side_effect=EOFError):
+                status = MODULE.run_graph(
+                    document,
+                    nodes,
+                    output,
+                    {},
+                    True,
+                )
+            self.assertEqual(status, 1)
+            receipt = json.loads((output / "receipt.json").read_text())
+            self.assertEqual(receipt["records"][0]["outcome"], "tool-error")
+            self.assertEqual(receipt["records"][0]["attempts"], 1)
 
     def test_declared_receipt_is_verified_and_recorded(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

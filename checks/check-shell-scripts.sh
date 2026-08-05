@@ -5,10 +5,29 @@ CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 case " $* " in
   *" --help "*|*" -h "*)
-    printf '%s\n' "check-shell-scripts.sh — workspace shell syntax and ShellCheck gate."
+    printf '%s\n' "check-shell-scripts.sh — workspace shell syntax and ShellCheck gate." \
+      "Usage: ./check-shell-scripts.sh [-j jobs]"
     exit 0 ;;
 esac
-[[ "$#" -eq 0 ]] || { echo "Usage: ./check-shell-scripts.sh" >&2; exit 2; }
+jobs=4
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    -j)
+      jobs="${2:?missing job count}"
+      shift 2
+      ;;
+    *)
+      echo "Usage: ./check-shell-scripts.sh [-j jobs]" >&2
+      exit 2
+      ;;
+  esac
+done
+case "$jobs" in
+  ''|*[!0-9]*|0)
+    echo "FAIL: shell check job count must be a positive integer." >&2
+    exit 2
+    ;;
+esac
 command -v shellcheck >/dev/null 2>&1 || {
   echo "FAIL: shellcheck is required for the shell-script gate." >&2
   exit 2
@@ -117,18 +136,16 @@ if [[ "$discovery_failures" -gt 0 ]]; then
 fi
 [[ ${#scripts[@]} -gt 0 ]] || { echo "FAIL: no shell scripts found." >&2; exit 1; }
 
-syntax_failures=0
 shellcheck_scripts=()
+bash_scripts=()
+sh_scripts=()
 for script in "${scripts[@]}"; do
-  first_line="$(head -n 1 "$script" 2>/dev/null || true)"
+  first_line=""
+  IFS= read -r first_line < "$script" || true
   case "$first_line" in
-    *bash*) shell_bin="$(command -v bash)" ;;
-    *) shell_bin="$(command -v sh)" ;;
+    *bash*) bash_scripts+=("$script") ;;
+    *) sh_scripts+=("$script") ;;
   esac
-  if ! "$shell_bin" -n "$script"; then
-    echo "FAIL: syntax: $script" >&2
-    syntax_failures=$((syntax_failures + 1))
-  fi
   # ip-prompt.sh is deliberately source-compatible with both shells. Bash is
   # its declared interpreter; when Zsh is installed, validate that side of the
   # contract too.
@@ -140,13 +157,24 @@ for script in "${scripts[@]}"; do
   fi
   shellcheck_scripts+=("$script")
 done
-if [[ "$syntax_failures" -gt 0 ]]; then
-  echo "Shell syntax check failed: $syntax_failures file(s)." >&2
+
+# Each shell accepts multiple input files. Checking each file in a fresh
+# interpreter made this gate spend most of its time starting ~1,000 processes.
+syntax_status=0
+if [[ "${#bash_scripts[@]}" -gt 0 ]]; then
+  bash -n "${bash_scripts[@]}" || syntax_status=1
+fi
+if [[ "${#sh_scripts[@]}" -gt 0 ]]; then
+  sh -n "${sh_scripts[@]}" || syntax_status=1
+fi
+if [[ "$syntax_status" -ne 0 ]]; then
+  echo "Shell syntax check failed." >&2
   exit 1
 fi
 
 # Warning severity also catches ignored failures, unsafe globbing, masked
 # statuses, and suspicious control flow. Intentional exceptions belong next
 # to the relevant line, not in a workspace-wide ignore list.
-shellcheck --severity=warning "${shellcheck_scripts[@]}"
+printf '%s\0' "${shellcheck_scripts[@]}" |
+  xargs -0 -n 128 -P "$jobs" shellcheck --severity=warning
 printf 'PASS: %d shell scripts passed syntax and ShellCheck warning checks.\n' "${#scripts[@]}"

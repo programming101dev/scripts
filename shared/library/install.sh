@@ -4,6 +4,7 @@ set -euo pipefail
 
 # ----------------- defaults -----------------
 build_dir=""                 # empty means auto
+runtime_build_file=".last-runtime-build-dir"
 last_build_file=".last-build-dir"
 
 destdir=""
@@ -15,7 +16,8 @@ verbose=false
 usage() {
   cat <<USAGE
 Usage: $0 [-b <build>] [-D <DESTDIR>] [-p <prefix>] [-S] [-n] [-v]
-  -b <build>    Build directory to install from (default: .last-build-dir if present, else build)
+  -b <build>    Build directory to install from (default: .last-runtime-build-dir,
+                then .last-build-dir, then build)
   -D <DESTDIR>  Set DESTDIR for staged installs (e.g., packaging)
   -p <prefix>   Override CMAKE_INSTALL_PREFIX at install time
   -S            Skip cache updates (ldconfig / update_dyld_shared_cache)
@@ -48,16 +50,19 @@ done
 # ----------------- pick build dir -----------------
 # Priority:
 #  1) -b <dir>
-#  2) .last-build-dir (as written by change-compiler.sh)
-#  3) "build"
+#  2) .last-runtime-build-dir (sanitizer-free consumer artifact)
+#  3) .last-build-dir (legacy/manual fallback)
+#  4) "build"
 if [[ -z "${build_dir}" ]]; then
-  if [[ -f "$last_build_file" ]]; then
+  for marker in "$runtime_build_file" "$last_build_file"; do
+    [[ -f "$marker" ]] || continue
     # Read first non-empty line (avoid trailing whitespace issues).
-    build_dir_candidate="$(awk 'NF{print; exit}' "$last_build_file" 2>/dev/null || true)"
+    build_dir_candidate="$(awk 'NF{print; exit}' "$marker" 2>/dev/null || true)"
     if [[ -n "${build_dir_candidate:-}" ]]; then
       build_dir="$build_dir_candidate"
+      break
     fi
-  fi
+  done
 fi
 build_dir="${build_dir:-build}"
 
@@ -66,7 +71,6 @@ build_dir="${build_dir:-build}"
 
 # Compose cmake --install command
 cmake_cmd=(cmake --install "$build_dir")
-[[ -n "$destdir" ]] && cmake_cmd+=(--component default) # keep component explicit if you use them
 [[ -n "$destdir" ]] && export DESTDIR="$destdir"
 [[ -n "$prefix"  ]] && cmake_cmd+=(--prefix "$prefix")
 

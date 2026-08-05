@@ -12,6 +12,7 @@ clang_tidy="${P101_GITHUB_CLANG_TIDY:-}"
 cppcheck="${P101_GITHUB_CPPCHECK:-}"
 out_dir=""
 clean_builds=1
+preflight_toolchain=""
 
 usage() {
   cat <<'EOF'
@@ -30,6 +31,8 @@ Options:
                Preserve existing generated build trees. By default they are
                removed before the strict rebuild to control disk usage and
                prevent stale compiler artifacts from influencing the receipt.
+               If macOS needs a repaired compiler driver, build trees that
+               record that preflight-only driver are also removed on exit.
   -h, --help  Show this help.
 
 Environment overrides:
@@ -157,7 +160,7 @@ repair_macos_clang_driver()
   local original_cc="$cc"
   local original_cxx="$cxx"
   local sdk
-  local toolchain="$out_dir/toolchain"
+  local toolchain="$PWD/.compiler-links/github-preflight-macos"
 
   [[ "$(uname -s)" == "Darwin" ]] || return 1
   "$original_cc" --version 2>/dev/null | head -n 1 | grep -qi clang || return 1
@@ -175,46 +178,77 @@ repair_macos_clang_driver()
   mkdir -p "$toolchain"
   rm -f "$toolchain/clang" "$toolchain/clang++" \
     "$toolchain/clang-extdef-mapping"
-  cat > "$toolchain/clang" <<'EOF'
-#!/usr/bin/env bash
-exec "${P101_PREFLIGHT_REAL_CC:?}" --no-default-config \
-  -isysroot "${P101_PREFLIGHT_MACOS_SDK:?}" "$@"
-EOF
-  cat > "$toolchain/clang++" <<'EOF'
-#!/usr/bin/env bash
-exec "${P101_PREFLIGHT_REAL_CXX:?}" --no-default-config \
-  -isysroot "${P101_PREFLIGHT_MACOS_SDK:?}" "$@"
-EOF
+  {
+    printf '#!/usr/bin/env bash\nexec '
+    printf '%q ' "$original_cc" --no-default-config -isysroot "$sdk"
+    printf '"$@"\n'
+  } > "$toolchain/clang"
+  {
+    printf '#!/usr/bin/env bash\nexec '
+    printf '%q ' "$original_cxx" --no-default-config -isysroot "$sdk"
+    printf '"$@"\n'
+  } > "$toolchain/clang++"
   chmod +x "$toolchain/clang" "$toolchain/clang++"
   if [[ -n "$llvm_prefix" && -x "$llvm_prefix/bin/clang-extdef-mapping" ]]; then
-    cat > "$toolchain/clang-extdef-mapping" <<'EOF'
-#!/usr/bin/env bash
+    {
+      printf '#!/usr/bin/env bash\n'
+      printf 'real_extdef=%q\n' "$llvm_prefix/bin/clang-extdef-mapping"
+      printf 'sdk=%q\n' "$sdk"
+      cat <<'EOF'
 arguments=()
 inserted=0
 for argument in "$@"; do
   arguments+=("$argument")
   if [[ "$argument" == "--" ]]; then
-    arguments+=(--no-default-config -isysroot "${P101_PREFLIGHT_MACOS_SDK:?}")
+    arguments+=(--no-default-config -isysroot "$sdk")
     inserted=1
   fi
 done
 if [[ "$inserted" -eq 0 ]]; then
-  arguments+=(-- --no-default-config -isysroot "${P101_PREFLIGHT_MACOS_SDK:?}")
+  arguments+=(-- --no-default-config -isysroot "$sdk")
 fi
-exec "${P101_PREFLIGHT_REAL_EXTDEF:?}" "${arguments[@]}"
+exec "$real_extdef" "${arguments[@]}"
 EOF
+    } > "$toolchain/clang-extdef-mapping"
     chmod +x "$toolchain/clang-extdef-mapping"
-    export P101_PREFLIGHT_REAL_EXTDEF="$llvm_prefix/bin/clang-extdef-mapping"
   fi
 
-  export P101_PREFLIGHT_REAL_CC="$original_cc"
-  export P101_PREFLIGHT_REAL_CXX="$original_cxx"
-  export P101_PREFLIGHT_MACOS_SDK="$sdk"
   cc="$toolchain/clang"
   cxx="$toolchain/clang++"
+  preflight_toolchain="$toolchain"
   printf 'Warning: compiler default configuration is unusable; using %s with the valid SDK %s.\n' \
     "$original_cc" "$sdk" >&2
 }
+
+cleanup_preflight_toolchain_builds()
+{
+  local _repository_url
+  local repository_path
+  local _repository_kind
+  local build_tree
+
+  [[ -n "$preflight_toolchain" ]] || return 0
+  while IFS='|' read -r _repository_url repository_path _repository_kind; do
+    [[ -n "$repository_path" && "$_repository_url" != \#* ]] || continue
+    [[ -d "$repository_path/.git" ]] || continue
+    while IFS= read -r -d '' build_tree; do
+      [[ -f "$build_tree/CMakeCache.txt" ]] || continue
+      grep -Fq "$preflight_toolchain/" "$build_tree/CMakeCache.txt" || continue
+      if git -C "$repository_path" check-ignore -q -- \
+           "${build_tree#"$repository_path"/}"; then
+        rm -rf -- "$build_tree"
+      else
+        printf 'Warning: retained non-ignored preflight build tree: %s\n' \
+          "$build_tree" >&2
+      fi
+    done < <(
+      find "$repository_path" -type d \
+        \( -name build -o -name 'build-*' \) -prune -print0
+    )
+  done < repos.txt
+}
+
+trap 'cleanup_preflight_toolchain_builds || true' EXIT
 
 if ! compiler_smoke "$cc" c; then
   printf 'Compiler smoke failed for %s:\n' "$cc" >&2

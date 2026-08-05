@@ -238,9 +238,9 @@ def snapshot_capture(capture_dir: Path) -> dict[str, Fingerprint]:
 
 
 def last_build_candidate(repo: Path, executable: str) -> list[Path]:
-    marker = repo / ".last-runtime-build-dir"
+    marker = repo / ".last-build-dir"
     if not marker.is_file():
-        marker = repo / ".last-build-dir"
+        marker = repo / ".last-runtime-build-dir"
     if not marker.is_file():
         return []
     build_text = marker.read_text(encoding="utf-8").strip()

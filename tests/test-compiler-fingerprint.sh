@@ -17,6 +17,7 @@ trap 'rm -rf -- "${sandbox}"' EXIT
 compiler="${sandbox}/cc"
 version="${sandbox}/version"
 target="${sandbox}/target"
+host_command="${sandbox}/uname"
 fingerprint="${sandbox}/fingerprint"
 
 printf '%s\n' 'p101 compiler 1.0' > "${version}"
@@ -31,9 +32,19 @@ case "${1:-}" in
 esac
 P101_COMPILER
 chmod +x "${compiler}"
+cat > "${host_command}" <<'P101_UNAME'
+#!/usr/bin/env bash
+set -euo pipefail
+cat "${P101_TEST_HOST}"
+P101_UNAME
+chmod +x "${host_command}"
 
 export P101_TEST_VERSION="${version}"
 export P101_TEST_TARGET="${target}"
+host="${sandbox}/host"
+printf '%s\n' 'TestOS 1.0 test-arch' > "${host}"
+export P101_TEST_HOST="${host}"
+export PATH="${sandbox}:${PATH}"
 
 ./workspace/compiler-fingerprint.sh write "${compiler}" "${fingerprint}"
 ./workspace/compiler-fingerprint.sh check "${compiler}" "${fingerprint}"
@@ -50,6 +61,15 @@ fi
 printf '%s\n' 'test-platform-v2' > "${target}"
 if ./workspace/compiler-fingerprint.sh check "${compiler}" "${fingerprint}"; then
     printf 'FAIL: compiler target drift reused the old fingerprint.\n' >&2
+    exit 1
+fi
+
+./workspace/compiler-fingerprint.sh write "${compiler}" "${fingerprint}"
+./workspace/compiler-fingerprint.sh check "${compiler}" "${fingerprint}"
+
+printf '%s\n' 'TestOS 2.0 test-arch' > "${host}"
+if ./workspace/compiler-fingerprint.sh check "${compiler}" "${fingerprint}"; then
+    printf 'FAIL: host kernel drift reused the old fingerprint.\n' >&2
     exit 1
 fi
 

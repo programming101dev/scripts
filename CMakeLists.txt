@@ -23,10 +23,46 @@ if (NOT PROJECT_LANGUAGE MATCHES "^(C|CXX)$")
     message(FATAL_ERROR "PROJECT_LANGUAGE must be 'C' or 'CXX'")
 endif ()
 
+# Some non-system Clang packages ship a default driver configuration whose
+# SDK path no longer exists after an OS/Xcode update. Select the active SDK
+# before project() so CMake passes an explicit, valid sysroot during compiler
+# identification and every subsequent compile/link operation.
+set(_P101_SELECT_HOST_MACOS_SYSROOT FALSE)
+if (CMAKE_HOST_APPLE)
+    if (NOT CMAKE_OSX_SYSROOT)
+        set(_P101_SELECT_HOST_MACOS_SYSROOT TRUE)
+    elseif (IS_ABSOLUTE "${CMAKE_OSX_SYSROOT}"
+            AND NOT IS_DIRECTORY "${CMAKE_OSX_SYSROOT}")
+        set(_P101_SELECT_HOST_MACOS_SYSROOT TRUE)
+    endif ()
+endif ()
+if (_P101_SELECT_HOST_MACOS_SYSROOT)
+    execute_process(
+            COMMAND xcrun --sdk macosx --show-sdk-path
+            OUTPUT_VARIABLE _P101_HOST_MACOS_SYSROOT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET)
+    if (IS_DIRECTORY "${_P101_HOST_MACOS_SYSROOT}")
+        set(CMAKE_OSX_SYSROOT "${_P101_HOST_MACOS_SYSROOT}" CACHE PATH
+                "Active macOS SDK selected by xcrun" FORCE)
+    endif ()
+endif ()
+
 project(${PROJECT_NAME}
         VERSION ${PROJECT_VERSION}
         DESCRIPTION "${PROJECT_DESCRIPTION}"
         LANGUAGES ${PROJECT_LANGUAGE})
+
+# A repository quality build deliberately runs every configured analyzer and
+# may link compiler-private sanitizer runtimes.  Installed p101 libraries are a
+# consumer boundary: they must not force one compiler's sanitizer runtime into
+# a program built by another compiler.  The workspace build driver therefore
+# creates a second, sanitizer-free build with this option enabled and installs
+# from it.  Keep the primary targets and install rules, but omit the expensive
+# quality pipeline from that runtime build.
+option(P101_RUNTIME_ONLY
+        "Build installable runtime artifacts without the analyzer pipeline"
+        OFF)
 
 # config.cmake is read before project() so it can define PROJECT_NAME and
 # PROJECT_LANGUAGE. Platform and compiler conditionals such as
@@ -107,6 +143,8 @@ find_program(PYTHON3_EXECUTABLE NAMES python3 python REQUIRED DOC "Python execut
 
 # Sanitizers requested (comma-separated names) -> read matching *_sanitizer_flags.txt
 set(SANITIZER_LIST "" CACHE STRING "Comma-separated sanitizers to try to enable")
+set(P101_ALLOW_MISSING_SANITIZERS OFF CACHE BOOL
+        "Permit explicitly requested sanitizers to be unavailable (bring-up only)")
 
 # Extra public include/link roots
 set(P101_PUBLIC_INCLUDE_DIRS "/usr/local/include" CACHE STRING "Extra public include dirs")
@@ -216,8 +254,8 @@ function(_p101_filter_existing_dirs OUT)
 endfunction()
 
 # macOS SDK path
-set(MAC_SYSROOT "")
-if (APPLE)
+set(MAC_SYSROOT "${CMAKE_OSX_SYSROOT}")
+if (APPLE AND NOT MAC_SYSROOT)
     execute_process(COMMAND xcrun --show-sdk-path
             OUTPUT_VARIABLE MAC_SYSROOT
             OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -506,8 +544,24 @@ if (_SAN_OK AND _FLAG_DIRS_USED)
         if (_sanflags)
             list(APPEND _P101_SANITIZER_COMPILE_OPTS ${_sanflags})
             list(APPEND _P101_SANITIZER_LINK_OPTS ${_sanflags})
+        elseif (P101_ALLOW_MISSING_SANITIZERS)
+            message(WARNING
+                    "Requested sanitizer '${_san}' has no usable probed flags in "
+                    "${_FLAG_DIRS_USED}; P101_ALLOW_MISSING_SANITIZERS is ON, "
+                    "so this sanitizer will not be enabled.")
+        else ()
+            message(FATAL_ERROR
+                    "Requested sanitizer '${_san}' has no usable probed flags in "
+                    "${_FLAG_DIRS_USED}. Re-probe the flag cache with update.sh, "
+                    "remove the unsupported sanitizer from SANITIZER_LIST, or set "
+                    "P101_ALLOW_MISSING_SANITIZERS=ON only for an explicit "
+                    "bring-up build.")
         endif ()
     endforeach ()
+elseif (_REQ_SAN_LIST AND NOT _SAN_OK)
+    message(STATUS
+            "Requested sanitizers are disabled by the supported platform policy "
+            "for ${_COMPILER_ID} on this host.")
 endif ()
 
 # The same -fsanitize= flag can legitimately appear in two sanitizer files
@@ -776,6 +830,33 @@ ${_P101_SAN_EXTERN}const char *__tsan_default_options(void)  { return \"halt_on_
     message(STATUS "Sanitizer runtime defaults will be linked into executables.")
 endif ()
 
+# On macOS, Clang's driver may record its dynamic ASan runtime after user
+# shared libraries in the Mach-O load-command order. ASan then aborts before
+# main because its interceptors were initialized too late. Resolve the runtime
+# belonging to this exact compiler and link it explicitly before application
+# libraries; the driver's later implicit copy is coalesced by the linker.
+set(_ASAN_RPATH "")
+set(_P101_ASAN_RUNTIME "")
+if (APPLE AND _COMPILER_ID MATCHES "Clang")
+    execute_process(
+            COMMAND ${_COMPILER} --print-resource-dir
+            OUTPUT_VARIABLE _CLANG_RESOURCE_DIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET)
+    set(_ASAN_RPATH "${_CLANG_RESOURCE_DIR}/lib/darwin")
+    list(FIND _P101_SANITIZER_COMPILE_OPTS "-fsanitize=address"
+            _P101_ASAN_FLAG_INDEX)
+    if (NOT _P101_ASAN_FLAG_INDEX EQUAL -1)
+        set(_P101_ASAN_RUNTIME
+                "${_ASAN_RPATH}/libclang_rt.asan_osx_dynamic.dylib")
+        if (NOT EXISTS "${_P101_ASAN_RUNTIME}")
+            message(FATAL_ERROR
+                    "AddressSanitizer is active, but its compiler-matched runtime "
+                    "does not exist: ${_P101_ASAN_RUNTIME}")
+        endif ()
+    endif ()
+endif ()
+
 # Libraries
 foreach (_lib IN LISTS LIBRARY_TARGETS)
     if (NOT ${_lib}_SOURCES)
@@ -854,6 +935,10 @@ foreach (_exe IN LISTS EXECUTABLE_TARGETS)
         target_sources(${_exe} PRIVATE ${_P101_SAN_OBJ})
     endif ()
 
+    if (_P101_ASAN_RUNTIME)
+        target_link_libraries(${_exe} PRIVATE "${_P101_ASAN_RUNTIME}")
+    endif ()
+
     if (${_exe}_LINK_LIBRARIES)
         message(STATUS "[link] ${_exe} tokens from config.cmake: ${${_exe}_LINK_LIBRARIES}")
         _p101_resolve_link_items(_RESOLVED_LIBS ${${_exe}_LINK_LIBRARIES})
@@ -873,15 +958,7 @@ list(REMOVE_DUPLICATES _ALL_SOURCES_FOR_FORMAT)
 list(REMOVE_DUPLICATES _ALL_HEADERS_FOR_INSTALL)
 
 if(APPLE AND _COMPILER_ID MATCHES "Clang")
-    execute_process(
-            COMMAND ${_COMPILER} --print-resource-dir
-            OUTPUT_VARIABLE _CLANG_RESOURCE_DIR
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-
-    set(_ASAN_RPATH "${_CLANG_RESOURCE_DIR}/lib/darwin")
-
-    if(IS_DIRECTORY "${_ASAN_RPATH}")
+    if(_P101_ASAN_RUNTIME AND IS_DIRECTORY "${_ASAN_RPATH}")
         foreach(_tgt IN LISTS LIBRARY_TARGETS EXECUTABLE_TARGETS)
             # APPEND: the targets already inherited /usr/local/lib etc. from
             # CMAKE_BUILD_RPATH/CMAKE_INSTALL_RPATH — replacing those would
@@ -890,16 +967,32 @@ if(APPLE AND _COMPILER_ID MATCHES "Clang")
             set_property(TARGET ${_tgt} APPEND PROPERTY INSTALL_RPATH "${_ASAN_RPATH}")
         endforeach()
         message(STATUS "ASan rpath added: ${_ASAN_RPATH}")
-    else()
+    elseif(_P101_ASAN_RUNTIME)
         message(STATUS "ASan rpath dir not found: ${_ASAN_RPATH}")
     endif()
 endif()
 
+# Runtime-only configurations intentionally stop after defining the primary
+# targets and their installation/receipt rules.  This keeps installation safe
+# without paying for the strict analyzer pipeline twice.
+if (P101_RUNTIME_ONLY)
+    if (_P101_SANITIZER_COMPILE_OPTS OR _P101_SANITIZER_LINK_OPTS)
+        message(FATAL_ERROR
+                "P101_RUNTIME_ONLY requires a sanitizer-free configuration.")
+    endif ()
+    message(STATUS
+            "P101_RUNTIME_ONLY: building installable targets without quality-analysis targets.")
+    include("${P101_CMAKE_DIR}/P101Install.cmake")
+    include("${P101_CMAKE_DIR}/P101Summary.cmake")
+    return()
+endif ()
+
 # =========================
-# clang-format (format-before-compile)  [INTENTIONALLY KEPT]
+# clang-format (check-before-compile; mutation is explicit)
 # =========================
 if (CLANG_FORMAT_NAME AND _ALL_SOURCES_FOR_FORMAT)
-    set(_FORMAT_STAMPS)
+    set(_FORMAT_CHECK_STAMPS)
+    set(_P101_FORMAT_FILES)
     foreach (_abs IN LISTS _ALL_SOURCES_FOR_FORMAT _ALL_HEADERS_FOR_INSTALL)
         if (NOT _abs)
             continue()
@@ -915,24 +1008,29 @@ if (CLANG_FORMAT_NAME AND _ALL_SOURCES_FOR_FORMAT)
         endif ()
         file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_abs}")
         get_filename_component(_rel_dir "${_rel}" DIRECTORY)
-        set(_stamp "${CMAKE_BINARY_DIR}/.format/${_rel}.stamp")
-        # Intentional: -i REWRITES the source in place (auto-format on every
-        # build), not a --dry-run check. Requires a writable source tree.
+        set(_stamp "${CMAKE_BINARY_DIR}/.format-check/${_rel}.stamp")
         add_custom_command(
                 OUTPUT "${_stamp}"
-                COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/.format/${_rel_dir}"
-                COMMAND ${CMAKE_COMMAND} -E echo "${ICON} running: ${CLANG_FORMAT_NAME} -i -style=file ${_abs}"
-                COMMAND "${CLANG_FORMAT_NAME}" -i -style=file "${_abs}"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/.format-check/${_rel_dir}"
+                COMMAND ${CMAKE_COMMAND} -E echo "${ICON} checking: ${CLANG_FORMAT_NAME} --dry-run --Werror -style=file ${_abs}"
+                COMMAND "${CLANG_FORMAT_NAME}" --dry-run --Werror -style=file "${_abs}"
                 COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
                 DEPENDS "${_abs}"
                 VERBATIM
         )
-        list(APPEND _FORMAT_STAMPS "${_stamp}")
+        list(APPEND _FORMAT_CHECK_STAMPS "${_stamp}")
+        list(APPEND _P101_FORMAT_FILES "${_abs}")
     endforeach ()
-    if (_FORMAT_STAMPS)
-        add_custom_target(${PROJECT_NAME}_format_all DEPENDS ${_FORMAT_STAMPS})
+    if (_FORMAT_CHECK_STAMPS)
+        add_custom_target(${PROJECT_NAME}_format_check_all
+                DEPENDS ${_FORMAT_CHECK_STAMPS})
+        add_custom_target(${PROJECT_NAME}_format_all
+                COMMAND ${CMAKE_COMMAND} -E echo
+                "${ICON} formatting tracked project sources with ${CLANG_FORMAT_NAME}"
+                COMMAND "${CLANG_FORMAT_NAME}" -i -style=file ${_P101_FORMAT_FILES}
+                VERBATIM)
         foreach (_tgt IN LISTS LIBRARY_TARGETS EXECUTABLE_TARGETS)
-            add_dependencies(${_tgt} ${PROJECT_NAME}_format_all)
+            add_dependencies(${_tgt} ${PROJECT_NAME}_format_check_all)
         endforeach ()
     endif ()
 endif ()

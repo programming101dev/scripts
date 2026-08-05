@@ -67,7 +67,7 @@ def producer_files(producer: Path) -> list[Path]:
     """Include native binaries selected by a repository launcher."""
     files = [producer]
     repository = producer.parent
-    for marker_name in (".last-runtime-build-dir", ".last-build-dir"):
+    for marker_name in (".last-build-dir", ".last-runtime-build-dir"):
         marker = repository / marker_name
         if not marker.is_file():
             continue

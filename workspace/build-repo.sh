@@ -225,6 +225,8 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   fi
 
   pushd "$dir" >/dev/null
+  quality_build_dir=""
+  runtime_build_dir=""
 
   # Decide which compiler to feed into change-compiler.sh
   case "$repo_type" in
@@ -306,9 +308,80 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       popd >/dev/null
       exit "$status"
     fi
+    if [[ -f .last-build-dir ]]; then
+      quality_build_dir="$(awk 'NF{print; exit}' .last-build-dir 2>/dev/null || true)"
+    fi
   else
     say "  -> FAIL: no executable build.sh found."
     failures=$((failures + 1))
+  fi
+
+  # Sanitizer builds are strict quality evidence, but a shared library built
+  # that way carries a compiler-private runtime. Installing it can make an
+  # otherwise valid consumer abort when that consumer uses another compiler
+  # (notably Apple Clang programs loading Homebrew-Clang ASan libraries).
+  #
+  # Reconfigure only installable C/C++ repositories as a lightweight,
+  # sanitizer-free runtime build. P101_RUNTIME_ONLY retains the real targets
+  # and install rules while omitting the analyzer pipeline already exercised
+  # by the quality build above.
+  if ! $skip_install &&
+     [[ -x ./install.sh ]] &&
+     [[ -n "$sanitizers" ]] &&
+     [[ "${P101_NO_FLAGS:-0}" != "1" ]] &&
+     [[ "$repo_type" == "c" || "$repo_type" == "cxx" ]]; then
+    if [[ -z "$quality_build_dir" ]]; then
+      say "  -> FAIL: ${dir} did not publish .last-build-dir after its quality build."
+      failures=$((failures + 1))
+    else
+      runtime_build_dir="${quality_build_dir}-runtime"
+      if [[ "$repo_type" == "cxx" ]]; then
+        runtime_change_args=(-c "$CXX_PATH")
+      else
+        runtime_change_args=(-c "$CC_PATH")
+      fi
+      runtime_change_args+=(
+        -f "$CLANG_FORMAT_PATH"
+        -t "$CLANG_TIDY_PATH"
+        -k "$CPPCHECK_PATH"
+        -s ""
+        -b "$runtime_build_dir"
+        --
+        -DP101_RUNTIME_ONLY=ON
+      )
+
+      say "Configuring sanitizer-free runtime artifact: ${dir}"
+      if run_repo_phase "configure runtime artifact ${dir}" \
+          ./change-compiler.sh "${runtime_change_args[@]}"; then
+        :
+      else
+        status=$?
+        printf '%s\n' "$quality_build_dir" > .last-build-dir
+        popd >/dev/null
+        exit "$status"
+      fi
+
+      say "Building sanitizer-free runtime artifact: ${dir}"
+      if [[ "${#build_script_args[@]}" -gt 0 ]]; then
+        runtime_build_command=(./build.sh "${build_script_args[@]}")
+      else
+        runtime_build_command=(./build.sh)
+      fi
+      if run_repo_phase "build runtime artifact ${dir}" \
+          "${runtime_build_command[@]}"; then
+        :
+      else
+        status=$?
+        printf '%s\n' "$quality_build_dir" > .last-build-dir
+        popd >/dev/null
+        exit "$status"
+      fi
+
+      # Keep quality tools pointed at the strict build. Consumers and
+      # installers use the separate runtime marker.
+      printf '%s\n' "$quality_build_dir" > .last-build-dir
+      printf '%s\n' "$runtime_build_dir" > .last-runtime-build-dir
+    fi
   fi
 
   # If there’s an installer, run it (forward -s to skip cache if -S was given)
@@ -321,6 +394,9 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     else
       say "Installing: ${dir}"
       install_command=(./install.sh)
+    fi
+    if [[ -n "$runtime_build_dir" ]]; then
+      install_command+=(-b "$runtime_build_dir")
     fi
     if run_repo_phase "install ${dir}" "${install_command[@]}"; then
       :
