@@ -98,7 +98,7 @@
       "url": "https://github.com/programming101dev/lib_identity.git"
     },
     {
-      "commit": "def1cf06e051ab358da0dad3fe9d277e2ff1c7f3",
+      "commit": "b629f274ad30e9c7f3dff8a2091cf36948147ca4",
       "path": "../libraries/lib_text",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_text.git"
