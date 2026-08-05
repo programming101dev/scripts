@@ -50,7 +50,7 @@
       "url": "https://github.com/programming101dev/lib_memory.git"
     },
     {
-      "commit": "b821db0e7ba9f1728fed334364f3cfc19b1bd309",
+      "commit": "eec2f5649fdb4d8b52418f0fce7afb910d311648",
       "path": "../libraries/lib_process",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_process.git"

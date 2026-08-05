@@ -515,6 +515,23 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
         "semaphore wait fixture is not live and nonblocking",
     )
 
+    signal_set = generator.native_contract_fixture(
+        "p101_sigwait",
+        {
+            "name": "renamed_signal_set",
+            "type": {"qualType": "const sigset_t *restrict"},
+        },
+        2,
+    )
+    check(
+        signal_set is not None
+        and any("sigaddset" in line and "SIGUSR1" in line for line in signal_set[0])
+        and any("sigprocmask(SIG_BLOCK" in line for line in signal_set[0])
+        and any("raise(SIGUSR1)" in line for line in signal_set[0])
+        and any("sigprocmask(SIG_SETMASK" in line for line in signal_set[3]),
+        "sigwait fixture does not arrange a pending blocked signal",
+    )
+
 
 def test_checked_contract() -> None:
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))

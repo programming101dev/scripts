@@ -1382,6 +1382,37 @@ def native_contract_fixture(
             )
         return [], "pthread_self()", [], []
 
+    if (
+        function_name == "p101_sigwait"
+        and index == 2
+        and "sigset_t" in qualified
+        and "*" in qualified
+    ):
+        return [
+            f"            sigset_t {fixture};",
+            f"            sigset_t {fixture}_previous;",
+            f"            if(sigemptyset(&{fixture}) != 0)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+            f"            if(sigaddset(&{fixture}, SIGUSR1) != 0)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+            f"            if(sigprocmask(SIG_BLOCK, &{fixture}, "
+            f"&{fixture}_previous) != 0)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+            "            if(raise(SIGUSR1) != 0)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+        ], f"&{fixture}", [], [
+            f"            (void)sigprocmask(SIG_SETMASK, "
+            f"&{fixture}_previous, NULL);"
+        ]
+
     if "sigset_t" in qualified and "*" in qualified:
         return [
             f"            sigset_t {fixture};",
