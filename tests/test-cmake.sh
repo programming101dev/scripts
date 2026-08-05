@@ -9,6 +9,8 @@
 #                      compile -> analyze -> tidy -> cppcheck)
 #   runtime-only       consumer artifact builds without rerunning the analyzer
 #                      pipeline and rejects sanitizer-bearing configurations
+#   runtime-link       runtime-only consumers resolve sibling libraries from
+#                      .last-runtime-build-dir, never strict quality builds
 #   macos-asan-order   a sanitized executable records its compiler-matched ASan
 #                      runtime before user shared libraries
 #   missing-flags      no .flags/<compiler> cache -> configure MUST fail
@@ -212,6 +214,57 @@ if (( RC == 0 )); then
   fi
 else
   bad "runtime-only: configure failed" "$PROJ/configure.log"
+fi
+
+# ---------- case: runtime-only sibling dependency precedence ----------
+runtime_root="$SANDBOX/runtime-link-workspace"
+runtime_dep="$runtime_root/libraries/lib_dep"
+PROJ="$runtime_root/libraries/lib_consumer"
+quality_dep_build="$runtime_dep/build-$(basename "$c_compiler")"
+runtime_dep_build="${quality_dep_build}-runtime"
+mkdir -p "$runtime_dep/include" "$quality_dep_build" "$runtime_dep_build"
+mkdir -p "$PROJ/src" "$PROJ/include" "$PROJ/.flags/$(basename "$c_compiler")"
+cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
+ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
+printf 'BasedOnStyle: LLVM\nIndentWidth: 4\nBreakBeforeBraces: Allman\nAllowShortFunctionsOnASingleLine: None\n' > "$PROJ/.clang-format"
+printf '%s\n' "$(basename "$quality_dep_build")" > "$runtime_dep/.last-build-dir"
+printf '%s\n' "$(basename "$runtime_dep_build")" > "$runtime_dep/.last-runtime-build-dir"
+printf 'int dep_value(void)\n{\n    return 0;\n}\n' > "$runtime_dep/dep.c"
+case "$(uname -s)" in
+  Darwin) runtime_library_name="libp101_dep.dylib" ;;
+  *) runtime_library_name="libp101_dep.so" ;;
+esac
+"$c_compiler" -shared -fPIC "$runtime_dep/dep.c" \
+  -o "$quality_dep_build/$runtime_library_name"
+"$c_compiler" -shared -fPIC "$runtime_dep/dep.c" \
+  -o "$runtime_dep_build/$runtime_library_name"
+cat > "$PROJ/config.cmake" <<'EOF'
+set(PROJECT_NAME runtime_link)
+set(PROJECT_VERSION 1.0.0)
+set(PROJECT_DESCRIPTION "runtime dependency precedence")
+set(PROJECT_LANGUAGE C)
+set(STANDARD_FLAGS -std=c17 -Werror)
+set(EXECUTABLE_TARGETS hello)
+set(hello_SOURCES src/main.c)
+set(hello_LINK_LIBRARIES p101_dep)
+EOF
+printf 'int dep_value(void);\nint main(void)\n{\n    return dep_value();\n}\n' \
+  > "$PROJ/src/main.c"
+configure "$PROJ" -DP101_RUNTIME_ONLY=ON -DSANITIZER_LIST=
+if (( RC == 0 )); then
+  build "$PROJ"
+  if (( RC == 0 )) &&
+     grep -q "$runtime_dep_build/$runtime_library_name" "$PROJ/configure.log" &&
+     ! grep -q "$quality_dep_build/$runtime_library_name" "$PROJ/configure.log"; then
+    ok "runtime-link: runtime-only build excludes strict sibling artifacts"
+  elif (( RC == 0 )); then
+    bad "runtime-link: strict sibling artifact won dependency resolution" \
+      "$PROJ/configure.log"
+  else
+    bad "runtime-link: build failed" "$PROJ/build.log"
+  fi
+else
+  bad "runtime-link: configure failed" "$PROJ/configure.log"
 fi
 
 # ---------- case: macOS ASan must load before user dylibs ----------

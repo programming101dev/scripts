@@ -14,6 +14,48 @@ esac
 
 sandbox="$(mktemp -d "${TMPDIR:-/tmp}/p101-interactive-build.XXXXXX")"
 trap 'rm -rf "$sandbox"' EXIT
+
+# Sanitizer capability is a link-time property. A target may accept a
+# sanitizer option for compilation while lacking the corresponding runtime.
+sanitizer_flags="$sandbox/sanitizer-flags"
+mkdir -p "$sanitizer_flags"
+printf '%s\n' '-fsanitize=address' > "$sanitizer_flags/address_sanitizer_flags.txt"
+printf '%s\n' '-fsanitize=leak' > "$sanitizer_flags/leak_sanitizer_flags.txt"
+printf '%s\n' '-fsanitize=undefined' > "$sanitizer_flags/undefined_sanitizer_flags.txt"
+printf '%s\n' '-fsanitize=thread' > "$sanitizer_flags/thread_sanitizer_flags.txt"
+
+cat > "$sandbox/fake-sanitizer-compiler" <<'EOF'
+#!/bin/sh
+args=" $* "
+case "$args" in
+  *" -fsanitize=leak "*) exit 1 ;;
+esac
+case "$args" in
+  *" -fsanitize=address "*)
+    case "$args" in
+      *" -fsanitize=thread "*) exit 1 ;;
+    esac
+    ;;
+esac
+exit 0
+EOF
+chmod +x "$sandbox/fake-sanitizer-compiler"
+
+filtered="$(
+  ./workspace/filter-sanitizers.sh \
+    "$sandbox/fake-sanitizer-compiler" "$sanitizer_flags" \
+    address,leak,undefined
+)"
+[[ "$filtered" == "address,undefined" ]]
+
+if ./workspace/filter-sanitizers.sh \
+    "$sandbox/fake-sanitizer-compiler" "$sanitizer_flags" \
+    address,thread >"$sandbox/conflict.out" 2>"$sandbox/conflict.err"; then
+  echo "expected incompatible supported sanitizers to fail" >&2
+  exit 1
+fi
+grep -q 'cannot be combined' "$sandbox/conflict.err"
+
 mkdir -p "$sandbox/scripts/workspace" "$sandbox/scripts/distribution" "$sandbox/repo"
 cp ./workspace/build-repo.sh "$sandbox/scripts/workspace/build-repo.sh"
 chmod +x "$sandbox/scripts/workspace/build-repo.sh"
@@ -234,6 +276,7 @@ for helper in \
   distribution/clone-repos.sh \
   workspace/check-compilers.sh \
   workspace/compiler-fingerprint.sh \
+  workspace/filter-sanitizers.sh \
   generators/generate-flags.sh \
   distribution/link-flags.sh \
   distribution/link-compilers.sh \

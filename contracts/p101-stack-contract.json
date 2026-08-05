@@ -41,9 +41,9 @@
       "sha256": "547ffd27d32c6ef399a6d63ce14b4e4befb0ff9b8438f5b5dde059072fbe7714"
     },
     {
-      "bytes": 70271,
+      "bytes": 72233,
       "path": "CMakeLists.txt",
-      "sha256": "9c1c19a60a8bf93ee564dd1d8fe03e446413b5da8d90dc6427769ae9865d422c"
+      "sha256": "8d17bedcec212f276abd400a97aecf0cdfc9d33c1be16ef8606ae1893e7cef29"
     },
     {
       "bytes": 12724,
@@ -173,7 +173,7 @@
     {
       "bytes": 9510,
       "path": "repos.lock",
-      "sha256": "656e7362495c627d0e94139c85a0f44786cf37edf1d65289b9d18bdea090f369"
+      "sha256": "c2096f4f4acdefcd18abef874aa790082a11fb9f16b07d4c40253e429eb5b285"
     },
     {
       "bytes": 3743,
@@ -181,9 +181,29 @@
       "sha256": "db51c5099139111b97efa75ef96e2ab1651be158974fa4ada38ec9e2e2d388b4"
     },
     {
-      "bytes": 8457,
+      "bytes": 5065,
+      "path": "shared/library/install.sh",
+      "sha256": "de1fc6838c4be33ba835ed625352296ab38d74a56940446d18ffb44978470fb9"
+    },
+    {
+      "bytes": 13805,
+      "path": "workspace/build-repo.sh",
+      "sha256": "9da0e9f0523fa3f992a6947fe72627fec7362845edaa74a0438bb733876ef5da"
+    },
+    {
+      "bytes": 2792,
+      "path": "workspace/filter-sanitizers.sh",
+      "sha256": "899b2ab206e066c35debe8f9da3c53d65052c8b032414652ce9da035603bfe15"
+    },
+    {
+      "bytes": 8586,
       "path": "workspace/stack-contract.py",
-      "sha256": "be521737bf0aa8ef8587a1308b820d3dbb4404d60a256b69a651a9261bf83297"
+      "sha256": "f8667f1d111a461689a2be502e17ecc07eec70f2dfa5dd7fb7a5dcab8742478c"
+    },
+    {
+      "bytes": 23925,
+      "path": "workspace/update.sh",
+      "sha256": "3d2bddd4b1565f2e1cd52ad0355910fd9a6ff70e793afbc9d065bd20b5a6bc85"
     }
   ],
   "does_not_prove": "This contract binds the declared stack policy bytes. It does not prove that the policy is complete, correct, or sufficient for an undeclared platform.",

@@ -596,23 +596,61 @@ foreach (_p101_root IN LISTS _P101_WORKSPACE_ROOT_CANDIDATES)
             if (_p101_library_name MATCHES "^lib_(posix|posix_optional|posix_xsi|unix)$")
                 continue()
             endif ()
-            if (IS_DIRECTORY "${_p101_library_repo}/build-${_P101_COMPILER_BASENAME}")
-                list(APPEND _P101_LOCAL_LINK_DIRS "${_p101_library_repo}/build-${_P101_COMPILER_BASENAME}")
-            endif ()
-            if (EXISTS "${_p101_library_repo}/.last-build-dir")
-                file(READ "${_p101_library_repo}/.last-build-dir" _p101_last_build_dir)
-                string(STRIP "${_p101_last_build_dir}" _p101_last_build_dir)
-                if (IS_DIRECTORY "${_p101_library_repo}/${_p101_last_build_dir}")
-                    list(APPEND _P101_LOCAL_LINK_DIRS "${_p101_library_repo}/${_p101_last_build_dir}")
+            if (P101_RUNTIME_ONLY)
+                # Runtime artifacts must not resolve sibling dependencies from
+                # strict sanitizer builds: that would put unresolved ASan/UBSan
+                # runtime references back into an otherwise sanitizer-free
+                # consumer. Admit only explicitly published runtime builds.
+                if (EXISTS "${_p101_library_repo}/.last-runtime-build-dir")
+                    file(READ "${_p101_library_repo}/.last-runtime-build-dir"
+                            _p101_last_runtime_build_dir)
+                    string(STRIP "${_p101_last_runtime_build_dir}"
+                            _p101_last_runtime_build_dir)
+                    if (IS_DIRECTORY
+                            "${_p101_library_repo}/${_p101_last_runtime_build_dir}")
+                        list(APPEND _P101_LOCAL_LINK_DIRS
+                                "${_p101_library_repo}/${_p101_last_runtime_build_dir}")
+                    endif ()
                 endif ()
-            endif ()
-            file(GLOB _p101_library_build_dirs LIST_DIRECTORIES true "${_p101_library_repo}/build*")
-            list(SORT _p101_library_build_dirs)
-            foreach (_p101_library_build_dir IN LISTS _p101_library_build_dirs)
-                if (IS_DIRECTORY "${_p101_library_build_dir}")
-                    list(APPEND _P101_LOCAL_FALLBACK_LINK_DIRS "${_p101_library_build_dir}")
+                file(GLOB _p101_library_runtime_build_dirs
+                        LIST_DIRECTORIES true
+                        "${_p101_library_repo}/build*-runtime")
+                list(SORT _p101_library_runtime_build_dirs)
+                foreach (_p101_library_build_dir
+                        IN LISTS _p101_library_runtime_build_dirs)
+                    if (IS_DIRECTORY "${_p101_library_build_dir}")
+                        list(APPEND _P101_LOCAL_FALLBACK_LINK_DIRS
+                                "${_p101_library_build_dir}")
+                    endif ()
+                endforeach ()
+            else ()
+                if (IS_DIRECTORY
+                        "${_p101_library_repo}/build-${_P101_COMPILER_BASENAME}")
+                    list(APPEND _P101_LOCAL_LINK_DIRS
+                            "${_p101_library_repo}/build-${_P101_COMPILER_BASENAME}")
                 endif ()
-            endforeach ()
+                if (EXISTS "${_p101_library_repo}/.last-build-dir")
+                    file(READ "${_p101_library_repo}/.last-build-dir"
+                            _p101_last_build_dir)
+                    string(STRIP "${_p101_last_build_dir}"
+                            _p101_last_build_dir)
+                    if (IS_DIRECTORY
+                            "${_p101_library_repo}/${_p101_last_build_dir}")
+                        list(APPEND _P101_LOCAL_LINK_DIRS
+                                "${_p101_library_repo}/${_p101_last_build_dir}")
+                    endif ()
+                endif ()
+                file(GLOB _p101_library_build_dirs
+                        LIST_DIRECTORIES true
+                        "${_p101_library_repo}/build*")
+                list(SORT _p101_library_build_dirs)
+                foreach (_p101_library_build_dir IN LISTS _p101_library_build_dirs)
+                    if (IS_DIRECTORY "${_p101_library_build_dir}")
+                        list(APPEND _P101_LOCAL_FALLBACK_LINK_DIRS
+                                "${_p101_library_build_dir}")
+                    endif ()
+                endforeach ()
+            endif ()
         endforeach ()
         break()
     endif ()

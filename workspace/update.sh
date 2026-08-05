@@ -60,6 +60,7 @@ CLONE_REPOS_SH="./distribution/clone-repos.sh"
 CHECK_COMPILERS_SH="./workspace/check-compilers.sh"
 COMPILER_FINGERPRINT_SH="./workspace/compiler-fingerprint.sh"
 GENERATE_FLAGS_SH="./generators/generate-flags.sh"
+FILTER_SANITIZERS_SH="./workspace/filter-sanitizers.sh"
 LINK_FLAGS_SH="./distribution/link-flags.sh"
 LINK_COMPILERS_SH="./distribution/link-compilers.sh"
 LINK_CMAKE_SH="./distribution/link-cmake.sh"
@@ -338,7 +339,7 @@ fi
 [[ -n "$cxx_compiler" ]] || { printf "Error: -x (C++ compiler) is required\n" >&2; usage; }
 
 # ----------------- sanity: required helper scripts present -----------------
-for f in "$PULL_SH" "$CHECK_ENV_SH" "$CLONE_REPOS_SH" "$CHECK_COMPILERS_SH" "$COMPILER_FINGERPRINT_SH" "$GENERATE_FLAGS_SH" "$LINK_FLAGS_SH" "$LINK_COMPILERS_SH" "$LINK_CMAKE_SH" "$BUILD_REPO_SH" "$REMOVE_RETIRED_REPOS_SH"; do
+for f in "$PULL_SH" "$CHECK_ENV_SH" "$CLONE_REPOS_SH" "$CHECK_COMPILERS_SH" "$COMPILER_FINGERPRINT_SH" "$GENERATE_FLAGS_SH" "$FILTER_SANITIZERS_SH" "$LINK_FLAGS_SH" "$LINK_COMPILERS_SH" "$LINK_CMAKE_SH" "$BUILD_REPO_SH" "$REMOVE_RETIRED_REPOS_SH"; do
   [[ -x "$f" ]] || die "required helper script missing or not executable: $f"
 done
 
@@ -377,83 +378,15 @@ elif [[ "$pull_rc" -ne 0 ]]; then
   die "pull.sh failed (exit $pull_rc)"
 fi
 
-# ----------------- sanitizer COMBINATION validation -----------------
-# Individual sanitizer groups probe fine one at a time, but sanitizers can
-# depend on or forbid one another (address+thread, address+safe_stack, ...)
-# and only the combined invocation reveals it. Ask the actual pinned C
-# compiler ONCE with every selected group's primary flags together, so a
-# bad -s selection dies here with the compiler's own error instead of an
-# hour into the build matrix. (bash 3.2 safe; combo lines like cfi's
-# "-fsanitize=cfi -flto ..." come through whole.)
+# ----------------- sanitizer capability/combination validation -----------------
+# Accepting -fsanitize=<name> during compilation does not prove that a target
+# has the corresponding runtime library. Require each group to compile AND
+# link, drop unsupported groups, and retain a hard error when the individually
+# usable survivors conflict with one another.
 if [[ -n "$sanitizers" ]] && ! $dry_run; then
-  _combo_flags=""
-  _IFS_saved="$IFS"; IFS=','
-  for _san in $sanitizers; do
-    IFS="$_IFS_saved"
-    _san="$(printf '%s' "$_san" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
-    [[ -z "$_san" ]] && { IFS=','; continue; }
-    _sfile="flags/${_san}_sanitizer_flags.txt"
-    if [[ -f "$_sfile" ]]; then
-      _sline="$(sed 's/#.*//; s/"/ /g' "$_sfile" | grep -m1 -- '-fsanitize=' || true)"
-      [[ -n "$_sline" ]] && _combo_flags="$_combo_flags $_sline"
-    fi
-    IFS=','
-  done
-  IFS="$_IFS_saved"
-  if [[ -n "${_combo_flags// /}" ]]; then
-    _combo_tmp="$(mktemp -d 2>/dev/null || mktemp -d -t sancombo)"
-    printf 'int main(void){return 0;}\n' > "$_combo_tmp/t.c"
-    # shellcheck disable=SC2086
-    if ! _combo_err="$("$CC_PATH" $_combo_flags -fsyntax-only "$_combo_tmp/t.c" 2>&1)"; then
-      # The full selection failed. Separate two very different causes:
-      #   (a) this target does not support a sanitizer AT ALL (e.g. clang has
-      #       no standalone -fsanitize=leak on arm64-darwin — leak is folded
-      #       into ASan there). Policy: unsupported => not tried, so DROP it,
-      #       exactly as the per-compiler flag probe already does.
-      #   (b) sanitizers the compiler DOES support conflict with each other
-      #       (address+thread, ...). That is a genuine bad -s selection and
-      #       stays a hard error.
-      # Probe each selected group's flags alone; keep those that compile, then
-      # re-test the survivors together. (bash 3.2 safe: no arrays.)
-      _kept_flags=""; _kept_names=""; _dropped_names=""
-      _IFS_saved="$IFS"; IFS=','
-      for _san in $sanitizers; do
-        IFS="$_IFS_saved"
-        _san="$(printf '%s' "$_san" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
-        [[ -z "$_san" ]] && { IFS=','; continue; }
-        _sfile="flags/${_san}_sanitizer_flags.txt"
-        _sline=""
-        [[ -f "$_sfile" ]] && _sline="$(sed 's/#.*//; s/"/ /g' "$_sfile" | grep -m1 -- '-fsanitize=' || true)"
-        # shellcheck disable=SC2086
-        if [[ -n "$_sline" ]] && "$CC_PATH" $_sline -fsyntax-only "$_combo_tmp/t.c" >/dev/null 2>&1; then
-          _kept_flags="$_kept_flags $_sline"
-          _kept_names="${_kept_names:+$_kept_names,}$_san"
-        else
-          _dropped_names="${_dropped_names:+$_dropped_names,}$_san"
-        fi
-        IFS=','
-      done
-      IFS="$_IFS_saved"
-      # Survivors still conflicting => real error (case b).
-      # shellcheck disable=SC2086
-      if [[ -n "${_kept_flags// /}" ]] \
-         && ! _combo_err2="$("$CC_PATH" $_kept_flags -fsyntax-only "$_combo_tmp/t.c" 2>&1)"; then
-        rm -rf "$_combo_tmp"
-        printf 'Error: the selected sanitizers (%s) cannot be combined for %s:\n' "$_kept_names" "$CC_PATH" >&2
-        printf '%s\n' "$_combo_err2" | head -5 | sed 's/^/  | /' >&2
-        printf 'See flag_report/<cc>-sanitize-combos.txt (harvest-flags.py) for the full pairwise matrix.\n' >&2
-        exit 2
-      fi
-      if [[ -n "$_dropped_names" ]]; then
-        note "sanitizer(s) unsupported by $CC_PATH on this target dropped: ${_dropped_names} (using: ${_kept_names:-none})"
-      fi
-      # Narrow what downstream (check-env, CMake -DSANITIZER_LIST) receives to
-      # the set that actually works for THIS compiler — other compilers in the
-      # update-all matrix keep their own full set.
-      sanitizers="$_kept_names"
-    fi
-    rm -rf "$_combo_tmp"
-  fi
+  sanitizers="$(
+    "$FILTER_SANITIZERS_SH" "$CC_PATH" flags "$sanitizers"
+  )"
 fi
 
 # Verify environment tools exist and are usable by downstream
