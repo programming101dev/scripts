@@ -437,6 +437,8 @@ def function_definitions(
                 f"{source.relative_to(WORKSPACE)} lacks AST definitions for "
                 f"{', '.join(sorted(missing))}"
             )
+        for declaration in declarations.values():
+            declaration["_p101_source"] = str(source)
         definitions.update(declarations)
     return definitions
 
@@ -465,6 +467,53 @@ def result_declaration(
     return f"{return_type(declaration)} {name}"
 
 
+@cache
+def source_text(path: str) -> str:
+    return Path(path).read_text(encoding="utf-8", errors="replace")
+
+
+def parameter_source_fragment(
+    declaration: dict[str, Any],
+    parameter: dict[str, Any],
+) -> str:
+    """Return the parameter declaration exactly as written in project source."""
+    text = declaration.get("_p101_source_text")
+    if not isinstance(text, str):
+        path = declaration.get("_p101_source")
+        if not isinstance(path, str):
+            return ""
+        text = source_text(path)
+    parameter_range = parameter.get("range", {})
+    begin = parameter_range.get("begin", {})
+    end = parameter_range.get("end", {})
+    begin = begin.get("expansionLoc", begin)
+    end = end.get("expansionLoc", end)
+    begin_offset = begin.get("offset")
+    end_offset = end.get("offset")
+    token_length = end.get("tokLen", 0)
+    if not all(
+        isinstance(value, int)
+        for value in (begin_offset, end_offset, token_length)
+    ):
+        return ""
+    return text[begin_offset : end_offset + token_length]
+
+
+def is_va_list_parameter(
+    declaration: dict[str, Any],
+    parameter: dict[str, Any],
+) -> bool:
+    """Recognize va_list by its public source type or resolved AST type."""
+    type_info = parameter.get("type", {})
+    qualified = type_info.get("qualType", "")
+    desugared = type_info.get("desugaredQualType", "")
+    fragment = parameter_source_fragment(declaration, parameter)
+    return any(
+        re.search(r"\bva_list\b", spelling) is not None
+        for spelling in (fragment, qualified, desugared)
+    )
+
+
 def has_va_list_parameter(declaration: dict[str, Any]) -> bool:
     """Return whether a wrapper accepts an already-started va_list.
 
@@ -474,7 +523,7 @@ def has_va_list_parameter(declaration: dict[str, Any]) -> bool:
     """
     return any(
         child.get("kind") == "ParmVarDecl"
-        and "va_list" in child.get("type", {}).get("qualType", "")
+        and is_va_list_parameter(declaration, child)
         for child in declaration.get("inner", [])
     )
 
@@ -508,7 +557,10 @@ def va_list_teardown(declaration: dict[str, Any]) -> str:
     return "    va_end(arguments);\n"
 
 
-def argument_expression(parameter: dict[str, Any]) -> str:
+def argument_expression(
+    parameter: dict[str, Any],
+    declaration: dict[str, Any] | None = None,
+) -> str:
     type_info = parameter["type"]
     qualified = type_info["qualType"]
     desugared = type_info.get("desugaredQualType", qualified)
@@ -516,7 +568,12 @@ def argument_expression(parameter: dict[str, Any]) -> str:
         return "env"
     if "p101_error" in qualified and "*" in qualified:
         return "err"
-    if "va_list" in qualified:
+    if declaration is not None and is_va_list_parameter(
+        declaration,
+        parameter,
+    ):
+        return "arguments"
+    if "va_list" in qualified or "va_list" in desugared:
         return "arguments"
     if "*" in qualified or "[" in qualified:
         return "NULL"
@@ -646,7 +703,7 @@ def indexed_fallback_expression(
             f"{declaration.get('name', '?')} uses {macro_name}, "
             f"but has only {len(parameters)} parameters"
         )
-    return argument_expression(parameters[fallback_index])
+    return argument_expression(parameters[fallback_index], declaration)
 
 
 def fault_return_contract(
@@ -879,8 +936,14 @@ def result_assertion(
 def writable_fixture(
     parameter: dict[str, Any],
     index: int,
+    declaration: dict[str, Any] | None = None,
 ) -> tuple[list[str], str, list[str]]:
     """Provide a canary for writable pointer arguments on the fault path."""
+    if declaration is not None and is_va_list_parameter(
+        declaration,
+        parameter,
+    ):
+        return [], "arguments", []
     qualified = parameter.get("type", {}).get("qualType", "")
     if "*" not in qualified or "(*" in qualified:
         return [], argument_expression(parameter), []
@@ -927,13 +990,16 @@ def native_pointer_fixture(
     function_name: str,
     parameter: dict[str, Any],
     index: int,
+    declaration: dict[str, Any] | None = None,
 ) -> tuple[list[str], str, list[str], list[str]] | None:
-    """Build a native-path fixture from the resolved C type.
+    """Build a native-path fixture from the public source-declared C type.
 
     Variable names are deliberately ignored. Opaque resource types use an
     explicit type contract; complete object pointers use zero-initialized
-    storage. Function-specific cleanup exceptions are limited to wrappers
-    whose native operation itself consumes the typed resource.
+    storage. Public aggregate tags are recovered from source so platform AST
+    aliases cannot leak private implementation names into generated tests.
+    Function-specific cleanup exceptions are limited to wrappers whose native
+    operation itself consumes the typed resource.
     """
     qualified = parameter.get("type", {}).get("qualType", "")
     normalized = normalized_c_type(qualified)
@@ -1107,6 +1173,14 @@ def native_pointer_fixture(
     ).strip()
     if bare in OPAQUE_POINTEE_TYPES:
         return None
+    if declaration is not None:
+        fragment = parameter_source_fragment(declaration, parameter)
+        public_aggregate = re.search(
+            r"\b((?:struct|union)\s+[A-Za-z_][A-Za-z0-9_]*)\b",
+            fragment,
+        )
+        if public_aggregate is not None and "*" in fragment:
+            bare = public_aggregate.group(1)
     return [f"            {bare} {fixture} = {{0}};"], f"&{fixture}", [], []
 
 
@@ -1245,16 +1319,21 @@ def fault_test(
     needs_native_fpos = False
     fixture_assertions: list[str] = []
     for index, parameter in enumerate(parameters):
-        expression = argument_expression(parameter)
+        expression = argument_expression(parameter, declaration)
         if expression in {"env", "err"}:
             argument_values.append(expression)
             native_argument_values.append(
                 "native_env" if expression == "env" else "native_err"
             )
             continue
+        if expression == "arguments":
+            argument_values.append(expression)
+            native_argument_values.append(expression)
+            continue
         declarations, expression, assertions = writable_fixture(
             parameter,
             index,
+            declaration,
         )
         fixture_declarations.extend(declarations)
         argument_values.append(expression)
@@ -1298,7 +1377,12 @@ def fault_test(
             native_argument_values.append("&native_fpos")
             needs_native_fpos = True
         elif (
-            fixture := native_pointer_fixture(name, parameter, index)
+            fixture := native_pointer_fixture(
+                name,
+                parameter,
+                index,
+                declaration,
+            )
         ) is not None:
             declarations, native_expression, setup, cleanup = fixture
             native_fixture_declarations.extend(declarations)
@@ -2158,8 +2242,13 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                     ),
                 }
                 for index, parameter in enumerate(parameters)
-                if argument_expression(parameter) not in {"env", "err"}
-                and writable_fixture(parameter, index)[0]
+                if argument_expression(parameter, declarations[name])
+                not in {"env", "err"}
+                and writable_fixture(
+                    parameter,
+                    index,
+                    declarations[name],
+                )[0]
             ]
             library_failures[name] = failure
             failure_contract["wrappers"][name] = {

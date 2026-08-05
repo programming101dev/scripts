@@ -132,7 +132,18 @@ def test_single_exit_fault_result(generator) -> None:
 
 
 def test_va_list_fixture_is_started(generator) -> None:
+    source = "void example(void *env, void *err, va_list renamed_arguments) {}"
+    parameter_start = source.index("va_list")
+    parameter_name = "renamed_arguments"
     declaration = {
+        "_p101_source_text": source,
+        "name": "p101_example_v",
+        "type": {
+            "qualType": (
+                "int (const struct p101_env *, struct p101_error *, "
+                "struct __va_list_tag *)"
+            )
+        },
         "inner": [
             {
                 "kind": "ParmVarDecl",
@@ -146,8 +157,15 @@ def test_va_list_fixture_is_started(generator) -> None:
             },
             {
                 "kind": "ParmVarDecl",
-                "name": "arguments",
-                "type": {"qualType": "va_list"},
+                "name": parameter_name,
+                "type": {"qualType": "struct __va_list_tag *"},
+                "range": {
+                    "begin": {"offset": parameter_start},
+                    "end": {
+                        "offset": source.index(parameter_name),
+                        "tokLen": len(parameter_name),
+                    },
+                },
             },
         ]
     }
@@ -175,6 +193,60 @@ def test_va_list_fixture_is_started(generator) -> None:
     check(
         "va_end(arguments);" in generator.va_list_teardown(declaration),
         "generated va_list fixture is not ended",
+    )
+    generated = generator.fault_test(
+        "p101_example_v",
+        declaration,
+        {
+            "linux": ["EIO"],
+            "macos": ["EIO"],
+            "freebsd": ["EIO"],
+            "posix": ["EIO"],
+        },
+        {
+            "kind": "value",
+            "expression": "-1",
+            "error_domain": "errno",
+        },
+    )
+    check(
+        "p101_example_v(env, err, arguments)" in generated
+        and "p101_example_v(native_env, native_err, arguments)" in generated,
+        "generated va_list calls do not use the started public-type fixture",
+    )
+    check(
+        "__va_list_tag" not in generated,
+        "generated va_list fixture leaked a platform-private AST type",
+    )
+
+
+def test_public_aggregate_fixture_ignores_private_ast_alias(generator) -> None:
+    source = "int example(struct shmid_ds *renamed_buffer) {}"
+    parameter_start = source.index("struct shmid_ds")
+    parameter_name = "renamed_buffer"
+    declaration = {"_p101_source_text": source}
+    parameter = {
+        "kind": "ParmVarDecl",
+        "name": parameter_name,
+        "type": {"qualType": "struct __shmid_ds_new *"},
+        "range": {
+            "begin": {"offset": parameter_start},
+            "end": {
+                "offset": source.index(parameter_name),
+                "tokLen": len(parameter_name),
+            },
+        },
+    }
+    fixture = generator.native_pointer_fixture(
+        "p101_shmctl",
+        parameter,
+        4,
+        declaration,
+    )
+    check(fixture is not None, "aggregate pointer fixture was not built")
+    check(
+        fixture[0] == ["            struct shmid_ds native_argument_4 = {0};"],
+        "generated fixture leaked a platform-private aggregate tag",
     )
 
 
@@ -487,6 +559,9 @@ def main() -> int:
         lambda: test_bool_result_spelling(generator),
         lambda: test_single_exit_fault_result(generator),
         lambda: test_va_list_fixture_is_started(generator),
+        lambda: test_public_aggregate_fixture_ignores_private_ast_alias(
+            generator
+        ),
         lambda: test_portable_result_assertions(generator),
         lambda: test_fallible_wrapper_has_isolated_native_smoke(generator),
         lambda: test_fixture_roles_do_not_depend_on_parameter_names(generator),

@@ -68,7 +68,7 @@
       "url": "https://github.com/programming101dev/lib_sync.git"
     },
     {
-      "commit": "844461d836c601d99f325c6774eb1fa854ae9086",
+      "commit": "c60b7f5dedb184addd100f5134946a110933d98c",
       "path": "../libraries/lib_ipc",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_ipc.git"
