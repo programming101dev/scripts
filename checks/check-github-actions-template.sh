@@ -26,4 +26,9 @@ if ! cmp -s "$live_workflow" "$starter_workflow"; then
   exit 1
 fi
 
+if ! grep -Fq 'git config --global --add safe.directory "$(pwd -P)"' "$live_workflow"; then
+  echo "FAIL: FreeBSD CI does not trust its exact rsynced scripts checkout." >&2
+  exit 1
+fi
+
 echo "PASS: GitHub Actions starter workflow matches the live workflow."

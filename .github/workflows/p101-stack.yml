@@ -135,6 +135,7 @@ jobs:
             fi
           run: |
             cd scripts
+            git config --global --add safe.directory "$(pwd -P)"
             export P101_QUIET=1
             status=0
             failed_phase=none
