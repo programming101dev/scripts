@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # Shared discovery of non-instrumented build artifacts.
 #
 # Source from the scripts repository root.  Marker-selected artifacts are

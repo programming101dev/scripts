@@ -72,18 +72,29 @@ cost_contract="contracts/repository-test-costs.tsv"
 mkdir -p "$results_dir"
 printf '# p101 standalone repository tests\n\n| Repository | Unit tests | Fuzz smoke | Seconds |\n| --- | --- | --- | ---: |\n' > "$summary"
 
-if [ -f "$cost_contract" ]; then
-  if ! awk -F '|' '
+[ -f "$cost_contract" ] || {
+  printf 'Repository test cost contract is missing: %s\n' "$cost_contract" >&2
+  exit 2
+}
+if ! awk -F '|' '
     /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
     NF != 2 || $1 == "" || $2 !~ /^[1-9][0-9]*$/ || seen[$1]++ {
       printf "%s:%d: invalid repository cost row: %s\n", FILENAME, NR, $0 > "/dev/stderr"
       invalid=1
     }
-    END { exit invalid ? 1 : 0 }
+    $1 == "*" { defaults++ }
+    END {
+      if(defaults != 1) {
+        printf "%s: expected exactly one explicit * default cost, found %d\n",
+               FILENAME, defaults > "/dev/stderr"
+        invalid=1
+      }
+      exit invalid ? 1 : 0
+    }
   ' "$cost_contract"; then
-    exit 2
-  fi
+  exit 2
 fi
+default_cost="$(awk -F'|' '$1 == "*" { print $2; exit }' "$cost_contract")"
 
 run_repository() {
   index="$1"
@@ -198,11 +209,8 @@ while IFS='|' read -r _url relative language || [ -n "${relative:-}" ]; do
   [ -n "${relative:-}" ] || continue
   [ "$language" != "c-bootstrap" ] || continue
   name="$(basename "$relative")"
-  cost=1
-  if [ -f "$cost_contract" ]; then
-    configured_cost="$(awk -F'|' -v name="$name" '$1 == name { print $2; exit }' "$cost_contract")"
-    case "$configured_cost" in *[!0-9]*|'') ;; *) cost="$configured_cost" ;; esac
-  fi
+  configured_cost="$(awk -F'|' -v name="$name" '$1 == name { print $2; exit }' "$cost_contract")"
+  cost="${configured_cost:-$default_cost}"
   printf '%s|%s|%s|%s\n' "$repository_count" "$relative" "$language" "$cost" >> "$worklist"
   repository_count=$((repository_count + 1))
 done < <(

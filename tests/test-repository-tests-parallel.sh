@@ -6,12 +6,18 @@ scripts_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P
 work="$(mktemp -d "${TMPDIR:-/tmp}/p101-repository-tests-parallel.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 
-mkdir -p "$work/scripts/checks" "$work/scripts/shared" \
+mkdir -p "$work/scripts/checks" "$work/scripts/contracts" "$work/scripts/shared" \
   "$work/repos/alpha/test" "$work/repos/bravo/test" \
   "$work/repos/charlie/test" "$work/probe"
 cp "$scripts_root/checks/check-repository-tests.sh" "$work/scripts/checks/"
 cp "$scripts_root/checks/write-repository-test-receipt.py" "$work/scripts/checks/"
 cp "$scripts_root/shared/compilers.sh" "$work/scripts/shared/"
+cat > "$work/scripts/contracts/repository-test-costs.tsv" <<'EOF'
+# Repository|Expected seconds
+*|1
+alpha|3
+bravo|2
+EOF
 cat > "$work/scripts/repos.txt" <<'EOF'
 |../repos/alpha|c
 |../repos/bravo|c
@@ -95,6 +101,27 @@ reported="$(awk -F'|' '
   printf 'repository report order changed:\n%s\n' "$reported" >&2
   exit 1
 }
+
+cp "$work/scripts/contracts/repository-test-costs.tsv" "$work/scripts/contracts/repository-test-costs.valid"
+printf 'broken|not-a-number\n' >> "$work/scripts/contracts/repository-test-costs.tsv"
+set +e
+(
+  cd "$work/scripts"
+  ./checks/check-repository-tests.sh -j 1 --skip-fuzz -o "$work/invalid-cost-output"
+) > "$work/invalid-cost.log" 2>&1
+invalid_cost_status=$?
+set -e
+[ "$invalid_cost_status" -eq 2 ] || {
+  cat "$work/invalid-cost.log"
+  echo "malformed repository cost contract was not rejected" >&2
+  exit 1
+}
+grep -q 'invalid repository cost row' "$work/invalid-cost.log" || {
+  cat "$work/invalid-cost.log"
+  echo "malformed repository cost diagnostic missing" >&2
+  exit 1
+}
+mv "$work/scripts/contracts/repository-test-costs.valid" "$work/scripts/contracts/repository-test-costs.tsv"
 
 compiler="$(command -v clang 2>/dev/null || command -v cc)"
 launcher="$work/launcher"

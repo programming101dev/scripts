@@ -131,9 +131,9 @@
       "sha256": "98d3cd6083e06e8bf965edfe66164b7ee0dc73f5ed8cfff07edbb6ec661f89af"
     },
     {
-      "bytes": 42229,
+      "bytes": 42323,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "99d61d0163ea54a2dec8b020954bdd936727c565f952f07a23cd8d987188b26f"
+      "sha256": "4515aed11de23989c62d362aed28010de646b85d3064f91e4dfdf2bc10211a10"
     },
     {
       "bytes": 62722,
@@ -251,14 +251,14 @@
       "sha256": "86590b4f73611651f8b682aa6d2dce3dc3fbd6fbd7bc4f0ef6d8ce6f2c4334f3"
     },
     {
-      "bytes": 2682,
+      "bytes": 2704,
       "path": "shared/artifacts.sh",
-      "sha256": "c3945c48ee6a71fe3f586541964dab7823772aa3f79a72235a24afc9837a0580"
+      "sha256": "7aad63eb3b4affdf59418d16574d1b5ab4beece6007186faa69f0bdec7dd66ee"
     },
     {
-      "bytes": 2100,
+      "bytes": 2122,
       "path": "shared/compilers.sh",
-      "sha256": "9ced109a6ea3d37f24c285839940683fcdd2dfcf8cedc0b1cf7e7cba411c3f5f"
+      "sha256": "637ba87558d523ecf0bb1647eeb7ca412d986e8e01cafa29438e7b590f8addca"
     },
     {
       "bytes": 5268,

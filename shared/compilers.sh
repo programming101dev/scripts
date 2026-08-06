@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # Shared compiler-name, map, and pairing mechanics.
 #
 # This file is sourced by both POSIX-sh and Bash entry points.  It deliberately

@@ -248,6 +248,15 @@ if [ "$skip_wrapper" -eq 0 ]; then
       fi
 
       wrapper_args=(-e --compile-db "$compile_db" --compile-db-only --facts-output "$facts" --input-manifest "$inputs")
+      for foundational_library in lib_error lib_env lib_tool_event; do
+        foundational_include="$workspace_dir/libraries/$foundational_library/include"
+        if [ -d "$foundational_include" ]; then
+          wrapper_args+=("--cflag=-I$foundational_include")
+          while IFS= read -r foundational_header; do
+            wrapper_args+=(--header-root "$foundational_header")
+          done < <(find "$foundational_include" -type f -name '*.h' -print | LC_ALL=C sort)
+        fi
+      done
       if [ -f "$allow_file" ]; then
         wrapper_args+=(--allow-file "$allow_file")
       fi
@@ -328,7 +337,10 @@ if [ "$skip_error_contract" -eq 0 ]; then
       if [ -f "$facts" ]; then
         error_args+=(-i "$facts")
       else
-        error_args+=(-F "$wrapper_audit")
+        compile_db="$(find_compile_database "$tool_dir" || true)"
+        if [ -n "$compile_db" ]; then
+          error_args+=(-C "$compile_db")
+        fi
       fi
       if ! run_logged "error-contract audit: $name" "$log" "$error_contract" "${error_args[@]}" "${paths[@]}"; then
         failed=1
@@ -375,7 +387,10 @@ if [ "$skip_module_map" -eq 0 ]; then
       if [ -f "$facts" ]; then
         module_args+=(-i "$facts")
       else
-        module_args+=(-F "$wrapper_audit")
+        compile_db="$(find_compile_database "$tool_dir" || true)"
+        if [ -n "$compile_db" ]; then
+          module_args+=(-C "$compile_db")
+        fi
       fi
       if run_module_logged "module-map design report: $name" "$log" "$module_map" "${module_args[@]}" "${paths[@]}"; then
         module_rc=0

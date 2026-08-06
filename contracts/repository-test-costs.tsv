@@ -3,6 +3,7 @@
 # Scheduling hints only: results remain in repos.txt order and every repository
 # still runs. Refresh these coarse values from check-repository-tests.sh's
 # summary when a suite's cost changes materially.
+*|1
 p101-doctor|110
 p101-error-contract|14
 p101-observe|12
