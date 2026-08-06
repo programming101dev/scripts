@@ -3929,6 +3929,7 @@ int main(void)
     )
     native_includes = "#include <fcntl.h>\n"
     native_unlink_helper = ""
+    native_format_helper = ""
     if "P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT" in tests:
         native_unlink_helper = """static bool native_unlink_if_present(const char *path)
 {
@@ -3959,6 +3960,25 @@ int main(void)
 }
 
 """
+    if "P101_NATIVE_FORMAT_PID_PATH_OR_SKIP" in tests:
+        native_format_helper = """static bool native_format_pid_path(char *buffer,
+                                   size_t buffer_size,
+                                   const char *format)
+{
+    bool result;
+    int format_length;
+    pid_t process_id;
+
+    process_id = getpid();
+    format_length = snprintf(buffer,
+                             buffer_size,
+                             format,
+                             (long)process_id);
+    result = format_length >= 0 && (size_t)format_length < buffer_size;
+    return result;
+}
+
+"""
     return f"""#include <errno.h>
 {native_includes}
 #include <arpa/inet.h>
@@ -3971,6 +3991,7 @@ int main(void)
 #include <p101_error/error.h>
 #include <limits.h>
 #include <math.h>
+#include <netinet/in.h>
 #include <pthread.h>
 #include <search.h>
 #include <signal.h>
@@ -4055,17 +4076,16 @@ static int native_child_status = EXIT_SUCCESS;
         }}                                                                        \\
     }} while(0)
 
+{native_format_helper}\
 #define P101_NATIVE_FORMAT_PID_PATH_OR_SKIP(buffer, format)                       \\
     do                                                                           \\
     {{                                                                            \\
-        int p101_format_length_;                                                  \\
+        bool p101_format_ok_;                                                     \\
                                                                                  \\
-        p101_format_length_ = snprintf((buffer),                                  \\
-                                       sizeof(buffer),                            \\
-                                       (format),                                  \\
-                                       (long)getpid());                           \\
-        if(p101_format_length_ < 0 ||                                             \\
-           (size_t)p101_format_length_ >= sizeof(buffer))                         \\
+        p101_format_ok_ = native_format_pid_path((buffer),                        \\
+                                                 sizeof(buffer),                  \\
+                                                 (format));                       \\
+        if(!p101_format_ok_)                                                      \\
         {{                                                                        \\
             fprintf(stderr, "native setup failed: path formatting\\n");          \\
             native_child_status = 77;                                             \\

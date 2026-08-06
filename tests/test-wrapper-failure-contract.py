@@ -1501,6 +1501,15 @@ def test_generated_harness_has_one_main_exit(generator) -> None:
         "generated harness ignores bounded path-formatting failure",
     )
     check(
+        "#include <netinet/in.h>" in source,
+        "generated network fixtures lack portable IPv4 declarations",
+    )
+    check(
+        "p101_format_ok_ = native_format_pid_path(" in source
+        and "(long)getpid()" not in source,
+        "generated path formatting is not an inspectable checked operation",
+    )
+    check(
         not re.search(r"\b(?:strcat|strcpy|sprintf)\s*\(", source),
         "generated harness uses an unbounded string operation",
     )
