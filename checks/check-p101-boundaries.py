@@ -5,13 +5,18 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
+import sys
 from pathlib import Path
 from typing import Any
 
 
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = SCRIPTS_ROOT.parent
+sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
+
+import c_facts  # noqa: E402
+
+
 DEFAULT_REGISTER = SCRIPTS_ROOT / "contracts" / "p101-boundaries.json"
 REQUIRED_TESTS = {
     "clean",
@@ -56,61 +61,58 @@ def read_workspace_file(relative: str, context: str) -> str:
     return resolved.read_text(encoding="utf-8")
 
 
-def inferred_test_entrypoint(text: str, marker: str) -> str | None:
-    """Return the nearest enclosing C test function for a marker."""
-    functions = list(
-        re.finditer(
-            r"(?m)^\s*static\s+void\s+(test_[A-Za-z0-9_]+)\s*"
-            r"\([^;]*\)\s*\{",
-            text,
-        )
-    )
-    for index, function in enumerate(functions):
-        end = (
-            functions[index + 1].start()
-            if index + 1 < len(functions)
-            else len(text)
-        )
-        if marker in text[function.start() : end]:
-            return function.group(1)
-    return None
-
-
-def require_test_wiring(
-    test_path: str,
-    marker: str,
-    text: str,
-    context: str,
+def require_shell_test_wiring(
+    test_path: str, marker: str, text: str, context: str
 ) -> None:
-    """Reject evidence that exists as dead text but is never invoked."""
+    """Reject shell evidence that is absent or not registered with CTest."""
     path = WORKSPACE / test_path
-    if path.suffix in {".c", ".cc", ".cpp", ".cxx"}:
-        entrypoint = inferred_test_entrypoint(text, marker)
-        if entrypoint is None:
-            raise BoundaryError(
-                f"{context} marker is not inside a static test function"
-            )
-        if len(re.findall(rf"\b{re.escape(entrypoint)}\b", text)) < 2:
-            raise BoundaryError(
-                f"{context} test entrypoint is not invoked: {entrypoint}"
-            )
-        return
+    if path.suffix != ".sh":
+        raise BoundaryError(f"{context} has unsupported lexical evidence: {test_path}")
+    if marker not in text:
+        raise BoundaryError(f"{context} marker {marker!r} is absent from {test_path}")
+    owner = path.parents[1]
+    launcher = owner / "test.sh"
+    cmake = path.parent / "CMakeLists.txt"
+    if not launcher.is_file():
+        raise BoundaryError(f"{context} owner has no test.sh launcher")
+    if not cmake.is_file() or path.name not in cmake.read_text(encoding="utf-8"):
+        raise BoundaryError(f"{context} shell evidence is not registered with CTest")
 
-    if path.suffix == ".sh":
-        owner = path.parents[1]
-        launcher = owner / "test.sh"
-        cmake = path.parent / "CMakeLists.txt"
-        if not launcher.is_file():
-            raise BoundaryError(f"{context} owner has no test.sh launcher")
-        if not cmake.is_file() or path.name not in cmake.read_text(
-            encoding="utf-8"
-        ):
-            raise BoundaryError(
-                f"{context} shell evidence is not registered with CTest"
-            )
-        return
 
-    raise BoundaryError(f"{context} has unsupported test evidence: {test_path}")
+def semantic_index(
+    paths: set[str],
+) -> tuple[
+    dict[Path, set[str]],
+    dict[str, set[tuple[Path, str]]],
+    dict[Path, set[str]],
+]:
+    facts = c_facts.acquire(WORKSPACE, [WORKSPACE / path for path in sorted(paths)])
+    declarations: dict[Path, set[str]] = {}
+    roles: dict[str, set[tuple[Path, str]]] = {}
+    wired: dict[Path, set[str]] = {}
+    for fact in facts:
+        kind = fact["kind"]
+        path = Path(str(fact["path"])).resolve()
+        if kind == "FUNCTION":
+            usr = str(fact.get("usr", ""))
+            if usr:
+                declarations.setdefault(path, set()).add(usr)
+        elif kind == "CALL":
+            usr = str(fact.get("usr", ""))
+            if usr:
+                wired.setdefault(path, set()).add(usr)
+        elif kind == "NOTE":
+            value = str(fact.get("value", ""))
+            caller_usr = str(fact.get("caller_usr", ""))
+            if value.startswith("SEMANTIC_ROLE:") and caller_usr:
+                roles.setdefault(value.removeprefix("SEMANTIC_ROLE:"), set()).add(
+                    (path, caller_usr)
+                )
+            elif value.startswith("FUNCTION_REFERENCE:"):
+                referenced_usr = value.removeprefix("FUNCTION_REFERENCE:")
+                if referenced_usr:
+                    wired.setdefault(path, set()).add(referenced_usr)
+    return declarations, roles, wired
 
 
 def executed_repositories(receipt_path: Path) -> set[str]:
@@ -137,12 +139,31 @@ def validate(
     document: dict[str, Any],
     execution_receipt: Path | None = None,
 ) -> dict[str, int]:
-    if document.get("schema") != "p101-boundary-register-v2":
+    if document.get("schema") != "p101-boundary-register-v3":
         raise BoundaryError("unexpected boundary-register schema")
     require_text(document, "does_not_prove", "register")
     boundaries = document.get("boundaries")
     if not isinstance(boundaries, list) or not boundaries:
         raise BoundaryError("register has no boundaries")
+
+    semantic_paths: set[str] = set()
+    for raw in boundaries:
+        semantic_paths.add(require_text(raw, "owner_source", "boundary owner"))
+        tests = raw.get("tests", {})
+        if isinstance(tests, dict):
+            for evidence in tests.values():
+                if (
+                    isinstance(evidence, dict)
+                    and isinstance(evidence.get("path"), str)
+                    and Path(evidence["path"]).suffix in {".c", ".cc", ".cpp", ".cxx"}
+                ):
+                    semantic_paths.add(evidence["path"])
+    try:
+        declarations, semantic_roles, wired_functions = semantic_index(
+            semantic_paths
+        )
+    except c_facts.CFactError as error:
+        raise BoundaryError(str(error)) from error
 
     identifiers: set[str] = set()
     owners: set[tuple[str, str]] = set()
@@ -170,14 +191,18 @@ def validate(
         ):
             raise BoundaryError(f"{context} has invalid composition")
         owner_source = require_text(raw, "owner_source", context)
-        owner_symbol = require_text(raw, "owner_symbol", context)
-        owner_key = (owner_source, owner_symbol)
+        owner_usr = require_text(raw, "owner_usr", context)
+        owner_key = (owner_source, owner_usr)
         if owner_key in owners:
-            raise BoundaryError(f"duplicate boundary owner: {owner_source}::{owner_symbol}")
+            raise BoundaryError(f"duplicate boundary owner: {owner_source}::{owner_usr}")
         owners.add(owner_key)
-        owner_text = read_workspace_file(owner_source, context)
-        if owner_symbol not in owner_text:
-            raise BoundaryError(f"{context} owner symbol is absent: {owner_symbol}")
+        read_workspace_file(owner_source, context)
+        owner_path = (WORKSPACE / owner_source).resolve()
+        if owner_usr not in declarations.get(owner_path, set()):
+            raise BoundaryError(
+                f"{context} owner declaration identity is absent from "
+                f"{owner_source}: {owner_usr}"
+            )
 
         collaborators = raw.get("collaborators")
         if not isinstance(collaborators, list) or not collaborators:
@@ -201,29 +226,59 @@ def validate(
                     raise BoundaryError(f"{evidence_context} has invalid not_applicable")
                 require_text(evidence, "reason", evidence_context)
                 continue
-            if set(evidence) != {"path", "marker"}:
-                raise BoundaryError(
-                    f"{evidence_context} must contain path and marker"
-                )
             test_path = require_text(evidence, "path", evidence_context)
-            marker = require_text(evidence, "marker", evidence_context)
-            evidence_key = (test_path, marker)
+            suffix = Path(test_path).suffix
+            if suffix in {".c", ".cc", ".cpp", ".cxx"}:
+                if set(evidence) != {"path", "semantic_role"}:
+                    raise BoundaryError(
+                        f"{evidence_context} must contain path and semantic_role"
+                    )
+                semantic_role = require_text(
+                    evidence, "semantic_role", evidence_context
+                )
+                evidence_key = (test_path, semantic_role)
+            elif suffix == ".sh":
+                if set(evidence) != {"path", "marker"}:
+                    raise BoundaryError(
+                        f"{evidence_context} must contain path and marker"
+                    )
+                marker = require_text(evidence, "marker", evidence_context)
+                evidence_key = (test_path, marker)
+            else:
+                raise BoundaryError(
+                    f"{evidence_context} has unsupported evidence: {test_path}"
+                )
             if evidence_key in boundary_evidence:
                 raise BoundaryError(
                     f"{evidence_context} reuses another matrix case's evidence"
                 )
             boundary_evidence.add(evidence_key)
             test_text = read_workspace_file(test_path, evidence_context)
-            if marker not in test_text:
-                raise BoundaryError(
-                    f"{evidence_context} marker {marker!r} is absent from {test_path}"
+            if suffix == ".sh":
+                require_shell_test_wiring(
+                    test_path, marker, test_text, evidence_context
                 )
-            require_test_wiring(
-                test_path,
-                marker,
-                test_text,
-                evidence_context,
-            )
+                continue
+            test_source_path = (WORKSPACE / test_path).resolve()
+            functions = {
+                function_usr
+                for path, function_usr in semantic_roles.get(
+                    semantic_role, set()
+                )
+                if path == test_source_path
+            }
+            if len(functions) != 1:
+                raise BoundaryError(
+                    f"{evidence_context} must resolve to exactly one annotated "
+                    f"function in {test_path}, got {len(functions)}"
+                )
+            function_usr = next(iter(functions))
+            if function_usr not in wired_functions.get(test_source_path, set()):
+                raise BoundaryError(
+                    f"{evidence_context} annotated test function is not "
+                    f"statically wired: "
+                    f"{function_usr}"
+                )
 
     if execution_receipt is not None:
         executed = executed_repositories(execution_receipt)

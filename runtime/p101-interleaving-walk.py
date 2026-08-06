@@ -14,13 +14,14 @@ from p101_runtime import (
     RuntimeModelError,
     analyze_model,
     analyze_synchronization,
+    is_synchronization_resource_class,
     load_model,
 )
 
 
 def _thread(node: dict[str, Any]) -> tuple[int, str]:
     metadata = str(node.get("metadata", ""))
-    identity = metadata if metadata.startswith("thread=") else f"context={node['context']}"
+    identity = metadata or f"context={node['context']}"
     return (
         int(node["pid"]),
         identity,
@@ -31,7 +32,7 @@ def _is_sync(node: dict[str, Any]) -> bool:
     return (
         node.get("domain") == "resource"
         and node.get("kind") == "resource"
-        and str(node.get("resource_class", "")).startswith("pthread-")
+        and is_synchronization_resource_class(node.get("resource_class"))
     )
 
 

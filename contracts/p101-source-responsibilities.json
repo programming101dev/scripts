@@ -1,26 +1,33 @@
 {
-  "schema": "p101-source-responsibilities-v1",
+  "schema": "p101-source-responsibilities-v2",
   "owners": [
     {
       "id": "c-fact-parser",
       "owner": "libraries/lib_c_facts",
-      "markers": ["p101_record_split", "p101_c_facts_with_compile_command"],
+      "marker_usrs": ["c:@F@p101_c_facts_with_compile_command"],
       "consumer_roots": ["programs"],
-      "forbidden_definitions": ["p101_record_split", "p101_c_facts_with_compile_command"]
+      "forbidden_definition_usrs": ["c:@F@p101_c_facts_with_compile_command"]
+    },
+    {
+      "id": "record-parser",
+      "owner": "libraries/lib_tool_event",
+      "marker_usrs": ["c:@F@p101_record_split"],
+      "consumer_roots": ["libraries/lib_c_facts", "programs"],
+      "forbidden_definition_usrs": ["c:@F@p101_record_split"]
     },
     {
       "id": "event-parser",
       "owner": "libraries/lib_tool_event",
-      "markers": ["p101_tool_event_parse_line", "p101_tool_event_lifecycle_ingest", "p101_tool_run_receipt_validate_file"],
+      "marker_usrs": ["c:@F@p101_tool_event_parse_line", "c:@F@p101_tool_event_lifecycle_ingest", "c:@F@p101_tool_run_receipt_validate_file"],
       "consumer_roots": ["programs"],
-      "forbidden_definitions": ["p101_tool_event_parse_line", "p101_tool_event_lifecycle_ingest", "p101_tool_run_receipt_validate_file"]
+      "forbidden_definition_usrs": ["c:@F@p101_tool_event_parse_line", "c:@F@p101_tool_event_lifecycle_ingest", "c:@F@p101_tool_run_receipt_validate_file"]
     },
     {
       "id": "tool-subprocess",
       "owner": "libraries/lib_util",
-      "markers": ["p101_tool_run_capture"],
+      "marker_usrs": ["c:@F@p101_tool_run_capture"],
       "consumer_roots": ["programs/p101-observe", "programs/p101-error-path-walk", "programs/p101-doctor"],
-      "forbidden_calls": ["system", "popen", "fork", "execvp"]
+      "forbidden_call_usrs": ["c:@F@system", "c:@F@popen", "c:@F@fork", "c:@F@execvp"]
     }
   ],
   "facades": [

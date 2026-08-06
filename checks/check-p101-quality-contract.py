@@ -7,12 +7,18 @@ import argparse
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
 
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = SCRIPTS_ROOT.parent.resolve()
+sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
+
+import c_facts  # noqa: E402
+
+
 DEFAULT_CONTRACT = SCRIPTS_ROOT / "contracts" / "p101-quality-contract.json"
 GRAPH_PATH = SCRIPTS_ROOT / "contracts" / "p101-check-graph.json"
 BOUNDARY_PATH = SCRIPTS_ROOT / "contracts" / "p101-boundaries.json"
@@ -69,22 +75,6 @@ def read_json(path: Path, context: str) -> dict[str, Any]:
     return document
 
 
-def unescape_fact_field(value: str) -> str:
-    output: list[str] = []
-    index = 0
-    escapes = {"\\": "\\", "n": "\n", "r": "\r", "t": "\t"}
-    while index < len(value):
-        if value[index] == "\\" and index + 1 < len(value):
-            replacement = escapes.get(value[index + 1])
-            if replacement is not None:
-                output.append(replacement)
-                index += 2
-                continue
-        output.append(value[index])
-        index += 1
-    return "".join(output)
-
-
 def workspace_relative_fact_path(value: str) -> str | None:
     path = Path(value)
     resolved = path.resolve() if path.is_absolute() else (WORKSPACE / path).resolve()
@@ -102,68 +92,86 @@ def workspace_relative_fact_path(value: str) -> str | None:
     return relative.as_posix()
 
 
-def discover_public_enums(facts_root: Path) -> dict[tuple[str, str], list[str]]:
+def discover_public_enums(
+    facts_root: Path,
+) -> dict[str, dict[str, object]]:
     if not facts_root.is_dir():
         raise QualityContractError(f"facts root is not a directory: {facts_root}")
     facts_files = sorted(facts_root.rglob("source-facts.tsv"))
     if not facts_files:
         raise QualityContractError(f"facts root has no source-facts.tsv files: {facts_root}")
 
-    declared: set[tuple[str, str]] = set()
-    variants: dict[tuple[str, str], list[str]] = {}
+    declared: dict[str, tuple[str, str]] = {}
+    variants: dict[str, list[str]] = {}
     for facts_file in facts_files:
         try:
             lines = facts_file.read_text(encoding="utf-8").splitlines()
         except (OSError, UnicodeError) as error:
             raise QualityContractError(f"cannot read C facts: {facts_file}: {error}") from error
-        for line_number, line in enumerate(lines, 1):
-            if not line.startswith("P101FACT\t"):
+        try:
+            facts = c_facts.decode_lines(lines)
+        except c_facts.CFactError as error:
+            raise QualityContractError(
+                f"cannot decode C facts: {facts_file}: {error}"
+            ) from error
+        for fact in facts:
+            if fact["kind"] not in {"ENUM", "ENUMERATOR"}:
                 continue
-            fields = [unescape_fact_field(value) for value in line.split("\t")]
-            if len(fields) < 3:
-                raise QualityContractError(
-                    f"{facts_file}:{line_number}: malformed P101FACT record"
-                )
-            if fields[1] != "4":
-                raise QualityContractError(
-                    f"{facts_file}:{line_number}: expected P101FACT v4"
-                )
-            if fields[2] not in {"ENUM", "ENUMERATOR"}:
-                continue
-            if len(fields) < 8:
-                raise QualityContractError(
-                    f"{facts_file}:{line_number}: malformed {fields[2]} fact"
-                )
-            source = workspace_relative_fact_path(fields[3])
+            source = workspace_relative_fact_path(str(fact["path"]))
             if source is None:
                 continue
-            if fields[2] == "ENUM":
-                type_name = fields[7]
-                if type_name.startswith("p101_"):
-                    key = (source, type_name)
-                    declared.add(key)
-                    variants.setdefault(key, [])
-            else:
-                if len(fields) < 9:
+            if fact["kind"] == "ENUM":
+                usr = str(fact.get("usr", ""))
+                if not usr:
                     raise QualityContractError(
-                        f"{facts_file}:{line_number}: malformed ENUMERATOR fact"
+                        f"{facts_file}: enum lacks declaration identity"
                     )
-                type_name = fields[8]
-                if type_name.startswith("p101_"):
-                    key = (source, type_name)
-                    values = variants.setdefault(key, [])
-                    if fields[7] not in values:
-                        values.append(fields[7])
+                type_name = str(fact.get("value", ""))
+                if type_name:
+                    previous = declared.get(usr)
+                    identity = (source, type_name)
+                    if previous is not None and previous != identity:
+                        raise QualityContractError(
+                            f"{facts_file}: enum identity {usr} has "
+                            "conflicting declarations"
+                        )
+                    declared[usr] = identity
+                    variants.setdefault(usr, [])
+            else:
+                parent_usr = str(fact.get("parent_usr", ""))
+                if not parent_usr:
+                    raise QualityContractError(
+                        f"{facts_file}: enumerator lacks parent identity"
+                    )
+                type_name = str(fact.get("type", ""))
+                if type_name:
+                    identity = declared.get(parent_usr)
+                    if identity is None or identity != (source, type_name):
+                        raise QualityContractError(
+                            f"{facts_file}: enumerator parent "
+                            "identity has no public enum declaration"
+                        )
+                    values = variants.setdefault(parent_usr, [])
+                    value = str(fact.get("value", ""))
+                    if value not in values:
+                        values.append(value)
 
-    undisclosed = set(variants) - declared
+    undisclosed = set(variants) - set(declared)
     if undisclosed:
         raise QualityContractError(
             f"enumerators have no public enum declaration: {sorted(undisclosed)}"
         )
-    empty = {key for key in declared if not variants.get(key)}
+    empty = {usr for usr in declared if not variants.get(usr)}
     if empty:
         raise QualityContractError(f"public enums have no enumerators: {sorted(empty)}")
-    return {key: variants[key] for key in sorted(declared)}
+    return {
+        usr: {
+            "source": declared[usr][0],
+            "type": declared[usr][1],
+            "variants": variants[usr],
+        }
+        for usr in sorted(declared)
+    }
 
 
 def acquire_public_enum_facts(output_directory: Path) -> Path:
@@ -322,11 +330,11 @@ def require_oracle(identifier: str, oracles: set[str], context: str) -> None:
 
 def validate(
     document: dict[str, Any],
-    discovered_enums: dict[tuple[str, str], list[str]] | None = None,
+    discovered_enums: dict[str, dict[str, object]] | None = None,
 ) -> dict[str, int]:
     if set(document) != REQUIRED_TOP_LEVEL:
         raise QualityContractError("quality contract has unexpected top-level fields")
-    if document.get("schema") != "p101-quality-contract-v1":
+    if document.get("schema") != "p101-quality-contract-v2":
         raise QualityContractError("unexpected quality-contract schema")
     require_text(document, "does_not_prove", "quality contract")
 
@@ -362,12 +370,13 @@ def validate(
     refusal_sets = document.get("typed_outcome_sets")
     if not isinstance(refusal_sets, list) or not refusal_sets:
         raise QualityContractError("quality contract has no typed refusal sets")
-    refusal_types: set[tuple[str, str]] = set()
+    refusal_types: set[str] = set()
     refusal_variant_count = 0
     for raw in refusal_sets:
         if not isinstance(raw, dict) or set(raw) != {
             "source",
             "type",
+            "type_usr",
             "owner",
             "oracle",
             "variants",
@@ -375,11 +384,11 @@ def validate(
             raise QualityContractError("typed refusal set has invalid fields")
         source_name = require_text(raw, "source", "typed refusal set")
         type_name = require_text(raw, "type", "typed refusal set")
+        type_usr = require_text(raw, "type_usr", "typed refusal set")
         context = f"typed refusal set {type_name}"
-        key = (source_name, type_name)
-        if key in refusal_types:
+        if type_usr in refusal_types:
             raise QualityContractError(f"duplicate {context}")
-        refusal_types.add(key)
+        refusal_types.add(type_usr)
         require_text(raw, "owner", context)
         require_oracle(require_text(raw, "oracle", context), oracles, context)
         variants = raw.get("variants")
@@ -391,35 +400,53 @@ def validate(
         ):
             raise QualityContractError(f"{context} has invalid variants")
         workspace_file(source_name, context)
-        if discovered_enums is not None and variants != discovered_enums.get(key):
-            raise QualityContractError(
-                f"{context} drifted: expected={variants} "
-                f"observed={discovered_enums.get(key)}"
-            )
+        if discovered_enums is not None:
+            observed = discovered_enums.get(type_usr)
+            expected = {
+                "source": source_name,
+                "type": type_name,
+                "variants": variants,
+            }
+            if observed != expected:
+                raise QualityContractError(
+                    f"{context} drifted: expected={expected} "
+                    f"observed={observed}"
+                )
         refusal_variant_count += len(variants)
 
     exclusions = document.get("typed_outcome_exclusions")
     if not isinstance(exclusions, list):
         raise QualityContractError("quality contract has no typed outcome exclusions")
-    excluded_types: set[tuple[str, str]] = set()
+    excluded_types: set[str] = set()
     for raw in exclusions:
         if not isinstance(raw, dict) or set(raw) != {
             "source",
             "type",
+            "type_usr",
             "owner",
             "reason",
         }:
             raise QualityContractError("typed outcome exclusion has invalid fields")
         source_name = require_text(raw, "source", "typed outcome exclusion")
         type_name = require_text(raw, "type", "typed outcome exclusion")
+        type_usr = require_text(raw, "type_usr", "typed outcome exclusion")
         context = f"typed outcome exclusion {type_name}"
-        key = (source_name, type_name)
-        if key in excluded_types or key in refusal_types:
+        if type_usr in excluded_types or type_usr in refusal_types:
             raise QualityContractError(f"duplicate or conflicting {context}")
-        excluded_types.add(key)
+        excluded_types.add(type_usr)
         workspace_file(source_name, context)
         require_text(raw, "owner", context)
         require_text(raw, "reason", context)
+        if discovered_enums is not None:
+            observed = discovered_enums.get(type_usr)
+            if (
+                observed is None
+                or observed.get("source") != source_name
+                or observed.get("type") != type_name
+            ):
+                raise QualityContractError(
+                    f"{context} declaration identity drifted: {observed}"
+                )
 
     if discovered_enums is not None:
         classified = refusal_types | excluded_types
@@ -434,6 +461,27 @@ def validate(
     responsibilities = document.get("audit_responsibilities")
     if not isinstance(responsibilities, list) or not responsibilities:
         raise QualityContractError("quality contract has no audit responsibilities")
+    responsibility_c_sources = {
+        workspace_file(raw["source"], "audit responsibility")
+        for raw in responsibilities
+        if isinstance(raw, dict)
+        and isinstance(raw.get("evidence"), dict)
+        and raw["evidence"].get("kind") == "function-usr"
+    }
+    try:
+        responsibility_facts = (
+            c_facts.acquire(WORKSPACE, responsibility_c_sources)
+            if responsibility_c_sources
+            else []
+        )
+    except c_facts.CFactError as error:
+        raise QualityContractError(str(error)) from error
+    declarations_by_path: dict[Path, set[str]] = {}
+    for fact in responsibility_facts:
+        if fact["kind"] == "FUNCTION":
+            declarations_by_path.setdefault(
+                Path(str(fact["path"])).resolve(), set()
+            ).add(str(fact.get("usr", "")))
     responsibility_ids: set[str] = set()
     delegated_count = 0
     for raw in responsibilities:
@@ -442,7 +490,7 @@ def validate(
             "owner",
             "mode",
             "source",
-            "marker",
+            "evidence",
             "oracle",
         }:
             raise QualityContractError("audit responsibility has invalid fields")
@@ -456,12 +504,32 @@ def validate(
         if mode not in {"local", "delegated"}:
             raise QualityContractError(f"{context} has invalid mode: {mode}")
         delegated_count += mode == "delegated"
-        source = workspace_file(
-            require_text(raw, "source", context), context
-        ).read_text(encoding="utf-8")
-        marker = require_text(raw, "marker", context)
-        if marker not in source:
-            raise QualityContractError(f"{context} marker is absent: {marker}")
+        source = workspace_file(require_text(raw, "source", context), context)
+        evidence = raw.get("evidence")
+        if (
+            not isinstance(evidence, dict)
+            or set(evidence) != {"kind", "value"}
+        ):
+            raise QualityContractError(f"{context} has invalid evidence")
+        evidence_kind = require_text(evidence, "kind", context)
+        evidence_value = require_text(evidence, "value", context)
+        if evidence_kind == "json-schema":
+            source_document = read_json(source, context)
+            if source_document.get("schema") != evidence_value:
+                raise QualityContractError(
+                    f"{context} schema differs: {source_document.get('schema')!r}"
+                )
+        elif evidence_kind == "function-usr":
+            if evidence_value not in declarations_by_path.get(
+                source.resolve(), set()
+            ):
+                raise QualityContractError(
+                    f"{context} declaration identity is absent: {evidence_value}"
+                )
+        else:
+            raise QualityContractError(
+                f"{context} has unsupported evidence kind: {evidence_kind}"
+            )
         require_oracle(require_text(raw, "oracle", context), oracles, context)
 
     boundaries = document.get("boundaries")
@@ -495,22 +563,70 @@ def validate(
 
     termination = document.get("process_termination")
     if not isinstance(termination, dict) or set(termination) != {
-        "allowed_owner",
+        "allowed_caller_usr",
         "checker",
+        "excluded_semantic_roles",
         "oracle",
-        "policy_source",
-        "policy_marker",
+        "source_roots",
+        "termination_usrs",
     }:
         raise QualityContractError("process-termination policy has invalid fields")
-    if require_text(termination, "allowed_owner", "process termination") != "main":
+    if (
+        require_text(
+            termination, "allowed_caller_usr", "process termination"
+        )
+        != "c:@F@main"
+    ):
         raise QualityContractError("only main may own process termination")
     workspace_file(termination["checker"], "process termination checker")
-    policy = workspace_file(
-        termination["policy_source"], "process termination policy"
-    ).read_text(encoding="utf-8")
-    marker = require_text(termination, "policy_marker", "process termination")
-    if marker not in policy:
-        raise QualityContractError(f"process termination marker is absent: {marker}")
+    source_roots = termination.get("source_roots")
+    termination_usrs = termination.get("termination_usrs")
+    excluded_semantic_roles = termination.get("excluded_semantic_roles")
+    if (
+        not isinstance(source_roots, list)
+        or not source_roots
+        or any(not isinstance(root, str) or not root for root in source_roots)
+        or not isinstance(termination_usrs, list)
+        or not termination_usrs
+        or any(not isinstance(usr, str) or not usr for usr in termination_usrs)
+        or not isinstance(excluded_semantic_roles, list)
+        or not excluded_semantic_roles
+        or any(
+            not isinstance(role, str) or not role
+            for role in excluded_semantic_roles
+        )
+    ):
+        raise QualityContractError("process termination has invalid semantic scope")
+    try:
+        termination_facts = c_facts.acquire(
+            WORKSPACE, (WORKSPACE / root for root in source_roots)
+        )
+    except c_facts.CFactError as error:
+        raise QualityContractError(str(error)) from error
+    allowed_caller_usr = termination["allowed_caller_usr"]
+    excluded_callers = {
+        str(fact.get("caller_usr"))
+        for fact in termination_facts
+        if fact["kind"] == "NOTE"
+        and str(fact.get("value", "")).removeprefix("SEMANTIC_ROLE:")
+        in excluded_semantic_roles
+        and fact.get("caller_usr")
+    }
+    violations = [
+        fact
+        for fact in termination_facts
+        if fact["kind"] == "CALL"
+        and fact.get("usr") in termination_usrs
+        and fact.get("caller_usr") != allowed_caller_usr
+        and fact.get("caller_usr") not in excluded_callers
+    ]
+    if violations:
+        first = violations[0]
+        raise QualityContractError(
+            "process termination is called outside main: "
+            f"{first.get('path')}:{first.get('line')} "
+            f"{first.get('caller_usr')} -> {first.get('usr')}"
+        )
     require_oracle(
         require_text(termination, "oracle", "process termination"),
         oracles,
@@ -524,7 +640,6 @@ def validate(
         "producer",
         "oracle",
         "merge_driver",
-        "merge_marker",
     }:
         raise QualityContractError("platform evidence has invalid fields")
     required = platform.get("required")
@@ -540,14 +655,7 @@ def validate(
     ):
         raise QualityContractError("platform evidence has an unsupported receipt schema")
     workspace_file(platform["producer"], "platform evidence producer")
-    driver = workspace_file(
-        platform["merge_driver"], "platform evidence merge driver"
-    ).read_text(encoding="utf-8")
-    merge_marker = require_text(platform, "merge_marker", "platform evidence")
-    if merge_marker not in driver:
-        raise QualityContractError(
-            f"platform evidence merge marker is absent: {merge_marker}"
-        )
+    workspace_file(platform["merge_driver"], "platform evidence merge driver")
     require_oracle(
         require_text(platform, "oracle", "platform evidence"),
         oracles,

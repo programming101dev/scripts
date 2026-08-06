@@ -22,7 +22,7 @@ def write_manifest(root: Path, library: str, rows: list[str]) -> None:
     directory = root / "libraries" / library
     directory.mkdir(parents=True)
     (directory / "api-manifest.tsv").write_text(
-        "function\tprovenance\tcurrent_header\tlinux\tmacos\tfreebsd\n"
+        "function\tfunction_usr\tprovenance\tcurrent_header\tlinux\tmacos\tfreebsd\n"
         + "\n".join(rows)
         + "\n",
         encoding="utf-8",
@@ -36,18 +36,18 @@ def main() -> int:
             root,
             "lib_one",
             [
-                "p101_keep\tPOSIX\tinclude/one.h\tyes\tyes\tyes",
-                "p101_remove\tPOSIX\tinclude/one.h\tyes\tyes\tyes",
-                "p101_platform\tPOSIX\tinclude/one.h\tyes\tyes\tyes",
+                "p101_keep\tc:@F@p101_keep\tPOSIX\tinclude/one.h\tyes\tyes\tyes",
+                "p101_remove\tc:@F@p101_remove\tPOSIX\tinclude/one.h\tyes\tyes\tyes",
+                "p101_platform\tc:@F@p101_platform\tPOSIX\tinclude/one.h\tyes\tyes\tyes",
             ],
         )
         old = MODULE.snapshot(root)
         manifest = root / "libraries" / "lib_one" / "api-manifest.tsv"
         manifest.write_text(
-            "function\tprovenance\tcurrent_header\tlinux\tmacos\tfreebsd\n"
-            "p101_keep\tPOSIX\tinclude/one.h\tyes\tyes\tyes\n"
-            "p101_platform\tPOSIX\tinclude/one.h\tyes\tno\tyes\n"
-            "p101_added\tPOSIX\tinclude/one.h\tyes\tyes\tyes\n",
+            "function\tfunction_usr\tprovenance\tcurrent_header\tlinux\tmacos\tfreebsd\n"
+            "p101_keep\tc:@F@p101_keep\tPOSIX\tinclude/one.h\tyes\tyes\tyes\n"
+            "p101_platform\tc:@F@p101_platform\tPOSIX\tinclude/one.h\tyes\tno\tyes\n"
+            "p101_added\tc:@F@p101_added\tPOSIX\tinclude/one.h\tyes\tyes\tyes\n",
             encoding="utf-8",
         )
         report = MODULE.compare(old, MODULE.snapshot(root))

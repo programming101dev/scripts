@@ -33,36 +33,31 @@ def main() -> int:
     contract = json.loads(checker.CONTRACT_PATH.read_text(encoding="utf-8"))
     failure = json.loads(checker.FAILURE_PATH.read_text(encoding="utf-8"))
     lifecycle = json.loads(checker.LIFECYCLE_PATH.read_text(encoding="utf-8"))
-    texts = (
-        checker.ENV_HEADER.read_text(encoding="utf-8"),
-        checker.ENV_SOURCE.read_text(encoding="utf-8"),
-        checker.IO_SOURCE.read_text(encoding="utf-8"),
-        checker.IO_BEHAVIOR.read_text(encoding="utf-8"),
-    )
-
+    checked_failures = checker.validate(contract, failure, lifecycle)
+    checked_diagnostics = "; ".join(checked_failures)
     check(
-        checker.validate(contract, failure, lifecycle, *texts) == [],
-        "checked contract should pass",
+        checked_failures == [],
+        f"checked contract should pass: {checked_diagnostics}",
     )
 
     bad_phase = copy.deepcopy(contract)
     bad_phase["modes"]["uncertain"]["phase"] = "before-call"
     check(
-        bool(checker.validate(bad_phase, failure, lifecycle, *texts)),
+        bool(checker.validate(bad_phase, failure, lifecycle)),
         "phase drift should fail",
     )
 
     bad_retry = copy.deepcopy(contract)
     bad_retry["modes"]["uncertain"]["retry_rule"] = "retry-always"
     check(
-        bool(checker.validate(bad_retry, failure, lifecycle, *texts)),
+        bool(checker.validate(bad_retry, failure, lifecycle)),
         "unsafe retry policy should fail",
     )
 
     missing_wrapper = copy.deepcopy(contract)
-    missing_wrapper["modes"]["short"]["supported_wrappers"].pop()
+    missing_wrapper["modes"]["short"]["supported_wrapper_usrs"].pop()
     check(
-        bool(checker.validate(missing_wrapper, failure, lifecycle, *texts)),
+        bool(checker.validate(missing_wrapper, failure, lifecycle)),
         "wrapper inventory drift should fail",
     )
 

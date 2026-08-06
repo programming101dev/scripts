@@ -6,9 +6,9 @@
       "sha256": "0a2e9db7e0d451dd0b3e04efba3a02e2f3bd96e62e6f5f5ca1d99b56986bf916"
     },
     {
-      "bytes": 25065,
+      "bytes": 26157,
       "path": "../libraries/lib_env/include/p101_env/env.h",
-      "sha256": "f09f2f99149e65d261bdc2d4169ec197adab77c37cba9221da8c867da803def2"
+      "sha256": "164a91e99ccde82ab45dc84463265084b90e0bc3f372da2feb090489a16205a0"
     },
     {
       "bytes": 11038,
@@ -38,7 +38,7 @@
     {
       "bytes": 12865,
       "path": "../playgrounds/lessons/manifest.json",
-      "sha256": "547ffd27d32c6ef399a6d63ce14b4e4befb0ff9b8438f5b5dde059072fbe7714"
+      "sha256": "87ff9315d77fff5c32c48ff31e632d63a56e30d2408f48b2cfac04f26fc69a25"
     },
     {
       "bytes": 72233,
@@ -51,14 +51,39 @@
       "sha256": "6713fe2cca743b769d9482f4b5a1fde67e2169c356e5d5289de8185c5dcc537b"
     },
     {
-      "bytes": 10084,
-      "path": "checks/check-p101-boundaries.py",
-      "sha256": "d335a047cfc46649d576c19ea108ea5cae2127d3720f2b29121e6b0953e02647"
+      "bytes": 4779,
+      "path": "checks/check-native-wrapper-parity.py",
+      "sha256": "b0c1772e9409e61d81b2ba042da50d032a5ecdbe867ca090a3374fca77daa04d"
     },
     {
-      "bytes": 26631,
+      "bytes": 12827,
+      "path": "checks/check-p101-boundaries.py",
+      "sha256": "056ca254b735f8c6ab0a791b0c0fe56fcdc216c8eddb4d7c8bdf7ce38eff276a"
+    },
+    {
+      "bytes": 30705,
       "path": "checks/check-p101-quality-contract.py",
-      "sha256": "0a8792f0cdcb74e260b3df8fb25d74b9093674018bde5bf4d10a49a8560fed0d"
+      "sha256": "50259d963b36a58be9b40e4cabaa109b928677c4f53265f3e7885db31a153682"
+    },
+    {
+      "bytes": 22364,
+      "path": "checks/check-wrapper-conformance.py",
+      "sha256": "384d2a29257ddb49a44226f86366879d8dc13a53d96dc6bad00e323b4d356ae1"
+    },
+    {
+      "bytes": 8235,
+      "path": "checks/check-wrapper-fault-semantics.py",
+      "sha256": "0c6cac884ce7f841557002dd6022fd88cd92a6dc30178356f224086c80a7f8a0"
+    },
+    {
+      "bytes": 19494,
+      "path": "checks/check-wrapper-lifecycles.py",
+      "sha256": "aa0acc5b13efbcea30697e87a7a34a4cd6c97f950c7ae934c0dc53e0a2a8e0d3"
+    },
+    {
+      "bytes": 33976,
+      "path": "checks/check-wrapper-unit-tests.py",
+      "sha256": "864d2d7125ed5a2fcbe2a190add0fdad1650b14f25251587592fea28519a39dc"
     },
     {
       "bytes": 51285,
@@ -96,29 +121,39 @@
       "sha256": "ef88d96c21b581bf7d29dc7184c18c99bffbc776b3eef614a22ac766fc05cf9b"
     },
     {
-      "bytes": 4503,
+      "bytes": 12613,
       "path": "contracts/instrumentation-contract.json",
-      "sha256": "b8a3c88bd7d51856b4d3bb89c39a6bda079a82e1e4fbfe48c43f9b87ef6dde72"
+      "sha256": "4406162c416a52b268d92af9dca630f805999af3b0b5bf463a202cb9afc2e394"
     },
     {
-      "bytes": 14291,
+      "bytes": 17071,
       "path": "contracts/p101-boundaries.json",
-      "sha256": "1183da08df14379322583883a2ebbf3866274a0d18bda725a8e592ba1e324fdf"
+      "sha256": "98d3cd6083e06e8bf965edfe66164b7ee0dc73f5ed8cfff07edbb6ec661f89af"
     },
     {
-      "bytes": 37569,
+      "bytes": 41858,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "1422e5df7216d23688b526fc02af8c717a31d18405a4e2b7c3201fa16555e612"
+      "sha256": "675a5f9480ee6e9868a7d442953480ce54f2ef1da6e4090317302bc898141fee"
     },
     {
-      "bytes": 15499,
+      "bytes": 62722,
+      "path": "contracts/p101-curriculum-domains.tsv",
+      "sha256": "549997983f2c42d6984ae818a28df3cff78540cf5f0b33748d18847460efbfa2"
+    },
+    {
+      "bytes": 10283,
+      "path": "contracts/p101-playground-tracks.json",
+      "sha256": "0dfc17712b7896ef4fd8ab862d455f99f3158a6bcf09bc970279e50209b78a3b"
+    },
+    {
+      "bytes": 18935,
       "path": "contracts/p101-quality-contract.json",
-      "sha256": "93453320316f57a3e8091194ff810e8ebc2b926c28ea578d2aa051c95a181402"
+      "sha256": "6ca0eb690a17ab38441e90f83fad5d1a5369f037db4394f121ec64e6b7678943"
     },
     {
-      "bytes": 2010,
+      "bytes": 2316,
       "path": "contracts/p101-source-responsibilities.json",
-      "sha256": "d75c16f55232d7715ec7fdf0532448771b2134ac10d3b490d0c23d356cff4cea"
+      "sha256": "622cc57149f8a2e0317d2cc80227d5867a48778cad24dbb0b45b1a9baeff6fb1"
     },
     {
       "bytes": 1933,
@@ -126,39 +161,49 @@
       "sha256": "67e2362e5d320082374c31c1dca4000710d37b0c1723a268b089fb31ff901184"
     },
     {
-      "bytes": 1048,
+      "bytes": 1171,
       "path": "contracts/wrapper-conformance-contract.json",
-      "sha256": "61e74bdd370ee7d724f3986ceb4353fc134ad6616a415c5ec704244e61672753"
+      "sha256": "e1ac1e69ba5613c951a5fca678cadb1aeeb1068f33ea3fb78849b718a2598b83"
     },
     {
-      "bytes": 318674,
+      "bytes": 363883,
       "path": "contracts/wrapper-failure-contract.json",
-      "sha256": "f51622a8efd0d54a4f746a08d519e777c7e7da7b543e516cccde36f7a6ad2c44"
+      "sha256": "d26c61d7482edb63bd33ea09a03d13b3ef72932e68300263e05440f8eac5911a"
     },
     {
-      "bytes": 2184,
+      "bytes": 2762,
       "path": "contracts/wrapper-fault-semantics.json",
-      "sha256": "976966fd133f96a6dcd619516d0405600fd9a8ecf6b6f6031c261667d015f489"
+      "sha256": "e6ee309fb1bdc557b728fe2273d59fdb543cf3cffc399113dbc2addfc1039379"
     },
     {
-      "bytes": 4551,
+      "bytes": 4703,
       "path": "contracts/wrapper-lifecycle-contract.json",
-      "sha256": "ea63d5654c18ac3e4ac995228e7185d22d4c7d07871b89ddde1c497a3bbc76c8"
+      "sha256": "e7b693bc3254f883b18e3c22ffd6550178c690663c7f1bc1870b87883c16eb5f"
     },
     {
-      "bytes": 372646,
+      "bytes": 6323,
+      "path": "contracts/wrapper-native-smoke-contract.json",
+      "sha256": "6437ef0a369a87b0ab62a5b4bb080204ac36f9034ef5e389851e1d7f6ffc5c3d"
+    },
+    {
+      "bytes": 418913,
       "path": "contracts/wrapper-outcome-contract.json",
-      "sha256": "5d93865f74940aefe2cde5adf22cba777191dbb9357c415fd339c6da45b86a37"
+      "sha256": "8e567982700d5628c07607b8ffad68682a920cf96c198a47062d0bf1964720fd"
     },
     {
-      "bytes": 2778787,
+      "bytes": 2829586,
       "path": "contracts/wrapper-platform-faults.json",
-      "sha256": "679a9b98678e351e3de956e401f6add73b5c39e1183ee5014d2b85a49087da0f"
+      "sha256": "94f537c85373530d8b4782c917b46a4aabf1a0c806ce973651b0f632de0f6820"
     },
     {
-      "bytes": 5511,
+      "bytes": 10792,
+      "path": "contracts/wrapper-portable-input-contract.json",
+      "sha256": "2b49e18ff463e14b3c052b61895693a64c8386819545412697b5998e28c3cab1"
+    },
+    {
+      "bytes": 6439,
       "path": "docs/p101-tool-design-contract.md",
-      "sha256": "9f1d77eaa7800d4f6bf8875485b5991fe5d84da111e67f803fb2e478ece9c7c8"
+      "sha256": "183bd0db024aa278bd0388e216a2d0e7b9ac5cdd85ffb06bf017abe341ccfd8e"
     },
     {
       "bytes": 159166,
@@ -171,14 +216,39 @@
       "sha256": "5ed623756eb22b375eeb8c4a93336076db6667baa1c39e01341b8859c2687234"
     },
     {
+      "bytes": 14583,
+      "path": "generators/analyze-lib-function-graph.py",
+      "sha256": "d14ecd0a6d6b3d2099739e12514240793740c3e927e718fc15c43e28a056bca2"
+    },
+    {
+      "bytes": 200760,
+      "path": "generators/generate-wrapper-unit-tests.py",
+      "sha256": "ffd3a457e57d0616a4e2176eeef81bd036a32dea796ebdec3af3ecf5cb422a57"
+    },
+    {
+      "bytes": 36886,
+      "path": "generators/refresh-wrapper-platform-faults.py",
+      "sha256": "9e129f3f4f8e3eb70f8e0e56a4e6d493ba676682a0c597e9b8e752c064181f59"
+    },
+    {
       "bytes": 9510,
       "path": "repos.lock",
-      "sha256": "2a684ad2f6b3fe8ecb89f33ac8edd99bbff8676da86544c4ee130119c9d43fe1"
+      "sha256": "fb4f2ceb57d52872a510ff98db794e7034cc81eb3506d4be6a4e20d6d2b390cc"
     },
     {
       "bytes": 3743,
       "path": "repos.txt",
       "sha256": "db51c5099139111b97efa75ef96e2ab1651be158974fa4ada38ec9e2e2d388b4"
+    },
+    {
+      "bytes": 12505,
+      "path": "runtime/c_facts.py",
+      "sha256": "b6d5026d45009660c406953be91c1069a6544992db00f60e7571282c116a53bc"
+    },
+    {
+      "bytes": 6875,
+      "path": "runtime/wrapper_fault_contract.py",
+      "sha256": "86590b4f73611651f8b682aa6d2dce3dc3fbd6fbd7bc4f0ef6d8ce6f2c4334f3"
     },
     {
       "bytes": 5065,
@@ -196,9 +266,9 @@
       "sha256": "899b2ab206e066c35debe8f9da3c53d65052c8b032414652ce9da035603bfe15"
     },
     {
-      "bytes": 8586,
+      "bytes": 9218,
       "path": "workspace/stack-contract.py",
-      "sha256": "f8667f1d111a461689a2be502e17ecc07eec70f2dfa5dd7fb7a5dcab8742478c"
+      "sha256": "65831df88032dddbb7db4bb42c71640a2a85469771a8671ee9fb9db2a25b847a"
     },
     {
       "bytes": 23925,

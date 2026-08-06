@@ -4,24 +4,29 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import errno
 import json
 import os
 import platform
-import re
 import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from wrapper_fault_contract import fault_domain, injected_fault_cases
+from wrapper_fault_contract import (
+    fault_domain,
+    fault_symbol_header,
+    injected_fault_cases,
+)
 
 
 SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 FAILURE_CONTRACT = SCRIPT_ROOT / "contracts" / "wrapper-failure-contract.json"
 PLATFORM_CONTRACT = SCRIPT_ROOT / "contracts" / "wrapper-platform-faults.json"
 SEMANTICS_CONTRACT = SCRIPT_ROOT / "contracts" / "wrapper-fault-semantics.json"
+WORKSPACE = SCRIPT_ROOT.parent
 
 
 @dataclass(frozen=True)
@@ -31,6 +36,7 @@ class Scenario:
     code_name: str
     code_value: int | None
     domain: str
+    symbol_header: str
 
 
 def _host_platform() -> str:
@@ -57,25 +63,51 @@ def _load(path: Path) -> dict:
 def build_scenarios(
     wrappers: list[str], platform_name: str, library: str | None
 ) -> list[Scenario]:
-    failures = _load(FAILURE_CONTRACT).get("wrappers", {})
+    failures_by_name = _load(FAILURE_CONTRACT).get("wrappers", {})
+    failures = {
+        record.get("function_usr"): record
+        for record in failures_by_name.values()
+        if isinstance(record, dict) and record.get("function_usr")
+    }
     platform_contract = _load(PLATFORM_CONTRACT)
-    wrapper_mappings = platform_contract.get("wrappers", {})
+    wrapper_mappings = {
+        record.get("function_usr"): record
+        for record in platform_contract.get("wrappers", {}).values()
+        if isinstance(record, dict) and record.get("function_usr")
+    }
     semantics = _load(SEMANTICS_CONTRACT).get("modes", {})
+    wrapper_usrs: dict[str, str] = {}
+    for manifest in sorted(
+        (WORKSPACE / "libraries").glob("lib_*/api-manifest.tsv")
+    ):
+        with manifest.open(encoding="utf-8") as stream:
+            for row in csv.DictReader(stream, delimiter="\t"):
+                previous = wrapper_usrs.setdefault(
+                    row["function"],
+                    row["function_usr"],
+                )
+                if previous != row["function_usr"]:
+                    raise ValueError(
+                        f"ambiguous public API spelling: {row['function']}"
+                    )
     if not wrappers:
         wrappers = sorted(
             name
-            for name, record in failures.items()
+            for name, function_usr in wrapper_usrs.items()
+            for record in (failures.get(function_usr),)
+            if isinstance(record, dict)
             if library is None or record.get("library") == library
         )
     scenarios: list[Scenario] = []
     for wrapper in wrappers:
-        canonical = wrapper if wrapper.startswith("p101_") else f"p101_{wrapper}"
-        failure = failures.get(canonical)
+        canonical = wrapper
+        wrapper_usr = wrapper_usrs.get(canonical)
+        failure = failures.get(wrapper_usr)
         if not isinstance(failure, dict):
             raise ValueError(f"wrapper is absent from the failure contract: {wrapper}")
         if library is not None and failure.get("library") != library:
             raise ValueError(f"{canonical} is not owned by {library}")
-        wrapper_mapping = wrapper_mappings.get(canonical)
+        wrapper_mapping = wrapper_mappings.get(wrapper_usr)
         if not isinstance(wrapper_mapping, dict):
             raise ValueError(
                 f"{canonical} has no wrapper-to-native platform mapping"
@@ -89,6 +121,7 @@ def build_scenarios(
             platform_name,
         )
         domain = fault_domain(platform_contract, native_name)
+        symbol_header = fault_symbol_header(platform_contract, native_name)
         for code_name in code_names:
             code_value = getattr(errno, code_name, None)
             scenarios.append(
@@ -98,11 +131,19 @@ def build_scenarios(
                     code_name,
                     code_value if isinstance(code_value, int) else None,
                     domain,
+                    symbol_header,
                 )
             )
         if "EINTR" in code_names:
             scenarios.append(
-                Scenario(canonical, "eintr", "EINTR", errno.EINTR, domain)
+                Scenario(
+                    canonical,
+                    "eintr",
+                    "EINTR",
+                    errno.EINTR,
+                    domain,
+                    symbol_header,
+                )
             )
         if "ETIMEDOUT" in code_names:
             scenarios.append(
@@ -112,12 +153,24 @@ def build_scenarios(
                     "ETIMEDOUT",
                     errno.ETIMEDOUT,
                     domain,
+                    symbol_header,
                 )
             )
         for mode in ("short", "uncertain"):
-            supported = semantics.get(mode, {}).get("supported_wrappers", [])
-            if canonical in supported:
-                scenarios.append(Scenario(canonical, mode, "-", 0, domain))
+            supported = semantics.get(mode, {}).get(
+                "supported_wrapper_usrs", []
+            )
+            if wrapper_usr in supported:
+                scenarios.append(
+                    Scenario(
+                        canonical,
+                        mode,
+                        "-",
+                        0,
+                        domain,
+                        symbol_header,
+                    )
+                )
     return scenarios
 
 
@@ -131,22 +184,10 @@ def resolve_symbolic_codes(scenarios: list[Scenario]) -> dict[str, int]:
     )
     if not names:
         return {}
-    for name in names:
-        if re.fullmatch(r"[A-Z][A-Z0-9_]*", name) is None:
-            raise ValueError(f"invalid symbolic fault code in contract: {name}")
-
-    headers = {"errno.h", "stdio.h"}
-    for name in names:
-        if name.startswith("EAI_"):
-            headers.add("netdb.h")
-        elif name.startswith("REG_"):
-            headers.add("regex.h")
-        elif name.startswith("GLOB_"):
-            headers.add("glob.h")
-        elif name.startswith("WRDE_"):
-            headers.add("wordexp.h")
-        elif name.startswith("MM_"):
-            headers.add("fmtmsg.h")
+    headers = {"stdio.h"}
+    for scenario in scenarios:
+        if scenario.code_name in names:
+            headers.add(scenario.symbol_header)
 
     source_lines = [
         *(f"#include <{header}>" for header in sorted(headers)),
@@ -291,7 +332,7 @@ def main() -> int:
             "-n",
             str(args.max_fault_index),
             "-F",
-            scenario.wrapper.removeprefix("p101_"),
+            scenario.wrapper,
             "-M",
             scenario.mode,
             "-A",

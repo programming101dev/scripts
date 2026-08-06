@@ -1,0 +1,444 @@
+{
+  "default_policy": "defer-to-native-platform",
+  "evidence_contract": "wrapper-platform-faults.json",
+  "policy": "An input rejected unconditionally by any supported platform is rejected by the wrapper on every supported platform. Context-dependent native inputs are not pre-rejected.",
+  "rules": [
+    {
+      "function_usr": "c:@F@p101_catclose",
+      "constraints": [
+        {
+          "constraint": "invalid-catalog-descriptor",
+          "error_code": "EBADF",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "catalog-zero",
+              "result_kind": "negative-one"
+            },
+            {
+              "input_kind": "catalog-failure",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "nl_catd"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_catgets",
+      "constraints": [
+        {
+          "constraint": "invalid-catalog-descriptor",
+          "error_code": "EBADF",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "companion_arguments": [
+                {
+                  "parameter_index": 5,
+                  "value": "p101 fallback",
+                  "value_kind": "text"
+                }
+              ],
+              "input_kind": "catalog-zero",
+              "result_kind": "argument",
+              "result_parameter_index": 5
+            },
+            {
+              "companion_arguments": [
+                {
+                  "parameter_index": 5,
+                  "value": "p101 fallback",
+                  "value_kind": "text"
+                }
+              ],
+              "input_kind": "catalog-failure",
+              "result_kind": "argument",
+              "result_parameter_index": 5
+            }
+          ],
+          "parameter_index": 2,
+          "type": "nl_catd"
+        },
+        {
+          "constraint": "nonnull",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux"
+          ],
+          "cases": [
+            {
+              "input_kind": "null",
+              "result_kind": "null"
+            }
+          ],
+          "parameter_index": 5,
+          "type": "const char *"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_catopen",
+      "constraints": [
+        {
+          "constraint": "nonnull",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "macos"
+          ],
+          "cases": [
+            {
+              "input_kind": "null",
+              "result_kind": "catalog-failure"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "const char *"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_getrlimit",
+      "constraints": [
+        {
+          "constraint": "nonnegative-selector",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos"
+          ],
+          "cases": [
+            {
+              "input_kind": "negative-one",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_msgctl",
+      "constraints": [
+        {
+          "constraint": "nonnegative-resource-id",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "negative-one",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_msgrcv",
+      "constraints": [
+        {
+          "constraint": "nonnegative-resource-id",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "negative-one",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_msgsnd",
+      "constraints": [
+        {
+          "constraint": "nonnegative-resource-id",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "negative-one",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_semctl",
+      "constraints": [
+        {
+          "constraint": "nonnegative-resource-id",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "negative-one",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_semctl_arg",
+      "constraints": [
+        {
+          "constraint": "nonnegative-resource-id",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "negative-one",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_semget",
+      "constraints": [
+        {
+          "constraint": "nonnegative-count",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "negative-one",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 3,
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_semop",
+      "constraints": [
+        {
+          "constraint": "nonnegative-resource-id",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "negative-one",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_setrlimit",
+      "constraints": [
+        {
+          "constraint": "nonnegative-selector",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos"
+          ],
+          "cases": [
+            {
+              "input_kind": "negative-one",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_shm_open",
+      "constraints": [
+        {
+          "constraint": "posix-shared-memory-name",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "text-without-leading-slash",
+              "result_kind": "negative-one"
+            },
+            {
+              "input_kind": "text-root-only",
+              "result_kind": "negative-one"
+            },
+            {
+              "input_kind": "text-with-extra-slash",
+              "result_kind": "negative-one"
+            },
+            {
+              "input_kind": "null",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "const char *"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_shm_unlink",
+      "constraints": [
+        {
+          "constraint": "posix-shared-memory-name",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "text-without-leading-slash",
+              "result_kind": "negative-one"
+            },
+            {
+              "input_kind": "text-root-only",
+              "result_kind": "negative-one"
+            },
+            {
+              "input_kind": "text-with-extra-slash",
+              "result_kind": "negative-one"
+            },
+            {
+              "input_kind": "null",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "const char *"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_shmat",
+      "constraints": [
+        {
+          "constraint": "nonnegative-resource-id",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "negative-one",
+              "result_kind": "pointer-failure"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_shmctl",
+      "constraints": [
+        {
+          "constraint": "nonnegative-resource-id",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "negative-one",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "function_usr": "c:@F@p101_shmdt",
+      "constraints": [
+        {
+          "constraint": "nonnull",
+          "error_code": "EINVAL",
+          "evidence_platforms": [
+            "linux",
+            "macos",
+            "freebsd"
+          ],
+          "cases": [
+            {
+              "input_kind": "null",
+              "result_kind": "negative-one"
+            }
+          ],
+          "parameter_index": 2,
+          "type": "const void *"
+        }
+      ]
+    }
+  ],
+  "schema": "p101-wrapper-portable-input-contract-v2",
+  "supported_platforms": [
+    "linux",
+    "macos",
+    "freebsd"
+  ]
+}

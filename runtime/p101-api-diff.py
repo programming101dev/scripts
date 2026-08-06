@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 
-SCHEMA = "p101-public-api-snapshot-v1"
+SCHEMA = "p101-public-api-snapshot-v2"
 
 
 def snapshot(root: Path) -> dict:
@@ -21,15 +21,21 @@ def snapshot(root: Path) -> dict:
     for manifest in sorted(libraries.glob("lib_*/api-manifest.tsv")):
         with manifest.open(encoding="utf-8", newline="") as stream:
             reader = csv.DictReader(stream, delimiter="\t")
-            if reader.fieldnames is None or "function" not in reader.fieldnames:
-                raise ValueError(f"{manifest} has no function column")
+            if (
+                reader.fieldnames is None
+                or "function" not in reader.fieldnames
+                or "function_usr" not in reader.fieldnames
+            ):
+                raise ValueError(f"{manifest} has no function identity columns")
             for row in reader:
                 name = (row.get("function") or "").strip()
-                if not name:
+                usr = (row.get("function_usr") or "").strip()
+                if not name or not usr:
                     continue
                 records.append(
                     {
                         "function": name,
+                        "function_usr": usr,
                         "library": manifest.parent.name,
                         "provenance": (row.get("provenance") or "").strip(),
                         "header": (row.get("current_header") or "").strip(),
@@ -41,18 +47,19 @@ def snapshot(root: Path) -> dict:
     if not records:
         raise ValueError("no public API records were found")
     seen: set[str] = set()
-    duplicate_names: set[str] = set()
+    duplicate_identities: set[str] = set()
     for record in records:
-        if record["function"] in seen:
-            duplicate_names.add(record["function"])
-        seen.add(record["function"])
-    if duplicate_names:
+        if record["function_usr"] in seen:
+            duplicate_identities.add(record["function_usr"])
+        seen.add(record["function_usr"])
+    if duplicate_identities:
         raise ValueError(
-            "public API names are not unique: " + ", ".join(sorted(duplicate_names))
+            "public API identities are not unique: "
+            + ", ".join(sorted(duplicate_identities))
         )
     return {
         "schema": SCHEMA,
-        "records": sorted(records, key=lambda item: item["function"]),
+        "records": sorted(records, key=lambda item: item["function_usr"]),
         "summary": {
             "functions": len(records),
             "libraries": len({record["library"] for record in records}),
@@ -77,8 +84,8 @@ def load(path: Path) -> dict:
 
 
 def compare(old: dict, new: dict) -> dict:
-    old_records = {item["function"]: item for item in old["records"]}
-    new_records = {item["function"]: item for item in new["records"]}
+    old_records = {item["function_usr"]: item for item in old["records"]}
+    new_records = {item["function_usr"]: item for item in new["records"]}
     findings: list[dict] = []
 
     def add(identifier: str, function: str, message: str, **evidence: str) -> None:
@@ -98,8 +105,9 @@ def compare(old: dict, new: dict) -> dict:
             }
         )
 
-    for name, previous in sorted(old_records.items()):
-        current = new_records.get(name)
+    for usr, previous in sorted(old_records.items()):
+        name = previous["function"]
+        current = new_records.get(usr)
         if current is None:
             add(
                 "P101-API-001",
@@ -142,7 +150,10 @@ def compare(old: dict, new: dict) -> dict:
                     old_header=previous["header"],
                     new_header=current["header"],
                 )
-    additions = sorted(set(new_records) - set(old_records))
+    additions = [
+        new_records[usr]["function"]
+        for usr in sorted(set(new_records) - set(old_records))
+    ]
     return {
         "schema": "p101-public-api-diff-v1",
         "findings": findings,

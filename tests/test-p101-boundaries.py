@@ -35,23 +35,35 @@ class BoundaryTests(unittest.TestCase):
             report["boundaries"] * len(MODULE.REQUIRED_TESTS),
         )
 
+    def test_fact_decoder_requires_v6(self) -> None:
+        valid = (
+            "P101FACT\t6\tFUNCTION\ttest.c\ttest\t0\t1\tfunction\t1\t0"
+            "\tc:@F@function\t0\t1"
+        )
+        self.assertEqual(len(MODULE.c_facts.decode_lines([valid])), 1)
+        invalid = valid.replace("P101FACT\t6\t", "P101FACT\t5\t", 1)
+        with self.assertRaisesRegex(MODULE.c_facts.CFactError, "v6"):
+            MODULE.c_facts.decode_lines([invalid])
+
     def test_duplicate_owner_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)
         document["boundaries"][1]["owner_source"] = document["boundaries"][0][
             "owner_source"
         ]
-        document["boundaries"][1]["owner_symbol"] = document["boundaries"][0][
-            "owner_symbol"
+        document["boundaries"][1]["owner_usr"] = document["boundaries"][0][
+            "owner_usr"
         ]
         with self.assertRaisesRegex(MODULE.BoundaryError, "duplicate boundary owner"):
             MODULE.validate(document)
 
-    def test_missing_test_marker_is_rejected(self) -> None:
+    def test_missing_semantic_test_role_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)
         document["boundaries"][0]["tests"]["binding_swap"][
-            "marker"
-        ] = "not_a_real_test_marker"
-        with self.assertRaisesRegex(MODULE.BoundaryError, "binding_swap marker"):
+            "semantic_role"
+        ] = "p101:boundary-case:not-real"
+        with self.assertRaisesRegex(
+            MODULE.BoundaryError, "binding_swap must resolve"
+        ):
             MODULE.validate(document)
 
     def test_missing_limitation_is_rejected(self) -> None:

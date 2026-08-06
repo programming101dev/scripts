@@ -33,10 +33,6 @@ POSIX_BASE = "https://pubs.opengroup.org/onlinepubs/9799919799"
 POSIX_INDEX_URL = f"{POSIX_BASE}/idx/functions.html"
 POSIX_ERRNO_URL = f"{POSIX_BASE}/basedefs/errno.h.html"
 
-ALIASES = {
-    "p101_semctl_arg": "semctl",
-}
-
 # Some manuals intentionally group several interfaces on one page but describe
 # an ERRORS list for only one sibling without carrying machine-readable scope
 # into each item. These reviewed exclusions prevent that prose ambiguity from
@@ -341,6 +337,22 @@ UNBOUNDED_SYSTEM_FAULTS = {
     "fnmatch": "implementation-defined non-match error",
 }
 
+# Header ownership is explicit contract metadata.  Consumers must not infer a
+# code's type or origin from its spelling (for example, an EAI_ prefix).
+SYSTEM_FAULT_HEADERS = {
+    "dlclose": "dlfcn.h",
+    "dlopen": "dlfcn.h",
+    "dlsym": "dlfcn.h",
+    "fmtmsg": "fmtmsg.h",
+    "fnmatch": "fnmatch.h",
+    "getaddrinfo": "netdb.h",
+    "getnameinfo": "netdb.h",
+    "glob": "glob.h",
+    "regcomp": "regex.h",
+    "regexec": "regex.h",
+    "wordexp": "wordexp.h",
+}
+
 
 def rows(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8") as stream:
@@ -351,6 +363,15 @@ def wrapper_inventory() -> list[dict[str, str]]:
     roles = json.loads(INSTRUMENTATION_PATH.read_text(encoding="utf-8"))[
         "library_roles"
     ]
+    existing_bindings: dict[str, str | None] = {}
+    if CONTRACT_PATH.is_file():
+        existing_contract = json.loads(
+            CONTRACT_PATH.read_text(encoding="utf-8")
+        )
+        for binding in existing_contract.get("wrappers", {}).values():
+            function_usr = binding.get("function_usr")
+            if isinstance(function_usr, str) and function_usr:
+                existing_bindings[function_usr] = binding.get("function")
     inventory: list[dict[str, str]] = []
     for library, role in sorted(roles.items()):
         manifest = WORKSPACE / "libraries" / library / "api-manifest.tsv"
@@ -358,13 +379,21 @@ def wrapper_inventory() -> list[dict[str, str]]:
             continue
         for row in rows(manifest):
             wrapper = row["function"]
-            native = ALIASES.get(
-                wrapper,
-                wrapper.removeprefix("p101_"),
-            )
+            function_usr = row.get("function_usr", "")
+            if not function_usr:
+                raise ValueError(
+                    f"{manifest}: {wrapper} has no declaration identity"
+                )
+            native = existing_bindings.get(function_usr)
+            if role == "native-wrapper" and not native:
+                raise ValueError(
+                    f"{wrapper} ({function_usr}) has no reviewed native "
+                    "function mapping in the platform-fault contract"
+                )
             inventory.append(
                 {
                     "wrapper": wrapper,
+                    "function_usr": function_usr,
                     "library": library,
                     "role": role,
                     "native": native,
@@ -987,6 +1016,7 @@ def main() -> int:
 
     wrappers = {
         item["wrapper"]: {
+            "function_usr": item["function_usr"],
             "library": item["library"],
             "role": item["role"],
             "function": (
@@ -1054,6 +1084,7 @@ def main() -> int:
             }
         system_faults[function] = {
             "coverage_kind": specification["coverage_kind"],
+            "symbol_header": SYSTEM_FAULT_HEADERS[function],
             "posix": {
                 "codes": specification["posix"],
                 "source": posix_record_value["source"],
@@ -1081,6 +1112,7 @@ def main() -> int:
         system_faults[function] = {
             "coverage_kind": "representative-unbounded-class",
             "description": description,
+            "symbol_header": SYSTEM_FAULT_HEADERS[function],
             "posix": {
                 "codes": ["EINVAL"],
                 "source": posix_record_value["source"],
@@ -1088,7 +1120,7 @@ def main() -> int:
             "platforms": platform_values,
         }
     contract = {
-        "schema": "p101-wrapper-platform-faults-v1",
+        "schema": "p101-wrapper-platform-faults-v2",
         "standard": {
             "name": "POSIX.1-2024",
             "function_index": POSIX_INDEX_URL,

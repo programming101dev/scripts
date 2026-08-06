@@ -6,6 +6,9 @@ Admitted inputs:
   * each library's public headers and implementation sources
   * a Clang executable capable of producing JSON ASTs
   * wrapper-platform-faults.json (POSIX plus platform manual overrides)
+  * wrapper-native-smoke-contract.json (declared deterministic native outcomes)
+  * wrapper-portable-input-contract.json (the Linux/macOS/FreeBSD input
+    compatibility intersection)
 
 Outputs:
   * test/test_fault_wrappers.c in every active public-API library
@@ -18,7 +21,10 @@ Those cases are intentionally handwritten because safe success-path fixtures
 are part of each wrapper's contract and cannot be inferred from a signature.
 
 Blind spot: injected failures prove propagation of documented error codes, not
-that a real kernel can produce every condition on the current machine.
+that a real kernel can produce every condition on the current machine. Portable
+input rules cover only values that are unconditionally invalid on at least one
+supported platform; context-dependent values are deliberately delegated to the
+native implementation.
 check-wrapper-unit-tests.py and each repository's test.sh are the executable
 receipts for the generated and handwritten cases.
 """
@@ -35,6 +41,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from collections import defaultdict
 from functools import cache
 from pathlib import Path
@@ -49,6 +56,7 @@ from wrapper_fault_contract import (  # noqa: E402
     has_documented_faults,
     load_contract,
 )
+from c_facts import CFactError, acquire  # noqa: E402
 
 
 WORKSPACE = SCRIPTS_ROOT.parent
@@ -61,6 +69,15 @@ FAILURE_CONTRACT_PATH = (
 )
 OUTCOME_CONTRACT_PATH = (
     SCRIPTS_ROOT / "contracts" / "wrapper-outcome-contract.json"
+)
+FAULT_SEMANTICS_PATH = (
+    SCRIPTS_ROOT / "contracts" / "wrapper-fault-semantics.json"
+)
+NATIVE_SMOKE_CONTRACT_PATH = (
+    SCRIPTS_ROOT / "contracts" / "wrapper-native-smoke-contract.json"
+)
+PORTABLE_INPUT_CONTRACT_PATH = (
+    SCRIPTS_ROOT / "contracts" / "wrapper-portable-input-contract.json"
 )
 REPOS_PATH = SCRIPTS_ROOT / "repos.txt"
 AGGREGATE_TYPEDEFS = {
@@ -180,47 +197,136 @@ struct native_condition_signal_context
 {
     pthread_cond_t *condition;
     pthread_mutex_t *mutex;
+    int              status;
 };
 
 static void *native_condition_signal_thread(void *value)
 {
     struct native_condition_signal_context *context = value;
+    int                                     lock_status;
+    int                                     signal_status = 0;
+    int                                     unlock_status = 0;
 
-    (void)pthread_mutex_lock(context->mutex);
-    (void)pthread_cond_signal(context->condition);
-    (void)pthread_mutex_unlock(context->mutex);
+    lock_status = pthread_mutex_lock(context->mutex);
+    if(lock_status == 0)
+    {
+        signal_status = pthread_cond_signal(context->condition);
+        unlock_status = pthread_mutex_unlock(context->mutex);
+    }
+    context->status = lock_status != 0     ? lock_status
+                      : signal_status != 0 ? signal_status
+                                           : unlock_status;
     return NULL;
 }
 """,
 }
 NATIVE_PTHREAD_OBJECTS = {
-    "pthread_attr_t": ("pthread_attr_init", "pthread_attr_destroy", ""),
-    "pthread_cond_t": ("pthread_cond_init", "pthread_cond_destroy", ", NULL"),
+    "pthread_attr_t": (
+        "pthread_attr_init",
+        "pthread_attr_destroy",
+        "c:@F@p101_pthread_attr_init",
+        "c:@F@p101_pthread_attr_destroy",
+        "",
+    ),
+    "pthread_cond_t": (
+        "pthread_cond_init",
+        "pthread_cond_destroy",
+        "c:@F@p101_pthread_cond_init",
+        "c:@F@p101_pthread_cond_destroy",
+        ", NULL",
+    ),
     "pthread_condattr_t": (
         "pthread_condattr_init",
         "pthread_condattr_destroy",
+        "c:@F@p101_pthread_condattr_init",
+        "c:@F@p101_pthread_condattr_destroy",
         "",
     ),
     "pthread_mutex_t": (
         "pthread_mutex_init",
         "pthread_mutex_destroy",
+        "c:@F@p101_pthread_mutex_init",
+        "c:@F@p101_pthread_mutex_destroy",
         ", NULL",
     ),
     "pthread_mutexattr_t": (
         "pthread_mutexattr_init",
         "pthread_mutexattr_destroy",
+        "c:@F@p101_pthread_mutexattr_init",
+        "c:@F@p101_pthread_mutexattr_destroy",
         "",
     ),
     "pthread_rwlock_t": (
         "pthread_rwlock_init",
         "pthread_rwlock_destroy",
+        "c:@F@p101_pthread_rwlock_init",
+        "c:@F@p101_pthread_rwlock_destroy",
         ", NULL",
     ),
     "pthread_rwlockattr_t": (
         "pthread_rwlockattr_init",
         "pthread_rwlockattr_destroy",
+        "c:@F@p101_pthread_rwlockattr_init",
+        "c:@F@p101_pthread_rwlockattr_destroy",
         "",
     ),
+}
+
+UNSAFE_NATIVE_CALL_USRS = {
+    "c:@F@__builtin___sprintf_chk",
+    "c:@F@__builtin___strcat_chk",
+    "c:@F@__builtin___strcpy_chk",
+    "c:@F@sprintf",
+    "c:@F@strcat",
+    "c:@F@strcpy",
+}
+DIRECT_WAIT_USRS = {"c:@F@waitpid"}
+EINTR_SAFE_WAIT_ROLE = "SEMANTIC_ROLE:p101:test:eintr-safe-wait-adapter"
+PROCESS_TERMINATION_USRS = {
+    "c:@F@_Exit",
+    "c:@F@_exit",
+    "c:@F@abort",
+    "c:@F@exit",
+    "c:@F@quick_exit",
+}
+STATUS_BEARING_CLEANUP_USRS = {
+    f"c:@F@{name}"
+    for name in {
+        "close",
+        "closedir",
+        "fclose",
+        "msgctl",
+        "pclose",
+        "pthread_attr_destroy",
+        "pthread_cancel",
+        "pthread_cond_destroy",
+        "pthread_cond_signal",
+        "pthread_condattr_destroy",
+        "pthread_create",
+        "pthread_detach",
+        "pthread_join",
+        "pthread_key_delete",
+        "pthread_mutex_destroy",
+        "pthread_mutex_lock",
+        "pthread_mutex_unlock",
+        "pthread_mutexattr_destroy",
+        "pthread_rwlock_destroy",
+        "pthread_rwlock_rdlock",
+        "pthread_rwlock_unlock",
+        "pthread_rwlock_wrlock",
+        "pthread_rwlockattr_destroy",
+        "sem_close",
+        "sem_unlink",
+        "semctl",
+        "shm_unlink",
+        "shmctl",
+        "shmdt",
+        "sigprocmask",
+        "snprintf",
+        "unlink",
+        "unsetenv",
+        "waitpid",
+    }
 }
 
 
@@ -237,6 +343,11 @@ def function_pointer_type(qualified: str) -> bool:
 def records(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8") as stream:
         return list(csv.DictReader(stream, delimiter="\t"))
+
+
+def workspace_path(value: object) -> Path:
+    path = Path(str(value))
+    return path.resolve() if path.is_absolute() else (WORKSPACE / path).resolve()
 
 
 def active_libraries() -> dict[str, tuple[Path, list[dict[str, str]]]]:
@@ -366,75 +477,106 @@ def clang_ast(
     return json.loads(result.stdout)
 
 
-def referenced_names(node: dict[str, Any]) -> set[str]:
-    names: set[str] = set()
-    for child in nodes(node):
-        referenced = child.get("referencedDecl")
-        if isinstance(referenced, dict):
-            name = referenced.get("name")
-            if isinstance(name, str):
-                names.add(name)
-    return names
-
-
-def called_functions(node: dict[str, Any]) -> set[str]:
-    names: set[str] = set()
-    for child in nodes(node):
-        if child.get("kind") != "CallExpr":
-            continue
-        for nested in nodes(child):
-            referenced = nested.get("referencedDecl")
-            if (
-                isinstance(referenced, dict)
-                and referenced.get("kind") == "FunctionDecl"
-                and isinstance(referenced.get("name"), str)
-            ):
-                names.add(referenced["name"])
-    return names
+def node_offsets(node: dict[str, Any]) -> tuple[int, int] | None:
+    """Return one AST node's expansion extent without interpreting spellings."""
+    extent = node.get("range", {})
+    begin = extent.get("begin", {})
+    end = extent.get("end", {})
+    begin = begin.get("expansionLoc", begin)
+    end = end.get("expansionLoc", end)
+    start = begin.get("offset")
+    finish = end.get("offset")
+    token_length = end.get("tokLen", 0)
+    if not all(
+        isinstance(value, int)
+        for value in (start, finish, token_length)
+    ):
+        return None
+    return start, finish + token_length
 
 
 def function_declarations(
     ast: dict[str, Any],
-    admitted: set[str],
+    identities_by_extent: dict[tuple[int, int], tuple[str, str]],
 ) -> dict[str, dict[str, Any]]:
     declarations: dict[str, dict[str, Any]] = {}
     for node in nodes(ast):
         if node.get("kind") != "FunctionDecl":
             continue
-        name = node.get("name")
-        if name not in admitted:
+        extent = node_offsets(node)
+        identity = identities_by_extent.get(extent) if extent is not None else None
+        if identity is None:
             continue
+        name, usr = identity
         is_definition = any(
             child.get("kind") == "CompoundStmt"
             for child in node.get("inner", [])
         )
+        if not is_definition:
+            continue
         existing = declarations.get(name)
         existing_is_definition = existing is not None and any(
             child.get("kind") == "CompoundStmt"
             for child in existing.get("inner", [])
         )
         if existing is None or (is_definition and not existing_is_definition):
+            node["_p101_function_usr"] = usr
             declarations[name] = node
     return declarations
+
+
+def semantic_definition_extents(
+    source: Path,
+    admitted_by_usr: dict[str, str],
+    semantic_facts: list[dict[str, object]],
+) -> dict[tuple[int, int], tuple[str, str]]:
+    """Bind definitions using the protocol's declaration bit and stable USR."""
+    return {
+        (int(fact["start"]), int(fact["end"])): (
+            admitted_by_usr[str(fact["usr"])],
+            str(fact["usr"]),
+        )
+        for fact in semantic_facts
+        if fact.get("kind") == "FUNCTION"
+        and not fact.get("is_declaration")
+        and workspace_path(fact.get("path", "")) == source
+        and str(fact.get("usr", "")) in admitted_by_usr
+    }
 
 
 def function_definitions(
     clang: str,
     rows: list[dict[str, str]],
     include_dirs: list[Path],
+    semantic_facts: list[dict[str, object]],
 ) -> dict[str, dict[str, Any]]:
-    by_source: dict[Path, set[str]] = defaultdict(set)
+    by_source: dict[Path, dict[str, str]] = defaultdict(dict)
     for row in rows:
-        by_source[WORKSPACE / row["current_source"]].add(row["function"])
+        by_source[(WORKSPACE / row["current_source"]).resolve()][
+            row["function_usr"]
+        ] = row["function"]
 
     definitions: dict[str, dict[str, Any]] = {}
-    for source, admitted in sorted(by_source.items()):
+    for source, admitted_by_usr in sorted(by_source.items()):
+        identities_by_extent = semantic_definition_extents(
+            source,
+            admitted_by_usr,
+            semantic_facts,
+        )
+        found_usrs = {usr for _name, usr in identities_by_extent.values()}
+        missing_usrs = admitted_by_usr.keys() - found_usrs
+        if missing_usrs:
+            raise RuntimeError(
+                f"{source.relative_to(WORKSPACE)} lacks semantic definitions "
+                f"for {', '.join(sorted(missing_usrs))}"
+            )
         ast = clang_ast(clang, source, include_dirs)
-        declarations = function_declarations(ast, admitted)
-        missing = admitted - declarations.keys()
+        declarations = function_declarations(ast, identities_by_extent)
+        missing = set(admitted_by_usr.values()) - declarations.keys()
         if missing:
             raise RuntimeError(
-                f"{source.relative_to(WORKSPACE)} lacks AST definitions for "
+                f"{source.relative_to(WORKSPACE)} lacks identity-aligned AST "
+                "definitions for "
                 f"{', '.join(sorted(missing))}"
             )
         for declaration in declarations.values():
@@ -528,11 +670,28 @@ def has_va_list_parameter(declaration: dict[str, Any]) -> bool:
     )
 
 
+def canonical_parameter_type(parameter: dict[str, Any]) -> str:
+    type_info = parameter.get("type", {})
+    return normalized_c_type(
+        type_info.get("desugaredQualType", type_info.get("qualType", ""))
+    )
+
+
+def is_env_parameter(parameter: dict[str, Any]) -> bool:
+    return canonical_parameter_type(parameter) in {
+        "const struct p101_env *",
+        "struct p101_env *",
+    }
+
+
+def is_error_parameter(parameter: dict[str, Any]) -> bool:
+    return canonical_parameter_type(parameter) == "struct p101_error *"
+
+
 def accepts_error_parameter(declaration: dict[str, Any]) -> bool:
     return any(
         child.get("kind") == "ParmVarDecl"
-        and "p101_error" in child.get("type", {}).get("qualType", "")
-        and "*" in child.get("type", {}).get("qualType", "")
+        and is_error_parameter(child)
         for child in declaration.get("inner", [])
     )
 
@@ -564,9 +723,9 @@ def argument_expression(
     type_info = parameter["type"]
     qualified = type_info["qualType"]
     desugared = type_info.get("desugaredQualType", qualified)
-    if "p101_env" in qualified and "*" in qualified:
+    if is_env_parameter(parameter):
         return "env"
-    if "p101_error" in qualified and "*" in qualified:
+    if is_error_parameter(parameter):
         return "err"
     if declaration is not None and is_va_list_parameter(
         declaration,
@@ -659,15 +818,111 @@ def direct_return_expression(
     return match.group(1).strip() if match is not None else None
 
 
-def explicit_fault_result(fragment: str) -> str | None:
-    """Return the first single-exit result assigned by a manual fault path."""
-    if "p101_env_check_fault" not in fragment:
+def referenced_declaration_ids(node: dict[str, Any]) -> set[str]:
+    identities: set[str] = set()
+    for candidate in nodes(node):
+        referenced = candidate.get("referencedDecl", {})
+        identity = referenced.get("id") if isinstance(referenced, dict) else None
+        if isinstance(identity, str) and identity:
+            identities.add(identity)
+    return identities
+
+
+def expression_source(node: dict[str, Any], source: Path) -> str | None:
+    extent = node_offsets(node)
+    if extent is None:
         return None
-    match = re.search(
-        r"\bp101_single_result_\s*=\s*([^;]+)\s*;",
-        fragment,
+    start, end = extent
+    return source.read_text(encoding="utf-8", errors="replace")[
+        start:end
+    ].strip()
+
+
+def semantic_single_exit_fault_result(
+    declaration: dict[str, Any],
+    source: Path,
+    wrapper_usr: str,
+    calls: list[dict[str, object]],
+    selector_usrs: set[str],
+) -> str | None:
+    """Find the value committed by a selector-controlled failure branch.
+
+    The selector call is identified by its resolved USR and source extent.
+    The result object is identified by the declaration referenced from the
+    function's final return. Local variable and function spellings are never
+    consulted.
+    """
+    selector_extents = {
+        (int(call.get("start", -1)), int(call.get("end", -1)))
+        for call in calls
+        if call.get("caller_usr") == wrapper_usr
+        and call.get("usr") in selector_usrs
+    }
+    selector_result_identities: set[str] = set()
+    for assignment in nodes(declaration):
+        children = assignment.get("inner", [])
+        assignment_extent = node_offsets(assignment)
+        if (
+            assignment.get("kind") != "BinaryOperator"
+            or assignment.get("opcode") != "="
+            or len(children) != 2
+            or assignment_extent is None
+            or not any(
+                assignment_extent[0] <= start
+                and end <= assignment_extent[1]
+                for start, end in selector_extents
+            )
+        ):
+            continue
+        selector_result_identities.update(
+            referenced_declaration_ids(children[0])
+        )
+    returns = [
+        node
+        for node in nodes(declaration)
+        if node.get("kind") == "ReturnStmt"
+    ]
+    if not selector_extents or not returns:
+        return None
+    final_return = max(
+        returns,
+        key=lambda node: (node_offsets(node) or (-1, -1))[0],
     )
-    return match.group(1).strip() if match is not None else None
+    result_identities = referenced_declaration_ids(final_return)
+    if len(result_identities) != 1:
+        return None
+    result_identity = next(iter(result_identities))
+    for branch in nodes(declaration):
+        if branch.get("kind") != "IfStmt":
+            continue
+        branch_extent = node_offsets(branch)
+        branch_children = branch.get("inner", [])
+        condition_identities = (
+            referenced_declaration_ids(branch_children[0])
+            if branch_children
+            else set()
+        )
+        selector_is_nested = branch_extent is not None and any(
+            branch_extent[0] <= start and end <= branch_extent[1]
+            for start, end in selector_extents
+        )
+        selector_result_is_tested = bool(
+            condition_identities & selector_result_identities
+        )
+        if not selector_is_nested and not selector_result_is_tested:
+            continue
+        for assignment in nodes(branch):
+            children = assignment.get("inner", [])
+            if (
+                assignment.get("kind") != "BinaryOperator"
+                or assignment.get("opcode") != "="
+                or len(children) != 2
+                or result_identity
+                not in referenced_declaration_ids(children[0])
+            ):
+                continue
+            return expression_source(children[1], source)
+    return None
 
 
 def indexed_fallback_expression(
@@ -709,6 +964,9 @@ def indexed_fallback_expression(
 def fault_return_contract(
     declaration: dict[str, Any],
     source: Path,
+    wrapper_usr: str,
+    calls: list[dict[str, object]],
+    selector_usrs: set[str],
 ) -> dict[str, str]:
     """Extract the injected branch's return contract from Clang locations."""
     text = source.read_text(encoding="utf-8", errors="replace")
@@ -763,7 +1021,13 @@ def fault_return_contract(
                     "expression": arguments[-1],
                     "error_domain": domain,
                 }
-        expression = explicit_fault_result(fragment)
+        expression = semantic_single_exit_fault_result(
+            declaration,
+            source,
+            wrapper_usr,
+            calls,
+            selector_usrs,
+        )
         if expression is not None:
             return {
                 "kind": "value",
@@ -841,8 +1105,14 @@ def fault_return_contract(
     )
 
 
-def validate_fault_boundary(declaration: dict[str, Any]) -> None:
-    """Require fault selection before any observable wrapper operation."""
+def validate_fault_boundary(
+    declaration: dict[str, Any],
+    wrapper_usr: str,
+    calls: list[dict[str, object]],
+    selector_usrs: set[str],
+    entry_trace_usr: str,
+) -> None:
+    """Require fault selection after entry tracing but before native work."""
     body = next(
         (
             child
@@ -855,29 +1125,49 @@ def validate_fault_boundary(declaration: dict[str, Any]) -> None:
         raise RuntimeError(
             f"{declaration.get('name', '?')} has no function body"
         )
-    fault_calls = {"p101_env_check_fault", "p101_env_check_fault_action"}
     children = body.get("inner", [])
-    fault_index = next(
-        (
-            index
-            for index, child in enumerate(children)
-            if referenced_names(child) & fault_calls
-        ),
-        None,
-    )
+    wrapper_calls = [
+        fact
+        for fact in calls
+        if fact.get("caller_usr") == wrapper_usr
+    ]
+    selector_starts = [
+        int(fact["start"])
+        for fact in wrapper_calls
+        if fact.get("usr") in selector_usrs
+    ]
+    selector_start = min(selector_starts) if selector_starts else None
+    fault_index = None
+    if selector_start is not None:
+        for index, child in enumerate(children):
+            extent = node_offsets(child)
+            if (
+                extent is not None
+                and extent[0] <= selector_start < extent[1]
+            ):
+                fault_index = index
+                break
     if fault_index is None:
         raise RuntimeError(
             f"{declaration.get('name', '?')} has no fault boundary"
         )
     for child in children[:fault_index]:
-        calls = called_functions(child)
-        if child.get("kind") == "DeclStmt" and not any(
-            nested.get("kind") == "CallExpr" for nested in nodes(child)
-        ):
+        extent = node_offsets(child)
+        child_calls = (
+            []
+            if extent is None
+            else [
+                fact
+                for fact in wrapper_calls
+                if extent[0] <= int(fact["start"]) < extent[1]
+            ]
+        )
+        if child.get("kind") == "DeclStmt" and not child_calls:
             continue
-        if child.get("kind") == "CallExpr" and calls <= {
-            "p101_env_trace"
-        }:
+        if (
+            child_calls
+            and all(fact.get("usr") == entry_trace_usr for fact in child_calls)
+        ):
             continue
         raise RuntimeError(
             f"{declaration.get('name', '?')} performs work before its "
@@ -988,6 +1278,7 @@ def writable_fixture(
 
 def native_pointer_fixture(
     function_name: str,
+    function_usr: str,
     parameter: dict[str, Any],
     index: int,
     declaration: dict[str, Any] | None = None,
@@ -1019,23 +1310,51 @@ def native_pointer_fixture(
     if re.search(r"\bDBM\s*\*", normalized):
         declarations = [
             f"            char {fixture}_path[96];",
+            f"            char {fixture}_path_db[96];",
+            f"            char {fixture}_path_dir[96];",
+            f"            char {fixture}_path_pag[96];",
             f"            DBM *{fixture};",
-            f"            (void)snprintf({fixture}_path, sizeof({fixture}_path), "
-            f"\"/tmp/p101-wrapper-dbm-%ld\", (long)getpid());",
+            f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture}_path, "
+            '"/tmp/p101-wrapper-dbm-%ld");',
+            f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture}_path_db, "
+            '"/tmp/p101-wrapper-dbm-%ld.db");',
+            f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture}_path_dir, "
+            '"/tmp/p101-wrapper-dbm-%ld.dir");',
+            f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture}_path_pag, "
+            '"/tmp/p101-wrapper-dbm-%ld.pag");',
+            f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_path);",
+            f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_path_db);",
+            f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_path_dir);",
+            f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_path_pag);",
+            "            if(!native_passed)",
+            "            {",
+            "                native_child_status = 77;",
+            "                goto native_child_done_;",
+            "            }",
             f"            {fixture} = dbm_open({fixture}_path, "
             "O_RDWR | O_CREAT, 0600);",
             f"            if({fixture} == NULL)",
             "            {",
+            f"                P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_path);",
+            f"                P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_path_db);",
+            f"                P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_path_dir);",
+            f"                P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_path_pag);",
             "                _Exit(77);",
             "            }",
         ]
         cleanup = []
-        if function_name != "p101_dbm_close":
+        if function_usr != "c:@F@p101_dbm_close":
             cleanup.append(f"            dbm_close({fixture});")
         cleanup.extend(
             [
-                f"            (void)unlink({fixture}_path);",
-                f"            (void)unlink(strcat({fixture}_path, \".db\"));",
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT("
+                f"{fixture}_path);",
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT("
+                f"{fixture}_path_db);",
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT("
+                f"{fixture}_path_dir);",
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT("
+                f"{fixture}_path_pag);",
             ]
         )
         return declarations, fixture, [], cleanup
@@ -1050,8 +1369,10 @@ def native_pointer_fixture(
         ]
         cleanup = (
             []
-            if function_name == "p101_closedir"
-            else [f"            (void)closedir({fixture});"]
+            if function_usr == "c:@F@p101_closedir"
+            else [
+                f"            P101_NATIVE_CLEANUP_ERRNO(closedir({fixture}));"
+            ]
         )
         return declarations, fixture, [], cleanup
 
@@ -1105,11 +1426,17 @@ def native_pointer_fixture(
 
     pthread_contract = NATIVE_PTHREAD_OBJECTS.get(bare_pointee)
     if pthread_contract is not None and pointer_depth == 1:
-        initializer, destructor, initializer_suffix = pthread_contract
+        (
+            initializer,
+            destructor,
+            initializer_usr,
+            destructor_usr,
+            initializer_suffix,
+        ) = pthread_contract
         declarations = [f"            {bare_pointee} {fixture};"]
         cleanup: list[str] = []
-        is_initializer = function_name == f"p101_{initializer}"
-        is_destructor = function_name == f"p101_{destructor}"
+        is_initializer = function_usr == initializer_usr
+        is_destructor = function_usr == destructor_usr
         if not is_initializer:
             declarations.extend(
                 [
@@ -1120,8 +1447,27 @@ def native_pointer_fixture(
                     "            }",
                 ]
             )
-        if not is_destructor:
-            cleanup.append(f"            (void){destructor}(&{fixture});")
+        if is_initializer:
+            cleanup.append(
+                "            if(native_result == 0)\n"
+                "            {\n"
+                f"                P101_NATIVE_CLEANUP_STATUS("
+                f"{destructor}(&{fixture}));\n"
+                "            }"
+            )
+        elif is_destructor:
+            cleanup.append(
+                "            if(native_result != 0)\n"
+                "            {\n"
+                f"                P101_NATIVE_CLEANUP_STATUS("
+                f"{destructor}(&{fixture}));\n"
+                "            }"
+            )
+        else:
+            cleanup.append(
+                f"            P101_NATIVE_CLEANUP_STATUS("
+                f"{destructor}(&{fixture}));"
+            )
         return declarations, f"&{fixture}", [], cleanup
 
     if pointer_depth >= 2:
@@ -1186,6 +1532,7 @@ def native_pointer_fixture(
 
 def native_contract_fixture(
     function_name: str,
+    function_usr: str,
     parameter: dict[str, Any],
     index: int,
 ) -> tuple[list[str], str, list[str], list[str]] | None:
@@ -1201,29 +1548,554 @@ def native_contract_fixture(
     )
     fixture = f"native_argument_{index}"
 
-    if function_name in {"p101_posix_spawn", "p101_posix_spawnp"}:
+    decimal_text_apis = {
+        "c:@F@p101_parse_char",
+        "c:@F@p101_parse_in_port_t",
+        "c:@F@p101_parse_int",
+        "c:@F@p101_parse_int16_t",
+        "c:@F@p101_parse_int32_t",
+        "c:@F@p101_parse_int64_t",
+        "c:@F@p101_parse_int8_t",
+        "c:@F@p101_parse_long",
+        "c:@F@p101_parse_long_long",
+        "c:@F@p101_parse_positive_char",
+        "c:@F@p101_parse_positive_int",
+        "c:@F@p101_parse_positive_int16_t",
+        "c:@F@p101_parse_positive_int32_t",
+        "c:@F@p101_parse_positive_int64_t",
+        "c:@F@p101_parse_positive_int8_t",
+        "c:@F@p101_parse_positive_long",
+        "c:@F@p101_parse_positive_long_long",
+        "c:@F@p101_parse_positive_short",
+        "c:@F@p101_parse_short",
+        "c:@F@p101_parse_uint16_t",
+        "c:@F@p101_parse_uint32_t",
+        "c:@F@p101_parse_uint64_t",
+        "c:@F@p101_parse_uint8_t",
+        "c:@F@p101_parse_unsigned_char",
+        "c:@F@p101_parse_unsigned_int",
+        "c:@F@p101_parse_unsigned_long",
+        "c:@F@p101_parse_unsigned_long_long",
+        "c:@F@p101_parse_unsigned_short",
+    }
+    negative_decimal_text_apis = {
+        "c:@F@p101_parse_negative_char",
+        "c:@F@p101_parse_negative_int",
+        "c:@F@p101_parse_negative_int16_t",
+        "c:@F@p101_parse_negative_int32_t",
+        "c:@F@p101_parse_negative_int64_t",
+        "c:@F@p101_parse_negative_int8_t",
+        "c:@F@p101_parse_negative_long",
+        "c:@F@p101_parse_negative_long_long",
+        "c:@F@p101_parse_negative_short",
+    }
+    if index == 2 and function_usr in decimal_text_apis:
+        return [], '"1"', [], []
+    if index == 2 and function_usr in negative_decimal_text_apis:
+        return [], '"-1"', [], []
+    if index == 2 and function_usr == "c:@F@p101_convert_address":
+        return [], '"127.0.0.1"', [], []
+
+    socket_pair_apis = {
+        "c:@F@p101_getpeername",
+        "c:@F@p101_recv",
+        "c:@F@p101_recvfrom",
+        "c:@F@p101_recvmsg",
+        "c:@F@p101_send",
+        "c:@F@p101_sendmsg",
+        "c:@F@p101_sendto",
+        "c:@F@p101_shutdown",
+        "c:@F@p101_sockatmark",
+    }
+    if function_usr in socket_pair_apis:
+        if index == 2:
+            declarations = [
+                f"            int {fixture}_pair[2] = {{-1, -1}};",
+                f"            int {fixture}_status;",
+                f"            {fixture}_status = socketpair("
+                f"AF_UNIX, SOCK_STREAM, 0, {fixture}_pair);",
+                f"            if({fixture}_status != 0)",
+                "            {",
+                "                native_child_status = 77;",
+                "                goto native_child_done_;",
+                "            }",
+            ]
+            setup = []
+            if function_usr in {
+                "c:@F@p101_recv",
+                "c:@F@p101_recvfrom",
+                "c:@F@p101_recvmsg",
+            }:
+                setup.extend(
+                    [
+                        f"            {fixture}_status = "
+                        f"(int)send({fixture}_pair[1], \"p101\", 4U, 0);",
+                        f"            if({fixture}_status != 4)",
+                        "            {",
+                        "                native_child_status = 77;",
+                        "                goto native_child_done_;",
+                        "            }",
+                    ]
+                )
+            cleanup = [
+                f"            P101_NATIVE_CLEANUP_ERRNO("
+                f"close({fixture}_pair[0]));",
+                f"            P101_NATIVE_CLEANUP_ERRNO("
+                f"close({fixture}_pair[1]));",
+            ]
+            return declarations, f"{fixture}_pair[0]", setup, cleanup
+        if function_usr in {
+            "c:@F@p101_recv",
+            "c:@F@p101_recvfrom",
+            "c:@F@p101_send",
+            "c:@F@p101_sendto",
+        }:
+            if (
+                function_usr in {"c:@F@p101_send", "c:@F@p101_sendto"}
+                and index == 3
+            ):
+                return [], '"p101"', [], []
+            if index == 4:
+                return [], "4U", [], []
+            if index == 5:
+                return [], "0", [], []
+        if function_usr == "c:@F@p101_getpeername":
+            if index == 3:
+                return [
+                    f"            struct sockaddr_storage {fixture} = {{0}};"
+                ], f"(struct sockaddr *)&{fixture}", [], []
+            if index == 4:
+                return [
+                    f"            socklen_t {fixture} = "
+                    "(socklen_t)sizeof(struct sockaddr_storage);"
+                ], f"&{fixture}", [], []
+        if function_usr in {
+            "c:@F@p101_recvfrom",
+            "c:@F@p101_sendto",
+        }:
+            if index == 6:
+                return [], "NULL", [], []
+            if index == 7:
+                return [], "NULL" if function_usr.endswith("recvfrom") else "0", [], []
+        if function_usr == "c:@F@p101_shutdown" and index == 3:
+            return [], "SHUT_RDWR", [], []
+        if function_usr in {
+            "c:@F@p101_recvmsg",
+            "c:@F@p101_sendmsg",
+        } and index == 3:
+            declarations = [
+                f"            char {fixture}_payload[4] = "
+                f"{{'p', '1', '0', '1'}};",
+                f"            struct iovec {fixture}_iov = {{",
+                f"                {fixture}_payload,",
+                f"                sizeof({fixture}_payload),",
+                "            };",
+                f"            struct msghdr {fixture} = {{0}};",
+                f"            {fixture}.msg_iov = &{fixture}_iov;",
+                f"            {fixture}.msg_iovlen = 1U;",
+            ]
+            return declarations, f"&{fixture}", [], []
+
+    if function_usr == "c:@F@p101_socket":
+        if index == 2:
+            return [], "AF_INET", [], []
+        if index == 3:
+            return [], "SOCK_STREAM", [], []
+        if index == 4:
+            return [], "0", [], [
+                "            if(native_result >= 0)",
+                "            {",
+                "                P101_NATIVE_CLEANUP_ERRNO(close(native_result));",
+                "            }",
+            ]
+
+    if function_usr == "c:@F@p101_socketpair":
+        if index == 2:
+            return [], "AF_UNIX", [], []
+        if index == 3:
+            return [], "SOCK_STREAM", [], []
+        if index == 4:
+            return [], "0", [], []
+        if index == 5:
+            return [
+                f"            int {fixture}[2] = {{-1, -1}};"
+            ], fixture, [], [
+                "            if(native_result == 0)",
+                "            {",
+                f"                P101_NATIVE_CLEANUP_ERRNO(close({fixture}[0]));",
+                f"                P101_NATIVE_CLEANUP_ERRNO(close({fixture}[1]));",
+                "            }",
+            ]
+
+    simple_socket_apis = {
+        "c:@F@p101_bind",
+        "c:@F@p101_getsockname",
+        "c:@F@p101_getsockopt",
+        "c:@F@p101_listen",
+        "c:@F@p101_setsockopt",
+    }
+    if function_usr in simple_socket_apis:
+        if index == 2:
+            declarations = [
+                f"            int {fixture};",
+                f"            {fixture} = socket(AF_INET, SOCK_STREAM, 0);",
+                f"            if({fixture} < 0)",
+                "            {",
+                "                native_child_status = 77;",
+                "                goto native_child_done_;",
+                "            }",
+            ]
+            if function_usr == "c:@F@p101_listen":
+                declarations.extend(
+                    [
+                        f"            struct sockaddr_in {fixture}_address = "
+                        "{0};",
+                        f"            int {fixture}_bind_status;",
+                        f"            {fixture}_address.sin_family = AF_INET;",
+                        f"            {fixture}_address.sin_addr.s_addr = "
+                        "htonl(INADDR_LOOPBACK);",
+                        f"            {fixture}_address.sin_port = 0;",
+                        f"            {fixture}_bind_status = bind("
+                        f"{fixture}, "
+                        f"(const struct sockaddr *)&{fixture}_address, "
+                        f"(socklen_t)sizeof({fixture}_address));",
+                        f"            if({fixture}_bind_status != 0)",
+                        "            {",
+                        "                native_child_status = 77;",
+                        "                goto native_child_done_;",
+                        "            }",
+                    ]
+                )
+            return declarations, fixture, [], [
+                f"            P101_NATIVE_CLEANUP_ERRNO(close({fixture}));"
+            ]
+        if function_usr == "c:@F@p101_bind":
+            if index == 3:
+                return [
+                    f"            struct sockaddr_in {fixture} = {{0}};",
+                    f"            {fixture}.sin_family = AF_INET;",
+                    f"            {fixture}.sin_addr.s_addr = "
+                    "htonl(INADDR_LOOPBACK);",
+                    f"            {fixture}.sin_port = 0;",
+                ], f"(const struct sockaddr *)&{fixture}", [], []
+            if index == 4:
+                return [], "(socklen_t)sizeof(struct sockaddr_in)", [], []
+        if function_usr == "c:@F@p101_listen" and index == 3:
+            return [], "1", [], []
+        if function_usr == "c:@F@p101_getsockname":
+            if index == 3:
+                return [
+                    f"            struct sockaddr_storage {fixture} = {{0}};"
+                ], f"(struct sockaddr *)&{fixture}", [], []
+            if index == 4:
+                return [
+                    f"            socklen_t {fixture} = "
+                    "(socklen_t)sizeof(struct sockaddr_storage);"
+                ], f"&{fixture}", [], []
+        if function_usr == "c:@F@p101_getsockopt":
+            if index == 3:
+                return [], "SOL_SOCKET", [], []
+            if index == 4:
+                return [], "SO_TYPE", [], []
+            if index == 5:
+                return [
+                    f"            int {fixture} = 0;"
+                ], f"&{fixture}", [], []
+            if index == 6:
+                return [
+                    f"            socklen_t {fixture} = "
+                    "(socklen_t)sizeof(int);"
+                ], f"&{fixture}", [], []
+        if function_usr == "c:@F@p101_setsockopt":
+            if index == 3:
+                return [], "SOL_SOCKET", [], []
+            if index == 4:
+                return [], "SO_REUSEADDR", [], []
+            if index == 5:
+                return [
+                    f"            int {fixture} = 1;"
+                ], f"&{fixture}", [], []
+            if index == 6:
+                return [], "(socklen_t)sizeof(int)", [], []
+
+    if function_usr in {"c:@F@p101_accept", "c:@F@p101_connect"}:
+        if index == 2:
+            listener = f"{fixture}_listener"
+            client = f"{fixture}_client"
+            address = f"{fixture}_address"
+            declarations = [
+                f"            int {listener};",
+                f"            int {client};",
+                f"            int {fixture}_status;",
+                f"            socklen_t {fixture}_address_len;",
+                f"            struct sockaddr_in {address} = {{0}};",
+                f"            {listener} = socket(AF_INET, SOCK_STREAM, 0);",
+                f"            if({listener} < 0)",
+                "            {",
+                "                native_child_status = 77;",
+                "                goto native_child_done_;",
+                "            }",
+                f"            {address}.sin_family = AF_INET;",
+                f"            {address}.sin_addr.s_addr = "
+                "htonl(INADDR_LOOPBACK);",
+                f"            {address}.sin_port = 0;",
+                f"            {fixture}_status = bind("
+                f"{listener}, (const struct sockaddr *)&{address}, "
+                f"(socklen_t)sizeof({address}));",
+                f"            if({fixture}_status != 0)",
+                "            {",
+                "                native_child_status = 77;",
+                "                goto native_child_done_;",
+                "            }",
+                f"            {fixture}_status = listen({listener}, 1);",
+                f"            if({fixture}_status != 0)",
+                "            {",
+                "                native_child_status = 77;",
+                "                goto native_child_done_;",
+                "            }",
+                f"            {fixture}_address_len = "
+                f"(socklen_t)sizeof({address});",
+                f"            {fixture}_status = getsockname("
+                f"{listener}, (struct sockaddr *)&{address}, "
+                f"&{fixture}_address_len);",
+                f"            if({fixture}_status != 0)",
+                "            {",
+                "                native_child_status = 77;",
+                "                goto native_child_done_;",
+                "            }",
+                f"            {client} = socket(AF_INET, SOCK_STREAM, 0);",
+                f"            if({client} < 0)",
+                "            {",
+                "                native_child_status = 77;",
+                "                goto native_child_done_;",
+                "            }",
+            ]
+            if function_usr == "c:@F@p101_accept":
+                declarations.extend(
+                    [
+                        f"            {fixture}_status = connect("
+                        f"{client}, (const struct sockaddr *)&{address}, "
+                        f"{fixture}_address_len);",
+                        f"            if({fixture}_status != 0)",
+                        "            {",
+                        "                native_child_status = 77;",
+                        "                goto native_child_done_;",
+                        "            }",
+                    ]
+                )
+                expression = listener
+                cleanup = [
+                    "            if(native_result >= 0)",
+                    "            {",
+                    "                P101_NATIVE_CLEANUP_ERRNO("
+                    "close(native_result));",
+                    "            }",
+                ]
+            else:
+                expression = client
+                cleanup = []
+            cleanup.extend(
+                [
+                    f"            P101_NATIVE_CLEANUP_ERRNO(close({client}));",
+                    f"            P101_NATIVE_CLEANUP_ERRNO(close({listener}));",
+                ]
+            )
+            return declarations, expression, [], cleanup
+        if index == 3:
+            if function_usr == "c:@F@p101_accept":
+                return [
+                    f"            struct sockaddr_storage {fixture} = {{0}};"
+                ], f"(struct sockaddr *)&{fixture}", [], []
+            return [], (
+                "(const struct sockaddr *)&native_argument_2_address"
+            ), [], []
+        if index == 4:
+            if function_usr == "c:@F@p101_accept":
+                return [
+                    f"            socklen_t {fixture} = "
+                    "(socklen_t)sizeof(struct sockaddr_storage);"
+                ], f"&{fixture}", [], []
+            return [], "native_argument_2_address_len", [], []
+
+    if function_usr in {
+        "c:@F@p101_if_indextoname",
+        "c:@F@p101_if_nametoindex",
+    } and index == 2:
+        declarations = [
+            f"            struct if_nameindex *{fixture}_interfaces;",
+            f"            {fixture}_interfaces = if_nameindex();",
+            f"            if({fixture}_interfaces == NULL ||",
+            f"               {fixture}_interfaces[0].if_index == 0U ||",
+            f"               {fixture}_interfaces[0].if_name == NULL)",
+            "            {",
+            "                native_child_status = 77;",
+            "                goto native_child_done_;",
+            "            }",
+        ]
+        expression = (
+            f"{fixture}_interfaces[0].if_index"
+            if function_usr == "c:@F@p101_if_indextoname"
+            else f"{fixture}_interfaces[0].if_name"
+        )
+        return declarations, expression, [], [
+            f"            if_freenameindex({fixture}_interfaces);"
+        ]
+    if function_usr == "c:@F@p101_if_indextoname" and index == 3:
+        return [
+            f"            char {fixture}[IF_NAMESIZE] = {{0}};"
+        ], fixture, [], []
+
+    if function_usr == "c:@F@p101_getaddrinfo":
+        if index == 2:
+            return [], '"localhost"', [], []
+        if index == 3:
+            return [], '"0"', [], []
+        if index == 4:
+            return [], "NULL", [], []
+        if index == 5:
+            return [
+                f"            struct addrinfo *{fixture} = NULL;"
+            ], f"&{fixture}", [], [
+                f"            if({fixture} != NULL)",
+                "            {",
+                f"                freeaddrinfo({fixture});",
+                "            }",
+            ]
+
+    if function_usr == "c:@F@p101_getnameinfo":
+        if index == 2:
+            return [
+                f"            struct sockaddr_in {fixture} = {{0}};",
+                f"            {fixture}.sin_family = AF_INET;",
+                f"            {fixture}.sin_addr.s_addr = "
+                "htonl(INADDR_LOOPBACK);",
+                f"            {fixture}.sin_port = htons(80U);",
+            ], f"(const struct sockaddr *)&{fixture}", [], []
+        if index == 3:
+            return [], "(socklen_t)sizeof(struct sockaddr_in)", [], []
+        if index == 4:
+            return [
+                f"            char {fixture}[NI_MAXHOST] = {{0}};"
+            ], fixture, [], []
+        if index == 5:
+            return [], "NI_MAXHOST", [], []
+        if index == 6:
+            return [
+                f"            char {fixture}[NI_MAXSERV] = {{0}};"
+            ], fixture, [], []
+        if index == 7:
+            return [], "NI_MAXSERV", [], []
+        if index == 8:
+            return [], "NI_NUMERICHOST | NI_NUMERICSERV", [], []
+
+    if function_usr == "c:@F@p101_ether_aton" and index == 2:
+        return [], '"00:00:00:00:00:00"', [], []
+    if function_usr == "c:@F@p101_ether_line" and index == 2:
+        return [], '"00:00:00:00:00:00 localhost"', [], []
+
+    if function_usr in {
+        "c:@F@p101_inet_addr",
+        "c:@F@p101_inet_aton",
+        "c:@F@p101_inet_network",
+    } and index == 2:
+        return [], '"127.0.0.1"', [], []
+
+    if function_usr in {
+        "c:@F@p101_inet_net_ntop",
+        "c:@F@p101_inet_net_pton",
+        "c:@F@p101_inet_ntop",
+        "c:@F@p101_inet_pton",
+    }:
+        if index == 2:
+            return [], "AF_INET", [], []
+        if (
+            function_usr
+            in {"c:@F@p101_inet_net_ntop", "c:@F@p101_inet_ntop"}
+            and index == 3
+        ):
+            return [
+                f"            struct in_addr {fixture} = {{0}};",
+                f"            {fixture}.s_addr = htonl(INADDR_LOOPBACK);",
+            ], f"&{fixture}", [], []
+        if (
+            function_usr
+            in {"c:@F@p101_inet_net_pton", "c:@F@p101_inet_pton"}
+            and index == 3
+        ):
+            return [], '"127.0.0.1"', [], []
+        if function_usr == "c:@F@p101_inet_net_ntop" and index == 4:
+            return [], "32", [], []
+        if function_usr == "c:@F@p101_inet_net_pton" and index == 5:
+            return [], "sizeof(struct in_addr)", [], []
+        if function_usr == "c:@F@p101_inet_net_ntop" and index == 6:
+            return [], "INET_ADDRSTRLEN", [], []
+        if function_usr == "c:@F@p101_inet_ntop" and index == 5:
+            return [], "INET_ADDRSTRLEN", [], []
+
+    if function_usr in {
+        "c:@F@p101_execv",
+        "c:@F@p101_execve",
+        "c:@F@p101_execvp",
+    }:
+        if index == 2:
+            return [], (
+                '"true"'
+                if function_usr == "c:@F@p101_execvp"
+                else '"/usr/bin/true"'
+            ), [], []
+        if index == 3:
+            executable = (
+                '"true"'
+                if function_usr == "c:@F@p101_execvp"
+                else '"/usr/bin/true"'
+            )
+            return [
+                f"            char *{fixture}[2] = "
+                f"{{(char *){executable}, NULL}};"
+            ], fixture, [], []
+        if index == 4:
+            return [
+                f"            char *{fixture}[2] = "
+                '{(char *)"PATH=/usr/bin:/bin", NULL};'
+            ], fixture, [], []
+
+    if function_usr in {
+        "c:@F@p101_posix_spawn",
+        "c:@F@p101_posix_spawnp",
+    }:
         if index == 2:
             return [
                 f"            pid_t {fixture} = -1;"
             ], f"&{fixture}", [], [
                 "            if(native_result == 0)",
                 "            {",
-                f"                (void)waitpid({fixture}, NULL, 0);",
+                f"                if(native_waitpid_nointr({fixture}, NULL) "
+                f"!= {fixture})",
+                "                {",
+                '                    fprintf(stderr, "native cleanup failed: '
+                f'{function_name}: waitpid\\n");',
+                "                    native_passed = false;",
+                "                }",
                 "            }",
             ]
         if index == 3:
             executable = (
-                '"/bin/true"'
-                if function_name == "p101_posix_spawn"
+                '"/usr/bin/true"'
+                if function_usr == "c:@F@p101_posix_spawn"
                 else '"true"'
             )
             return [], executable, [], []
         if index in {4, 5}:
             return [], "NULL", [], []
         if index == 6:
+            executable = (
+                '"/usr/bin/true"'
+                if function_usr == "c:@F@p101_posix_spawn"
+                else '"true"'
+            )
             return [
                 f"            char *{fixture}[2] = "
-                '{(char *)"true", NULL};'
+                f"{{(char *){executable}, NULL}};"
             ], fixture, [], []
         if index == 7:
             return [
@@ -1231,21 +2103,21 @@ def native_contract_fixture(
                 '{(char *)"PATH=/usr/bin:/bin", NULL};'
             ], fixture, [], []
 
-    if function_name in {"p101_pipe", "p101_pipe2"} and index == 2:
+    if function_usr in {"c:@F@p101_pipe", "c:@F@p101_pipe2"} and index == 2:
         return [
             f"            int {fixture}[2] = {{-1, -1}};"
         ], fixture, [], [
             f"            if({fixture}[0] >= 0)",
             "            {",
-            f"                (void)close({fixture}[0]);",
+            f"                P101_NATIVE_CLEANUP_ERRNO(close({fixture}[0]));",
             "            }",
             f"            if({fixture}[1] >= 0)",
             "            {",
-            f"                (void)close({fixture}[1]);",
+            f"                P101_NATIVE_CLEANUP_ERRNO(close({fixture}[1]));",
             "            }",
         ]
 
-    if function_name == "p101_posix_memalign":
+    if function_usr == "c:@F@p101_posix_memalign":
         if index == 2:
             return [
                 f"            void *{fixture} = NULL;"
@@ -1257,18 +2129,800 @@ def native_contract_fixture(
         if index == 4:
             return [], "16U", [], []
 
-    if function_name == "p101_setrlimit" and index == 2:
+    if function_usr == "c:@F@p101_setrlimit" and index == 2:
         return [], "-1", [], []
+
+    if function_usr == "c:@F@p101_aio_fsync":
+        if index == 2:
+            return [], "O_SYNC", [], []
+        if index == 3:
+            return [
+                f"            FILE *{fixture}_stream = tmpfile();",
+                f"            struct aiocb {fixture} = {{0}};",
+                f"            if({fixture}_stream == NULL)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+                f"            {fixture}.aio_fildes = "
+                f"fileno({fixture}_stream);",
+            ], f"&{fixture}", [], [
+                f"            P101_NATIVE_CLEANUP_ERRNO("
+                f"fclose({fixture}_stream));"
+            ]
+
+    if function_usr == "c:@F@p101_ftok":
+        if index == 2:
+            return [], '"."', [], []
+        if index == 3:
+            return [], "1", [], []
+
+    if function_usr == "c:@F@p101_creat":
+        if index == 2:
+            return [], '"/dev/null"', [], [
+                "            if(native_result >= 0)",
+                "            {",
+                "                P101_NATIVE_CLEANUP_ERRNO(close(native_result));",
+                "            }",
+            ]
+        if index == 3:
+            return [], "0600", [], []
+
+    if function_usr == "c:@F@p101_open":
+        if index == 2:
+            return [], '"/dev/null"', [], [
+                "            if(native_result >= 0)",
+                "            {",
+                "                P101_NATIVE_CLEANUP_ERRNO(close(native_result));",
+                "            }",
+            ]
+        if index == 3:
+            return [], "O_RDONLY", [], []
+
+    if function_usr == "c:@F@p101_openat":
+        if index == 2:
+            return [], "AT_FDCWD", [], []
+        if index == 3:
+            return [], '"/dev/null"', [], [
+                "            if(native_result >= 0)",
+                "            {",
+                "                P101_NATIVE_CLEANUP_ERRNO(close(native_result));",
+                "            }",
+            ]
+        if index == 4:
+            return [], "O_RDONLY", [], []
+
+    native_fd_function_usrs = {
+        "c:@F@p101_fcntl",
+        "c:@F@p101_pwrite",
+        "c:@F@p101_readv",
+        "c:@F@p101_vdprintf",
+        "c:@F@p101_write",
+        "c:@F@p101_writev",
+    }
+    if function_usr in native_fd_function_usrs and index == 2:
+        declarations = [
+            f"            FILE *{fixture}_stream = tmpfile();",
+            f"            if({fixture}_stream == NULL)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+        ]
+        cleanup = [
+            f"            P101_NATIVE_CLEANUP_ERRNO("
+            f"fclose({fixture}_stream));"
+        ]
+        return (
+            declarations,
+            f"fileno({fixture}_stream)",
+            [],
+            cleanup,
+        )
+
+    if function_usr == "c:@F@p101_fcntl" and index == 3:
+        return [], "F_GETFD", [], []
+
+    if function_usr in {"c:@F@p101_readv", "c:@F@p101_writev"}:
+        if index == 3:
+            return [
+                f"            unsigned char {fixture}_byte = 0U;",
+                f"            struct iovec {fixture} = "
+                f"{{&{fixture}_byte, 1U}};",
+            ], f"&{fixture}", [], []
+        if index == 4:
+            return [], "1", [], []
+
+    if function_usr == "c:@F@p101_fdopen":
+        if index == 2:
+            return [
+                f"            int {fixture} = "
+                'open("/dev/null", O_RDONLY);',
+                f"            if({fixture} < 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ], fixture, [], [
+                "            if(native_result != NULL)",
+                "            {",
+                "                P101_NATIVE_CLEANUP_ERRNO(fclose(native_result));",
+                "            }",
+                "            else",
+                "            {",
+                f"                P101_NATIVE_CLEANUP_ERRNO(close({fixture}));",
+                "            }",
+            ]
+        if index == 3:
+            return [], '"r"', [], []
+
+    if function_usr == "c:@F@p101_fmemopen":
+        if index == 2:
+            return [
+                f"            unsigned char {fixture}[16] = {{0}};"
+            ], fixture, [], [
+                "            if(native_result != NULL)",
+                "            {",
+                "                P101_NATIVE_CLEANUP_ERRNO(fclose(native_result));",
+                "            }",
+            ]
+        if index == 3:
+            return [], "16U", [], []
+        if index == 4:
+            return [], '"r+"', [], []
+
+    if function_usr == "c:@F@p101_mkfifo":
+        if index == 2:
+            return [
+                f"            char {fixture}[96];",
+                f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture}, "
+                '"/tmp/p101-wrapper-fifo-%ld");',
+                "            errno = 0;",
+                f"            if(unlink({fixture}) != 0 && errno != ENOENT)",
+                "            {",
+                f'                fprintf(stderr, "native setup failed: '
+                f'{function_name}: unlink: %s\\n", strerror(errno));',
+                "                _Exit(77);",
+                "            }",
+            ], fixture, [], [
+                f"            P101_NATIVE_CLEANUP_ERRNO(unlink({fixture}));"
+            ]
+        if index == 3:
+            return [], "0600", [], []
+
+    if function_usr == "c:@F@p101_msgget":
+        if index == 2:
+            return [], "IPC_PRIVATE", [], []
+        if index == 3:
+            return [], "IPC_CREAT | 0600", [], [
+                "            if(native_result >= 0)",
+                "            {",
+                "                if(msgctl(native_result, IPC_RMID, NULL) != 0)",
+                "                {",
+                '                    fprintf(stderr, "native cleanup failed: '
+                'p101_msgget: msgctl(IPC_RMID): %s\\n", strerror(errno));',
+                "                    native_passed = false;",
+                "                }",
+                "            }",
+            ]
+
+    if function_usr in {
+        "c:@F@p101_msgctl",
+        "c:@F@p101_msgrcv",
+        "c:@F@p101_msgsnd",
+    }:
+        if index == 2:
+            return [
+                f"            int {fixture} = "
+                "msgget(IPC_PRIVATE, IPC_CREAT | 0600);",
+                f"            if({fixture} < 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+                *(
+                    [
+                        f"            struct {{ long type; }} "
+                        f"{fixture}_message = {{1L}};",
+                        f"            if(msgsnd({fixture}, "
+                        f"&{fixture}_message, 0U, 0) != 0)",
+                        "            {",
+                        f"                if(msgctl({fixture}, IPC_RMID, "
+                        "NULL) != 0)",
+                        "                {",
+                        '                    fprintf(stderr, "native cleanup '
+                        f'failed: {function_name}: msgctl(IPC_RMID): %s\\n", '
+                        "strerror(errno));",
+                        "                    native_child_status = "
+                        "EXIT_FAILURE;",
+                        "                    goto native_child_done_;",
+                        "                }",
+                        "                _Exit(77);",
+                        "            }",
+                    ]
+                    if function_usr == "c:@F@p101_msgrcv"
+                    else []
+                ),
+            ], fixture, [], (
+                [
+                    "            if(native_result != 0)",
+                    "            {",
+                    f"                if(msgctl({fixture}, IPC_RMID, NULL) "
+                    "!= 0)",
+                    "                {",
+                    '                    fprintf(stderr, "native cleanup failed: '
+                    'p101_msgctl: msgctl(IPC_RMID): %s\\n", '
+                    "strerror(errno));",
+                    "                    native_passed = false;",
+                    "                }",
+                    "            }",
+                ]
+                if function_usr == "c:@F@p101_msgctl"
+                else [
+                    f"            if(msgctl({fixture}, IPC_RMID, NULL) != 0)",
+                    "            {",
+                    '                fprintf(stderr, "native cleanup failed: '
+                    f'{function_name}: msgctl(IPC_RMID): %s\\n", '
+                    "strerror(errno));",
+                    "                native_passed = false;",
+                    "            }",
+                ]
+            )
+        if function_usr == "c:@F@p101_msgctl":
+            if index == 3:
+                return [], "IPC_RMID", [], []
+            if index == 4:
+                return [], "NULL", [], []
+        if function_usr in {
+            "c:@F@p101_msgrcv",
+            "c:@F@p101_msgsnd",
+        } and index == 3:
+            return [
+                f"            struct {{ long type; }} {fixture} = {{1L}};"
+            ], f"&{fixture}", [], []
+        if function_usr in {
+            "c:@F@p101_msgrcv",
+            "c:@F@p101_msgsnd",
+        } and index == 4:
+            return [], "0U", [], []
+        if function_usr == "c:@F@p101_msgrcv" and index in {5, 6}:
+            return [], "0", [], []
+        if function_usr == "c:@F@p101_msgsnd" and index == 5:
+            return [], "0", [], []
+
+    if function_usr == "c:@F@p101_semget":
+        if index == 2:
+            return [], "IPC_PRIVATE", [], []
+        if index == 3:
+            return [], "1", [], []
+        if index == 4:
+            return [], "IPC_CREAT | 0600", [], [
+                "            if(native_result >= 0)",
+                "            {",
+                "                if(semctl(native_result, 0, IPC_RMID) != 0)",
+                "                {",
+                '                    fprintf(stderr, "native cleanup failed: '
+                'p101_semget: semctl(IPC_RMID): %s\\n", strerror(errno));',
+                "                    native_passed = false;",
+                "                }",
+                "            }",
+            ]
+
+    if function_usr in {
+        "c:@F@p101_semctl",
+        "c:@F@p101_semctl_arg",
+        "c:@F@p101_semop",
+    }:
+        if index == 2:
+            return [
+                f"            int {fixture} = "
+                "semget(IPC_PRIVATE, 1, IPC_CREAT | 0600);",
+                f"            if({fixture} < 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ], fixture, [], (
+                [
+                    "            if(native_result != 0)",
+                    "            {",
+                    f"                if(semctl({fixture}, 0, IPC_RMID) != 0)",
+                    "                {",
+                    '                    fprintf(stderr, "native cleanup failed: '
+                    'p101_semctl: semctl(IPC_RMID): %s\\n", '
+                    "strerror(errno));",
+                    "                    native_passed = false;",
+                    "                }",
+                    "            }",
+                ]
+                if function_usr == "c:@F@p101_semctl"
+                else [
+                    f"            if(semctl({fixture}, 0, IPC_RMID) != 0)",
+                    "            {",
+                    '                fprintf(stderr, "native cleanup failed: '
+                    f'{function_name}: semctl(IPC_RMID): %s\\n", '
+                    "strerror(errno));",
+                    "                native_passed = false;",
+                    "            }",
+                ]
+            )
+        if index == 3:
+            if function_usr == "c:@F@p101_semop":
+                return [
+                    f"            struct sembuf {fixture} = "
+                    "{0U, 0, 0};"
+                ], f"&{fixture}", [], []
+            return [], "0", [], []
+        if index == 4:
+            if function_usr == "c:@F@p101_semctl":
+                return [], "IPC_RMID", [], []
+            if function_usr == "c:@F@p101_semctl_arg":
+                return [], "SETVAL", [], []
+            return [], "1U", [], []
+        if function_usr == "c:@F@p101_semctl_arg" and index == 5:
+            return [], "(union p101_semun){.val = 1}", [], []
+
+    if function_usr == "c:@F@p101_shmget":
+        if index == 2:
+            return [], "IPC_PRIVATE", [], []
+        if index == 3:
+            return [], "1U", [], []
+        if index == 4:
+            return [], "IPC_CREAT | 0600", [], [
+                "            if(native_result >= 0)",
+                "            {",
+                "                if(shmctl(native_result, IPC_RMID, NULL) != 0)",
+                "                {",
+                '                    fprintf(stderr, "native cleanup failed: '
+                'p101_shmget: shmctl(IPC_RMID): %s\\n", strerror(errno));',
+                "                    native_passed = false;",
+                "                }",
+                "            }",
+            ]
+
+    if function_usr in {
+        "c:@F@p101_shmat",
+        "c:@F@p101_shmctl",
+        "c:@F@p101_shmdt",
+    }:
+        if (
+            function_usr in {"c:@F@p101_shmat", "c:@F@p101_shmctl"}
+            and index == 2
+        ):
+            return [
+                f"            int {fixture} = "
+                "shmget(IPC_PRIVATE, 1U, IPC_CREAT | 0600);",
+                f"            if({fixture} < 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ], fixture, [], (
+                [
+                    "            if(native_result != 0)",
+                    "            {",
+                    f"                if(shmctl({fixture}, IPC_RMID, NULL) "
+                    "!= 0)",
+                    "                {",
+                    '                    fprintf(stderr, "native cleanup failed: '
+                    'p101_shmctl: shmctl(IPC_RMID): %s\\n", '
+                    "strerror(errno));",
+                    "                    native_passed = false;",
+                    "                }",
+                    "            }",
+                ]
+                if function_usr == "c:@F@p101_shmctl"
+                else [
+                    "            if(native_result != (void *)-1)",
+                    "            {",
+                    "                if(shmdt(native_result) != 0)",
+                    "                {",
+                    '                    fprintf(stderr, "native cleanup failed: '
+                    f'{function_name}: shmdt: %s\\n", strerror(errno));',
+                    "                    native_passed = false;",
+                    "                }",
+                    "            }",
+                    f"            if(shmctl({fixture}, IPC_RMID, NULL) != 0)",
+                    "            {",
+                    '                fprintf(stderr, "native cleanup failed: '
+                    f'{function_name}: shmctl(IPC_RMID): %s\\n", '
+                    "strerror(errno));",
+                    "                native_passed = false;",
+                    "            }",
+                ]
+            )
+        if function_usr == "c:@F@p101_shmdt" and index == 2:
+            return [
+                f"            int {fixture}_id = "
+                "shmget(IPC_PRIVATE, 1U, IPC_CREAT | 0600);",
+                f"            void *{fixture};",
+                f"            if({fixture}_id < 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+                f"            {fixture} = shmat({fixture}_id, NULL, 0);",
+                f"            if({fixture} == (void *)-1)",
+                "            {",
+                f"                if(shmctl({fixture}_id, IPC_RMID, "
+                "NULL) != 0)",
+                "                {",
+                '                    fprintf(stderr, "native cleanup failed: '
+                'p101_shmdt: shmctl(IPC_RMID): %s\\n", strerror(errno));',
+                "                    native_child_status = EXIT_FAILURE;",
+                "                    goto native_child_done_;",
+                "                }",
+                "                _Exit(77);",
+                "            }",
+            ], fixture, [], [
+                "            if(native_result != 0)",
+                "            {",
+                f"                if(shmdt({fixture}) != 0)",
+                "                {",
+                '                    fprintf(stderr, "native cleanup failed: '
+                'p101_shmdt: shmdt: %s\\n", strerror(errno));',
+                "                    native_passed = false;",
+                "                }",
+                "            }",
+                f"            if(shmctl({fixture}_id, IPC_RMID, NULL) != 0)",
+                "            {",
+                '                fprintf(stderr, "native cleanup failed: '
+                'p101_shmdt: shmctl(IPC_RMID): %s\\n", strerror(errno));',
+                "                native_passed = false;",
+                "            }",
+            ]
+        if function_usr == "c:@F@p101_shmat" and index == 3:
+            return [], "NULL", [], []
+        if function_usr == "c:@F@p101_shmat" and index == 4:
+            return [], "0", [], []
+        if function_usr == "c:@F@p101_shmctl":
+            if index == 3:
+                return [], "IPC_RMID", [], []
+            if index == 4:
+                return [], "NULL", [], []
+
+    if function_usr in {
+        "c:@F@p101_shm_open",
+        "c:@F@p101_shm_unlink",
+    }:
+        if index == 2:
+            declarations = [
+                f"            char {fixture}[96];",
+                f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture}, "
+                '"/p101-wrapper-shm-%ld");',
+                "            errno = 0;",
+                f"            if(shm_unlink({fixture}) != 0 && "
+                "errno != ENOENT)",
+                "            {",
+                f'                fprintf(stderr, "native setup failed: '
+                f'{function_name}: shm_unlink: %s\\n", strerror(errno));',
+                "                _Exit(77);",
+                "            }",
+            ]
+            setup = []
+            if function_usr == "c:@F@p101_shm_unlink":
+                declarations.extend(
+                    [
+                        f"            int {fixture}_fd = "
+                        f"shm_open({fixture}, O_CREAT | O_EXCL | O_RDWR, "
+                        "0600);",
+                        f"            if({fixture}_fd < 0)",
+                        "            {",
+                        "                _Exit(77);",
+                        "            }",
+                        f"            if(close({fixture}_fd) != 0)",
+                        "            {",
+                        f"                if(shm_unlink({fixture}) != 0)",
+                        "                {",
+                        '                    fprintf(stderr, "native cleanup '
+                        f'failed: {function_name}: shm_unlink: %s\\n", '
+                        "strerror(errno));",
+                        "                }",
+                        "                native_child_status = EXIT_FAILURE;",
+                        "                goto native_child_done_;",
+                        "            }",
+                    ]
+                )
+            cleanup = (
+                [
+                    "            if(native_result >= 0)",
+                    "            {",
+                    "                if(close(native_result) != 0)",
+                    "                {",
+                    '                    fprintf(stderr, "native cleanup failed: '
+                    'p101_shm_open: close: %s\\n", strerror(errno));',
+                    "                    native_passed = false;",
+                    "                }",
+                    "            }",
+                    f"            if(shm_unlink({fixture}) != 0)",
+                    "            {",
+                    '                fprintf(stderr, "native cleanup failed: '
+                    'p101_shm_open: shm_unlink: %s\\n", strerror(errno));',
+                    "                native_passed = false;",
+                    "            }",
+                ]
+                if function_usr == "c:@F@p101_shm_open"
+                else [
+                    "            if(native_result != 0)",
+                    "            {",
+                    f"                P101_NATIVE_CLEANUP_ERRNO("
+                    f"shm_unlink({fixture}));",
+                    "            }",
+                ]
+            )
+            return declarations, fixture, setup, cleanup
+        if function_usr == "c:@F@p101_shm_open" and index == 3:
+            return [], "O_CREAT | O_EXCL | O_RDWR", [], []
+        if function_usr == "c:@F@p101_shm_open" and index == 4:
+            return [], "0600", [], []
+
+    if function_usr == "c:@F@p101_pclose" and "FILE" in qualified:
+        return [
+            f"            FILE *{fixture} = popen(\":\", \"r\");",
+            f"            if({fixture} == NULL)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+        ], fixture, [], []
+
+    if function_usr == "c:@F@p101_popen":
+        if index == 2:
+            return [], '":"', [], [
+                "            if(native_result != NULL)",
+                "            {",
+                "                if(pclose(native_result) != 0)",
+                "                {",
+                '                    fprintf(stderr, "native cleanup failed: '
+                'p101_popen: pclose\\n");',
+                "                    native_passed = false;",
+                "                }",
+                "            }",
+            ]
+        if index == 3:
+            return [], '"r"', [], []
+
+    if function_usr == "c:@F@p101_putenv" and index == 2:
+        return [
+            f"            char {fixture}[] = "
+            '"P101_WRAPPER_SMOKE=1";'
+        ], fixture, [], [
+            '            P101_NATIVE_CLEANUP_ERRNO('
+            'unsetenv("P101_WRAPPER_SMOKE"));'
+        ]
+
+    if function_usr == "c:@F@p101_nice" and index == 2:
+        return [], "1", [], []
+
+    if function_usr == "c:@F@p101_setpriority":
+        if index == 2:
+            return [], "PRIO_PROCESS", [], []
+        if index == 3:
+            return [], "0", [], []
+        if index == 4:
+            return [
+                f"            int {fixture};",
+                "            errno = 0;",
+                f"            {fixture} = getpriority(PRIO_PROCESS, 0);",
+                f"            if({fixture} == -1 && errno != 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+                f"            if({fixture} < 19)",
+                "            {",
+                f"                {fixture}++;",
+                "            }",
+            ], fixture, [], []
+
+    if function_usr == "c:@F@p101_sigaction":
+        if index == 2:
+            return [], "SIGUSR1", [], []
+        if index == 3:
+            return [
+                f"            struct sigaction {fixture} = {{0}};",
+                f"            {fixture}.sa_handler = SIG_IGN;",
+                f"            if(sigemptyset(&{fixture}.sa_mask) != 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ], f"&{fixture}", [], []
+        if index == 4:
+            return [], "NULL", [], []
+
+    if function_usr == "c:@F@p101_sigaltstack":
+        if index == 2:
+            return [], "NULL", [], []
+        if index == 3:
+            return [
+                f"            stack_t {fixture} = {{0}};"
+            ], f"&{fixture}", [], []
+
+    if function_usr == "c:@F@p101_sigprocmask" and index == 2:
+        return [], "SIG_BLOCK", [], []
+
+    if function_usr == "c:@F@p101_wait" and index == 2:
+        return [
+            f"            int {fixture} = 0;",
+            f"            pid_t {fixture}_child = fork();",
+            f"            if({fixture}_child < 0)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+            f"            if({fixture}_child == 0)",
+            "            {",
+            "                _Exit(EXIT_SUCCESS);",
+            "            }",
+        ], f"&{fixture}", [], [
+            f"            if(native_result != {fixture}_child)",
+            "            {",
+            f"                if(native_waitpid_nointr("
+            f"{fixture}_child, NULL) "
+            f"!= {fixture}_child)",
+            "                {",
+            '                    fprintf(stderr, "native cleanup failed: '
+            'p101_wait: waitpid\\n");',
+            "                    native_passed = false;",
+            "                }",
+            "            }",
+        ]
+
+    if function_usr == "c:@F@p101_waitpid":
+        if index == 2:
+            return [
+                f"            pid_t {fixture} = fork();",
+                f"            if({fixture} < 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+                f"            if({fixture} == 0)",
+                "            {",
+                "                _Exit(EXIT_SUCCESS);",
+                "            }",
+            ], fixture, [], [
+                f"            if(native_result != {fixture})",
+                "            {",
+                f"                if(native_waitpid_nointr({fixture}, NULL) "
+                f"!= {fixture})",
+                "                {",
+                '                    fprintf(stderr, "native cleanup failed: '
+                'p101_waitpid: waitpid\\n");',
+                "                    native_passed = false;",
+                "                }",
+                "            }",
+            ]
+        if index == 3:
+            return [
+                f"            int {fixture} = 0;"
+            ], f"&{fixture}", [], []
+        if index == 4:
+            return [], "0", [], []
+
+    if function_usr == "c:@F@p101_waitid":
+        if index == 2:
+            return [], "P_PID", [], []
+        if index == 3:
+            return [
+                f"            pid_t {fixture} = fork();",
+                f"            if({fixture} < 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+                f"            if({fixture} == 0)",
+                "            {",
+                "                _Exit(EXIT_SUCCESS);",
+                "            }",
+            ], f"(id_t){fixture}", [], [
+                "            if(native_result != 0)",
+                "            {",
+                f"                if(native_waitpid_nointr({fixture}, NULL) "
+                f"!= {fixture})",
+                "                {",
+                '                    fprintf(stderr, "native cleanup failed: '
+                'p101_waitid: waitpid\\n");',
+                "                    native_passed = false;",
+                "                }",
+                "            }",
+            ]
+        if index == 4:
+            return [
+                f"            siginfo_t {fixture} = {{0}};"
+            ], f"&{fixture}", [], []
+        if index == 5:
+            return [], "WEXITED", [], []
+
+    if function_usr in {
+        "c:@F@p101_pthread_condattr_setpshared",
+        "c:@F@p101_pthread_mutexattr_setpshared",
+        "c:@F@p101_pthread_rwlockattr_setpshared",
+    } and index == 3:
+        return [], "PTHREAD_PROCESS_PRIVATE", [], []
+
+    if function_usr in {
+        "c:@F@p101_sem_open",
+        "c:@F@p101_sem_unlink",
+    }:
+        if index == 2:
+            declarations = [
+                f"            char {fixture}[96];",
+                f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture}, "
+                '"/p101-wrapper-sem-open-%ld");',
+                "            errno = 0;",
+                f"            if(sem_unlink({fixture}) != 0 && "
+                "errno != ENOENT)",
+                "            {",
+                f'                fprintf(stderr, "native setup failed: '
+                f'{function_name}: sem_unlink: %s\\n", strerror(errno));',
+                "                _Exit(77);",
+                "            }",
+            ]
+            if function_usr == "c:@F@p101_sem_unlink":
+                declarations.extend(
+                    [
+                        f"            sem_t *{fixture}_sem = "
+                        f"sem_open({fixture}, O_CREAT | O_EXCL, 0600, 0U);",
+                        f"            if({fixture}_sem == SEM_FAILED)",
+                        "            {",
+                        "                _Exit(77);",
+                        "            }",
+                        f"            if(sem_close({fixture}_sem) != 0)",
+                        "            {",
+                        f"                if(sem_unlink({fixture}) != 0)",
+                        "                {",
+                        '                    fprintf(stderr, "native cleanup '
+                        f'failed: {function_name}: sem_unlink: %s\\n", '
+                        "strerror(errno));",
+                        "                }",
+                        "                native_child_status = EXIT_FAILURE;",
+                        "                goto native_child_done_;",
+                        "            }",
+                    ]
+                )
+            else:
+                declarations.extend(
+                    [
+                        f"            sem_t *{fixture}_seed = "
+                        f"sem_open({fixture}, O_CREAT | O_EXCL, 0600, 0U);",
+                        f"            if({fixture}_seed == SEM_FAILED)",
+                        "            {",
+                        "                _Exit(77);",
+                        "            }",
+                        f"            if(sem_close({fixture}_seed) != 0)",
+                        "            {",
+                        f"                if(sem_unlink({fixture}) != 0)",
+                        "                {",
+                        '                    fprintf(stderr, "native cleanup '
+                        f'failed: {function_name}: sem_unlink: %s\\n", '
+                        "strerror(errno));",
+                        "                }",
+                        "                native_child_status = EXIT_FAILURE;",
+                        "                goto native_child_done_;",
+                        "            }",
+                    ]
+                )
+            cleanup = (
+                [
+                    "            if(native_result != SEM_FAILED)",
+                    "            {",
+                    "                P101_NATIVE_CLEANUP_ERRNO("
+                    "sem_close(native_result));",
+                    "            }",
+                    f"            P101_NATIVE_CLEANUP_ERRNO("
+                    f"sem_unlink({fixture}));",
+                ]
+                if function_usr == "c:@F@p101_sem_open"
+                else [
+                    "            if(native_result != 0)",
+                    "            {",
+                    f"                P101_NATIVE_CLEANUP_ERRNO("
+                    f"sem_unlink({fixture}));",
+                    "            }",
+                ]
+            )
+            return declarations, fixture, [], cleanup
+        if function_usr == "c:@F@p101_sem_open" and index == 3:
+            return [], "0", [], []
 
     if "posix_spawn_file_actions_t" in qualified and "*" in qualified:
         declarations = [
             f"            posix_spawn_file_actions_t {fixture};"
         ]
         is_initializer = (
-            function_name == "p101_posix_spawn_file_actions_init"
+            function_usr == "c:@F@p101_posix_spawn_file_actions_init"
         )
         is_destructor = (
-            function_name == "p101_posix_spawn_file_actions_destroy"
+            function_usr == "c:@F@p101_posix_spawn_file_actions_destroy"
         )
         setup = []
         if not is_initializer:
@@ -1285,21 +2939,25 @@ def native_contract_fixture(
                 cleanup = [
                     "            if(native_result == 0)",
                     "            {",
-                    f"                (void)posix_spawn_file_actions_destroy("
-                    f"&{fixture});",
+                    f"                P101_NATIVE_CLEANUP_STATUS("
+                    f"posix_spawn_file_actions_destroy(&{fixture}));",
                     "            }",
                 ]
             else:
                 cleanup = [
-                    f"            (void)posix_spawn_file_actions_destroy("
-                    f"&{fixture});"
+                    f"            P101_NATIVE_CLEANUP_STATUS("
+                    f"posix_spawn_file_actions_destroy(&{fixture}));"
                 ]
         return declarations, f"&{fixture}", setup, cleanup
 
     if "posix_spawnattr_t" in qualified and "*" in qualified:
         declarations = [f"            posix_spawnattr_t {fixture};"]
-        is_initializer = function_name == "p101_posix_spawnattr_init"
-        is_destructor = function_name == "p101_posix_spawnattr_destroy"
+        is_initializer = (
+            function_usr == "c:@F@p101_posix_spawnattr_init"
+        )
+        is_destructor = (
+            function_usr == "c:@F@p101_posix_spawnattr_destroy"
+        )
         setup = []
         if not is_initializer:
             setup = [
@@ -1314,28 +2972,29 @@ def native_contract_fixture(
                 cleanup = [
                     "            if(native_result == 0)",
                     "            {",
-                    f"                (void)posix_spawnattr_destroy("
-                    f"&{fixture});",
+                    f"                P101_NATIVE_CLEANUP_STATUS("
+                    f"posix_spawnattr_destroy(&{fixture}));",
                     "            }",
                 ]
             else:
                 cleanup = [
-                    f"            (void)posix_spawnattr_destroy(&{fixture});"
+                    f"            P101_NATIVE_CLEANUP_STATUS("
+                    f"posix_spawnattr_destroy(&{fixture}));"
                 ]
         return declarations, f"&{fixture}", setup, cleanup
 
     if re.search(r"\bsem_t\s*\*", qualified):
         initial_value = (
             "1U"
-            if function_name in {"p101_sem_trywait", "p101_sem_wait"}
+            if function_usr
+            in {"c:@F@p101_sem_trywait", "c:@F@p101_sem_wait"}
             else "0U"
         )
         declarations = [
             f"            char {fixture}_name[96];",
             f"            sem_t *{fixture};",
-            f"            (void)snprintf({fixture}_name, "
-            f"sizeof({fixture}_name), "
-            f"\"/p101-wrapper-sem-%ld\", (long)getpid());",
+            f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture}_name, "
+            '"/p101-wrapper-sem-%ld");',
             f"            {fixture} = sem_open({fixture}_name, "
             f"O_CREAT | O_EXCL, 0600, {initial_value});",
             f"            if({fixture} == SEM_FAILED)",
@@ -1344,10 +3003,40 @@ def native_contract_fixture(
             "            }",
         ]
         cleanup = []
-        if function_name != "p101_sem_close":
-            cleanup.append(f"            (void)sem_close({fixture});")
-        cleanup.append(f"            (void)sem_unlink({fixture}_name);")
+        if function_usr != "c:@F@p101_sem_close":
+            cleanup.append(
+                f"            P101_NATIVE_CLEANUP_ERRNO(sem_close({fixture}));"
+            )
+        cleanup.append(
+            f"            P101_NATIVE_CLEANUP_ERRNO("
+            f"sem_unlink({fixture}_name));"
+        )
         return declarations, fixture, [], cleanup
+
+    if qualified == "nl_catd":
+        return [], "(nl_catd)0", [], []
+
+    if function_usr == "c:@F@p101_iconv_open":
+        if index in {2, 3}:
+            cleanup = (
+                [
+                    "            if(native_result != (iconv_t)-1)",
+                    "            {",
+                    "                if(p101_iconv_close("
+                    "native_env, native_err, native_result) != 0)",
+                    "                {",
+                    '                    fprintf(stderr, "native cleanup failed: '
+                    'p101_iconv_open: p101_iconv_close: %s\\n", '
+                    "p101_error_get_message(native_err));",
+                    "                    native_passed = false;",
+                    "                    p101_error_reset(native_err);",
+                    "                }",
+                    "            }",
+                ]
+                if index == 2
+                else []
+            )
+            return [], '"UTF-8"', [], cleanup
 
     if qualified == "ENTRY":
         return [
@@ -1363,10 +3052,10 @@ def native_contract_fixture(
         ]
 
     if qualified == "pthread_t":
-        if function_name in {
-            "p101_pthread_cancel",
-            "p101_pthread_detach",
-            "p101_pthread_join",
+        if function_usr in {
+            "c:@F@p101_pthread_cancel",
+            "c:@F@p101_pthread_detach",
+            "c:@F@p101_pthread_join",
         }:
             return [
                 f"            pthread_t {fixture};",
@@ -1376,14 +3065,17 @@ def native_contract_fixture(
                 "                _Exit(77);",
                 "            }",
             ], fixture, [], (
-                [f"            (void)pthread_join({fixture}, NULL);"]
-                if function_name == "p101_pthread_cancel"
+                [
+                    f"            P101_NATIVE_CLEANUP_STATUS("
+                    f"pthread_join({fixture}, NULL));"
+                ]
+                if function_usr == "c:@F@p101_pthread_cancel"
                 else []
             )
         return [], "pthread_self()", [], []
 
     if (
-        function_name == "p101_sigwait"
+        function_usr == "c:@F@p101_sigwait"
         and index == 2
         and "sigset_t" in qualified
         and "*" in qualified
@@ -1391,6 +3083,7 @@ def native_contract_fixture(
         return [
             f"            sigset_t {fixture};",
             f"            sigset_t {fixture}_previous;",
+            f"            sigset_t {fixture}_pending;",
             f"            if(sigemptyset(&{fixture}) != 0)",
             "            {",
             "                _Exit(77);",
@@ -1409,8 +3102,27 @@ def native_contract_fixture(
             "                _Exit(77);",
             "            }",
         ], f"&{fixture}", [], [
-            f"            (void)sigprocmask(SIG_SETMASK, "
-            f"&{fixture}_previous, NULL);"
+            f"            if(sigpending(&{fixture}_pending) != 0)",
+            "            {",
+            '                fprintf(stderr, "native cleanup failed: '
+            'p101_sigwait: sigpending: %s\\n", strerror(errno));',
+            "                native_passed = false;",
+            "            }",
+            f"            else if(sigismember(&{fixture}_pending, SIGUSR1) == 1)",
+            "            {",
+            f"                int {fixture}_drained_signal = 0;",
+            f"                int {fixture}_drain_status = "
+            f"sigwait(&{fixture}, &{fixture}_drained_signal);",
+            f"                if({fixture}_drain_status != 0)",
+            "                {",
+            '                    fprintf(stderr, "native cleanup failed: '
+            'p101_sigwait: drain pending signal: status %d\\n", '
+            f"{fixture}_drain_status);",
+            "                    native_passed = false;",
+            "                }",
+            "            }",
+            f"            P101_NATIVE_CLEANUP_ERRNO("
+            f"sigprocmask(SIG_SETMASK, &{fixture}_previous, NULL));"
         ]
 
     if "sigset_t" in qualified and "*" in qualified:
@@ -1434,10 +3146,17 @@ def native_contract_fixture(
         ]
         cleanup = (
             []
-            if function_name == "p101_iconv_close"
+            if function_usr == "c:@F@p101_iconv_close"
             else [
-                f"            (void)p101_iconv_close("
-                f"native_env, native_err, {fixture});"
+                f"            if(p101_iconv_close(native_env, native_err, "
+                f"{fixture}) != 0)",
+                "            {",
+                '                fprintf(stderr, "native cleanup failed: '
+                f'{function_name}: p101_iconv_close: %s\\n", '
+                "p101_error_get_message(native_err));",
+                "                native_passed = false;",
+                "                p101_error_reset(native_err);",
+                "            }",
             ]
         )
         return declarations, fixture, [], cleanup
@@ -1445,11 +3164,124 @@ def native_contract_fixture(
     return None
 
 
+def portable_case_value(case: dict[str, Any]) -> str:
+    kind = case["input_kind"]
+    if kind == "negative-one":
+        return "-1"
+    if kind == "null":
+        return "NULL"
+    if kind == "catalog-zero":
+        return "(nl_catd)0"
+    if kind == "catalog-failure":
+        return "(nl_catd)-1"
+    if kind == "text-without-leading-slash":
+        return '"p101"'
+    if kind == "text-root-only":
+        return '"/"'
+    if kind == "text-with-extra-slash":
+        return '"/p101/invalid"'
+    raise RuntimeError(f"unsupported portable input kind {kind!r}")
+
+
+def portable_companion_value(companion: dict[str, Any]) -> str:
+    if companion["value_kind"] == "text":
+        return json.dumps(companion["value"])
+    raise RuntimeError(
+        "unsupported portable companion value kind "
+        f"{companion['value_kind']!r}"
+    )
+
+
+def portable_result_check(
+    case: dict[str, Any],
+    argument_values: list[str],
+) -> str:
+    kind = case["result_kind"]
+    if kind == "negative-one":
+        expected = "-1"
+    elif kind == "null":
+        expected = "NULL"
+    elif kind == "catalog-failure":
+        expected = "(nl_catd)-1"
+    elif kind == "pointer-failure":
+        expected = "(void *)-1"
+    elif kind == "argument":
+        expected = argument_values[case["result_parameter_index"]]
+    else:
+        raise RuntimeError(f"unsupported portable result kind {kind!r}")
+    return f"        EXPECT(portable_result == {expected});"
+
+
+def portable_rejection_tests(
+    name: str,
+    declaration: dict[str, Any],
+    base_argument_values: list[str],
+    rules: list[dict[str, Any]],
+) -> str:
+    tests: list[str] = []
+    for rule in rules:
+        for case in rule["cases"]:
+            argument_values = list(base_argument_values)
+            companion_declarations: list[str] = []
+            argument_values[rule["parameter_index"]] = portable_case_value(
+                case
+            )
+            for companion in case.get("companion_arguments", []):
+                companion_name = (
+                    "portable_argument_"
+                    f"{companion['parameter_index']}"
+                )
+                companion_declarations.append(
+                    f"        const char *{companion_name} = "
+                    f"{portable_companion_value(companion)};"
+                )
+                argument_values[companion["parameter_index"]] = companion_name
+            arguments = ", ".join(argument_values)
+            declarations = (
+                "\n".join(companion_declarations) + "\n"
+                if companion_declarations
+                else ""
+            )
+            result = (
+                f"        {result_declaration(declaration, 'portable_result')} "
+                f"= {name}({arguments});\n"
+                "        (void)portable_result;"
+            )
+            result_check = portable_result_check(case, argument_values)
+            tests.append(
+                f"""    {{
+        int failures_before = failures;
+
+        EXPECT(p101_error_has_no_error(err));
+        fault_resource_events = 0U;
+        errno                 = P101_TEST_ERRNO_SENTINEL;
+{declarations}\
+{result}
+        EXPECT(p101_error_is_errno(err, {rule["error_code"]}));
+        EXPECT(errno == P101_TEST_ERRNO_SENTINEL);
+{result_check}
+        EXPECT(fault_resource_events == 0U);
+        if(failures != failures_before)
+        {{
+            fprintf(stderr,
+                    "portable rejection failed: {name}: {case['input_kind']}\\n");
+        }}
+        p101_error_reset(err);
+    }}"""
+            )
+    if not tests:
+        return ""
+    return "\n".join(tests) + "\n"
+
+
 def fault_test(
     name: str,
+    function_usr: str,
     declaration: dict[str, Any],
     error_names: dict[str, list[str]],
     failure: dict[str, str],
+    native_outcome: dict[str, str] | None = None,
+    portable_rules: list[dict[str, Any]] | None = None,
 ) -> str:
     parameters = [
         child
@@ -1491,7 +3323,12 @@ def fault_test(
         qualified = parameter.get("type", {}).get("qualType", "")
         pointer_depth = qualified.count("*")
         if (
-            fixture := native_contract_fixture(name, parameter, index)
+            fixture := native_contract_fixture(
+                name,
+                function_usr,
+                parameter,
+                index,
+            )
         ) is not None:
             declarations, native_expression, setup, cleanup = fixture
             native_fixture_declarations.extend(declarations)
@@ -1529,6 +3366,7 @@ def fault_test(
         elif (
             fixture := native_pointer_fixture(
                 name,
+                function_usr,
                 parameter,
                 index,
                 declaration,
@@ -1558,7 +3396,11 @@ def fault_test(
                     f"            memset({expression}, 0, "
                     f"sizeof({expression}));"
                 )
-    if name in {"p101_pause", "p101_sigsuspend"}:
+    if needs_native_stream and function_usr != "c:@F@p101_fclose":
+        native_cleanup.append(
+            "            P101_NATIVE_CLEANUP_ERRNO(fclose(native_stream));"
+        )
+    if function_usr in {"c:@F@p101_pause", "c:@F@p101_sigsuspend"}:
         native_setup.extend(
             [
                 "            if(signal(SIGALRM, "
@@ -1569,7 +3411,10 @@ def fault_test(
                 "            (void)alarm(1U);",
             ]
         )
-    if name in {"p101_pthread_cond_timedwait", "p101_pthread_cond_wait"}:
+    if function_usr in {
+        "c:@F@p101_pthread_cond_timedwait",
+        "c:@F@p101_pthread_cond_wait",
+    }:
         native_setup.extend(
             [
                 "            if(pthread_mutex_lock("
@@ -1581,9 +3426,10 @@ def fault_test(
         )
         native_cleanup.insert(
             0,
-            "            (void)pthread_mutex_unlock(&native_argument_3);",
+            "            P101_NATIVE_CLEANUP_STATUS("
+            "pthread_mutex_unlock(&native_argument_3));",
         )
-    if name == "p101_pthread_cond_wait":
+    if function_usr == "c:@F@p101_pthread_cond_wait":
         native_fixture_declarations.extend(
             [
                 "            pthread_t native_condition_thread;",
@@ -1591,6 +3437,7 @@ def fault_test(
                 "native_condition_context = {",
                 "                &native_argument_2,",
                 "                &native_argument_3,",
+                "                0,",
                 "            };",
             ]
         )
@@ -1604,11 +3451,18 @@ def fault_test(
                 "            }",
             ]
         )
-        native_cleanup.insert(
-            0,
-            "            (void)pthread_join(native_condition_thread, NULL);",
-        )
-    if name == "p101_pthread_mutex_unlock":
+        native_cleanup[0:0] = [
+            "            P101_NATIVE_CLEANUP_STATUS("
+            "pthread_join(native_condition_thread, NULL));",
+            "            if(native_condition_context.status != 0)",
+            "            {",
+            '                fprintf(stderr, "native helper failed: '
+            'p101_pthread_cond_wait: status %d\\n", '
+            "native_condition_context.status);",
+            "                native_passed = false;",
+            "            }",
+        ]
+    if function_usr == "c:@F@p101_pthread_mutex_unlock":
         native_setup.extend(
             [
                 "            if(pthread_mutex_lock("
@@ -1618,12 +3472,16 @@ def fault_test(
                 "            }",
             ]
         )
-    if name in {"p101_pthread_mutex_lock", "p101_pthread_mutex_trylock"}:
+    if function_usr in {
+        "c:@F@p101_pthread_mutex_lock",
+        "c:@F@p101_pthread_mutex_trylock",
+    }:
         native_cleanup.insert(
             0,
-            "            (void)pthread_mutex_unlock(&native_argument_2);",
+            "            P101_NATIVE_CLEANUP_STATUS("
+            "pthread_mutex_unlock(&native_argument_2));",
         )
-    if name == "p101_pthread_rwlock_unlock":
+    if function_usr == "c:@F@p101_pthread_rwlock_unlock":
         native_setup.extend(
             [
                 "            if(pthread_rwlock_rdlock("
@@ -1633,31 +3491,43 @@ def fault_test(
                 "            }",
             ]
         )
-    if name in {
-        "p101_pthread_rwlock_rdlock",
-        "p101_pthread_rwlock_tryrdlock",
-        "p101_pthread_rwlock_trywrlock",
-        "p101_pthread_rwlock_wrlock",
+    if function_usr in {
+        "c:@F@p101_pthread_rwlock_rdlock",
+        "c:@F@p101_pthread_rwlock_tryrdlock",
+        "c:@F@p101_pthread_rwlock_trywrlock",
+        "c:@F@p101_pthread_rwlock_wrlock",
     }:
         native_cleanup.insert(
             0,
-            "            (void)pthread_rwlock_unlock(&native_argument_2);",
+            "            P101_NATIVE_CLEANUP_STATUS("
+            "pthread_rwlock_unlock(&native_argument_2));",
         )
-    if name == "p101_pthread_create":
+    if function_usr == "c:@F@p101_pthread_create":
         native_cleanup.insert(
             0,
             "            if(native_result == 0)\n"
             "            {\n"
-            "                (void)pthread_join(native_argument_2, NULL);\n"
+            "                P101_NATIVE_CLEANUP_STATUS("
+            "pthread_join(native_argument_2, NULL));\n"
             "            }",
         )
-    if name == "p101_pthread_key_create":
+    if function_usr == "c:@F@p101_pthread_key_create":
         native_cleanup.insert(
             0,
             "            if(native_result == 0)\n"
             "            {\n"
-            "                (void)pthread_key_delete(native_argument_2);\n"
+            "                P101_NATIVE_CLEANUP_STATUS("
+            "pthread_key_delete(native_argument_2));\n"
             "            }",
+        )
+    if function_usr == "c:@F@p101_if_nameindex":
+        native_cleanup.extend(
+            [
+                "            if(native_result != NULL)",
+                "            {",
+                "                if_freenameindex(native_result);",
+                "            }",
+            ]
         )
     arguments = ", ".join(argument_values)
     native_arguments = ", ".join(native_argument_values)
@@ -1748,7 +3618,118 @@ def fault_test(
     native_cleanup_text = (
         "\n".join(native_cleanup) + "\n" if native_cleanup else ""
     )
-    return f"""/* P101_TEST_CASE({name}) */
+    portable_tests = portable_rejection_tests(
+        name,
+        declaration,
+        argument_values,
+        portable_rules or [],
+    )
+    unchecked_cleanup = [
+        line
+        for line in native_cleanup
+        if re.search(
+            r"\(void\)(?:close|closedir|fclose|msgctl|pclose|"
+            r"pthread_[A-Za-z0-9_]+|sem_close|sem_unlink|"
+            r"semctl|shm_unlink|shmctl|shmdt|sigprocmask|"
+            r"unlink|waitpid)\s*\(",
+            line,
+        )
+    ]
+    if unchecked_cleanup:
+        raise RuntimeError(
+            f"{name}: native cleanup ignores a reportable result: "
+            + ", ".join(line.strip() for line in unchecked_cleanup)
+        )
+    native_outcome = native_outcome or {"outcome": "success"}
+    if native_outcome["outcome"] == "success":
+        native_assertion = (
+            "            if(p101_error_has_error(native_err))\n"
+            "            {\n"
+            '                fprintf(stderr, "native smoke failed: '
+            f'{name}: %s\\n", p101_error_get_message(native_err));\n'
+            "                native_passed = false;\n"
+            "            }\n"
+        )
+    elif native_outcome["outcome"] == "error":
+        native_error_domain = native_outcome["error_domain"]
+        if native_error_domain == "errno":
+            native_error_assertion = (
+                f"p101_error_is_errno(native_err, "
+                f"{native_outcome['error_code']})"
+            )
+        else:
+            native_error_type = {
+                "check": "P101_ERROR_CHECK",
+                "system": "P101_ERROR_SYSTEM",
+                "user": "P101_ERROR_USER",
+            }[native_error_domain]
+            native_error_assertion = (
+                f"p101_error_is_error(native_err, {native_error_type}, "
+                f"{native_outcome['error_code']})"
+            )
+        native_assertion = (
+            f"            if(!{native_error_assertion})\n"
+            "            {\n"
+                '                fprintf(stderr, "native smoke did not produce '
+            f'the declared failure: {name}: %s\\n", '
+            "p101_error_get_message(native_err));\n"
+            "                native_passed = false;\n"
+            "            }\n"
+        )
+        result_kind = native_outcome.get("result_kind")
+        if result_kind == "equals":
+            native_assertion += (
+                "            if(native_result != "
+                f"{native_outcome['result_expression']})\n"
+                "            {\n"
+                '                fprintf(stderr, "native smoke returned an '
+                f'undeclared result: {name}\\n");\n'
+                "                native_passed = false;\n"
+                "            }\n"
+            )
+        elif result_kind == "text":
+            native_assertion += (
+                "            if(native_result == NULL ||\n"
+                "               strcmp(native_result, "
+                f"{json.dumps(native_outcome['result_text'])}) != 0)\n"
+                "            {\n"
+                '                fprintf(stderr, "native smoke returned an '
+                f'undeclared result: {name}\\n");\n'
+                "                native_passed = false;\n"
+                "            }\n"
+            )
+        elif result_kind is not None:
+            raise RuntimeError(
+                f"{name}: unsupported native result assertion {result_kind!r}"
+            )
+        native_assertion += "            p101_error_reset(native_err);\n"
+    else:
+        allowed = native_outcome["allowed_error_codes"]
+        allowed_assertion = " &&\n                ".join(
+            f"!p101_error_is_errno(native_err, {code})"
+            for code in allowed
+        )
+        native_assertion = (
+            "            if(p101_error_has_error(native_err) &&\n"
+            f"               {allowed_assertion})\n"
+            "            {\n"
+            '                fprintf(stderr, "native smoke produced an '
+            f'undeclared conditional failure: {name}\\n");\n'
+            "                native_passed = false;\n"
+            "            }\n"
+            "            if(p101_error_has_error(native_err))\n"
+            "            {\n"
+            f"                if(native_result != "
+            f"{native_outcome['error_result_expression']})\n"
+            "                {\n"
+            '                    fprintf(stderr, "native smoke returned an '
+            f'undeclared conditional result: {name}\\n");\n'
+            "                    native_passed = false;\n"
+            "                }\n"
+            "                p101_error_reset(native_err);\n"
+            "            }\n"
+        )
+    source = f"""/* P101_TEST_CASE({name}) */
 static void test_{name}(struct p101_env *env, struct p101_error *err{fault_test_signature_suffix(declaration)})
 {{
 {argument_setup}\
@@ -1792,6 +3773,7 @@ static void test_{name}(struct p101_env *env, struct p101_error *err{fault_test_
         p101_error_reset(err);
     }}
     p101_env_set_fault_injector(env, NULL, NULL);
+{portable_tests}\
     {{
         int   native_status = 0;
         pid_t native_pid    = fork();
@@ -1799,38 +3781,62 @@ static void test_{name}(struct p101_env *env, struct p101_error *err{fault_test_
         EXPECT(native_pid >= 0);
         if(native_pid == 0)
         {{
-            struct p101_error *native_err;
-            struct p101_env   *native_env;
+            bool               native_passed = true;
+            struct p101_error *native_err = NULL;
+            struct p101_env   *native_env = NULL;
 
+            native_child_process = true;
+            failures            = 0;
             (void)alarm(2U);
-            (void)unsetenv("P101_CALL_LOG");
-            (void)unsetenv("P101_RESOURCE_LOG");
+            if(unsetenv("P101_CALL_LOG") != 0 ||
+               unsetenv("P101_RESOURCE_LOG") != 0)
+            {{
+                fprintf(stderr,
+                        "native setup failed: cannot clear p101 logging environment\\n");
+                native_child_status = 77;
+                goto native_child_done_;
+            }}
             native_err = p101_error_create(false);
             if(native_err == NULL)
             {{
-                _Exit(77);
+                native_child_status = 77;
+                goto native_child_done_;
             }}
             native_env = p101_env_create(native_err, NULL);
             if(native_env == NULL)
             {{
-                p101_error_destroy(native_err);
-                _Exit(77);
+                native_child_status = 77;
+                goto native_child_done_;
             }}
 {native_declarations}\
 {native_fixture_text}\
 {native_setup_text}\
 {native_call}
+{native_assertion}\
 {native_cleanup_text}\
+            native_child_status = native_passed ? EXIT_SUCCESS : EXIT_FAILURE;
+native_child_done_:
             p101_env_destroy(native_env);
             p101_error_destroy(native_err);
-            _Exit(EXIT_SUCCESS);
         }}
         if(native_pid > 0)
         {{
-            EXPECT(waitpid(native_pid, &native_status, 0) == native_pid);
+            EXPECT(native_waitpid_nointr(native_pid, &native_status) == native_pid);
+            if(WIFSIGNALED(native_status))
+            {{
+                fprintf(stderr,
+                        "native smoke terminated by signal: {name}: %d\\n",
+                        WTERMSIG(native_status));
+            }}
             EXPECT(WIFEXITED(native_status));
             if(WIFEXITED(native_status))
             {{
+                if(WEXITSTATUS(native_status) != EXIT_SUCCESS)
+                {{
+                    fprintf(stderr,
+                            "native smoke exited unsuccessfully: {name}: %d\\n",
+                            WEXITSTATUS(native_status));
+                }}
                 EXPECT(WEXITSTATUS(native_status) == EXIT_SUCCESS);
             }}
         }}
@@ -1839,10 +3845,19 @@ static void test_{name}(struct p101_env *env, struct p101_error *err{fault_test_
 {va_list_teardown(declaration)}\
 }}
 """
+    rendered = source.replace(
+        "_Exit(77);",
+        "native_child_status = 77;\ngoto native_child_done_;",
+    ).replace(
+        "_Exit(EXIT_SUCCESS);",
+        "native_child_status = EXIT_SUCCESS;\ngoto native_child_done_;",
+    )
+    return rendered
 
 
 def native_callback_helpers(
     declarations: dict[str, dict[str, Any]],
+    function_usrs: dict[str, str],
     names: list[str],
 ) -> str:
     helpers: set[str] = set()
@@ -1856,9 +3871,10 @@ def native_callback_helpers(
             callback = NATIVE_CALLBACKS.get(qualified)
             if callback is not None:
                 helpers.add(callback)
-    if {"p101_pause", "p101_sigsuspend"} & set(names):
+    admitted_usrs = {function_usrs[name] for name in names}
+    if {"c:@F@p101_pause", "c:@F@p101_sigsuspend"} & admitted_usrs:
         helpers.add("native_signal_callback")
-    if "p101_pthread_cond_wait" in names:
+    if "c:@F@p101_pthread_cond_wait" in admitted_usrs:
         helpers.add("native_condition_signal_thread")
     return "\n".join(
         NATIVE_CALLBACK_DEFINITIONS[helper].strip()
@@ -1870,9 +3886,12 @@ def fault_source(
     library: str,
     includes: str,
     declarations: dict[str, dict[str, Any]],
+    function_usrs: dict[str, str],
     names: list[str],
     platform_faults: dict[str, dict[str, list[str]]],
     failure_contract: dict[str, dict[str, str]],
+    native_smoke_contract: dict[str, dict[str, str]],
+    portable_input_contract: dict[str, list[dict[str, Any]]],
 ) -> str:
     if not names:
         return f"""{includes}
@@ -1886,22 +3905,60 @@ int main(void)
     tests = "\n".join(
         fault_test(
             name,
+            function_usrs[name],
             declarations[name],
-            platform_faults.get(name, []),
-            failure_contract[name],
+            platform_faults.get(function_usrs[name], []),
+            failure_contract[function_usrs[name]],
+            native_smoke_contract.get(function_usrs[name]),
+            portable_input_contract.get(function_usrs[name]),
         )
         for name in names
     )
     calls = "\n".join(
-        f"    test_{name}(env, err{fault_test_call_suffix(declarations[name])});"
+        "    if(!native_child_process)\n"
+        "    {\n"
+        f"        test_{name}(env, err"
+        f"{fault_test_call_suffix(declarations[name])});\n"
+        "    }"
         for name in names
     )
-    native_helpers = native_callback_helpers(declarations, names)
-    native_includes = (
-        "#include <fcntl.h>\n"
-        if any(name.startswith("p101_sem_") for name in names)
-        else ""
+    native_helpers = native_callback_helpers(
+        declarations,
+        function_usrs,
+        names,
     )
+    native_includes = "#include <fcntl.h>\n"
+    native_unlink_helper = ""
+    if "P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT" in tests:
+        native_unlink_helper = """static bool native_unlink_if_present(const char *path)
+{
+    bool        result;
+    int         unlink_status;
+    int         unlink_error;
+    const char *message;
+    int         written;
+
+    errno         = 0;
+    unlink_status = unlink(path);
+    unlink_error  = errno;
+    if(unlink_status != 0 && unlink_error != ENOENT)
+    {
+        message = strerror(unlink_error);
+        written = fprintf(stderr,
+                          "native cleanup failed: unlink(%s): %s\\n",
+                          path,
+                          message);
+        (void)written;
+        result = false;
+    }
+    else
+    {
+        result = true;
+    }
+    return result;
+}
+
+"""
     return f"""#include <errno.h>
 {native_includes}
 #include <arpa/inet.h>
@@ -1917,6 +3974,7 @@ int main(void)
 #include <pthread.h>
 #include <search.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -1931,6 +3989,8 @@ int main(void)
 static int failures;
 static size_t fault_resource_events;
 static FILE *outcome_stream;
+static bool native_child_process;
+static int native_child_status = EXIT_SUCCESS;
 {native_helpers}
 
 #define P101_TEST_ERRNO_SENTINEL 0x5A5A
@@ -1955,11 +4015,81 @@ static FILE *outcome_stream;
         }}                                                                        \\
     }} while(0)
 
+#define P101_NATIVE_CLEANUP_ERRNO(expression)                                    \\
+    do                                                                           \\
+    {{                                                                            \\
+        if((expression) != 0)                                                    \\
+        {{                                                                        \\
+            fprintf(stderr,                                                      \\
+                    "native cleanup failed: %s: %s\\n",                          \\
+                    #expression,                                                 \\
+                    strerror(errno));                                            \\
+            native_passed = false;                                               \\
+        }}                                                                        \\
+    }} while(0)
+
+#define P101_NATIVE_CLEANUP_STATUS(expression)                                   \\
+    do                                                                           \\
+    {{                                                                            \\
+        int p101_cleanup_status_ = (expression);                                 \\
+        if(p101_cleanup_status_ != 0)                                            \\
+        {{                                                                        \\
+            fprintf(stderr,                                                      \\
+                    "native cleanup failed: %s: status %d\\n",                   \\
+                    #expression,                                                 \\
+                    p101_cleanup_status_);                                       \\
+            native_passed = false;                                               \\
+        }}                                                                        \\
+    }} while(0)
+
+{native_unlink_helper}\
+#define P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT(path)                              \\
+    do                                                                           \\
+    {{                                                                            \\
+        bool p101_cleanup_ok_;                                                    \\
+                                                                                 \\
+        p101_cleanup_ok_ = native_unlink_if_present(path);                        \\
+        if(!p101_cleanup_ok_)                                                     \\
+        {{                                                                        \\
+            native_passed = false;                                               \\
+        }}                                                                        \\
+    }} while(0)
+
+#define P101_NATIVE_FORMAT_PID_PATH_OR_SKIP(buffer, format)                       \\
+    do                                                                           \\
+    {{                                                                            \\
+        int p101_format_length_;                                                  \\
+                                                                                 \\
+        p101_format_length_ = snprintf((buffer),                                  \\
+                                       sizeof(buffer),                            \\
+                                       (format),                                  \\
+                                       (long)getpid());                           \\
+        if(p101_format_length_ < 0 ||                                             \\
+           (size_t)p101_format_length_ >= sizeof(buffer))                         \\
+        {{                                                                        \\
+            fprintf(stderr, "native setup failed: path formatting\\n");          \\
+            native_child_status = 77;                                             \\
+            goto native_child_done_;                                              \\
+        }}                                                                        \\
+    }} while(0)
+
 struct fault_state
 {{
     int checks;
     int code;
 }};
+
+static pid_t native_waitpid_nointr(pid_t pid, int *status)
+    P101_ATTR_SEMANTIC_ROLE("p101:test:eintr-safe-wait-adapter")
+{{
+    pid_t result;
+
+    do
+    {{
+        result = waitpid(pid, status, 0);
+    }} while(result < 0 && errno == EINTR);
+    return result;
+}}
 
 static void write_outcome(const char *wrapper,
                           const char *domain,
@@ -1969,22 +4099,21 @@ static void write_outcome(const char *wrapper,
 {{
     int written;
 
-    if(outcome_stream == NULL)
+    if(outcome_stream != NULL)
     {{
-        return;
-    }}
-    written = fprintf(outcome_stream,
-                      "P101WRAPPER\\t1\\tFAULT\\t%s\\t{library}\\t%s\\t%s\\t%s\\t%d\\t%s\\n",
-                      P101_TEST_PLATFORM,
-                      wrapper,
-                      domain,
-                      symbol,
-                      code,
-                      passed ? "PASS" : "FAIL");
-    if(written < 0 || fflush(outcome_stream) != 0)
-    {{
-        fprintf(stderr, "FAIL: cannot write wrapper outcome receipt\\n");
-        failures++;
+        written = fprintf(outcome_stream,
+                          "P101WRAPPER\\t1\\tFAULT\\t%s\\t{library}\\t%s\\t%s\\t%s\\t%d\\t%s\\n",
+                          P101_TEST_PLATFORM,
+                          wrapper,
+                          domain,
+                          symbol,
+                          code,
+                          passed ? "PASS" : "FAIL");
+        if(written < 0 || fflush(outcome_stream) != 0)
+        {{
+            fprintf(stderr, "FAIL: cannot write wrapper outcome receipt\\n");
+            failures++;
+        }}
     }}
 }}
 
@@ -2069,8 +4198,9 @@ static void count_resource_event(const struct p101_env *env,
 int main(void)
 {{
     const char        *outcome_path;
-    struct p101_error *err;
-    struct p101_env   *env;
+    struct p101_error *err = NULL;
+    struct p101_env   *env = NULL;
+    int                status;
 
     outcome_path = getenv("P101_WRAPPER_OUTCOME_LOG");
     if(outcome_path != NULL && outcome_path[0] != '\\0')
@@ -2079,32 +4209,28 @@ int main(void)
         if(outcome_stream == NULL)
         {{
             fprintf(stderr, "FAIL: cannot open wrapper outcome receipt\\n");
-            return EXIT_FAILURE;
+            failures++;
         }}
     }}
-    err = p101_error_create(false);
-    if(err == NULL)
+    if(failures == 0)
     {{
-        if(outcome_stream != NULL)
-        {{
-            (void)fclose(outcome_stream);
-        }}
-        return EXIT_FAILURE;
+        err = p101_error_create(false);
     }}
-    env = p101_env_create(err, NULL);
+    if(err != NULL)
+    {{
+        env = p101_env_create(err, NULL);
+    }}
     if(env == NULL)
     {{
-        p101_error_destroy(err);
-        if(outcome_stream != NULL)
-        {{
-            (void)fclose(outcome_stream);
-        }}
-        return EXIT_FAILURE;
+        failures++;
     }}
-    p101_env_set_fd_observer(env, count_fd_event, NULL);
-    p101_env_set_alloc_observer(env, count_alloc_event, NULL);
-    p101_env_set_resource_observer(env, count_resource_event, NULL);
+    else
+    {{
+        p101_env_set_fd_observer(env, count_fd_event, NULL);
+        p101_env_set_alloc_observer(env, count_alloc_event, NULL);
+        p101_env_set_resource_observer(env, count_resource_event, NULL);
 {calls}
+    }}
     p101_env_destroy(env);
     p101_error_destroy(err);
     if(outcome_stream != NULL && fclose(outcome_stream) != 0)
@@ -2112,7 +4238,19 @@ int main(void)
         fprintf(stderr, "FAIL: cannot close wrapper outcome receipt\\n");
         failures++;
     }}
-    return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    if(native_child_process)
+    {{
+        status = native_child_status;
+        if(status == EXIT_SUCCESS && failures != 0)
+        {{
+            status = EXIT_FAILURE;
+        }}
+    }}
+    else
+    {{
+        status = failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    }}
+    return status;
 }}
 """
 
@@ -2125,20 +4263,24 @@ def public_header_includes(repo: Path) -> str:
     )
 
 
-def existing_behavior_source(repo: Path, name: str) -> tuple[str, str] | None:
-    invocation = re.compile(rf"\b{re.escape(name)}\s*\(")
-    for source in sorted((repo / "test").glob("*.[cC]")) + sorted(
-        (repo / "test").glob("*.cpp")
-    ):
-        if source.name == "test_fault_wrappers.c":
+def existing_behavior_source(
+    repo: Path,
+    wrapper_usr: str,
+    calls_by_source: dict[Path, set[str]],
+) -> tuple[str, str] | None:
+    for source in sorted(calls_by_source):
+        try:
+            relative = source.relative_to(repo)
+        except ValueError:
             continue
-        text = source.read_text(encoding="utf-8", errors="replace")
-        if invocation.search(text) is None:
+        if wrapper_usr not in calls_by_source[source]:
             continue
-        relative = str(source.relative_to(repo))
-        if f"P101_TEST_CASE({name})" in text:
-            return ("behavior", relative)
-        return ("behavior-existing", relative)
+        kind = (
+            "behavior"
+            if relative.as_posix() == "test/test_behavior.c"
+            else "behavior-existing"
+        )
+        return (kind, relative.as_posix())
     return None
 
 
@@ -2163,6 +4305,65 @@ def formatted_source(formatter: str, path: Path, text: str) -> str:
     return result.stdout
 
 
+def validate_generated_source_semantics(
+    library: str,
+    source: str,
+) -> None:
+    """Apply generated-fixture policy to resolved calls, never spellings."""
+    with tempfile.TemporaryDirectory(prefix="p101-wrapper-generator-") as raw:
+        path = Path(raw) / "test_fault_wrappers.c"
+        path.write_text(source, encoding="utf-8")
+        try:
+            facts = acquire(WORKSPACE, (path,))
+        except CFactError as error:
+            raise RuntimeError(
+                f"{library}: cannot validate generated fixture semantics: "
+                f"{error}"
+            ) from error
+
+    calls = {
+        (int(fact.get("start", -1)), int(fact.get("end", -1))): fact
+        for fact in facts
+        if fact.get("kind") == "CALL"
+    }
+    discarded = {
+        (int(fact.get("start", -1)), int(fact.get("end", -1)))
+        for fact in facts
+        if fact.get("kind") == "NOTE"
+        and fact.get("value") == "CALL_RESULT_DISCARDED"
+    }
+    eintr_safe_wait_callers = {
+        str(fact.get("caller_usr", ""))
+        for fact in facts
+        if fact.get("kind") == "NOTE"
+        and fact.get("value") == EINTR_SAFE_WAIT_ROLE
+    }
+    for extent, call in calls.items():
+        usr = str(call.get("usr", ""))
+        if usr in UNSAFE_NATIVE_CALL_USRS:
+            raise RuntimeError(
+                f"{library}: generated fixture calls unsafe API identity {usr}"
+            )
+        if (
+            usr in DIRECT_WAIT_USRS
+            and str(call.get("caller_usr", "")) not in eintr_safe_wait_callers
+        ):
+            raise RuntimeError(
+                f"{library}: generated fixture calls waitpid directly instead "
+                "of the EINTR-safe adapter"
+            )
+        if usr in PROCESS_TERMINATION_USRS:
+            raise RuntimeError(
+                f"{library}: generated fixture bypasses its single return "
+                f"with termination identity {usr}"
+            )
+        if extent in discarded and usr in STATUS_BEARING_CLEANUP_USRS:
+            raise RuntimeError(
+                f"{library}: generated fixture discards the result of "
+                f"status-bearing operation {usr}"
+            )
+
+
 def write_outputs(clang: str, clang_format: str, check: bool) -> int:
     libraries = active_libraries()
     include_dirs = sorted(
@@ -2170,6 +4371,10 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         for path in LIBRARIES.glob("lib_*/include")
         if path.is_dir()
     )
+    semantic_include_dirs = [
+        *include_dirs,
+        *clang_system_include_dirs(clang),
+    ]
     formatter = shutil.which(clang_format)
     if formatter is None:
         raise RuntimeError(
@@ -2180,9 +4385,220 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
     outcome_contract = json.loads(
         OUTCOME_CONTRACT_PATH.read_text(encoding="utf-8")
     )
-    if outcome_contract.get("schema") != "p101-wrapper-outcome-contract-v1":
+    if outcome_contract.get("schema") != "p101-wrapper-outcome-contract-v2":
         raise RuntimeError("unsupported wrapper outcome contract")
     outcome_apis = outcome_contract.get("apis", {})
+    outcome_apis_by_usr = {
+        record.get("function_usr"): record
+        for record in outcome_apis.values()
+        if isinstance(record, dict) and record.get("function_usr")
+    }
+    if len(outcome_apis_by_usr) != len(outcome_apis):
+        raise RuntimeError(
+            "wrapper outcome contract has missing or duplicate identities"
+        )
+    fault_wrappers = fault_contract["wrappers"]
+    fault_wrappers_by_usr = {
+        binding.get("function_usr"): binding
+        for binding in fault_wrappers.values()
+        if isinstance(binding, dict) and binding.get("function_usr")
+    }
+    if len(fault_wrappers_by_usr) != len(fault_wrappers):
+        raise RuntimeError(
+            "platform-fault contract has missing or duplicate identities"
+        )
+    fault_semantics = json.loads(
+        FAULT_SEMANTICS_PATH.read_text(encoding="utf-8")
+    )
+    if fault_semantics.get("schema") != "p101-wrapper-fault-semantics-v3":
+        raise RuntimeError("unsupported wrapper fault-semantics contract")
+    fault_mechanism = fault_semantics.get("mechanism", {})
+    if set(fault_mechanism) != {
+        "hard_selector_usr",
+        "action_selector_usr",
+        "action_recorder_usr",
+        "entry_trace_usr",
+    }:
+        raise RuntimeError("wrapper fault-semantics mechanism is incomplete")
+    hard_selector_usr = fault_mechanism["hard_selector_usr"]
+    action_selector_usr = fault_mechanism["action_selector_usr"]
+    selector_usrs = {hard_selector_usr, action_selector_usr}
+    entry_trace_usr = fault_mechanism["entry_trace_usr"]
+    native_smoke_contract = json.loads(
+        NATIVE_SMOKE_CONTRACT_PATH.read_text(encoding="utf-8")
+    )
+    if set(native_smoke_contract) != {
+        "schema",
+        "default_outcome",
+        "exceptions",
+    }:
+        raise RuntimeError(
+            "wrapper native-smoke contract has unknown or missing fields"
+        )
+    if (
+        native_smoke_contract.get("schema")
+        != "p101-wrapper-native-smoke-contract-v2"
+    ):
+        raise RuntimeError("unsupported wrapper native-smoke contract")
+    if native_smoke_contract.get("default_outcome") != "success":
+        raise RuntimeError(
+            "wrapper native-smoke contract must default to success"
+        )
+    native_smoke_exceptions = native_smoke_contract.get("exceptions", {})
+    if not isinstance(native_smoke_exceptions, list):
+        raise RuntimeError(
+            "wrapper native-smoke exceptions must be a list"
+        )
+    native_smoke_exceptions_by_usr = {
+        outcome.get("function_usr"): outcome
+        for outcome in native_smoke_exceptions
+        if isinstance(outcome, dict) and outcome.get("function_usr")
+    }
+    if len(native_smoke_exceptions_by_usr) != len(native_smoke_exceptions):
+        raise RuntimeError(
+            "wrapper native-smoke contract has missing or duplicate identities"
+        )
+    portable_input_contract = json.loads(
+        PORTABLE_INPUT_CONTRACT_PATH.read_text(encoding="utf-8")
+    )
+    if set(portable_input_contract) != {
+        "schema",
+        "supported_platforms",
+        "default_policy",
+        "evidence_contract",
+        "policy",
+        "rules",
+    }:
+        raise RuntimeError(
+            "wrapper portable-input contract has unknown or missing fields"
+        )
+    if (
+        portable_input_contract.get("schema")
+        != "p101-wrapper-portable-input-contract-v2"
+        or portable_input_contract.get("supported_platforms")
+        != ["linux", "macos", "freebsd"]
+        or portable_input_contract.get("default_policy")
+        != "defer-to-native-platform"
+        or portable_input_contract.get("evidence_contract")
+        != "wrapper-platform-faults.json"
+    ):
+        raise RuntimeError("unsupported wrapper portable-input contract")
+    portable_input_rules = portable_input_contract.get("rules", {})
+    if not isinstance(portable_input_rules, list):
+        raise RuntimeError("wrapper portable-input rules must be a list")
+    portable_input_rules_by_usr: dict[str, list[dict[str, Any]]] = {}
+    for rule_record in portable_input_rules:
+        rule_usr = (
+            rule_record.get("function_usr", "?")
+            if isinstance(rule_record, dict)
+            else "?"
+        )
+        if (
+            not isinstance(rule_record, dict)
+            or set(rule_record) != {"function_usr", "constraints"}
+            or not isinstance(rule_record.get("function_usr"), str)
+            or not rule_record["function_usr"]
+            or rule_record["function_usr"] in portable_input_rules_by_usr
+        ):
+            raise RuntimeError(
+                f"{rule_usr}: portable-input rule lacks a unique function identity"
+            )
+        constraints = rule_record["constraints"]
+        if not isinstance(constraints, list):
+            raise RuntimeError(
+                f"{rule_usr}: portable-input constraints must be a list"
+            )
+        portable_input_rules_by_usr[rule_record["function_usr"]] = constraints
+    for outcome in native_smoke_exceptions:
+        if not isinstance(outcome, dict):
+            raise RuntimeError(
+                "wrapper native-smoke exceptions must contain objects"
+            )
+        name = str(outcome.get("function_usr", "?"))
+        if outcome.get("outcome") not in {"error", "success-or-error"}:
+            raise RuntimeError(
+                f"{name}: invalid native-smoke exception outcome"
+            )
+        expected_fields = {
+            "function_usr",
+            "outcome",
+            "rationale",
+        }
+        if outcome.get("outcome") == "error":
+            expected_fields |= {
+                "error_code",
+                "error_domain",
+                "result_kind",
+            }
+            if outcome.get("result_kind") == "equals":
+                expected_fields.add("result_expression")
+            elif outcome.get("result_kind") == "text":
+                expected_fields.add("result_text")
+        else:
+            expected_fields |= {
+                "allowed_error_codes",
+                "error_result_expression",
+            }
+        if set(outcome) != expected_fields:
+            raise RuntimeError(
+                f"{name}: native-smoke exception has unknown or missing "
+                f"fields: expected {sorted(expected_fields)}, "
+                f"got {sorted(outcome)}"
+            )
+        if (
+            outcome.get("outcome") == "error"
+            and outcome.get("error_domain")
+            not in {"check", "errno", "system", "user"}
+        ):
+            raise RuntimeError(
+                f"{name}: invalid native-smoke error domain"
+            )
+        if not outcome.get("rationale"):
+            raise RuntimeError(
+                f"{name}: native-smoke exception lacks rationale"
+            )
+        if (
+            outcome.get("outcome") == "error"
+            and not outcome.get("error_code")
+        ):
+            raise RuntimeError(
+                f"{name}: native-smoke error lacks an exact code"
+            )
+        if (
+            outcome.get("outcome") == "success-or-error"
+            and (
+                not isinstance(outcome.get("allowed_error_codes"), list)
+                or not outcome.get("allowed_error_codes")
+                or any(
+                    not isinstance(code, str) or not code
+                    for code in outcome["allowed_error_codes"]
+                )
+                or len(set(outcome["allowed_error_codes"]))
+                != len(outcome["allowed_error_codes"])
+                or not outcome.get("error_result_expression")
+            )
+        ):
+            raise RuntimeError(
+                f"{name}: conditional native outcome lacks exact errors"
+            )
+        if outcome.get("result_kind") not in {None, "equals", "text"}:
+            raise RuntimeError(
+                f"{name}: invalid native-smoke result assertion"
+            )
+        if (
+            outcome.get("result_kind") == "equals"
+            and not outcome.get("result_expression")
+        ):
+            raise RuntimeError(
+                f"{name}: equality result assertion lacks an expression"
+            )
+        if (
+            outcome.get("result_kind") == "text"
+            and not isinstance(outcome.get("result_text"), str)
+        ):
+            raise RuntimeError(
+                f"{name}: text result assertion lacks exact text"
+            )
     valid_outcome_classes = {
         "direct-hard-failure",
         "short-partial-result",
@@ -2192,11 +4608,11 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         "non-returning-cleanup",
     }
     failure_contract: dict[str, Any] = {
-        "schema": "p101-wrapper-failure-contract-v1",
+        "schema": "p101-wrapper-failure-contract-v2",
         "semantics": {
             "error_object": "exact-injected-code-and-domain",
             "errno": "preserved",
-            "fault_boundary": "before-observable-work",
+            "fault_boundary": "after-entry-trace-before-native-work",
             "writable_arguments": (
                 "unchanged-by-early-return-with-portable-runtime-canaries"
             ),
@@ -2204,17 +4620,18 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         },
         "wrappers": {},
     }
-    wrapper_errors: dict[str, dict[str, list[str]]] = {}
-    admitted_apis: set[str] = set()
-    for wrapper, binding in fault_contract["wrappers"].items():
+    wrapper_errors_by_usr: dict[str, dict[str, list[str]]] = {}
+    admitted_usrs: set[str] = set()
+    for binding in fault_wrappers_by_usr.values():
+        wrapper_usr = binding["function_usr"]
         function = binding.get("function")
         if function is None:
-            wrapper_errors[wrapper] = {
+            wrapper_errors_by_usr[wrapper_usr] = {
                 platform_name: []
                 for platform_name in ("linux", "macos", "freebsd", "posix")
             }
             continue
-        wrapper_errors[wrapper] = {}
+        wrapper_errors_by_usr[wrapper_usr] = {}
         for platform_name in ("linux", "macos", "freebsd"):
             errors, _domain, _selection, _source, _coverage = (
                 effective_fault_selection(
@@ -2223,7 +4640,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                     platform_name,
                 )
             )
-            wrapper_errors[wrapper][platform_name] = errors
+            wrapper_errors_by_usr[wrapper_usr][platform_name] = errors
         errors, _domain, _selection, _source, _coverage = (
             effective_fault_selection(
                 fault_contract,
@@ -2231,12 +4648,87 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                 None,
             )
         )
-        wrapper_errors[wrapper]["posix"] = errors
+        wrapper_errors_by_usr[wrapper_usr]["posix"] = errors
 
     for library, (repo, library_rows) in sorted(libraries.items()):
         admitted = {row["function"] for row in library_rows}
-        admitted_apis.update(admitted)
-        declarations = function_definitions(clang, library_rows, include_dirs)
+        function_usrs = {
+            row["function"]: row.get("function_usr", "")
+            for row in library_rows
+        }
+        if any(not function_usr for function_usr in function_usrs.values()):
+            raise RuntimeError(
+                f"{library}: public API manifest lacks function identities"
+            )
+        if len(set(function_usrs.values())) != len(function_usrs):
+            raise RuntimeError(
+                f"{library}: public API manifest repeats a function identity"
+            )
+        for row in library_rows:
+            binding = fault_wrappers_by_usr.get(row["function_usr"])
+            if binding is None:
+                raise RuntimeError(
+                    f"{row['function_usr']}: absent from platform-fault contract"
+                )
+            native_function = binding.get("function") or ""
+            manifest_native_function = native_function or "-"
+            native_usr = f"c:@F@{native_function}" if native_function else "-"
+            if (
+                row.get("native_function", "") != manifest_native_function
+                or row.get("native_function_usr", "") != native_usr
+            ):
+                raise RuntimeError(
+                    f"{row['function']}: API manifest native identity differs "
+                    "from the reviewed platform-fault contract"
+                )
+        admitted_usrs.update(function_usrs.values())
+        behavior_sources = sorted(
+            source.resolve()
+            for pattern in ("*.c", "*.C", "*.cc", "*.cpp", "*.cxx")
+            for source in (repo / "test").glob(pattern)
+            if source.name != "test_fault_wrappers.c"
+        )
+        try:
+            implementation_facts = acquire(
+                WORKSPACE,
+                (repo / "src",),
+                additional_include_roots=semantic_include_dirs,
+            )
+            behavior_facts = (
+                acquire(
+                    WORKSPACE,
+                    behavior_sources,
+                    additional_include_roots=semantic_include_dirs,
+                )
+                if behavior_sources
+                else []
+            )
+        except CFactError as error:
+            raise RuntimeError(str(error)) from error
+        declarations = function_definitions(
+            clang,
+            library_rows,
+            include_dirs,
+            implementation_facts,
+        )
+        behavior_calls: dict[Path, set[str]] = {}
+        for fact in behavior_facts:
+            if fact["kind"] == "CALL":
+                path = Path(str(fact["path"])).resolve()
+                behavior_calls.setdefault(path, set()).add(
+                    str(fact.get("usr", ""))
+                )
+        implementation_calls = [
+            fact
+            for fact in implementation_facts
+            if fact["kind"] == "CALL"
+        ]
+        calls_by_wrapper_usr: dict[str, set[str]] = defaultdict(set)
+        for fact in implementation_calls:
+            caller_usr = str(fact.get("caller_usr", ""))
+            callee_usr = str(fact.get("usr", ""))
+            if caller_usr and callee_usr:
+                calls_by_wrapper_usr[caller_usr].add(callee_usr)
         sources = {
             row["function"]: WORKSPACE / row["current_source"]
             for row in library_rows
@@ -2245,17 +4737,255 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
             row["function"]: row["current_source"]
             for row in library_rows
         }
+        for name in sorted(
+            name
+            for name in admitted
+            if function_usrs[name] in portable_input_rules_by_usr
+        ):
+            declaration = declarations[name]
+            parameters = [
+                child
+                for child in declaration.get("inner", [])
+                if child.get("kind") == "ParmVarDecl"
+            ]
+            rules = portable_input_rules_by_usr[function_usrs[name]]
+            if not isinstance(rules, list) or not rules:
+                raise RuntimeError(
+                    f"{name}: portable input rules must be a nonempty list"
+                )
+            for rule in rules:
+                if not isinstance(rule, dict):
+                    raise RuntimeError(
+                        f"{name}: portable input rule must be an object"
+                    )
+                expected_rule_fields = {
+                    "constraint",
+                    "error_code",
+                    "evidence_platforms",
+                    "cases",
+                    "parameter_index",
+                    "type",
+                }
+                if set(rule) != expected_rule_fields:
+                    raise RuntimeError(
+                        f"{name}: portable input rule has unknown or missing "
+                        f"fields: expected {sorted(expected_rule_fields)}, "
+                        f"got {sorted(rule)}"
+                    )
+                index = rule.get("parameter_index")
+                if (
+                    type(index) is not int
+                    or index < 0
+                    or index >= len(parameters)
+                ):
+                    raise RuntimeError(
+                        f"{name}: portable input rule has invalid parameter "
+                        f"index {index!r}"
+                    )
+                actual_type = normalized_c_type(
+                    parameters[index].get("type", {}).get(
+                        "qualType",
+                        "",
+                    )
+                )
+                if actual_type != normalized_c_type(rule.get("type", "")):
+                    raise RuntimeError(
+                        f"{name}: portable input rule type "
+                        f"{rule.get('type')!r} differs from public parameter "
+                        f"{actual_type!r}"
+                    )
+                if (
+                    not isinstance(rule.get("constraint"), str)
+                    or not rule["constraint"]
+                    or not isinstance(rule.get("error_code"), str)
+                    or not rule["error_code"]
+                    or not isinstance(rule.get("evidence_platforms"), list)
+                    or not rule["evidence_platforms"]
+                    or any(
+                        not isinstance(platform, str)
+                        for platform in rule["evidence_platforms"]
+                    )
+                    or len(set(rule["evidence_platforms"]))
+                    != len(rule["evidence_platforms"])
+                    or not set(rule["evidence_platforms"])
+                    <= {"linux", "macos", "freebsd"}
+                    or not isinstance(rule.get("cases"), list)
+                    or not rule["cases"]
+                ):
+                    raise RuntimeError(
+                        f"{name}: incomplete portable input rule"
+                    )
+                fault_binding = fault_wrappers_by_usr.get(
+                    function_usrs[name], {}
+                )
+                native_function = fault_binding.get("function")
+                if not native_function:
+                    raise RuntimeError(
+                        f"{name}: portable input rule lacks a native function"
+                    )
+                for evidence_platform in rule["evidence_platforms"]:
+                    documented_errors, *_unused = effective_fault_selection(
+                        fault_contract,
+                        native_function,
+                        evidence_platform,
+                    )
+                    if rule["error_code"] not in documented_errors:
+                        raise RuntimeError(
+                            f"{name}: portable input rule cites "
+                            f"{evidence_platform} without documented "
+                            f"{rule['error_code']} evidence"
+                        )
+                for case in rule["cases"]:
+                    if not isinstance(case, dict):
+                        raise RuntimeError(
+                            f"{name}: portable input case must be an object"
+                        )
+                    allowed_case_fields = {
+                        "companion_arguments",
+                        "input_kind",
+                        "result_kind",
+                        "result_parameter_index",
+                    }
+                    if not {"input_kind", "result_kind"} <= set(case) or not set(
+                        case
+                    ) <= allowed_case_fields:
+                        raise RuntimeError(
+                            f"{name}: portable input case has unknown or "
+                            "missing fields"
+                        )
+                    input_kind = case.get("input_kind")
+                    if input_kind not in {
+                        "catalog-failure",
+                        "catalog-zero",
+                        "negative-one",
+                        "null",
+                        "text-root-only",
+                        "text-with-extra-slash",
+                        "text-without-leading-slash",
+                    }:
+                        raise RuntimeError(
+                            f"{name}: invalid portable input case "
+                            f"{input_kind!r}"
+                        )
+                    if (
+                        input_kind.startswith("catalog-")
+                        and actual_type != "nl_catd"
+                    ):
+                        raise RuntimeError(
+                            f"{name}: catalog input case requires nl_catd"
+                        )
+                    if input_kind == "negative-one" and actual_type != "int":
+                        raise RuntimeError(
+                            f"{name}: negative input case requires int"
+                        )
+                    if (
+                        input_kind
+                        in {
+                            "null",
+                            "text-root-only",
+                            "text-with-extra-slash",
+                            "text-without-leading-slash",
+                        }
+                        and "*" not in actual_type
+                    ):
+                        raise RuntimeError(
+                            f"{name}: pointer input case requires a pointer"
+                        )
+                    if (
+                        input_kind
+                        in {
+                            "text-root-only",
+                            "text-with-extra-slash",
+                            "text-without-leading-slash",
+                        }
+                        and actual_type != "const char *"
+                    ):
+                        raise RuntimeError(
+                            f"{name}: text input case requires const char *"
+                        )
+                    result_kind = case.get("result_kind")
+                    if result_kind not in {
+                        "argument",
+                        "catalog-failure",
+                        "negative-one",
+                        "null",
+                        "pointer-failure",
+                    }:
+                        raise RuntimeError(
+                            f"{name}: invalid portable result case "
+                            f"{result_kind!r}"
+                        )
+                    result_index = case.get("result_parameter_index")
+                    if result_kind == "argument":
+                        if (
+                            type(result_index) is not int
+                            or result_index < 0
+                            or result_index >= len(parameters)
+                        ):
+                            raise RuntimeError(
+                                f"{name}: portable argument result has "
+                                "an invalid parameter index"
+                            )
+                    elif result_index is not None:
+                        raise RuntimeError(
+                            f"{name}: portable result index is only valid "
+                            "for argument results"
+                        )
+                    companions = case.get("companion_arguments", [])
+                    if not isinstance(companions, list):
+                        raise RuntimeError(
+                            f"{name}: portable companion arguments must be "
+                            "a list"
+                        )
+                    companion_indices: set[int] = set()
+                    for companion in companions:
+                        if not isinstance(companion, dict) or set(companion) != {
+                            "parameter_index",
+                            "value",
+                            "value_kind",
+                        }:
+                            raise RuntimeError(
+                                f"{name}: invalid portable companion argument"
+                            )
+                        companion_index = companion.get("parameter_index")
+                        if (
+                            type(companion_index) is not int
+                            or companion_index < 0
+                            or companion_index >= len(parameters)
+                            or companion.get("value_kind") != "text"
+                            or not isinstance(companion.get("value"), str)
+                        ):
+                            raise RuntimeError(
+                                f"{name}: invalid portable companion argument"
+                            )
+                        if companion_index in companion_indices:
+                            raise RuntimeError(
+                                f"{name}: duplicate portable companion "
+                                f"parameter {companion_index}"
+                            )
+                        companion_indices.add(companion_index)
+                        companion_type = normalized_c_type(
+                            parameters[companion_index]
+                            .get("type", {})
+                            .get("qualType", "")
+                        )
+                        if companion_type != "const char *":
+                            raise RuntimeError(
+                                f"{name}: portable text companion requires "
+                                "const char *"
+                            )
         manifest_path = repo / "test" / "unit-test-manifest.tsv"
-        fault_calls = {"p101_env_check_fault", "p101_env_check_fault_action"}
         faultable = {
             name
-            for name, declaration in declarations.items()
-            if referenced_names(declaration) & fault_calls
+            for name in declarations
+            if calls_by_wrapper_usr.get(function_usrs[name], set())
+            & selector_usrs
         }
         fault_names = sorted(admitted & faultable)
         behavior_names = sorted(admitted - faultable)
         for name in sorted(admitted):
-            outcome = outcome_apis.get(name)
+            wrapper_usr = function_usrs[name]
+            outcome = outcome_apis_by_usr.get(wrapper_usr)
             if outcome is None:
                 raise RuntimeError(
                     f"{name}: absent from explicit wrapper outcome contract"
@@ -2270,7 +5000,13 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                     f"{name}: outcome contract source differs from the "
                     "public API manifest"
                 )
-            expected_role = fault_contract["wrappers"][name].get("role")
+            if outcome.get("function_usr") != function_usrs[name]:
+                raise RuntimeError(
+                    f"{name}: outcome contract declaration identity differs "
+                    "from the public API manifest"
+                )
+            fault_binding = fault_wrappers_by_usr[wrapper_usr]
+            expected_role = fault_binding.get("role")
             if outcome.get("role") != expected_role:
                 raise RuntimeError(
                     f"{name}: outcome contract role differs "
@@ -2293,11 +5029,12 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                     f"{name}: outcome contract accepts_error differs "
                     "from its public declaration"
                 )
-            references = referenced_names(declaration)
-            has_hard_boundary = "p101_env_check_fault" in references
-            has_action_boundary = (
-                "p101_env_check_fault_action" in references
+            call_usrs = calls_by_wrapper_usr.get(
+                function_usrs[name],
+                set(),
             )
+            has_hard_boundary = hard_selector_usr in call_usrs
+            has_action_boundary = action_selector_usr in call_usrs
             expected_class = (
                 "short-partial-result"
                 if has_action_boundary
@@ -2326,9 +5063,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                     f"{name}: APIs accepting p101_error must be directly "
                     "injectable"
                 )
-            native_function = fault_contract["wrappers"][name].get(
-                "function"
-            )
+            native_function = fault_binding.get("function")
             if (
                 expected_role == "native-wrapper"
                 and has_documented_faults(
@@ -2342,10 +5077,15 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                     "outcomes but the wrapper does not accept p101_error"
                 )
             if classification == "delegated-failure":
+                outcome_by_usr = {
+                    record.get("function_usr"): record
+                    for record in outcome_apis.values()
+                    if isinstance(record, dict)
+                }
                 delegated_targets = {
-                    target
-                    for target in called_functions(declaration)
-                    if outcome_apis.get(target, {}).get("classification")
+                    target_usr
+                    for target_usr in call_usrs
+                    if outcome_by_usr.get(target_usr, {}).get("classification")
                     in {
                         "direct-hard-failure",
                         "short-partial-result",
@@ -2370,14 +5110,23 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                 )
         library_failures: dict[str, dict[str, str]] = {}
         for name in fault_names:
-            validate_fault_boundary(declarations[name])
+            validate_fault_boundary(
+                declarations[name],
+                function_usrs[name],
+                implementation_calls,
+                selector_usrs,
+                entry_trace_usr,
+            )
             failure = fault_return_contract(
                 declarations[name],
                 sources[name],
+                function_usrs[name],
+                implementation_calls,
+                selector_usrs,
             )
             expected_domain = fault_domain(
                 fault_contract,
-                fault_contract["wrappers"][name].get("function"),
+                fault_wrappers_by_usr[function_usrs[name]].get("function"),
             )
             if failure["error_domain"] != expected_domain:
                 raise RuntimeError(
@@ -2406,18 +5155,19 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                     declarations[name],
                 )[0]
             ]
-            library_failures[name] = failure
+            library_failures[function_usrs[name]] = failure
             failure_contract["wrappers"][name] = {
+                "function_usr": function_usrs[name],
                 "library": library,
                 "error_domain": expected_domain,
                 "return_kind": failure["kind"],
                 "return_expression": failure["expression"],
                 "errno": "preserved",
-                "fault_boundary": "before-observable-work",
+                "fault_boundary": "after-entry-trace-before-native-work",
                 "fault_modes": (
                     ["error", "short"]
-                    if "p101_env_check_fault_action"
-                    in referenced_names(declarations[name])
+                    if action_selector_usr
+                    in calls_by_wrapper_usr.get(function_usrs[name], set())
                     else ["error"]
                 ),
                 "runtime_canary_arguments": canary_arguments,
@@ -2437,10 +5187,17 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                     library,
                     public_header_includes(repo),
                     declarations,
+                    function_usrs,
                     fault_names,
-                    wrapper_errors,
+                    wrapper_errors_by_usr,
                     library_failures,
+                    native_smoke_exceptions_by_usr,
+                    portable_input_rules_by_usr,
                 ),
+            )
+            validate_generated_source_semantics(
+                library,
+                expected_fault_source,
             )
             if check:
                 actual_fault_source = (
@@ -2485,18 +5242,26 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                 drift.append(fault_path)
             else:
                 fault_path.unlink()
-        manifest = ["function\ttest_kind\ttest_source\n"]
+        manifest = ["function\tfunction_usr\ttest_kind\ttest_source\n"]
         manifest.extend(
-            f"{name}\tfault\ttest/test_fault_wrappers.c\n"
+            f"{name}\t{function_usrs[name]}\tfault\t"
+            "test/test_fault_wrappers.c\n"
             for name in fault_names
         )
         for name in behavior_names:
-            existing = existing_behavior_source(repo, name)
+            existing = existing_behavior_source(
+                repo, function_usrs[name], behavior_calls
+            )
             if existing is None:
-                manifest.append(f"{name}\tbehavior\ttest/test_behavior.c\n")
+                manifest.append(
+                    f"{name}\t{function_usrs[name]}\tbehavior\t"
+                    "test/test_behavior.c\n"
+                )
             else:
                 kind, source = existing
-                manifest.append(f"{name}\t{kind}\t{source}\n")
+                manifest.append(
+                    f"{name}\t{function_usrs[name]}\t{kind}\t{source}\n"
+                )
         expected_manifest = "".join(manifest)
         if check:
             actual_manifest = (
@@ -2515,11 +5280,27 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
             f"{library}: {len(fault_names)} injected-failure, "
             f"{len(behavior_names)} behavior tests"
         )
-    extra_outcomes = set(outcome_apis) - admitted_apis
+    extra_outcomes = set(outcome_apis_by_usr) - admitted_usrs
     if extra_outcomes:
         raise RuntimeError(
             "wrapper outcome contract contains non-public APIs: "
             + ", ".join(sorted(extra_outcomes))
+        )
+    extra_native_smoke_outcomes = (
+        set(native_smoke_exceptions_by_usr) - admitted_usrs
+    )
+    if extra_native_smoke_outcomes:
+        raise RuntimeError(
+            "wrapper native-smoke contract contains non-public APIs: "
+            + ", ".join(sorted(extra_native_smoke_outcomes))
+        )
+    extra_portable_input_rules = (
+        set(portable_input_rules_by_usr) - admitted_usrs
+    )
+    if extra_portable_input_rules:
+        raise RuntimeError(
+            "wrapper portable-input contract contains non-public APIs: "
+            + ", ".join(sorted(extra_portable_input_rules))
         )
     expected_contract = (
         json.dumps(failure_contract, indent=2, sort_keys=True) + "\n"

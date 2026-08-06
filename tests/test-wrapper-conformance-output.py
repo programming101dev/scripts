@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 
@@ -49,6 +51,22 @@ class FailureOutputTests(unittest.TestCase):
         self.assertEqual(len(emitted), count)
         self.assertEqual(emitted[0], "line 0")
         self.assertEqual(emitted[-1], f"line {count - 1}")
+
+    def test_subprocess_failure_is_printed_in_full(self) -> None:
+        stream = io.StringIO()
+        with redirect_stdout(stream):
+            CHECKER.print_failure_output(
+                "FAIL: static instrumentation contract failed",
+                "first finding\nsecond finding\n",
+            )
+        self.assertEqual(
+            stream.getvalue().splitlines(),
+            [
+                "FAIL: static instrumentation contract failed",
+                "  | first finding",
+                "  | second finding",
+            ],
+        )
 
 
 class FaultOutcomeTests(unittest.TestCase):

@@ -10,7 +10,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "a64l"
     },
     {
@@ -26,7 +26,7 @@
       "library": "lib_network",
       "domain": "network/sockets",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "accept"
     },
     {
@@ -34,7 +34,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "access"
     },
     {
@@ -90,7 +90,7 @@
       "library": "lib_io",
       "domain": "systems/async-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/aio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "aio_cancel"
     },
     {
@@ -98,7 +98,7 @@
       "library": "lib_io",
       "domain": "systems/async-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/aio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "aio_error"
     },
     {
@@ -106,7 +106,7 @@
       "library": "lib_io",
       "domain": "systems/async-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/aio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "aio_fsync"
     },
     {
@@ -114,7 +114,7 @@
       "library": "lib_io",
       "domain": "systems/async-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/aio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "aio_read"
     },
     {
@@ -122,7 +122,7 @@
       "library": "lib_io",
       "domain": "systems/async-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/aio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "aio_return"
     },
     {
@@ -130,7 +130,7 @@
       "library": "lib_io",
       "domain": "systems/async-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/aio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "aio_suspend"
     },
     {
@@ -138,7 +138,7 @@
       "library": "lib_io",
       "domain": "systems/async-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/aio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "aio_write"
     },
     {
@@ -146,7 +146,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "alarm"
     },
     {
@@ -162,7 +162,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/dirent.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "alphasort"
     },
     {
@@ -170,7 +170,7 @@
       "library": "lib_random",
       "domain": "c/random",
       "header": "libraries/lib_random/include/p101_random/random.h",
-      "source": "libraries/lib_random/src/unix/stdlib.c",
+      "source": "libraries/lib_random/src/random.c",
       "native_guess": "arc4random"
     },
     {
@@ -178,7 +178,7 @@
       "library": "lib_random",
       "domain": "c/random",
       "header": "libraries/lib_random/include/p101_random/random.h",
-      "source": "libraries/lib_random/src/unix/stdlib.c",
+      "source": "libraries/lib_random/src/random.c",
       "native_guess": "arc4random_buf"
     },
     {
@@ -186,7 +186,7 @@
       "library": "lib_random",
       "domain": "c/random",
       "header": "libraries/lib_random/include/p101_random/random.h",
-      "source": "libraries/lib_random/src/unix/stdlib.c",
+      "source": "libraries/lib_random/src/random.c",
       "native_guess": "arc4random_uniform"
     },
     {
@@ -538,7 +538,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix_xsi/libgen.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "basename"
     },
     {
@@ -570,7 +570,7 @@
       "library": "lib_network",
       "domain": "network/sockets",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "bind"
     },
     {
@@ -882,7 +882,7 @@
       "library": "lib_locale",
       "domain": "systems/localization-conversion",
       "header": "libraries/lib_locale/include/p101_locale/locale.h",
-      "source": "libraries/lib_locale/src/posix/nl_types.c",
+      "source": "libraries/lib_locale/src/locale.c",
       "native_guess": "catclose"
     },
     {
@@ -890,7 +890,7 @@
       "library": "lib_locale",
       "domain": "systems/localization-conversion",
       "header": "libraries/lib_locale/include/p101_locale/locale.h",
-      "source": "libraries/lib_locale/src/posix/nl_types.c",
+      "source": "libraries/lib_locale/src/locale.c",
       "native_guess": "catgets"
     },
     {
@@ -898,7 +898,7 @@
       "library": "lib_locale",
       "domain": "systems/localization-conversion",
       "header": "libraries/lib_locale/include/p101_locale/locale.h",
-      "source": "libraries/lib_locale/src/posix/nl_types.c",
+      "source": "libraries/lib_locale/src/locale.c",
       "native_guess": "catopen"
     },
     {
@@ -1010,7 +1010,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "cfgetispeed"
     },
     {
@@ -1018,7 +1018,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "cfgetospeed"
     },
     {
@@ -1026,7 +1026,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/unix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "cfmakeraw"
     },
     {
@@ -1034,7 +1034,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "cfsetispeed"
     },
     {
@@ -1042,7 +1042,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "cfsetospeed"
     },
     {
@@ -1050,7 +1050,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/unix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "cfsetspeed"
     },
     {
@@ -1058,7 +1058,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "chdir"
     },
     {
@@ -1266,7 +1266,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "chmod"
     },
     {
@@ -1274,7 +1274,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "chown"
     },
     {
@@ -1322,7 +1322,7 @@
       "library": "lib_time",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_time/include/p101_time/time.h",
-      "source": "libraries/lib_time/src/posix/time.c",
+      "source": "libraries/lib_time/src/time.c",
       "native_guess": "clock_getres"
     },
     {
@@ -1330,7 +1330,7 @@
       "library": "lib_time",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_time/include/p101_time/time.h",
-      "source": "libraries/lib_time/src/posix/time.c",
+      "source": "libraries/lib_time/src/time.c",
       "native_guess": "clock_gettime"
     },
     {
@@ -1338,7 +1338,7 @@
       "library": "lib_time",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_time/include/p101_time/time.h",
-      "source": "libraries/lib_time/src/posix/time.c",
+      "source": "libraries/lib_time/src/time.c",
       "native_guess": "clock_settime"
     },
     {
@@ -1370,7 +1370,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/unistd.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "close"
     },
     {
@@ -1378,7 +1378,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/dirent.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "closedir"
     },
     {
@@ -1386,7 +1386,7 @@
       "library": "lib_diagnostics",
       "domain": "systems/logging-diagnostics",
       "header": "libraries/lib_diagnostics/include/p101_diagnostics/diagnostics.h",
-      "source": "libraries/lib_diagnostics/src/posix_xsi/syslog.c",
+      "source": "libraries/lib_diagnostics/src/diagnostics.c",
       "native_guess": "closelog"
     },
     {
@@ -1394,7 +1394,7 @@
       "library": "lib_host",
       "domain": "systems/platform-admin",
       "header": "libraries/lib_host/include/p101_host/host.h",
-      "source": "libraries/lib_host/src/posix/unistd.c",
+      "source": "libraries/lib_host/src/host.c",
       "native_guess": "confstr"
     },
     {
@@ -1426,7 +1426,7 @@
       "library": "lib_network",
       "domain": "network/sockets",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "connect"
     },
     {
@@ -1586,7 +1586,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/fcntl.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "creat"
     },
     {
@@ -1594,7 +1594,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix_xsi/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "crypt"
     },
     {
@@ -1690,7 +1690,7 @@
       "library": "lib_database",
       "domain": "systems/legacy-database",
       "header": "libraries/lib_database/include/p101_database/database.h",
-      "source": "libraries/lib_database/src/posix_xsi/ndbm.c",
+      "source": "libraries/lib_database/src/database.c",
       "native_guess": "dbm_clearerr"
     },
     {
@@ -1698,7 +1698,7 @@
       "library": "lib_database",
       "domain": "systems/legacy-database",
       "header": "libraries/lib_database/include/p101_database/database.h",
-      "source": "libraries/lib_database/src/posix_xsi/ndbm.c",
+      "source": "libraries/lib_database/src/database.c",
       "native_guess": "dbm_close"
     },
     {
@@ -1706,7 +1706,7 @@
       "library": "lib_database",
       "domain": "systems/legacy-database",
       "header": "libraries/lib_database/include/p101_database/database.h",
-      "source": "libraries/lib_database/src/posix_xsi/ndbm.c",
+      "source": "libraries/lib_database/src/database.c",
       "native_guess": "dbm_delete"
     },
     {
@@ -1714,7 +1714,7 @@
       "library": "lib_database",
       "domain": "systems/legacy-database",
       "header": "libraries/lib_database/include/p101_database/database.h",
-      "source": "libraries/lib_database/src/posix_xsi/ndbm.c",
+      "source": "libraries/lib_database/src/database.c",
       "native_guess": "dbm_error"
     },
     {
@@ -1722,7 +1722,7 @@
       "library": "lib_database",
       "domain": "systems/legacy-database",
       "header": "libraries/lib_database/include/p101_database/database.h",
-      "source": "libraries/lib_database/src/posix_xsi/ndbm.c",
+      "source": "libraries/lib_database/src/database.c",
       "native_guess": "dbm_fetch"
     },
     {
@@ -1730,7 +1730,7 @@
       "library": "lib_database",
       "domain": "systems/legacy-database",
       "header": "libraries/lib_database/include/p101_database/database.h",
-      "source": "libraries/lib_database/src/posix_xsi/ndbm.c",
+      "source": "libraries/lib_database/src/database.c",
       "native_guess": "dbm_firstkey"
     },
     {
@@ -1738,7 +1738,7 @@
       "library": "lib_database",
       "domain": "systems/legacy-database",
       "header": "libraries/lib_database/include/p101_database/database.h",
-      "source": "libraries/lib_database/src/posix_xsi/ndbm.c",
+      "source": "libraries/lib_database/src/database.c",
       "native_guess": "dbm_nextkey"
     },
     {
@@ -1746,7 +1746,7 @@
       "library": "lib_database",
       "domain": "systems/legacy-database",
       "header": "libraries/lib_database/include/p101_database/database.h",
-      "source": "libraries/lib_database/src/posix_xsi/ndbm.c",
+      "source": "libraries/lib_database/src/database.c",
       "native_guess": "dbm_open"
     },
     {
@@ -1754,7 +1754,7 @@
       "library": "lib_database",
       "domain": "systems/legacy-database",
       "header": "libraries/lib_database/include/p101_database/database.h",
-      "source": "libraries/lib_database/src/posix_xsi/ndbm.c",
+      "source": "libraries/lib_database/src/database.c",
       "native_guess": "dbm_store"
     },
     {
@@ -1770,7 +1770,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/dirent.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "dirfd"
     },
     {
@@ -1778,7 +1778,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix_xsi/libgen.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "dirname"
     },
     {
@@ -1794,7 +1794,7 @@
       "library": "lib_dynamic_linking",
       "domain": "systems/dynamic-loading",
       "header": "libraries/lib_dynamic_linking/include/p101_dynamic_linking/dynamic_linking.h",
-      "source": "libraries/lib_dynamic_linking/src/posix/dlfcn.c",
+      "source": "libraries/lib_dynamic_linking/src/dynamic_linking.c",
       "native_guess": "dlclose"
     },
     {
@@ -1802,7 +1802,7 @@
       "library": "lib_dynamic_linking",
       "domain": "systems/dynamic-loading",
       "header": "libraries/lib_dynamic_linking/include/p101_dynamic_linking/dynamic_linking.h",
-      "source": "libraries/lib_dynamic_linking/src/posix/dlfcn.c",
+      "source": "libraries/lib_dynamic_linking/src/dynamic_linking.c",
       "native_guess": "dlerror"
     },
     {
@@ -1810,7 +1810,7 @@
       "library": "lib_dynamic_linking",
       "domain": "systems/dynamic-loading",
       "header": "libraries/lib_dynamic_linking/include/p101_dynamic_linking/dynamic_linking.h",
-      "source": "libraries/lib_dynamic_linking/src/posix/dlfcn.c",
+      "source": "libraries/lib_dynamic_linking/src/dynamic_linking.c",
       "native_guess": "dlopen"
     },
     {
@@ -1818,7 +1818,7 @@
       "library": "lib_dynamic_linking",
       "domain": "systems/dynamic-loading",
       "header": "libraries/lib_dynamic_linking/include/p101_dynamic_linking/dynamic_linking.h",
-      "source": "libraries/lib_dynamic_linking/src/posix/dlfcn.c",
+      "source": "libraries/lib_dynamic_linking/src/dynamic_linking.c",
       "native_guess": "dlsym"
     },
     {
@@ -1826,7 +1826,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/unistd.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "dup"
     },
     {
@@ -1834,7 +1834,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/unistd.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "dup2"
     },
     {
@@ -1842,7 +1842,7 @@
       "library": "lib_locale",
       "domain": "systems/localization-conversion",
       "header": "libraries/lib_locale/include/p101_locale/locale.h",
-      "source": "libraries/lib_locale/src/posix/locale.c",
+      "source": "libraries/lib_locale/src/locale.c",
       "native_guess": "duplocale"
     },
     {
@@ -1850,7 +1850,7 @@
       "library": "lib_network",
       "domain": "network/name-resolution",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/netdb.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "endhostent"
     },
     {
@@ -1858,7 +1858,7 @@
       "library": "lib_network",
       "domain": "network/name-resolution",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/netdb.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "endnetent"
     },
     {
@@ -1866,7 +1866,7 @@
       "library": "lib_network",
       "domain": "network/name-resolution",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/netdb.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "endprotoent"
     },
     {
@@ -1874,7 +1874,7 @@
       "library": "lib_network",
       "domain": "network/name-resolution",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/netdb.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "endservent"
     },
     {
@@ -1882,7 +1882,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/unix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "endusershell"
     },
     {
@@ -1890,7 +1890,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix_xsi/utmpx.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "endutxent"
     },
     {
@@ -2538,7 +2538,7 @@
       "library": "lib_network",
       "domain": "network/ethernet",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/net/ethernet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "ether_aton"
     },
     {
@@ -2546,7 +2546,7 @@
       "library": "lib_network",
       "domain": "network/ethernet",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/net/ethernet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "ether_hostton"
     },
     {
@@ -2554,7 +2554,7 @@
       "library": "lib_network",
       "domain": "network/ethernet",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/net/ethernet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "ether_line"
     },
     {
@@ -2562,7 +2562,7 @@
       "library": "lib_network",
       "domain": "network/ethernet",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/net/ethernet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "ether_ntoa"
     },
     {
@@ -2570,7 +2570,7 @@
       "library": "lib_network",
       "domain": "network/ethernet",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/net/ethernet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "ether_ntohost"
     },
     {
@@ -2578,7 +2578,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "execv"
     },
     {
@@ -2586,7 +2586,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "execve"
     },
     {
@@ -2594,7 +2594,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "execvp"
     },
     {
@@ -2698,7 +2698,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "faccessat"
     },
     {
@@ -2706,7 +2706,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "fchdir"
     },
     {
@@ -2714,7 +2714,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "fchmod"
     },
     {
@@ -2722,7 +2722,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "fchmodat"
     },
     {
@@ -2730,7 +2730,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "fchown"
     },
     {
@@ -2738,7 +2738,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "fchownat"
     },
     {
@@ -2754,7 +2754,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/fcntl.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "fcntl"
     },
     {
@@ -2786,7 +2786,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "fdopen"
     },
     {
@@ -2794,7 +2794,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/dirent.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "fdopendir"
     },
     {
@@ -2914,7 +2914,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix_xsi/strings.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "ffs"
     },
     {
@@ -2962,7 +2962,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "fileno"
     },
     {
@@ -2970,7 +2970,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "flockfile"
     },
     {
@@ -3050,7 +3050,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "fmemopen"
     },
     {
@@ -3106,7 +3106,7 @@
       "library": "lib_diagnostics",
       "domain": "systems/logging-diagnostics",
       "header": "libraries/lib_diagnostics/include/p101_diagnostics/diagnostics.h",
-      "source": "libraries/lib_diagnostics/src/posix_xsi/fmtmsg.c",
+      "source": "libraries/lib_diagnostics/src/diagnostics.c",
       "native_guess": "fmtmsg"
     },
     {
@@ -3114,7 +3114,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/fnmatch.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "fnmatch"
     },
     {
@@ -3130,7 +3130,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "fork"
     },
     {
@@ -3138,7 +3138,7 @@
       "library": "lib_filesystem",
       "domain": "systems/system-configuration",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "fpathconf"
     },
     {
@@ -3154,7 +3154,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/unix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "fpurge"
     },
     {
@@ -3210,7 +3210,7 @@
       "library": "lib_network",
       "domain": "network/name-resolution",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/netdb.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "freeaddrinfo"
     },
     {
@@ -3218,7 +3218,7 @@
       "library": "lib_network",
       "domain": "network/interfaces",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/ifaddrs.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "freeifaddrs"
     },
     {
@@ -3226,7 +3226,7 @@
       "library": "lib_locale",
       "domain": "systems/localization-conversion",
       "header": "libraries/lib_locale/include/p101_locale/locale.h",
-      "source": "libraries/lib_locale/src/posix/locale.c",
+      "source": "libraries/lib_locale/src/locale.c",
       "native_guess": "freelocale"
     },
     {
@@ -3282,7 +3282,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "fseeko"
     },
     {
@@ -3546,7 +3546,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "fstat"
     },
     {
@@ -3554,7 +3554,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "fstatat"
     },
     {
@@ -3562,7 +3562,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/statvfs.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "fstatvfs"
     },
     {
@@ -3578,7 +3578,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "ftello"
     },
     {
@@ -3586,7 +3586,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/ipc.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "ftok"
     },
     {
@@ -3594,7 +3594,7 @@
       "library": "lib_filesystem",
       "domain": "systems/fd-io",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "ftruncate"
     },
     {
@@ -3602,7 +3602,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "ftrylockfile"
     },
     {
@@ -3610,7 +3610,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix_xsi/ftw.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "ftw"
     },
     {
@@ -3618,7 +3618,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "funlockfile"
     },
     {
@@ -3626,7 +3626,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "futimens"
     },
     {
@@ -3666,7 +3666,7 @@
       "library": "lib_network",
       "domain": "network/name-resolution",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/netdb.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "gai_strerror"
     },
     {
@@ -3674,7 +3674,7 @@
       "library": "lib_network",
       "domain": "network/name-resolution",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/netdb.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "getaddrinfo"
     },
     {
@@ -3690,7 +3690,7 @@
       "library": "lib_io",
       "domain": "c/stdio-character-io-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "getc_unlocked"
     },
     {
@@ -3706,7 +3706,7 @@
       "library": "lib_io",
       "domain": "c/stdio-character-io-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "getchar_unlocked"
     },
     {
@@ -3714,7 +3714,7 @@
       "library": "lib_filesystem",
       "domain": "systems/system-configuration",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "getcwd"
     },
     {
@@ -3722,7 +3722,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "getdelim"
     },
     {
@@ -3730,7 +3730,7 @@
       "library": "lib_host",
       "domain": "systems/platform-admin",
       "header": "libraries/lib_host/include/p101_host/host.h",
-      "source": "libraries/lib_host/src/unix/unistd.c",
+      "source": "libraries/lib_host/src/host.c",
       "native_guess": "getdomainname"
     },
     {
@@ -3738,7 +3738,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getegid"
     },
     {
@@ -3754,7 +3754,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "geteuid"
     },
     {
@@ -3762,7 +3762,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getgid"
     },
     {
@@ -3770,7 +3770,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/grp.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getgrgid_r"
     },
     {
@@ -3778,7 +3778,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/grp.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getgrnam_r"
     },
     {
@@ -3786,7 +3786,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getgroups"
     },
     {
@@ -3794,7 +3794,7 @@
       "library": "lib_host",
       "domain": "systems/platform-admin",
       "header": "libraries/lib_host/include/p101_host/host.h",
-      "source": "libraries/lib_host/src/posix_xsi/unistd.c",
+      "source": "libraries/lib_host/src/host.c",
       "native_guess": "gethostid"
     },
     {
@@ -3802,7 +3802,7 @@
       "library": "lib_host",
       "domain": "systems/platform-admin",
       "header": "libraries/lib_host/include/p101_host/host.h",
-      "source": "libraries/lib_host/src/posix/unistd.c",
+      "source": "libraries/lib_host/src/host.c",
       "native_guess": "gethostname"
     },
     {
@@ -3810,7 +3810,7 @@
       "library": "lib_network",
       "domain": "network/interfaces",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/ifaddrs.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "getifaddrs"
     },
     {
@@ -3818,7 +3818,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "getline"
     },
     {
@@ -3826,7 +3826,7 @@
       "library": "lib_host",
       "domain": "systems/platform-admin",
       "header": "libraries/lib_host/include/p101_host/host.h",
-      "source": "libraries/lib_host/src/unix/stdlib.c",
+      "source": "libraries/lib_host/src/host.c",
       "native_guess": "getloadavg"
     },
     {
@@ -3834,7 +3834,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getlogin_r"
     },
     {
@@ -3842,7 +3842,7 @@
       "library": "lib_network",
       "domain": "network/name-resolution",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/netdb.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "getnameinfo"
     },
     {
@@ -3850,7 +3850,7 @@
       "library": "lib_cli",
       "domain": "c/cli-parsing",
       "header": "libraries/lib_cli/include/p101_cli/cli.h",
-      "source": "libraries/lib_cli/src/posix/unistd.c",
+      "source": "libraries/lib_cli/src/cli.c",
       "native_guess": "getopt"
     },
     {
@@ -3858,7 +3858,7 @@
       "library": "lib_cli",
       "domain": "c/cli-parsing",
       "header": "libraries/lib_cli/include/p101_cli/cli.h",
-      "source": "libraries/lib_cli/src/unix/getopt.c",
+      "source": "libraries/lib_cli/src/cli.c",
       "native_guess": "getopt_long"
     },
     {
@@ -3866,7 +3866,7 @@
       "library": "lib_cli",
       "domain": "c/cli-parsing",
       "header": "libraries/lib_cli/include/p101_cli/cli.h",
-      "source": "libraries/lib_cli/src/unix/getopt.c",
+      "source": "libraries/lib_cli/src/cli.c",
       "native_guess": "getopt_long_only"
     },
     {
@@ -3874,7 +3874,7 @@
       "library": "lib_network",
       "domain": "network/sockets",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "getpeername"
     },
     {
@@ -3882,7 +3882,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "getpgid"
     },
     {
@@ -3890,7 +3890,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "getpgrp"
     },
     {
@@ -3898,7 +3898,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "getpid"
     },
     {
@@ -3906,7 +3906,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "getppid"
     },
     {
@@ -3914,7 +3914,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_xsi/sys/resource.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "getpriority"
     },
     {
@@ -3922,7 +3922,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/pwd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getpwnam_r"
     },
     {
@@ -3930,7 +3930,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/pwd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getpwuid_r"
     },
     {
@@ -3938,7 +3938,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_xsi/sys/resource.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "getrlimit"
     },
     {
@@ -3946,7 +3946,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_xsi/sys/resource.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "getrusage"
     },
     {
@@ -3954,7 +3954,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "getsid"
     },
     {
@@ -3962,7 +3962,7 @@
       "library": "lib_network",
       "domain": "network/sockets",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "getsockname"
     },
     {
@@ -3970,7 +3970,7 @@
       "library": "lib_network",
       "domain": "network/sockets",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "getsockopt"
     },
     {
@@ -3978,7 +3978,7 @@
       "library": "lib_cli",
       "domain": "c/cli-parsing",
       "header": "libraries/lib_cli/include/p101_cli/cli.h",
-      "source": "libraries/lib_cli/src/posix/stdlib.c",
+      "source": "libraries/lib_cli/src/cli.c",
       "native_guess": "getsubopt"
     },
     {
@@ -3986,7 +3986,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getuid"
     },
     {
@@ -3994,7 +3994,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/unix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getusershell"
     },
     {
@@ -4002,7 +4002,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix_xsi/utmpx.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getutxent"
     },
     {
@@ -4010,7 +4010,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix_xsi/utmpx.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getutxid"
     },
     {
@@ -4018,7 +4018,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix_xsi/utmpx.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "getutxline"
     },
     {
@@ -4042,7 +4042,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/glob.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "glob"
     },
     {
@@ -4050,7 +4050,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/glob.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "globfree"
     },
     {
@@ -4058,7 +4058,7 @@
       "library": "lib_time",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_time/include/p101_time/time.h",
-      "source": "libraries/lib_time/src/posix/time.c",
+      "source": "libraries/lib_time/src/time.c",
       "native_guess": "gmtime_r"
     },
     {
@@ -4066,7 +4066,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "grantpt"
     },
     {
@@ -4074,7 +4074,7 @@
       "library": "lib_search",
       "domain": "systems/search-structures",
       "header": "libraries/lib_search/include/p101_search/search.h",
-      "source": "libraries/lib_search/src/posix_xsi/search.c",
+      "source": "libraries/lib_search/src/search.c",
       "native_guess": "hcreate"
     },
     {
@@ -4082,7 +4082,7 @@
       "library": "lib_search",
       "domain": "systems/search-structures",
       "header": "libraries/lib_search/include/p101_search/search.h",
-      "source": "libraries/lib_search/src/posix_xsi/search.c",
+      "source": "libraries/lib_search/src/search.c",
       "native_guess": "hdestroy"
     },
     {
@@ -4090,7 +4090,7 @@
       "library": "lib_search",
       "domain": "systems/search-structures",
       "header": "libraries/lib_search/include/p101_search/search.h",
-      "source": "libraries/lib_search/src/posix_xsi/search.c",
+      "source": "libraries/lib_search/src/search.c",
       "native_guess": "hsearch"
     },
     {
@@ -4146,7 +4146,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "htonl"
     },
     {
@@ -4154,7 +4154,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "htons"
     },
     {
@@ -4186,7 +4186,7 @@
       "library": "lib_locale",
       "domain": "systems/localization-conversion",
       "header": "libraries/lib_locale/include/p101_locale/locale.h",
-      "source": "libraries/lib_locale/src/posix/iconv.c",
+      "source": "libraries/lib_locale/src/locale.c",
       "native_guess": "iconv"
     },
     {
@@ -4194,7 +4194,7 @@
       "library": "lib_locale",
       "domain": "systems/localization-conversion",
       "header": "libraries/lib_locale/include/p101_locale/locale.h",
-      "source": "libraries/lib_locale/src/posix/iconv.c",
+      "source": "libraries/lib_locale/src/locale.c",
       "native_guess": "iconv_close"
     },
     {
@@ -4202,7 +4202,7 @@
       "library": "lib_locale",
       "domain": "systems/localization-conversion",
       "header": "libraries/lib_locale/include/p101_locale/locale.h",
-      "source": "libraries/lib_locale/src/posix/iconv.c",
+      "source": "libraries/lib_locale/src/locale.c",
       "native_guess": "iconv_open"
     },
     {
@@ -4210,7 +4210,7 @@
       "library": "lib_network",
       "domain": "network/interfaces",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/net/if.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "if_freenameindex"
     },
     {
@@ -4218,7 +4218,7 @@
       "library": "lib_network",
       "domain": "network/interfaces",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/net/if.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "if_indextoname"
     },
     {
@@ -4226,7 +4226,7 @@
       "library": "lib_network",
       "domain": "network/interfaces",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/net/if.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "if_nameindex"
     },
     {
@@ -4234,7 +4234,7 @@
       "library": "lib_network",
       "domain": "network/interfaces",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/net/if.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "if_nametoindex"
     },
     {
@@ -4282,7 +4282,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "inet_addr"
     },
     {
@@ -4290,7 +4290,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "inet_aton"
     },
     {
@@ -4298,7 +4298,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "inet_lnaof"
     },
     {
@@ -4306,7 +4306,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "inet_makeaddr"
     },
     {
@@ -4314,7 +4314,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "inet_net_ntop"
     },
     {
@@ -4322,7 +4322,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "inet_net_pton"
     },
     {
@@ -4330,7 +4330,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "inet_netof"
     },
     {
@@ -4338,7 +4338,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/unix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "inet_network"
     },
     {
@@ -4346,7 +4346,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "inet_ntoa"
     },
     {
@@ -4354,7 +4354,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "inet_ntop"
     },
     {
@@ -4362,7 +4362,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "inet_pton"
     },
     {
@@ -4370,7 +4370,7 @@
       "library": "lib_random",
       "domain": "c/random",
       "header": "libraries/lib_random/include/p101_random/random.h",
-      "source": "libraries/lib_random/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_random/src/random.c",
       "native_guess": "initstate"
     },
     {
@@ -4378,7 +4378,7 @@
       "library": "lib_search",
       "domain": "systems/search-structures",
       "header": "libraries/lib_search/include/p101_search/search.h",
-      "source": "libraries/lib_search/src/posix_xsi/search.c",
+      "source": "libraries/lib_search/src/search.c",
       "native_guess": "insque"
     },
     {
@@ -4402,7 +4402,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "isalnum_l"
     },
     {
@@ -4418,7 +4418,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "isalpha_l"
     },
     {
@@ -4426,7 +4426,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/unistd.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "isatty"
     },
     {
@@ -4442,7 +4442,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "isblank_l"
     },
     {
@@ -4458,7 +4458,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iscntrl_l"
     },
     {
@@ -4474,7 +4474,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "isdigit_l"
     },
     {
@@ -4490,7 +4490,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "isgraph_l"
     },
     {
@@ -4506,7 +4506,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "islower_l"
     },
     {
@@ -4522,7 +4522,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "isprint_l"
     },
     {
@@ -4538,7 +4538,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "ispunct_l"
     },
     {
@@ -4554,7 +4554,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "isspace_l"
     },
     {
@@ -4570,7 +4570,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "isupper_l"
     },
     {
@@ -4586,7 +4586,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswalnum_l"
     },
     {
@@ -4602,7 +4602,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswalpha_l"
     },
     {
@@ -4618,7 +4618,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswblank_l"
     },
     {
@@ -4634,7 +4634,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswcntrl_l"
     },
     {
@@ -4650,7 +4650,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswctype_l"
     },
     {
@@ -4666,7 +4666,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswdigit_l"
     },
     {
@@ -4682,7 +4682,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswgraph_l"
     },
     {
@@ -4698,7 +4698,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswlower_l"
     },
     {
@@ -4714,7 +4714,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswprint_l"
     },
     {
@@ -4730,7 +4730,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswpunct_l"
     },
     {
@@ -4746,7 +4746,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswspace_l"
     },
     {
@@ -4762,7 +4762,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswupper_l"
     },
     {
@@ -4778,7 +4778,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "iswxdigit_l"
     },
     {
@@ -4794,7 +4794,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "isxdigit_l"
     },
     {
@@ -4802,7 +4802,7 @@
       "library": "lib_math",
       "domain": "c/math-other",
       "header": "libraries/lib_math/include/p101_math/math.h",
-      "source": "libraries/lib_math/src/posix_xsi/math.c",
+      "source": "libraries/lib_math/src/math.c",
       "native_guess": "j0"
     },
     {
@@ -4810,7 +4810,7 @@
       "library": "lib_math",
       "domain": "c/math-other",
       "header": "libraries/lib_math/include/p101_math/math.h",
-      "source": "libraries/lib_math/src/posix_xsi/math.c",
+      "source": "libraries/lib_math/src/math.c",
       "native_guess": "j1"
     },
     {
@@ -4818,7 +4818,7 @@
       "library": "lib_math",
       "domain": "c/math-other",
       "header": "libraries/lib_math/include/p101_math/math.h",
-      "source": "libraries/lib_math/src/posix_xsi/math.c",
+      "source": "libraries/lib_math/src/math.c",
       "native_guess": "jn"
     },
     {
@@ -4826,7 +4826,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "kill"
     },
     {
@@ -4834,7 +4834,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_xsi/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "killpg"
     },
     {
@@ -4842,7 +4842,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "l64a"
     },
     {
@@ -4858,7 +4858,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "lchown"
     },
     {
@@ -4922,7 +4922,7 @@
       "library": "lib_search",
       "domain": "systems/search-structures",
       "header": "libraries/lib_search/include/p101_search/search.h",
-      "source": "libraries/lib_search/src/posix_xsi/search.c",
+      "source": "libraries/lib_search/src/search.c",
       "native_guess": "lfind"
     },
     {
@@ -4954,7 +4954,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "link"
     },
     {
@@ -4962,7 +4962,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "linkat"
     },
     {
@@ -4970,7 +4970,7 @@
       "library": "lib_io",
       "domain": "systems/async-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/aio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "lio_listio"
     },
     {
@@ -4978,7 +4978,7 @@
       "library": "lib_network",
       "domain": "network/sockets",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "listen"
     },
     {
@@ -5058,7 +5058,7 @@
       "library": "lib_time",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_time/include/p101_time/time.h",
-      "source": "libraries/lib_time/src/posix/time.c",
+      "source": "libraries/lib_time/src/time.c",
       "native_guess": "localtime_r"
     },
     {
@@ -5066,7 +5066,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix_xsi/unistd.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "lockf"
     },
     {
@@ -5250,7 +5250,7 @@
       "library": "lib_search",
       "domain": "systems/search-structures",
       "header": "libraries/lib_search/include/p101_search/search.h",
-      "source": "libraries/lib_search/src/posix_xsi/search.c",
+      "source": "libraries/lib_search/src/search.c",
       "native_guess": "lsearch"
     },
     {
@@ -5258,7 +5258,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/unistd.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "lseek"
     },
     {
@@ -5266,7 +5266,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "lstat"
     },
     {
@@ -5314,7 +5314,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "mbsnrtowcs"
     },
     {
@@ -5346,7 +5346,7 @@
       "library": "lib_text",
       "domain": "c/memory-bytes-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix_xsi/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "memccpy"
     },
     {
@@ -5394,7 +5394,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "mkdir"
     },
     {
@@ -5402,7 +5402,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "mkdirat"
     },
     {
@@ -5410,7 +5410,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/stdlib.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "mkdtemp"
     },
     {
@@ -5418,7 +5418,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix/sys/stat.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "mkfifo"
     },
     {
@@ -5426,7 +5426,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix_xsi/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "mknod"
     },
     {
@@ -5434,7 +5434,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/stdlib.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "mkstemp"
     },
     {
@@ -5450,7 +5450,7 @@
       "library": "lib_memory",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_memory/include/p101_memory/memory.h",
-      "source": "libraries/lib_memory/src/posix_optional/sys/mman.c",
+      "source": "libraries/lib_memory/src/memory.c",
       "native_guess": "mlock"
     },
     {
@@ -5458,7 +5458,7 @@
       "library": "lib_memory",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_memory/include/p101_memory/memory.h",
-      "source": "libraries/lib_memory/src/posix_optional/sys/mman.c",
+      "source": "libraries/lib_memory/src/memory.c",
       "native_guess": "mlockall"
     },
     {
@@ -5466,7 +5466,7 @@
       "library": "lib_memory",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_memory/include/p101_memory/memory.h",
-      "source": "libraries/lib_memory/src/posix/sys/mman.c",
+      "source": "libraries/lib_memory/src/memory.c",
       "native_guess": "mmap"
     },
     {
@@ -5498,7 +5498,7 @@
       "library": "lib_memory",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_memory/include/p101_memory/memory.h",
-      "source": "libraries/lib_memory/src/posix/sys/mman.c",
+      "source": "libraries/lib_memory/src/memory.c",
       "native_guess": "mprotect"
     },
     {
@@ -5506,7 +5506,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/msg.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "msgctl"
     },
     {
@@ -5514,7 +5514,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/msg.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "msgget"
     },
     {
@@ -5522,7 +5522,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/msg.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "msgrcv"
     },
     {
@@ -5530,7 +5530,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/msg.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "msgsnd"
     },
     {
@@ -5538,7 +5538,7 @@
       "library": "lib_memory",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_memory/include/p101_memory/memory.h",
-      "source": "libraries/lib_memory/src/posix_xsi/sys/mman.c",
+      "source": "libraries/lib_memory/src/memory.c",
       "native_guess": "msync"
     },
     {
@@ -5546,7 +5546,7 @@
       "library": "lib_memory",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_memory/include/p101_memory/memory.h",
-      "source": "libraries/lib_memory/src/posix_optional/sys/mman.c",
+      "source": "libraries/lib_memory/src/memory.c",
       "native_guess": "munlock"
     },
     {
@@ -5554,7 +5554,7 @@
       "library": "lib_memory",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_memory/include/p101_memory/memory.h",
-      "source": "libraries/lib_memory/src/posix_optional/sys/mman.c",
+      "source": "libraries/lib_memory/src/memory.c",
       "native_guess": "munlockall"
     },
     {
@@ -5562,7 +5562,7 @@
       "library": "lib_memory",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_memory/include/p101_memory/memory.h",
-      "source": "libraries/lib_memory/src/posix/sys/mman.c",
+      "source": "libraries/lib_memory/src/memory.c",
       "native_guess": "munmap"
     },
     {
@@ -5594,7 +5594,7 @@
       "library": "lib_time",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_time/include/p101_time/time.h",
-      "source": "libraries/lib_time/src/posix/time.c",
+      "source": "libraries/lib_time/src/time.c",
       "native_guess": "nanosleep"
     },
     {
@@ -5626,7 +5626,7 @@
       "library": "lib_locale",
       "domain": "systems/localization-conversion",
       "header": "libraries/lib_locale/include/p101_locale/locale.h",
-      "source": "libraries/lib_locale/src/posix/locale.c",
+      "source": "libraries/lib_locale/src/locale.c",
       "native_guess": "newlocale"
     },
     {
@@ -5682,7 +5682,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix_xsi/ftw.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "nftw"
     },
     {
@@ -5690,7 +5690,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_xsi/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "nice"
     },
     {
@@ -5698,7 +5698,7 @@
       "library": "lib_locale",
       "domain": "systems/localization-conversion",
       "header": "libraries/lib_locale/include/p101_locale/locale.h",
-      "source": "libraries/lib_locale/src/posix/langinfo.c",
+      "source": "libraries/lib_locale/src/locale.c",
       "native_guess": "nl_langinfo"
     },
     {
@@ -5706,7 +5706,7 @@
       "library": "lib_locale",
       "domain": "systems/localization-conversion",
       "header": "libraries/lib_locale/include/p101_locale/locale.h",
-      "source": "libraries/lib_locale/src/posix/langinfo.c",
+      "source": "libraries/lib_locale/src/locale.c",
       "native_guess": "nl_langinfo_l"
     },
     {
@@ -5714,7 +5714,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "ntohl"
     },
     {
@@ -5722,7 +5722,7 @@
       "library": "lib_network",
       "domain": "network/address-conversion",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/arpa/inet.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "ntohs"
     },
     {
@@ -5730,7 +5730,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/fcntl.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "open"
     },
     {
@@ -5738,7 +5738,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "open_memstream"
     },
     {
@@ -5746,7 +5746,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "open_wmemstream"
     },
     {
@@ -5754,7 +5754,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/fcntl.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "openat"
     },
     {
@@ -5762,7 +5762,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/dirent.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "opendir"
     },
     {
@@ -5770,7 +5770,7 @@
       "library": "lib_diagnostics",
       "domain": "systems/logging-diagnostics",
       "header": "libraries/lib_diagnostics/include/p101_diagnostics/diagnostics.h",
-      "source": "libraries/lib_diagnostics/src/posix_xsi/syslog.c",
+      "source": "libraries/lib_diagnostics/src/diagnostics.c",
       "native_guess": "openlog"
     },
     {
@@ -6074,7 +6074,7 @@
       "library": "lib_filesystem",
       "domain": "systems/system-configuration",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "pathconf"
     },
     {
@@ -6082,7 +6082,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "pause"
     },
     {
@@ -6090,7 +6090,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/stdio.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "pclose"
     },
     {
@@ -6106,7 +6106,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix/unistd.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "pipe"
     },
     {
@@ -6114,7 +6114,7 @@
       "library": "lib_io",
       "domain": "systems/io-multiplexing",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/poll.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "poll"
     },
     {
@@ -6122,7 +6122,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/stdio.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "popen"
     },
     {
@@ -6130,7 +6130,7 @@
       "library": "lib_memory",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_memory/include/p101_memory/memory.h",
-      "source": "libraries/lib_memory/src/posix_optional/sys/mman.c",
+      "source": "libraries/lib_memory/src/memory.c",
       "native_guess": "posix_madvise"
     },
     {
@@ -6138,7 +6138,7 @@
       "library": "lib_memory",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_memory/include/p101_memory/memory.h",
-      "source": "libraries/lib_memory/src/posix_optional/stdlib.c",
+      "source": "libraries/lib_memory/src/memory.c",
       "native_guess": "posix_memalign"
     },
     {
@@ -6146,7 +6146,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "posix_openpt"
     },
     {
@@ -6154,7 +6154,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawn"
     },
     {
@@ -6162,7 +6162,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawn_file_actions_addclose"
     },
     {
@@ -6170,7 +6170,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawn_file_actions_adddup2"
     },
     {
@@ -6178,7 +6178,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawn_file_actions_addopen"
     },
     {
@@ -6186,7 +6186,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawn_file_actions_destroy"
     },
     {
@@ -6194,7 +6194,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawn_file_actions_init"
     },
     {
@@ -6202,7 +6202,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawnattr_destroy"
     },
     {
@@ -6210,7 +6210,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawnattr_getflags"
     },
     {
@@ -6218,7 +6218,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawnattr_getpgroup"
     },
     {
@@ -6226,7 +6226,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawnattr_getsigdefault"
     },
     {
@@ -6234,7 +6234,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawnattr_getsigmask"
     },
     {
@@ -6242,7 +6242,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawnattr_init"
     },
     {
@@ -6250,7 +6250,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawnattr_setflags"
     },
     {
@@ -6258,7 +6258,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawnattr_setpgroup"
     },
     {
@@ -6266,7 +6266,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawnattr_setsigdefault"
     },
     {
@@ -6274,7 +6274,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawnattr_setsigmask"
     },
     {
@@ -6282,7 +6282,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/spawn.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "posix_spawnp"
     },
     {
@@ -6314,7 +6314,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/unistd.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "pread"
     },
     {
@@ -6330,7 +6330,7 @@
       "library": "lib_io",
       "domain": "systems/io-multiplexing",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/sys/select.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "pselect"
     },
     {
@@ -6338,7 +6338,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_atfork"
     },
     {
@@ -6346,7 +6346,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_destroy"
     },
     {
@@ -6354,7 +6354,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_getdetachstate"
     },
     {
@@ -6362,7 +6362,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_getguardsize"
     },
     {
@@ -6370,7 +6370,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix_optional/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_getinheritsched"
     },
     {
@@ -6378,7 +6378,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_getschedparam"
     },
     {
@@ -6386,7 +6386,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix_optional/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_getschedpolicy"
     },
     {
@@ -6394,7 +6394,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix_optional/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_getscope"
     },
     {
@@ -6402,7 +6402,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix_optional/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_getstack"
     },
     {
@@ -6410,7 +6410,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix_optional/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_getstacksize"
     },
     {
@@ -6418,7 +6418,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_init"
     },
     {
@@ -6426,7 +6426,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_setdetachstate"
     },
     {
@@ -6434,7 +6434,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_setguardsize"
     },
     {
@@ -6442,7 +6442,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix_optional/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_setinheritsched"
     },
     {
@@ -6450,7 +6450,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_setschedparam"
     },
     {
@@ -6458,7 +6458,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix_optional/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_setschedpolicy"
     },
     {
@@ -6466,7 +6466,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix_optional/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_setscope"
     },
     {
@@ -6474,7 +6474,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix_optional/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_setstack"
     },
     {
@@ -6482,7 +6482,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-attributes",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix_optional/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_attr_setstacksize"
     },
     {
@@ -6490,7 +6490,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-cancellation",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_cancel"
     },
     {
@@ -6498,7 +6498,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-conditions",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_cond_broadcast"
     },
     {
@@ -6506,7 +6506,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-conditions",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_cond_destroy"
     },
     {
@@ -6514,7 +6514,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-conditions",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_cond_init"
     },
     {
@@ -6522,7 +6522,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-conditions",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_cond_signal"
     },
     {
@@ -6530,7 +6530,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-conditions",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_cond_timedwait"
     },
     {
@@ -6538,7 +6538,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-conditions",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_cond_wait"
     },
     {
@@ -6546,7 +6546,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-conditions",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_condattr_destroy"
     },
     {
@@ -6554,7 +6554,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-conditions",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix_optional/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_condattr_getpshared"
     },
     {
@@ -6562,7 +6562,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-conditions",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_condattr_init"
     },
     {
@@ -6570,7 +6570,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-conditions",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix_optional/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_condattr_setpshared"
     },
     {
@@ -6578,7 +6578,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_create"
     },
     {
@@ -6586,7 +6586,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_detach"
     },
     {
@@ -6594,7 +6594,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_equal"
     },
     {
@@ -6602,7 +6602,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_exit"
     },
     {
@@ -6610,7 +6610,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix_optional/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_getschedparam"
     },
     {
@@ -6618,7 +6618,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-local-once",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_getspecific"
     },
     {
@@ -6626,7 +6626,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_join"
     },
     {
@@ -6634,7 +6634,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-local-once",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_key_create"
     },
     {
@@ -6642,7 +6642,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-local-once",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_key_delete"
     },
     {
@@ -6650,7 +6650,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/signal.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_kill"
     },
     {
@@ -6658,7 +6658,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutex_destroy"
     },
     {
@@ -6666,7 +6666,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix_optional/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutex_getprioceiling"
     },
     {
@@ -6674,7 +6674,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutex_init"
     },
     {
@@ -6682,7 +6682,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutex_lock"
     },
     {
@@ -6690,7 +6690,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix_optional/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutex_setprioceiling"
     },
     {
@@ -6698,7 +6698,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutex_trylock"
     },
     {
@@ -6706,7 +6706,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutex_unlock"
     },
     {
@@ -6714,7 +6714,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutexattr_destroy"
     },
     {
@@ -6722,7 +6722,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix_optional/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutexattr_getprioceiling"
     },
     {
@@ -6730,7 +6730,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix_optional/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutexattr_getprotocol"
     },
     {
@@ -6738,7 +6738,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix_optional/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutexattr_getpshared"
     },
     {
@@ -6746,7 +6746,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutexattr_gettype"
     },
     {
@@ -6754,7 +6754,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutexattr_init"
     },
     {
@@ -6762,7 +6762,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix_optional/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutexattr_setprioceiling"
     },
     {
@@ -6770,7 +6770,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix_optional/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutexattr_setprotocol"
     },
     {
@@ -6778,7 +6778,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix_optional/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutexattr_setpshared"
     },
     {
@@ -6786,7 +6786,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-mutexes",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_mutexattr_settype"
     },
     {
@@ -6794,7 +6794,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-local-once",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_once"
     },
     {
@@ -6802,7 +6802,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-rwlocks",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_rwlock_destroy"
     },
     {
@@ -6810,7 +6810,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-rwlocks",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_rwlock_init"
     },
     {
@@ -6818,7 +6818,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-rwlocks",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_rwlock_rdlock"
     },
     {
@@ -6826,7 +6826,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-rwlocks",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_rwlock_tryrdlock"
     },
     {
@@ -6834,7 +6834,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-rwlocks",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_rwlock_trywrlock"
     },
     {
@@ -6842,7 +6842,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-rwlocks",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_rwlock_unlock"
     },
     {
@@ -6850,7 +6850,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-rwlocks",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_rwlock_wrlock"
     },
     {
@@ -6858,7 +6858,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-rwlocks",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_rwlockattr_destroy"
     },
     {
@@ -6866,7 +6866,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-rwlocks",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix_optional/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_rwlockattr_getpshared"
     },
     {
@@ -6874,7 +6874,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-rwlocks",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_rwlockattr_init"
     },
     {
@@ -6882,7 +6882,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-rwlocks",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix_optional/pthread.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "pthread_rwlockattr_setpshared"
     },
     {
@@ -6890,7 +6890,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_self"
     },
     {
@@ -6898,7 +6898,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-cancellation",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_setcancelstate"
     },
     {
@@ -6906,7 +6906,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-cancellation",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_setcanceltype"
     },
     {
@@ -6914,7 +6914,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix_optional/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_setschedparam"
     },
     {
@@ -6922,7 +6922,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-local-once",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_setspecific"
     },
     {
@@ -6930,7 +6930,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/signal.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_sigmask"
     },
     {
@@ -6938,7 +6938,7 @@
       "library": "lib_thread",
       "domain": "systems/thread-cancellation",
       "header": "libraries/lib_thread/include/p101_thread/thread.h",
-      "source": "libraries/lib_thread/src/posix/pthread.c",
+      "source": "libraries/lib_thread/src/thread.c",
       "native_guess": "pthread_testcancel"
     },
     {
@@ -6946,7 +6946,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "ptsname"
     },
     {
@@ -6962,7 +6962,7 @@
       "library": "lib_io",
       "domain": "c/stdio-character-io-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "putc_unlocked"
     },
     {
@@ -6978,7 +6978,7 @@
       "library": "lib_io",
       "domain": "c/stdio-character-io-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "putchar_unlocked"
     },
     {
@@ -6986,7 +6986,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "putenv"
     },
     {
@@ -7002,7 +7002,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix_xsi/utmpx.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "pututxline"
     },
     {
@@ -7026,7 +7026,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/unistd.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "pwrite"
     },
     {
@@ -7050,7 +7050,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/unistd.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "read"
     },
     {
@@ -7058,7 +7058,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/dirent.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "readdir"
     },
     {
@@ -7066,7 +7066,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "readlink"
     },
     {
@@ -7074,7 +7074,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "readlinkat"
     },
     {
@@ -7082,7 +7082,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix_xsi/sys/uio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "readv"
     },
     {
@@ -7098,7 +7098,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "realpath"
     },
     {
@@ -7146,7 +7146,7 @@
       "library": "lib_network",
       "domain": "network/io",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "recv"
     },
     {
@@ -7154,7 +7154,7 @@
       "library": "lib_network",
       "domain": "network/io",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "recvfrom"
     },
     {
@@ -7162,7 +7162,7 @@
       "library": "lib_network",
       "domain": "network/io",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "recvmsg"
     },
     {
@@ -7170,7 +7170,7 @@
       "library": "lib_text",
       "domain": "systems/text-patterns",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/regex.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "regcomp"
     },
     {
@@ -7178,7 +7178,7 @@
       "library": "lib_text",
       "domain": "systems/text-patterns",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/regex.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "regerror"
     },
     {
@@ -7186,7 +7186,7 @@
       "library": "lib_text",
       "domain": "systems/text-patterns",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/regex.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "regexec"
     },
     {
@@ -7194,7 +7194,7 @@
       "library": "lib_text",
       "domain": "systems/text-patterns",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/regex.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "regfree"
     },
     {
@@ -7234,7 +7234,7 @@
       "library": "lib_search",
       "domain": "systems/search-structures",
       "header": "libraries/lib_search/include/p101_search/search.h",
-      "source": "libraries/lib_search/src/posix_xsi/search.c",
+      "source": "libraries/lib_search/src/search.c",
       "native_guess": "remque"
     },
     {
@@ -7274,7 +7274,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/stdio.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "renameat"
     },
     {
@@ -7282,7 +7282,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/dirent.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "rewinddir"
     },
     {
@@ -7314,7 +7314,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "rmdir"
     },
     {
@@ -7346,7 +7346,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/unix/stdlib.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "rpmatch"
     },
     {
@@ -7402,7 +7402,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/dirent.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "scandir"
     },
     {
@@ -7418,7 +7418,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/sched.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sched_get_priority_max"
     },
     {
@@ -7426,7 +7426,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_optional/sched.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sched_get_priority_min"
     },
     {
@@ -7434,7 +7434,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/sched.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sched_yield"
     },
     {
@@ -7442,7 +7442,7 @@
       "library": "lib_random",
       "domain": "c/random",
       "header": "libraries/lib_random/include/p101_random/random.h",
-      "source": "libraries/lib_random/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_random/src/random.c",
       "native_guess": "seed48"
     },
     {
@@ -7450,7 +7450,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix_xsi/dirent.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "seekdir"
     },
     {
@@ -7458,7 +7458,7 @@
       "library": "lib_io",
       "domain": "systems/io-multiplexing",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/sys/select.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "select"
     },
     {
@@ -7466,7 +7466,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/semaphore.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "sem_close"
     },
     {
@@ -7474,7 +7474,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/semaphore.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "sem_open"
     },
     {
@@ -7482,7 +7482,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/semaphore.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "sem_post"
     },
     {
@@ -7490,7 +7490,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/semaphore.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "sem_trywait"
     },
     {
@@ -7498,7 +7498,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/semaphore.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "sem_unlink"
     },
     {
@@ -7506,7 +7506,7 @@
       "library": "lib_sync",
       "domain": "systems/thread-lifecycle",
       "header": "libraries/lib_sync/include/p101_sync/sync.h",
-      "source": "libraries/lib_sync/src/posix/semaphore.c",
+      "source": "libraries/lib_sync/src/sync.c",
       "native_guess": "sem_wait"
     },
     {
@@ -7514,7 +7514,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/sem.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "semctl"
     },
     {
@@ -7522,7 +7522,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/sem.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "semctl_arg"
     },
     {
@@ -7530,7 +7530,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/sem.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "semget"
     },
     {
@@ -7538,7 +7538,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/sem.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "semop"
     },
     {
@@ -7546,7 +7546,7 @@
       "library": "lib_network",
       "domain": "network/io",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "send"
     },
     {
@@ -7554,7 +7554,7 @@
       "library": "lib_network",
       "domain": "network/io",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "sendmsg"
     },
     {
@@ -7562,7 +7562,7 @@
       "library": "lib_network",
       "domain": "network/io",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "sendto"
     },
     {
@@ -7570,7 +7570,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/unix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "setbuffer"
     },
     {
@@ -7578,7 +7578,7 @@
       "library": "lib_host",
       "domain": "systems/platform-admin",
       "header": "libraries/lib_host/include/p101_host/host.h",
-      "source": "libraries/lib_host/src/unix/unistd.c",
+      "source": "libraries/lib_host/src/host.c",
       "native_guess": "setdomainname"
     },
     {
@@ -7586,7 +7586,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "setegid"
     },
     {
@@ -7594,7 +7594,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/stdlib.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "setenv"
     },
     {
@@ -7602,7 +7602,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "seteuid"
     },
     {
@@ -7610,7 +7610,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "setgid"
     },
     {
@@ -7618,7 +7618,7 @@
       "library": "lib_network",
       "domain": "network/name-resolution",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/netdb.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "sethostent"
     },
     {
@@ -7626,7 +7626,7 @@
       "library": "lib_io",
       "domain": "c/stdio-streams-files-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/unix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "setlinebuf"
     },
     {
@@ -7642,7 +7642,7 @@
       "library": "lib_diagnostics",
       "domain": "systems/logging-diagnostics",
       "header": "libraries/lib_diagnostics/include/p101_diagnostics/diagnostics.h",
-      "source": "libraries/lib_diagnostics/src/posix_xsi/syslog.c",
+      "source": "libraries/lib_diagnostics/src/diagnostics.c",
       "native_guess": "setlogmask"
     },
     {
@@ -7650,7 +7650,7 @@
       "library": "lib_network",
       "domain": "network/name-resolution",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/netdb.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "setnetent"
     },
     {
@@ -7658,7 +7658,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "setpgid"
     },
     {
@@ -7666,7 +7666,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_xsi/sys/resource.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "setpriority"
     },
     {
@@ -7674,7 +7674,7 @@
       "library": "lib_network",
       "domain": "network/name-resolution",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/netdb.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "setprotoent"
     },
     {
@@ -7682,7 +7682,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix_xsi/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "setregid"
     },
     {
@@ -7690,7 +7690,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix_xsi/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "setreuid"
     },
     {
@@ -7698,7 +7698,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_xsi/sys/resource.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "setrlimit"
     },
     {
@@ -7706,7 +7706,7 @@
       "library": "lib_network",
       "domain": "network/name-resolution",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/netdb.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "setservent"
     },
     {
@@ -7714,7 +7714,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "setsid"
     },
     {
@@ -7722,7 +7722,7 @@
       "library": "lib_network",
       "domain": "network/sockets",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "setsockopt"
     },
     {
@@ -7730,7 +7730,7 @@
       "library": "lib_random",
       "domain": "c/random",
       "header": "libraries/lib_random/include/p101_random/random.h",
-      "source": "libraries/lib_random/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_random/src/random.c",
       "native_guess": "setstate"
     },
     {
@@ -7738,7 +7738,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "setuid"
     },
     {
@@ -7746,7 +7746,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/unix/unistd.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "setusershell"
     },
     {
@@ -7754,7 +7754,7 @@
       "library": "lib_identity",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_identity/include/p101_identity/identity.h",
-      "source": "libraries/lib_identity/src/posix_xsi/utmpx.c",
+      "source": "libraries/lib_identity/src/identity.c",
       "native_guess": "setutxent"
     },
     {
@@ -7770,7 +7770,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_optional/sys/mman.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "shm_open"
     },
     {
@@ -7778,7 +7778,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_optional/sys/mman.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "shm_unlink"
     },
     {
@@ -7786,7 +7786,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/shm.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "shmat"
     },
     {
@@ -7794,7 +7794,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/shm.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "shmctl"
     },
     {
@@ -7802,7 +7802,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/shm.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "shmdt"
     },
     {
@@ -7810,7 +7810,7 @@
       "library": "lib_ipc",
       "domain": "systems/ipc",
       "header": "libraries/lib_ipc/include/p101_ipc/ipc.h",
-      "source": "libraries/lib_ipc/src/posix_xsi/sys/shm.c",
+      "source": "libraries/lib_ipc/src/ipc.c",
       "native_guess": "shmget"
     },
     {
@@ -7818,7 +7818,7 @@
       "library": "lib_network",
       "domain": "network/sockets",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "shutdown"
     },
     {
@@ -7826,7 +7826,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sigaction"
     },
     {
@@ -7834,7 +7834,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sigaddset"
     },
     {
@@ -7842,7 +7842,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix_xsi/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sigaltstack"
     },
     {
@@ -7850,7 +7850,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sigdelset"
     },
     {
@@ -7858,7 +7858,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sigemptyset"
     },
     {
@@ -7866,7 +7866,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sigfillset"
     },
     {
@@ -7874,7 +7874,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sigismember"
     },
     {
@@ -7882,7 +7882,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/setjmp.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "siglongjmp"
     },
     {
@@ -7898,7 +7898,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sigpending"
     },
     {
@@ -7906,7 +7906,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sigprocmask"
     },
     {
@@ -7914,7 +7914,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sigsuspend"
     },
     {
@@ -7922,7 +7922,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/signal.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sigwait"
     },
     {
@@ -7978,7 +7978,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/unistd.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "sleep"
     },
     {
@@ -7994,7 +7994,7 @@
       "library": "lib_network",
       "domain": "network/sockets",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "sockatmark"
     },
     {
@@ -8002,7 +8002,7 @@
       "library": "lib_network",
       "domain": "network/sockets",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "socket"
     },
     {
@@ -8010,7 +8010,7 @@
       "library": "lib_network",
       "domain": "network/sockets",
       "header": "libraries/lib_network/include/p101_network/network.h",
-      "source": "libraries/lib_network/src/posix/sys/socket.c",
+      "source": "libraries/lib_network/src/network.c",
       "native_guess": "socketpair"
     },
     {
@@ -8042,7 +8042,7 @@
       "library": "lib_random",
       "domain": "c/random",
       "header": "libraries/lib_random/include/p101_random/random.h",
-      "source": "libraries/lib_random/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_random/src/random.c",
       "native_guess": "srand48"
     },
     {
@@ -8050,7 +8050,7 @@
       "library": "lib_random",
       "domain": "c/random",
       "header": "libraries/lib_random/include/p101_random/random.h",
-      "source": "libraries/lib_random/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_random/src/random.c",
       "native_guess": "srandom"
     },
     {
@@ -8066,7 +8066,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "stat"
     },
     {
@@ -8074,7 +8074,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/statvfs.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "statvfs"
     },
     {
@@ -8082,7 +8082,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "stpcpy"
     },
     {
@@ -8090,7 +8090,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "stpncpy"
     },
     {
@@ -8098,7 +8098,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/strings.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strcasecmp"
     },
     {
@@ -8106,7 +8106,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/strings.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strcasecmp_l"
     },
     {
@@ -8114,7 +8114,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/unix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strcasestr"
     },
     {
@@ -8130,7 +8130,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/unix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strchrnul"
     },
     {
@@ -8154,7 +8154,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strcoll_l"
     },
     {
@@ -8170,7 +8170,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strdup"
     },
     {
@@ -8186,7 +8186,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strerror_r"
     },
     {
@@ -8202,7 +8202,7 @@
       "library": "lib_time",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_time/include/p101_time/time.h",
-      "source": "libraries/lib_time/src/posix/time.c",
+      "source": "libraries/lib_time/src/time.c",
       "native_guess": "strftime_l"
     },
     {
@@ -8218,7 +8218,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/strings.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strncasecmp"
     },
     {
@@ -8226,7 +8226,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/strings.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strncasecmp_l"
     },
     {
@@ -8258,7 +8258,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strndup"
     },
     {
@@ -8266,7 +8266,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strnlen"
     },
     {
@@ -8282,7 +8282,7 @@
       "library": "lib_time",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_time/include/p101_time/time.h",
-      "source": "libraries/lib_time/src/posix_xsi/time.c",
+      "source": "libraries/lib_time/src/time.c",
       "native_guess": "strptime"
     },
     {
@@ -8298,7 +8298,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/unix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strsep"
     },
     {
@@ -8306,7 +8306,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strsignal"
     },
     {
@@ -8354,7 +8354,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strtok_r"
     },
     {
@@ -8418,7 +8418,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/string.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "strxfrm_l"
     },
     {
@@ -8426,7 +8426,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix_xsi/unistd.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "swab"
     },
     {
@@ -8450,7 +8450,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "symlink"
     },
     {
@@ -8458,7 +8458,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "symlinkat"
     },
     {
@@ -8466,7 +8466,7 @@
       "library": "lib_filesystem",
       "domain": "systems/fd-io",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix_xsi/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "sync"
     },
     {
@@ -8474,7 +8474,7 @@
       "library": "lib_host",
       "domain": "systems/platform-admin",
       "header": "libraries/lib_host/include/p101_host/host.h",
-      "source": "libraries/lib_host/src/posix/unistd.c",
+      "source": "libraries/lib_host/src/host.c",
       "native_guess": "sysconf"
     },
     {
@@ -8538,7 +8538,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "tcdrain"
     },
     {
@@ -8546,7 +8546,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "tcflow"
     },
     {
@@ -8554,7 +8554,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "tcflush"
     },
     {
@@ -8562,7 +8562,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "tcgetattr"
     },
     {
@@ -8570,7 +8570,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/unistd.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "tcgetpgrp"
     },
     {
@@ -8578,7 +8578,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "tcgetsid"
     },
     {
@@ -8586,7 +8586,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "tcsendbreak"
     },
     {
@@ -8594,7 +8594,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/termios.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "tcsetattr"
     },
     {
@@ -8602,7 +8602,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/unistd.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "tcsetpgrp"
     },
     {
@@ -8610,7 +8610,7 @@
       "library": "lib_search",
       "domain": "systems/search-structures",
       "header": "libraries/lib_search/include/p101_search/search.h",
-      "source": "libraries/lib_search/src/posix_xsi/search.c",
+      "source": "libraries/lib_search/src/search.c",
       "native_guess": "tdelete"
     },
     {
@@ -8618,7 +8618,7 @@
       "library": "lib_filesystem",
       "domain": "systems/directories-patterns",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix_xsi/dirent.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "telldir"
     },
     {
@@ -8626,7 +8626,7 @@
       "library": "lib_search",
       "domain": "systems/search-structures",
       "header": "libraries/lib_search/include/p101_search/search.h",
-      "source": "libraries/lib_search/src/posix_xsi/search.c",
+      "source": "libraries/lib_search/src/search.c",
       "native_guess": "tfind"
     },
     {
@@ -8666,7 +8666,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/sys/times.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "times"
     },
     {
@@ -8698,7 +8698,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "tolower_l"
     },
     {
@@ -9082,7 +9082,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/ctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "toupper_l"
     },
     {
@@ -9098,7 +9098,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "towctrans_l"
     },
     {
@@ -9114,7 +9114,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "towlower_l"
     },
     {
@@ -9130,7 +9130,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "towupper_l"
     },
     {
@@ -9146,7 +9146,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "truncate"
     },
     {
@@ -9170,7 +9170,7 @@
       "library": "lib_search",
       "domain": "systems/search-structures",
       "header": "libraries/lib_search/include/p101_search/search.h",
-      "source": "libraries/lib_search/src/posix_xsi/search.c",
+      "source": "libraries/lib_search/src/search.c",
       "native_guess": "tsearch"
     },
     {
@@ -9178,7 +9178,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix/unistd.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "ttyname_r"
     },
     {
@@ -9186,7 +9186,7 @@
       "library": "lib_search",
       "domain": "systems/search-structures",
       "header": "libraries/lib_search/include/p101_search/search.h",
-      "source": "libraries/lib_search/src/posix_xsi/search.c",
+      "source": "libraries/lib_search/src/search.c",
       "native_guess": "twalk"
     },
     {
@@ -9194,7 +9194,7 @@
       "library": "lib_time",
       "domain": "systems/resource-time-memory",
       "header": "libraries/lib_time/include/p101_time/time.h",
-      "source": "libraries/lib_time/src/posix/time.c",
+      "source": "libraries/lib_time/src/time.c",
       "native_guess": "tzset"
     },
     {
@@ -9202,7 +9202,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "umask"
     },
     {
@@ -9210,7 +9210,7 @@
       "library": "lib_host",
       "domain": "systems/platform-admin",
       "header": "libraries/lib_host/include/p101_host/host.h",
-      "source": "libraries/lib_host/src/posix/sys/utsname.c",
+      "source": "libraries/lib_host/src/host.c",
       "native_guess": "uname"
     },
     {
@@ -9234,7 +9234,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "unlink"
     },
     {
@@ -9242,7 +9242,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/unistd.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "unlinkat"
     },
     {
@@ -9250,7 +9250,7 @@
       "library": "lib_terminal",
       "domain": "systems/users-terminals",
       "header": "libraries/lib_terminal/include/p101_terminal/terminal.h",
-      "source": "libraries/lib_terminal/src/posix_xsi/stdlib.c",
+      "source": "libraries/lib_terminal/src/terminal.c",
       "native_guess": "unlockpt"
     },
     {
@@ -9258,7 +9258,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/stdlib.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "unsetenv"
     },
     {
@@ -9266,7 +9266,7 @@
       "library": "lib_locale",
       "domain": "systems/localization-conversion",
       "header": "libraries/lib_locale/include/p101_locale/locale.h",
-      "source": "libraries/lib_locale/src/posix/locale.c",
+      "source": "libraries/lib_locale/src/locale.c",
       "native_guess": "uselocale"
     },
     {
@@ -9274,7 +9274,7 @@
       "library": "lib_filesystem",
       "domain": "systems/filesystem-paths",
       "header": "libraries/lib_filesystem/include/p101_filesystem/filesystem.h",
-      "source": "libraries/lib_filesystem/src/posix/sys/stat.c",
+      "source": "libraries/lib_filesystem/src/filesystem.c",
       "native_guess": "utimensat"
     },
     {
@@ -9282,7 +9282,7 @@
       "library": "lib_io",
       "domain": "c/stdio-formatted-extensions",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/stdio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "vdprintf"
     },
     {
@@ -9370,7 +9370,7 @@
       "library": "lib_diagnostics",
       "domain": "systems/logging-diagnostics",
       "header": "libraries/lib_diagnostics/include/p101_diagnostics/diagnostics.h",
-      "source": "libraries/lib_diagnostics/src/unix/err.c",
+      "source": "libraries/lib_diagnostics/src/diagnostics.c",
       "native_guess": "vwarn"
     },
     {
@@ -9378,7 +9378,7 @@
       "library": "lib_diagnostics",
       "domain": "systems/logging-diagnostics",
       "header": "libraries/lib_diagnostics/include/p101_diagnostics/diagnostics.h",
-      "source": "libraries/lib_diagnostics/src/unix/err.c",
+      "source": "libraries/lib_diagnostics/src/diagnostics.c",
       "native_guess": "vwarnx"
     },
     {
@@ -9402,7 +9402,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/sys/wait.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "wait"
     },
     {
@@ -9410,7 +9410,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/sys/wait.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "waitid"
     },
     {
@@ -9418,7 +9418,7 @@
       "library": "lib_process",
       "domain": "systems/process-signal",
       "header": "libraries/lib_process/include/p101_process/process.h",
-      "source": "libraries/lib_process/src/posix/sys/wait.c",
+      "source": "libraries/lib_process/src/process.c",
       "native_guess": "waitpid"
     },
     {
@@ -9426,7 +9426,7 @@
       "library": "lib_diagnostics",
       "domain": "systems/logging-diagnostics",
       "header": "libraries/lib_diagnostics/include/p101_diagnostics/diagnostics.h",
-      "source": "libraries/lib_diagnostics/src/unix/err.c",
+      "source": "libraries/lib_diagnostics/src/diagnostics.c",
       "native_guess": "warn"
     },
     {
@@ -9434,7 +9434,7 @@
       "library": "lib_diagnostics",
       "domain": "systems/logging-diagnostics",
       "header": "libraries/lib_diagnostics/include/p101_diagnostics/diagnostics.h",
-      "source": "libraries/lib_diagnostics/src/unix/err.c",
+      "source": "libraries/lib_diagnostics/src/diagnostics.c",
       "native_guess": "warnx"
     },
     {
@@ -9442,7 +9442,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wcpcpy"
     },
     {
@@ -9450,7 +9450,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wcpncpy"
     },
     {
@@ -9466,7 +9466,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wcscasecmp"
     },
     {
@@ -9498,7 +9498,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wcscoll_l"
     },
     {
@@ -9514,7 +9514,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wcsdup"
     },
     {
@@ -9538,7 +9538,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wcsncasecmp"
     },
     {
@@ -9570,7 +9570,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wcsnlen"
     },
     {
@@ -9578,7 +9578,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wcsnrtombs"
     },
     {
@@ -9714,7 +9714,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix_xsi/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wcswidth"
     },
     {
@@ -9730,7 +9730,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wcsxfrm_l"
     },
     {
@@ -9762,7 +9762,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wctrans_l"
     },
     {
@@ -9778,7 +9778,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wctype.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wctype_l"
     },
     {
@@ -9786,7 +9786,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix_xsi/wchar.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wcwidth"
     },
     {
@@ -9834,7 +9834,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wordexp.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wordexp"
     },
     {
@@ -9842,7 +9842,7 @@
       "library": "lib_text",
       "domain": "c/byte-strings-extensions",
       "header": "libraries/lib_text/include/p101_text/text.h",
-      "source": "libraries/lib_text/src/posix/wordexp.c",
+      "source": "libraries/lib_text/src/text.c",
       "native_guess": "wordfree"
     },
     {
@@ -9858,7 +9858,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix/unistd.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "write"
     },
     {
@@ -9866,7 +9866,7 @@
       "library": "lib_io",
       "domain": "systems/fd-io",
       "header": "libraries/lib_io/include/p101_io/io.h",
-      "source": "libraries/lib_io/src/posix_xsi/sys/uio.c",
+      "source": "libraries/lib_io/src/io.c",
       "native_guess": "writev"
     },
     {
@@ -9882,7 +9882,7 @@
       "library": "lib_math",
       "domain": "c/math-other",
       "header": "libraries/lib_math/include/p101_math/math.h",
-      "source": "libraries/lib_math/src/posix_xsi/math.c",
+      "source": "libraries/lib_math/src/math.c",
       "native_guess": "y0"
     },
     {
@@ -9890,7 +9890,7 @@
       "library": "lib_math",
       "domain": "c/math-other",
       "header": "libraries/lib_math/include/p101_math/math.h",
-      "source": "libraries/lib_math/src/posix_xsi/math.c",
+      "source": "libraries/lib_math/src/math.c",
       "native_guess": "y1"
     },
     {
@@ -9898,7 +9898,7 @@
       "library": "lib_math",
       "domain": "c/math-other",
       "header": "libraries/lib_math/include/p101_math/math.h",
-      "source": "libraries/lib_math/src/posix_xsi/math.c",
+      "source": "libraries/lib_math/src/math.c",
       "native_guess": "yn"
     }
   ],

@@ -6,7 +6,6 @@ from __future__ import annotations
 import csv
 import json
 import platform
-import re
 import sys
 from pathlib import Path
 
@@ -21,6 +20,7 @@ from wrapper_fault_contract import (  # noqa: E402
     injected_fault_cases,
     load_contract,
 )
+from c_facts import CFactError, acquire  # noqa: E402
 
 
 REPOS_PATH = SCRIPTS_ROOT / "repos.txt"
@@ -69,17 +69,35 @@ def main() -> int:
     failure_contract = json.loads(
         FAILURE_CONTRACT_PATH.read_text(encoding="utf-8")
     )
-    if failure_contract.get("schema") != "p101-wrapper-failure-contract-v1":
+    if failure_contract.get("schema") != "p101-wrapper-failure-contract-v2":
         print("FAIL: unsupported wrapper failure contract")
         return 1
     failure_wrappers = failure_contract.get("wrappers", {})
+    failure_wrappers_by_usr = {
+        record.get("function_usr"): record
+        for record in failure_wrappers.values()
+        if isinstance(record, dict) and record.get("function_usr")
+    }
+    if len(failure_wrappers_by_usr) != len(failure_wrappers):
+        failures.append(
+            "failure contract has missing or duplicate declaration identities"
+        )
     outcome_contract = json.loads(
         OUTCOME_CONTRACT_PATH.read_text(encoding="utf-8")
     )
-    if outcome_contract.get("schema") != "p101-wrapper-outcome-contract-v1":
+    if outcome_contract.get("schema") != "p101-wrapper-outcome-contract-v2":
         print("FAIL: unsupported wrapper outcome contract")
         return 1
     outcome_apis = outcome_contract.get("apis", {})
+    outcome_apis_by_usr = {
+        record.get("function_usr"): record
+        for record in outcome_apis.values()
+        if isinstance(record, dict) and record.get("function_usr")
+    }
+    if len(outcome_apis_by_usr) != len(outcome_apis):
+        failures.append(
+            "outcome contract has missing or duplicate declaration identities"
+        )
     valid_outcome_classes = {
         "direct-hard-failure",
         "short-partial-result",
@@ -99,6 +117,15 @@ def main() -> int:
     errno_functions = fault_contract.get("functions", {})
     system_faults = fault_contract.get("system_faults", {})
     fault_wrappers_by_name = fault_contract.get("wrappers", {})
+    fault_wrappers_by_usr = {
+        binding.get("function_usr"): binding
+        for binding in fault_wrappers_by_name.values()
+        if isinstance(binding, dict) and binding.get("function_usr")
+    }
+    if len(fault_wrappers_by_usr) != len(fault_wrappers_by_name):
+        failures.append(
+            "platform-fault contract has missing or duplicate declaration identities"
+        )
     platform_coverage = fault_contract.get("platform_coverage", {})
     platform_key = current_platform_key()
     for function, record in sorted(errno_functions.items()):
@@ -203,6 +230,13 @@ def main() -> int:
             failures.append(
                 f"system:{function}: invalid coverage classification"
             )
+        if (
+            not isinstance(record.get("symbol_header"), str)
+            or not record["symbol_header"]
+        ):
+            failures.append(
+                f"system:{function}: missing defining-header identity"
+            )
         posix = record.get("posix")
         if not isinstance(posix, dict):
             failures.append(f"system:{function}: missing POSIX record")
@@ -302,13 +336,43 @@ def main() -> int:
     expected_total = 0
     fault_case_total = 0
     fault_wrappers: set[str] = set()
+    semantic_sources: set[Path] = set()
+    for repo in libraries.values():
+        manifest_path = repo / "test" / "unit-test-manifest.tsv"
+        if not manifest_path.is_file():
+            continue
+        for row in table(manifest_path):
+            source_value = row.get("test_source", "")
+            source = (repo / source_value).resolve()
+            if source.is_file():
+                semantic_sources.add(source)
+    try:
+        semantic_facts = acquire(SCRIPTS_ROOT.parent, semantic_sources)
+    except CFactError as error:
+        print(f"FAIL: {error}")
+        return 1
+    calls_by_source: dict[Path, set[str]] = {}
+    for fact in semantic_facts:
+        if fact["kind"] != "CALL":
+            continue
+        path = Path(str(fact["path"])).resolve()
+        calls_by_source.setdefault(path, set()).add(str(fact.get("usr", "")))
+
     for library, repo in sorted(libraries.items()):
         api_rows = table(repo / "api-manifest.tsv")
-        expected = {row.get("function", "") for row in api_rows}
-        expected.discard("")
-        expected_total += len(expected)
-        for name in sorted(expected):
-            outcome = outcome_apis.get(name)
+        expected_by_usr = {
+            row.get("function_usr", ""): row
+            for row in api_rows
+            if row.get("function_usr", "")
+        }
+        if len(expected_by_usr) != len(api_rows):
+            failures.append(
+                f"{library}: API manifest has missing or duplicate function identities"
+            )
+        expected_total += len(expected_by_usr)
+        for wrapper_usr, api_row in sorted(expected_by_usr.items()):
+            name = api_row.get("function", wrapper_usr)
+            outcome = outcome_apis_by_usr.get(wrapper_usr)
             if outcome is None:
                 failures.append(
                     f"{library}:{name}: absent from wrapper outcome contract"
@@ -343,7 +407,7 @@ def main() -> int:
                         f"{library}:{name}: APIs accepting p101_error must "
                         "be directly injectable"
                     )
-                binding = fault_wrappers_by_name.get(name, {})
+                binding = fault_wrappers_by_usr.get(wrapper_usr, {})
                 native_function = binding.get("function")
                 if (
                     binding.get("role") == "native-wrapper"
@@ -357,7 +421,7 @@ def main() -> int:
                         f"{library}:{name}: {native_function} has "
                         "documented failures but no p101_error parameter"
                     )
-            binding = fault_wrappers_by_name.get(name)
+            binding = fault_wrappers_by_usr.get(wrapper_usr)
             if binding is None:
                 failures.append(
                     f"{library}:{name}: absent from platform-fault contract"
@@ -369,6 +433,17 @@ def main() -> int:
                     f"{binding.get('library')!r}"
                 )
             function = binding.get("function")
+            manifest_native_function = function or "-"
+            expected_native_usr = f"c:@F@{function}" if function else "-"
+            if (
+                api_row.get("native_function", "") != manifest_native_function
+                or api_row.get("native_function_usr", "")
+                != expected_native_usr
+            ):
+                failures.append(
+                    f"{library}:{name}: API manifest native identity differs "
+                    "from the reviewed platform-fault contract"
+                )
             if (
                 binding.get("role") == "native-wrapper"
                 and function not in errno_functions
@@ -382,13 +457,19 @@ def main() -> int:
             continue
 
         manifest = table(manifest_path)
-        actual: dict[str, dict[str, str]] = {}
+        actual_by_usr: dict[str, dict[str, str]] = {}
         for row in manifest:
             name = row.get("function", "")
-            if name in actual:
-                failures.append(f"{library}: duplicate test row for {name}")
+            wrapper_usr = row.get("function_usr", "")
+            if not wrapper_usr:
+                failures.append(f"{library}:{name}: test row has no function identity")
                 continue
-            actual[name] = row
+            if wrapper_usr in actual_by_usr:
+                failures.append(
+                    f"{library}: duplicate test row for {wrapper_usr}"
+                )
+                continue
+            actual_by_usr[wrapper_usr] = row
             kind = row.get("test_kind", "")
             if kind not in VALID_KINDS:
                 failures.append(f"{library}:{name}: unknown test kind {kind!r}")
@@ -397,19 +478,14 @@ def main() -> int:
             if not source.is_file():
                 failures.append(f"{library}:{name}: missing {source_value}")
                 continue
-            text = source.read_text(encoding="utf-8", errors="replace")
-            marker = f"P101_TEST_CASE({name})"
-            if kind != "behavior-existing" and marker not in text:
+            if wrapper_usr not in calls_by_source.get(source.resolve(), set()):
                 failures.append(
-                    f"{library}:{name}: {source_value} lacks {marker}"
-                )
-            if re.search(rf"\b{re.escape(name)}\s*\(", text) is None:
-                failures.append(
-                    f"{library}:{name}: {source_value} never invokes wrapper"
+                    f"{library}:{name}: {source_value} has no resolved call "
+                    f"to {wrapper_usr}"
                 )
             if kind == "fault":
-                fault_wrappers.add(name)
-                failure_record = failure_wrappers.get(name)
+                fault_wrappers.add(wrapper_usr)
+                failure_record = failure_wrappers_by_usr.get(wrapper_usr)
                 if failure_record is None:
                     failures.append(
                         f"{library}:{name}: absent from failure contract"
@@ -420,7 +496,10 @@ def main() -> int:
                         f"{library}:{name}: failure contract assigns "
                         f"{failure_record.get('library')!r}"
                     )
-                function = fault_wrappers_by_name.get(name, {}).get("function")
+                function = fault_wrappers_by_usr.get(
+                    wrapper_usr,
+                    {},
+                ).get("function")
                 expected_domain = fault_domain(fault_contract, function)
                 if failure_record.get("error_domain") != expected_domain:
                     failures.append(
@@ -434,7 +513,7 @@ def main() -> int:
                     )
                 if (
                     failure_record.get("fault_boundary")
-                    != "before-observable-work"
+                    != "after-entry-trace-before-native-work"
                 ):
                     failures.append(
                         f"{library}:{name}: invalid fault boundary policy"
@@ -457,7 +536,7 @@ def main() -> int:
                     failures.append(
                         f"{library}:{name}: invalid fault-mode contract"
                     )
-                binding = fault_wrappers_by_name.get(name, {})
+                binding = fault_wrappers_by_usr.get(wrapper_usr, {})
                 function = binding.get("function")
                 expected_errors = injected_fault_cases(
                     fault_contract,
@@ -465,185 +544,18 @@ def main() -> int:
                     platform_key,
                 )
                 fault_case_total += len(expected_errors)
-                function_match = re.search(
-                    rf"static void test_{re.escape(name)}\b(.*?)(?=\n/\* "
-                    r"P101_TEST_CASE|\nint main)",
-                    text,
-                    re.DOTALL,
-                )
-                if function_match is None:
-                    failures.append(
-                        f"{library}:{name}: cannot inspect fault test body"
-                    )
-                    continue
-                arrays_match = re.search(
-                    r"#ifdef __linux__\s*"
-                    r"static const int\s+errors\[\]\s*=\s*\{([^}]*)\};\s*"
-                    r"static const char \*const\s+error_names\[\]\s*=\s*"
-                    r"\{([^}]*)\};\s*"
-                    r"#elif defined\(__APPLE__\)\s*"
-                    r"static const int\s+errors\[\]\s*=\s*\{([^}]*)\};\s*"
-                    r"static const char \*const\s+error_names\[\]\s*=\s*"
-                    r"\{([^}]*)\};\s*"
-                    r"#elif defined\(__FreeBSD__\)\s*"
-                    r"static const int\s+errors\[\]\s*=\s*\{([^}]*)\};\s*"
-                    r"static const char \*const\s+error_names\[\]\s*=\s*"
-                    r"\{([^}]*)\};\s*"
-                    r"#else\s*"
-                    r"static const int\s+errors\[\]\s*=\s*\{([^}]*)\};\s*"
-                    r"static const char \*const\s+error_names\[\]\s*=\s*"
-                    r"\{([^}]*)\};\s*"
-                    r"#endif",
-                    function_match.group(1),
-                )
-                if arrays_match is None:
-                    failures.append(
-                        f"{library}:{name}: generated platform arrays are absent"
-                    )
-                else:
-                    actual_by_platform = {
-                        "linux": re.findall(
-                            r"\b[A-Z][A-Z0-9_]+\b",
-                            arrays_match.group(1),
-                        ),
-                        "macos": re.findall(
-                            r"\b[A-Z][A-Z0-9_]+\b",
-                            arrays_match.group(3),
-                        ),
-                        "freebsd": re.findall(
-                            r"\b[A-Z][A-Z0-9_]+\b",
-                            arrays_match.group(5),
-                        ),
-                        "posix": re.findall(
-                            r"\b[A-Z][A-Z0-9_]+\b",
-                            arrays_match.group(7),
-                        ),
-                    }
-                    labels_by_platform = {
-                        "linux": json.loads(f"[{arrays_match.group(2)}]"),
-                        "macos": json.loads(f"[{arrays_match.group(4)}]"),
-                        "freebsd": json.loads(f"[{arrays_match.group(6)}]"),
-                        "posix": json.loads(f"[{arrays_match.group(8)}]"),
-                    }
-                    expected_by_platform = {
-                        checked_platform: injected_fault_cases(
-                            fault_contract,
-                            function,
-                            (
-                                None
-                                if checked_platform == "posix"
-                                else checked_platform
-                            ),
-                        )
-                        for checked_platform in (
-                            "linux",
-                            "macos",
-                            "freebsd",
-                            "posix",
-                        )
-                    }
-                    for checked_platform, platform_errors in (
-                        expected_by_platform.items()
-                    ):
-                        actual_errors = actual_by_platform[checked_platform]
-                        if actual_errors != platform_errors:
-                            failures.append(
-                                f"{library}:{name}: generated "
-                                f"{checked_platform} fault cases differ "
-                                f"(expected {','.join(platform_errors)}; "
-                                f"found {','.join(actual_errors)})"
-                            )
-                        if labels_by_platform[checked_platform] != (
-                            platform_errors
-                        ):
-                            failures.append(
-                                f"{library}:{name}: generated "
-                                f"{checked_platform} outcome labels differ "
-                                f"(expected {','.join(platform_errors)}; "
-                                "found "
-                                f"{','.join(labels_by_platform[checked_platform])})"
-                            )
-                expected_error_assertion = (
-                    "p101_error_is_error(err, P101_ERROR_SYSTEM, "
-                    "state.code)"
-                    if expected_domain == "system"
-                    else "p101_error_is_errno(err, state.code)"
-                )
-                if expected_error_assertion not in function_match.group(1):
-                    failures.append(
-                        f"{library}:{name}: does not verify propagated "
-                        f"{expected_domain} code"
-                    )
-                required_fault_steps = (
-                    "for(size_t index = 0U; "
-                    "index < sizeof(errors) / sizeof(errors[0]); index++)",
-                    "struct fault_state state = {0, errors[index]};",
-                    "failures_before = failures;",
-                    "EXPECT(p101_error_has_no_error(err));",
-                    "fault_resource_events = 0U;",
-                    "errno                 = P101_TEST_ERRNO_SENTINEL;",
-                    "EXPECT(state.checks == 1);",
-                    "EXPECT(errno == P101_TEST_ERRNO_SENTINEL);",
-                    "EXPECT(fault_resource_events == 0U);",
-                    "error_names[index]",
-                    "failures == failures_before",
-                    "p101_error_reset(err);",
-                    "p101_env_set_fault_injector(env, NULL, NULL);",
-                    "pid_t native_pid    = fork();",
-                    "(void)alarm(2U);",
-                    "EXPECT(waitpid(native_pid, &native_status, 0) == native_pid);",
-                    "EXPECT(WIFEXITED(native_status));",
-                )
-                for required_step in required_fault_steps:
-                    if required_step not in function_match.group(1):
-                        failures.append(
-                            f"{library}:{name}: generated fault test omits "
-                            f"{required_step!r}"
-                        )
                 return_kind = failure_record.get("return_kind")
-                if return_kind == "error-code":
-                    if "EXPECT(result == state.code);" not in (
-                        function_match.group(1)
-                    ):
-                        failures.append(
-                            f"{library}:{name}: does not verify error-code "
-                            "return"
-                        )
-                elif return_kind == "value":
-                    if not re.search(
-                        r"EXPECT\((?:result|isnan\(result\)|"
-                        r"memcmp\(&result)",
-                        function_match.group(1),
-                    ):
-                        failures.append(
-                            f"{library}:{name}: does not verify failure "
-                            "return value"
-                        )
-                elif return_kind != "void":
+                if return_kind not in {"error-code", "value", "void"}:
                     failures.append(
                         f"{library}:{name}: invalid failure return kind "
                         f"{return_kind!r}"
                     )
-                expected_canaries = len(
-                    failure_record.get("runtime_canary_arguments", [])
-                )
-                actual_canaries = len(
-                    re.findall(
-                        r"EXPECT\(memcmp\(argument_[0-9]+,",
-                        function_match.group(1),
-                    )
-                )
-                if actual_canaries != expected_canaries:
-                    failures.append(
-                        f"{library}:{name}: writable-argument canaries "
-                        f"differ (expected {expected_canaries}; "
-                        f"found {actual_canaries})"
-                    )
 
-        for name in sorted(expected & actual.keys()):
-            outcome = outcome_apis.get(name, {})
+        for wrapper_usr in sorted(expected_by_usr.keys() & actual_by_usr.keys()):
+            name = expected_by_usr[wrapper_usr].get("function", wrapper_usr)
+            outcome = outcome_apis_by_usr.get(wrapper_usr, {})
             classification = outcome.get("classification")
-            test_kind = actual[name].get("test_kind")
+            test_kind = actual_by_usr[wrapper_usr].get("test_kind")
             if classification in {
                 "direct-hard-failure",
                 "short-partial-result",
@@ -661,7 +573,7 @@ def main() -> int:
                     f"{library}:{name}: {classification} must use a "
                     "behavior test"
                 )
-            binding = fault_wrappers_by_name.get(name)
+            binding = fault_wrappers_by_usr.get(wrapper_usr)
             if binding is None:
                 continue
             function = binding.get("function")
@@ -691,19 +603,24 @@ def main() -> int:
                 )
                 for required_platform in ("linux", "macos", "freebsd")
             )
-            if documented_failure and actual[name].get("test_kind") != "fault":
+            if (
+                documented_failure
+                and actual_by_usr[wrapper_usr].get("test_kind") != "fault"
+            ):
                 failures.append(
                     f"{library}:{name}: documented platform errors require "
                     "an exhaustive fault test"
                 )
 
-        missing = expected - actual.keys()
-        extra = actual.keys() - expected
-        for name in sorted(missing):
+        missing = expected_by_usr.keys() - actual_by_usr.keys()
+        extra = actual_by_usr.keys() - expected_by_usr.keys()
+        for wrapper_usr in sorted(missing):
+            name = expected_by_usr[wrapper_usr].get("function", wrapper_usr)
             failures.append(f"{library}:{name}: no unit-test row")
-        for name in sorted(extra):
+        for wrapper_usr in sorted(extra):
+            name = actual_by_usr[wrapper_usr].get("function", wrapper_usr)
             failures.append(f"{library}:{name}: test row has no public API")
-        tested_total += len(expected & actual.keys())
+        tested_total += len(expected_by_usr.keys() & actual_by_usr.keys())
 
         cmake_path = repo / "test" / "CMakeLists.txt"
         if not cmake_path.is_file():
@@ -735,8 +652,8 @@ def main() -> int:
         f"{fault_case_total}/{fault_case_total}"
     )
     documented_wrappers = {
-        name
-        for name, binding in fault_wrappers_by_name.items()
+        wrapper_usr
+        for wrapper_usr, binding in fault_wrappers_by_usr.items()
         if binding.get("role") == "native-wrapper"
         and binding.get("function") in errno_functions
         and any(
@@ -796,11 +713,11 @@ def main() -> int:
             len(
                 injected_fault_cases(
                     fault_contract,
-                    fault_wrappers_by_name[name].get("function"),
+                    fault_wrappers_by_usr[wrapper_usr].get("function"),
                     reported_platform,
                 )
             )
-            for name in fault_wrappers
+            for wrapper_usr in fault_wrappers
         )
         documented_cases = sum(
             len(
@@ -862,48 +779,54 @@ def main() -> int:
         f"{platform_documented_case_total}/"
         f"{platform_documented_case_total}"
     )
-    extra_fault_bindings = fault_wrappers_by_name.keys() - {
-        row["function"]
+    active_public_usrs = {
+        row["function_usr"]
         for repo in libraries.values()
         for row in table(repo / "api-manifest.tsv")
     }
-    for name in sorted(extra_fault_bindings):
+    extra_fault_bindings = fault_wrappers_by_usr.keys() - active_public_usrs
+    for wrapper_usr in sorted(extra_fault_bindings):
         failures.append(
-            f"platform-fault:{name}: binding has no active public API"
+            f"platform-fault:{wrapper_usr}: binding has no active public API"
         )
-    active_public_apis = {
-        row["function"]
-        for repo in libraries.values()
-        for row in table(repo / "api-manifest.tsv")
-    }
-    for name in sorted(outcome_apis.keys() - active_public_apis):
+    for wrapper_usr in sorted(
+        outcome_apis_by_usr.keys() - active_public_usrs
+    ):
         failures.append(
-            f"outcome:{name}: classification has no active public API"
+            f"outcome:{wrapper_usr}: classification has no active public API"
         )
-    missing_failure_wrappers = fault_wrappers - failure_wrappers.keys()
-    extra_failure_wrappers = failure_wrappers.keys() - fault_wrappers
-    for name in sorted(missing_failure_wrappers):
-        failures.append(f"failure:{name}: missing fault-wrapper contract")
-    for name in sorted(extra_failure_wrappers):
-        failures.append(f"failure:{name}: contract has no active fault test")
+    missing_failure_wrappers = fault_wrappers - failure_wrappers_by_usr.keys()
+    extra_failure_wrappers = failure_wrappers_by_usr.keys() - fault_wrappers
+    for wrapper_usr in sorted(missing_failure_wrappers):
+        failures.append(
+            f"failure:{wrapper_usr}: missing fault-wrapper contract"
+        )
+    for wrapper_usr in sorted(extra_failure_wrappers):
+        failures.append(
+            f"failure:{wrapper_usr}: contract has no active fault test"
+        )
     short_fault_wrappers = {
-        name
-        for name, record in failure_wrappers.items()
+        wrapper_usr
+        for wrapper_usr, record in failure_wrappers_by_usr.items()
         if "short" in record.get("fault_modes", [])
     }
     lifecycle_short_wrappers = {
-        specification.get("fault_name")
+        specification.get("fault_usr")
         for specification in lifecycle_contract.get("scenarios", {}).values()
         if "short" in specification.get("fault_modes", [])
     }
     lifecycle_short_wrappers.discard(None)
-    for name in sorted(short_fault_wrappers - lifecycle_short_wrappers):
+    for wrapper_usr in sorted(
+        short_fault_wrappers - lifecycle_short_wrappers
+    ):
         failures.append(
-            f"failure:{name}: short fault has no lifecycle scenario"
+            f"failure:{wrapper_usr}: short fault has no lifecycle scenario"
         )
-    for name in sorted(lifecycle_short_wrappers - short_fault_wrappers):
+    for wrapper_usr in sorted(
+        lifecycle_short_wrappers - short_fault_wrappers
+    ):
         failures.append(
-            f"failure:{name}: lifecycle short scenario has no wrapper action"
+            f"failure:{wrapper_usr}: lifecycle short scenario has no wrapper action"
         )
     if failures:
         for failure in failures:

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -13,6 +14,9 @@ from pathlib import Path
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-failure-contract.json"
 OUTCOME_CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-outcome-contract.json"
+PORTABLE_INPUT_CONTRACT_PATH = (
+    SCRIPTS_ROOT / "contracts" / "wrapper-portable-input-contract.json"
+)
 
 
 def load_generator():
@@ -107,28 +111,252 @@ def test_bool_result_spelling(generator) -> None:
     )
 
 
-def test_single_exit_fault_result(generator) -> None:
-    fragment = """
-        fault = p101_env_check_fault(env, "open");
-        if(fault != 0)
+def test_function_selection_uses_semantic_extent(generator) -> None:
+    ast = {
+        "kind": "TranslationUnitDecl",
+        "inner": [
+            {
+                "kind": "FunctionDecl",
+                "name": "misleading_spelling",
+                "range": {
+                    "begin": {"offset": 10},
+                    "end": {"offset": 19, "tokLen": 1},
+                },
+                "inner": [{"kind": "CompoundStmt"}],
+            }
+        ],
+    }
+    declarations = generator.function_declarations(
+        ast,
+        {(10, 20): ("display_only", "c:@F@semantic_identity")},
+    )
+    check(
+        set(declarations) == {"display_only"}
+        and declarations["display_only"]["_p101_function_usr"]
+        == "c:@F@semantic_identity",
+        "AST definition selection depends on the declaration spelling",
+    )
+
+
+def test_protocol_declaration_bit_selects_definitions(generator) -> None:
+    source = generator.WORKSPACE / "libraries" / "lib_c" / "src" / "complex.c"
+    facts = [
         {
-            P101_ERROR_RAISE_ERRNO(err, fault);
-            p101_single_result_ = -1;
-            goto p101_single_exit_;
+            "kind": "FUNCTION",
+            "path": str(source),
+            "usr": "c:@F@semantic_identity",
+            "is_declaration": False,
+            "start": 10,
+            "end": 20,
+        },
+        {
+            "kind": "FUNCTION",
+            "path": str(source),
+            "usr": "c:@F@semantic_identity",
+            "is_declaration": True,
+            "start": 30,
+            "end": 40,
+        },
+    ]
+    extents = generator.semantic_definition_extents(
+        source,
+        {"c:@F@semantic_identity": "display_only"},
+        facts,
+    )
+    check(
+        extents
+        == {(10, 20): ("display_only", "c:@F@semantic_identity")},
+        "v6 declaration semantics do not distinguish definitions",
+    )
+
+
+def test_single_exit_fault_result(generator) -> None:
+    source_text = (
+        "int renamed(void) { int arbitrary; if(other()) "
+        "{ arbitrary = -1; } arbitrary = 0; return arbitrary; }\n"
+    )
+
+    def extent(fragment: str, start: int = 0) -> dict[str, dict[str, int]]:
+        offset = source_text.index(fragment, start)
+        return {
+            "begin": {"offset": offset},
+            "end": {"offset": offset + len(fragment) - 1, "tokLen": 1},
         }
-        p101_single_result_ = ret_val;
-    """
-    check(
-        generator.explicit_fault_result(fragment) == "-1",
-        "manual single-exit fault result was not recovered",
-    )
-    check(
-        generator.explicit_fault_result(
-            "p101_single_result_ = 0; goto p101_single_exit_;"
+
+    selector_range = extent("other()")
+    branch_start = source_text.index("if(other())")
+    branch_end = source_text.index("}", branch_start) + 1
+    result_id = "0xsemantic-result"
+    declaration = {
+        "kind": "FunctionDecl",
+        "inner": [
+            {
+                "kind": "IfStmt",
+                "range": {
+                    "begin": {"offset": branch_start},
+                    "end": {"offset": branch_end - 1, "tokLen": 1},
+                },
+                "inner": [
+                    {
+                        "kind": "BinaryOperator",
+                        "opcode": "=",
+                        "inner": [
+                            {
+                                "kind": "DeclRefExpr",
+                                "referencedDecl": {"id": result_id},
+                            },
+                            {
+                                "kind": "IntegerLiteral",
+                                "range": extent("-1"),
+                            },
+                        ],
+                    }
+                ],
+            },
+            {
+                "kind": "ReturnStmt",
+                "range": extent("return arbitrary;"),
+                "inner": [
+                    {
+                        "kind": "DeclRefExpr",
+                        "referencedDecl": {"id": result_id},
+                    }
+                ],
+            },
+        ],
+    }
+    with tempfile.TemporaryDirectory() as directory:
+        source = Path(directory) / "semantic.c"
+        source.write_text(source_text, encoding="utf-8")
+        calls = [
+            {
+                "caller_usr": "c:@F@renamed",
+                "usr": "c:@F@selector",
+                "start": selector_range["begin"]["offset"],
+                "end": (
+                    selector_range["end"]["offset"]
+                    + selector_range["end"]["tokLen"]
+                ),
+            }
+        ]
+        check(
+            generator.semantic_single_exit_fault_result(
+                declaration,
+                source,
+                "c:@F@renamed",
+                calls,
+                {"c:@F@selector"},
+            )
+            == "-1",
+            "manual single-exit result was not recovered by AST identity",
         )
-        is None,
-        "non-fault single-exit result was misclassified",
+        check(
+            generator.semantic_single_exit_fault_result(
+                declaration,
+                source,
+                "c:@F@renamed",
+                calls,
+                {"c:@F@different-selector"},
+            )
+            is None,
+            "non-selector branch was misclassified as injected failure",
+        )
+
+
+def test_single_exit_fault_result_follows_selector_value(generator) -> None:
+    source_text = (
+        "int renamed(void) { int result; int selected; "
+        "selected = choose(); if(selected) { result = -1; } "
+        "result = 0; return result; }\n"
     )
+
+    def extent(fragment: str) -> dict[str, dict[str, int]]:
+        offset = source_text.index(fragment)
+        return {
+            "begin": {"offset": offset},
+            "end": {"offset": offset + len(fragment) - 1, "tokLen": 1},
+        }
+
+    result_id = "0xsemantic-result"
+    selector_id = "0xsemantic-selector-result"
+    selector_range = extent("choose()")
+    selector_assignment = extent("selected = choose()")
+    branch_range = extent("if(selected) { result = -1; }")
+    declaration = {
+        "kind": "FunctionDecl",
+        "inner": [
+            {
+                "kind": "BinaryOperator",
+                "opcode": "=",
+                "range": selector_assignment,
+                "inner": [
+                    {
+                        "kind": "DeclRefExpr",
+                        "referencedDecl": {"id": selector_id},
+                    },
+                    {"kind": "CallExpr", "range": selector_range},
+                ],
+            },
+            {
+                "kind": "IfStmt",
+                "range": branch_range,
+                "inner": [
+                    {
+                        "kind": "DeclRefExpr",
+                        "referencedDecl": {"id": selector_id},
+                    },
+                    {
+                        "kind": "BinaryOperator",
+                        "opcode": "=",
+                        "inner": [
+                            {
+                                "kind": "DeclRefExpr",
+                                "referencedDecl": {"id": result_id},
+                            },
+                            {
+                                "kind": "IntegerLiteral",
+                                "range": extent("-1"),
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                "kind": "ReturnStmt",
+                "range": extent("return result;"),
+                "inner": [
+                    {
+                        "kind": "DeclRefExpr",
+                        "referencedDecl": {"id": result_id},
+                    }
+                ],
+            },
+        ],
+    }
+    with tempfile.TemporaryDirectory() as directory:
+        source = Path(directory) / "semantic.c"
+        source.write_text(source_text, encoding="utf-8")
+        result = generator.semantic_single_exit_fault_result(
+            declaration,
+            source,
+            "c:@F@renamed",
+            [
+                {
+                    "caller_usr": "c:@F@renamed",
+                    "usr": "c:@F@selector",
+                    "start": selector_range["begin"]["offset"],
+                    "end": (
+                        selector_range["end"]["offset"]
+                        + selector_range["end"]["tokLen"]
+                    ),
+                }
+            ],
+            {"c:@F@selector"},
+        )
+        check(
+            result == "-1",
+            "selector-result data flow did not identify the failure result",
+        )
 
 
 def test_va_list_fixture_is_started(generator) -> None:
@@ -196,6 +424,7 @@ def test_va_list_fixture_is_started(generator) -> None:
     )
     generated = generator.fault_test(
         "p101_example_v",
+        "c:@F@p101_example_v",
         declaration,
         {
             "linux": ["EIO"],
@@ -239,6 +468,7 @@ def test_public_aggregate_fixture_ignores_private_ast_alias(generator) -> None:
     }
     fixture = generator.native_pointer_fixture(
         "p101_shmctl",
+        "c:@F@p101_shmctl",
         parameter,
         4,
         declaration,
@@ -309,6 +539,7 @@ def test_fallible_wrapper_has_isolated_native_smoke(generator) -> None:
     }
     source = generator.fault_test(
         "p101_example",
+        "c:@F@p101_example",
         declaration,
         {
             "linux": ["EIO"],
@@ -327,7 +558,7 @@ def test_fallible_wrapper_has_isolated_native_smoke(generator) -> None:
         "(void)alarm(2U);",
         "p101_env_set_fault_injector(env, NULL, NULL);",
         "p101_example(env, err);",
-        "waitpid(native_pid, &native_status, 0)",
+        "native_waitpid_nointr(native_pid, &native_status)",
         "WIFEXITED(native_status)",
     ):
         check(marker in source, f"native smoke omits {marker}")
@@ -389,6 +620,7 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
     }
     callback_fixture = generator.native_pointer_fixture(
         "p101_glob",
+        "c:@F@p101_glob",
         callback,
         4,
     )
@@ -404,6 +636,7 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
     }
     vector_fixture = generator.native_pointer_fixture(
         "p101_execv",
+        "c:@F@p101_execv",
         vector,
         3,
     )
@@ -420,6 +653,7 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
     }
     pipe_fixture = generator.native_contract_fixture(
         "p101_pipe",
+        "c:@F@p101_pipe",
         pipe_parameter,
         2,
     )
@@ -435,6 +669,7 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
     }
     alignment_fixture = generator.native_contract_fixture(
         "p101_posix_memalign",
+        "c:@F@p101_posix_memalign",
         alignment,
         3,
     )
@@ -452,6 +687,7 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
     }
     spawn_null_fixture = generator.native_contract_fixture(
         "p101_posix_spawnp",
+        "c:@F@p101_posix_spawnp",
         spawn_actions,
         4,
     )
@@ -463,6 +699,7 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
 
     initialized_actions = generator.native_contract_fixture(
         "p101_posix_spawn_file_actions_addclose",
+        "c:@F@p101_posix_spawn_file_actions_addclose",
         {
             "name": "renamed_actions",
             "type": {"qualType": "posix_spawn_file_actions_t *"},
@@ -484,6 +721,7 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
 
     spawn_environment = generator.native_contract_fixture(
         "p101_posix_spawnp",
+        "c:@F@p101_posix_spawnp",
         {
             "name": "renamed_vector",
             "type": {"qualType": "char *const *restrict"},
@@ -498,6 +736,7 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
 
     semaphore = generator.native_contract_fixture(
         "p101_sem_wait",
+        "c:@F@p101_sem_wait",
         {
             "name": "renamed_semaphore",
             "type": {"qualType": "sem_t *"},
@@ -517,6 +756,7 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
 
     signal_set = generator.native_contract_fixture(
         "p101_sigwait",
+        "c:@F@p101_sigwait",
         {
             "name": "renamed_signal_set",
             "type": {"qualType": "const sigset_t *restrict"},
@@ -532,16 +772,367 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
         "sigwait fixture does not arrange a pending blocked signal",
     )
 
+    catalog = generator.native_contract_fixture(
+        "p101_catgets",
+        "c:@F@p101_catgets",
+        {
+            "name": "renamed_catalog",
+            "type": {"qualType": "nl_catd"},
+        },
+        2,
+    )
+    check(
+        catalog is not None
+        and catalog[1] == "(nl_catd)0"
+        and catalog[3] == [],
+        "message-catalog fixture does not leave outcome policy to the contract",
+    )
+
+    setrlimit = generator.native_contract_fixture(
+        "p101_setrlimit",
+        "c:@F@p101_setrlimit",
+        {
+            "name": "renamed_resource",
+            "type": {"qualType": "int"},
+        },
+        2,
+    )
+    check(
+        setrlimit is not None and setrlimit[1] == "-1",
+        "setrlimit fixture could mutate a real process limit",
+    )
+
+    aio_fsync = generator.native_contract_fixture(
+        "p101_aio_fsync",
+        "c:@F@p101_aio_fsync",
+        {
+            "name": "renamed_control_block",
+            "type": {"qualType": "struct aiocb *"},
+        },
+        3,
+    )
+    check(
+        aio_fsync is not None
+        and any("tmpfile()" in line for line in aio_fsync[0])
+        and any(".aio_fildes" in line for line in aio_fsync[0])
+        and any("fclose" in line for line in aio_fsync[3]),
+        "aio_fsync fixture does not own and clean up a valid descriptor",
+    )
+
+    socket_domain = generator.native_contract_fixture(
+        "p101_socket",
+        "c:@F@p101_socket",
+        {
+            "name": "renamed_domain",
+            "type": {"qualType": "int"},
+        },
+        2,
+    )
+    check(
+        socket_domain is not None and socket_domain[1] == "AF_INET",
+        "socket domain fixture depends on a parameter name",
+    )
+
+    send_socket = generator.native_contract_fixture(
+        "p101_send",
+        "c:@F@p101_send",
+        {
+            "name": "renamed_descriptor",
+            "type": {"qualType": "int"},
+        },
+        2,
+    )
+    send_payload = generator.native_contract_fixture(
+        "p101_send",
+        "c:@F@p101_send",
+        {
+            "name": "renamed_payload",
+            "type": {"qualType": "const void *"},
+        },
+        3,
+    )
+    send_length = generator.native_contract_fixture(
+        "p101_send",
+        "c:@F@p101_send",
+        {
+            "name": "renamed_extent",
+            "type": {"qualType": "size_t"},
+        },
+        4,
+    )
+    check(
+        send_socket is not None
+        and any("socketpair(AF_UNIX, SOCK_STREAM" in line for line in send_socket[0])
+        and send_payload is not None
+        and send_payload[1] == '"p101"'
+        and send_length is not None
+        and send_length[1] == "4U",
+        "send fixture is not a valid typed socket operation",
+    )
+
+    interface_name = generator.native_contract_fixture(
+        "p101_if_nametoindex",
+        "c:@F@p101_if_nametoindex",
+        {
+            "name": "renamed_interface",
+            "type": {"qualType": "const char *"},
+        },
+        2,
+    )
+    check(
+        interface_name is not None
+        and any("if_nameindex()" in line for line in interface_name[0])
+        and any("if_freenameindex" in line for line in interface_name[3]),
+        "interface fixture does not discover and release a real interface",
+    )
+
+
+def test_native_smoke_outcomes_are_asserted(generator) -> None:
+    declaration = {
+        "name": "p101_example",
+        "type": {
+            "qualType": (
+                "int (const struct p101_env *, struct p101_error *)"
+            )
+        },
+        "inner": [
+            {
+                "kind": "ParmVarDecl",
+                "name": "env",
+                "type": {"qualType": "const struct p101_env *"},
+            },
+            {
+                "kind": "ParmVarDecl",
+                "name": "err",
+                "type": {"qualType": "struct p101_error *"},
+            },
+        ],
+    }
+    errors = {
+        "linux": ["EIO"],
+        "macos": ["EIO"],
+        "freebsd": ["EIO"],
+        "posix": ["EIO"],
+    }
+    failure = {
+        "kind": "value",
+        "expression": "-1",
+        "error_domain": "errno",
+    }
+    success_source = generator.fault_test(
+        "p101_example",
+        "c:@F@p101_example",
+        declaration,
+        errors,
+        failure,
+    )
+    check(
+        "if(p101_error_has_error(native_err))" in success_source,
+        "native smoke does not require success by default",
+    )
+    check(
+        "bool               native_passed = true;" in success_source
+        and "native_passed = false;" in success_source
+        and "native_child_status = native_passed ? EXIT_SUCCESS"
+        in success_source
+        and "_Exit(" not in success_source,
+        "native smoke can bypass caller-owned cleanup after a failed assertion",
+    )
+    error_source = generator.fault_test(
+        "p101_example",
+        "c:@F@p101_example",
+        declaration,
+        errors,
+        failure,
+        {
+            "outcome": "error",
+            "error_domain": "errno",
+            "error_code": "EINVAL",
+            "result_kind": "equals",
+            "result_expression": "-1",
+        },
+    )
+    check(
+        "p101_error_is_errno(native_err, EINVAL)" in error_source
+        and "if(native_result != -1)" in error_source,
+        "declared native failure is not asserted exactly",
+    )
+    check_source = generator.fault_test(
+        "p101_example",
+        "c:@F@p101_example",
+        declaration,
+        errors,
+        failure,
+        {
+            "outcome": "error",
+            "error_domain": "check",
+            "error_code": "-1",
+            "result_kind": "equals",
+            "result_expression": "-1",
+        },
+    )
+    check(
+        "p101_error_is_error(native_err, P101_ERROR_CHECK, -1)"
+        in check_source,
+        "declared native check rejection is not asserted exactly",
+    )
+
+
+def test_native_resource_fixtures_are_live_and_cleanup_is_checked(generator) -> None:
+    msgget = generator.native_contract_fixture(
+        "p101_msgget",
+        "c:@F@p101_msgget",
+        {"type": {"qualType": "int"}},
+        3,
+    )
+    check(
+        msgget is not None
+        and msgget[1] == "IPC_CREAT | 0600"
+        and any("msgctl(native_result, IPC_RMID" in line for line in msgget[3])
+        and any("native_passed = false" in line for line in msgget[3]),
+        "message-queue native smoke does not prove caller-owned cleanup",
+    )
+
+    semget = generator.native_contract_fixture(
+        "p101_semget",
+        "c:@F@p101_semget",
+        {"type": {"qualType": "int"}},
+        4,
+    )
+    check(
+        semget is not None
+        and any("semctl(native_result, 0, IPC_RMID)" in line for line in semget[3])
+        and any("native_passed = false" in line for line in semget[3]),
+        "semaphore native smoke does not prove caller-owned cleanup",
+    )
+
+    shmget = generator.native_contract_fixture(
+        "p101_shmget",
+        "c:@F@p101_shmget",
+        {"type": {"qualType": "int"}},
+        4,
+    )
+    check(
+        shmget is not None
+        and any("shmctl(native_result, IPC_RMID" in line for line in shmget[3])
+        and any("native_passed = false" in line for line in shmget[3]),
+        "shared-memory native smoke does not prove caller-owned cleanup",
+    )
+
+
+def test_native_fixture_recovery_never_discards_cleanup_status(generator) -> None:
+    fixtures = [
+        generator.native_pointer_fixture(
+            "p101_dbm_open",
+            "c:@F@p101_dbm_open",
+            {"type": {"qualType": "DBM *"}},
+            2,
+        ),
+        generator.native_contract_fixture(
+            "p101_mkfifo",
+            "c:@F@p101_mkfifo",
+            {"type": {"qualType": "const char *"}},
+            2,
+        ),
+        generator.native_contract_fixture(
+            "p101_msgrcv",
+            "c:@F@p101_msgrcv",
+            {"type": {"qualType": "int"}},
+            2,
+        ),
+        generator.native_contract_fixture(
+            "p101_shm_open",
+            "c:@F@p101_shm_open",
+            {"type": {"qualType": "const char *"}},
+            2,
+        ),
+        generator.native_contract_fixture(
+            "p101_shmdt",
+            "c:@F@p101_shmdt",
+            {"type": {"qualType": "const void *"}},
+            2,
+        ),
+        generator.native_contract_fixture(
+            "p101_sem_open",
+            "c:@F@p101_sem_open",
+            {"type": {"qualType": "const char *"}},
+            2,
+        ),
+    ]
+    check(
+        all(fixture is not None for fixture in fixtures),
+        "native cleanup regression fixture was not generated",
+    )
+    fixture_source = "\n".join(
+        line
+        for fixture in fixtures
+        if fixture is not None
+        for section in (fixture[0], fixture[2], fixture[3])
+        for line in section
+    )
+    check(
+        re.search(
+            r"\(void\)(?:msgctl|sem_unlink|shm_unlink|shmctl|"
+            r"snprintf|unlink)\s*\(",
+            fixture_source,
+        )
+        is None,
+        "native fixture discards setup or recovery cleanup status",
+    )
+    check(
+        "strcat(" not in fixture_source
+        and all(
+            suffix in fixture_source
+            for suffix in (
+                "p101-wrapper-dbm-%ld",
+                "p101-wrapper-dbm-%ld.db",
+                "p101-wrapper-dbm-%ld.dir",
+                "p101-wrapper-dbm-%ld.pag",
+            )
+        ),
+        "DBM fixture does not clean every portable backing-file spelling",
+    )
+    helper = generator.NATIVE_CALLBACK_DEFINITIONS[
+        "native_condition_signal_thread"
+    ]
+    check(
+        "(void)pthread_" not in helper
+        and "context->status" in helper
+        and "lock_status" in helper
+        and "signal_status" in helper
+        and "unlock_status" in helper,
+        "condition helper discards a pthread coordination status",
+    )
+    wait_fixture = generator.native_contract_fixture(
+        "p101_wait",
+        "c:@F@p101_wait",
+        {"type": {"qualType": "int *"}},
+        2,
+    )
+    check(
+        wait_fixture is not None
+        and any(
+            "native_waitpid_nointr" in line
+            for line in wait_fixture[3]
+        )
+        and not any(
+            re.search(r"\bwaitpid\s*\(", line)
+            for line in wait_fixture[3]
+        ),
+        "process fixture cleanup can fail spuriously on EINTR",
+    )
+
 
 def test_checked_contract() -> None:
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
     check(
-        contract.get("schema") == "p101-wrapper-failure-contract-v1",
+        contract.get("schema") == "p101-wrapper-failure-contract-v2",
         "failure contract schema drifted",
     )
     wrappers = contract.get("wrappers", {})
     check(bool(wrappers), "failure contract is empty")
     required = {
+        "function_usr",
         "library",
         "error_domain",
         "return_kind",
@@ -568,7 +1159,8 @@ def test_checked_contract() -> None:
         )
         check(record["errno"] == "preserved", f"{name}: errno policy drifted")
         check(
-            record["fault_boundary"] == "before-observable-work",
+            record["fault_boundary"]
+            == "after-entry-trace-before-native-work",
             f"{name}: fault boundary drifted",
         )
         check(
@@ -597,7 +1189,7 @@ def test_outcome_contract() -> None:
         OUTCOME_CONTRACT_PATH.read_text(encoding="utf-8")
     )
     check(
-        contract.get("schema") == "p101-wrapper-outcome-contract-v1",
+        contract.get("schema") == "p101-wrapper-outcome-contract-v2",
         "outcome contract schema drifted",
     )
     valid = {
@@ -611,6 +1203,7 @@ def test_outcome_contract() -> None:
     apis = contract.get("apis", {})
     check(bool(apis), "outcome contract is empty")
     required = {
+        "function_usr",
         "library",
         "role",
         "accepts_error",
@@ -637,6 +1230,305 @@ def test_outcome_contract() -> None:
             )
 
 
+def test_native_smoke_contract() -> None:
+    contract = json.loads(
+        (
+            SCRIPTS_ROOT
+            / "contracts"
+            / "wrapper-native-smoke-contract.json"
+        ).read_text(encoding="utf-8")
+    )
+    check(
+        contract.get("schema")
+        == "p101-wrapper-native-smoke-contract-v2",
+        "native-smoke contract schema drifted",
+    )
+    check(
+        contract.get("default_outcome") == "success",
+        "native smokes do not require success by default",
+    )
+    exceptions = contract.get("exceptions", [])
+    check(bool(exceptions), "native-smoke exception catalog is empty")
+    exception_usrs = {
+        record.get("function_usr")
+        for record in exceptions
+        if isinstance(record, dict) and record.get("function_usr")
+    }
+    check(
+        len(exception_usrs) == len(exceptions),
+        "native-smoke exceptions lack unique semantic identities",
+    )
+    for record in exceptions:
+        name = record.get("function_usr", "?")
+        check(
+            record.get("outcome") in {"error", "success-or-error"},
+            f"{name}: invalid exception outcome",
+        )
+        check(bool(record.get("rationale")), f"{name}: missing rationale")
+        if record.get("outcome") == "error":
+            check(
+                record.get("error_domain")
+                in {"check", "errno", "system", "user"}
+                and bool(record.get("error_code")),
+                f"{name}: error outcome lacks exact evidence",
+            )
+            result_kind = record.get("result_kind")
+            check(
+                result_kind in {"equals", "text"},
+                f"{name}: error outcome lacks an exact result assertion",
+            )
+            if result_kind == "equals":
+                check(
+                    bool(record.get("result_expression")),
+                    f"{name}: equality result lacks an expression",
+                )
+            else:
+                check(
+                    isinstance(record.get("result_text"), str),
+                    f"{name}: text result lacks exact text",
+                )
+        else:
+            check(
+                bool(record.get("allowed_error_codes"))
+                and bool(record.get("error_result_expression")),
+                f"{name}: conditional outcome lacks exact evidence",
+            )
+
+
+def test_portable_input_contract() -> None:
+    contract = json.loads(
+        PORTABLE_INPUT_CONTRACT_PATH.read_text(encoding="utf-8")
+    )
+    check(
+        contract.get("schema")
+        == "p101-wrapper-portable-input-contract-v2",
+        "portable-input contract schema drifted",
+    )
+    check(
+        contract.get("supported_platforms")
+        == ["linux", "macos", "freebsd"],
+        "portable-input contract does not bind every supported platform",
+    )
+    check(
+        contract.get("default_policy") == "defer-to-native-platform",
+        "context-dependent inputs are being pre-rejected by default",
+    )
+    check(
+        contract.get("evidence_contract") == "wrapper-platform-faults.json",
+        "portable-input rules are not bound to platform-manual evidence",
+    )
+    rules = contract.get("rules", [])
+    check(bool(rules), "portable-input contract is empty")
+    rule_usrs = {
+        record.get("function_usr")
+        for record in rules
+        if isinstance(record, dict) and record.get("function_usr")
+    }
+    check(
+        len(rule_usrs) == len(rules),
+        "portable-input rules lack unique semantic identities",
+    )
+    for record in rules:
+        name = record.get("function_usr", "?")
+        check(
+            isinstance(record, dict)
+            and set(record) == {"function_usr", "constraints"},
+            f"{name}: portable-input identity record drifted",
+        )
+        entries = record["constraints"]
+        check(bool(entries), f"{name}: portable-input rules are empty")
+        for entry in entries:
+            check(
+                set(entry)
+                == {
+                    "cases",
+                    "constraint",
+                    "error_code",
+                    "evidence_platforms",
+                    "parameter_index",
+                    "type",
+                },
+                f"{name}: portable-input rule fields drifted",
+            )
+            check(
+                type(entry["parameter_index"]) is int
+                and entry["parameter_index"] >= 2
+                and bool(entry["type"])
+                and bool(entry["constraint"])
+                and bool(entry["error_code"]),
+                f"{name}: invalid portable-input rule",
+            )
+            check(
+                bool(entry["evidence_platforms"])
+                and set(entry["evidence_platforms"])
+                <= {"linux", "macos", "freebsd"},
+                f"{name}: portable-input rule lacks supported-platform evidence",
+            )
+            check(
+                bool(entry["cases"]),
+                f"{name}: portable-input rule has no executable cases",
+            )
+            for case in entry["cases"]:
+                check(
+                    case.get("input_kind")
+                    in {
+                        "catalog-failure",
+                        "catalog-zero",
+                        "negative-one",
+                        "null",
+                        "text-root-only",
+                        "text-with-extra-slash",
+                        "text-without-leading-slash",
+                    }
+                    and case.get("result_kind")
+                    in {
+                        "argument",
+                        "catalog-failure",
+                        "negative-one",
+                        "null",
+                        "pointer-failure",
+                    },
+                    f"{name}: invalid executable portable-input case",
+                )
+
+
+def test_generated_portable_rejection(generator) -> None:
+    declaration = {
+        "name": "p101_example",
+        "type": {
+            "qualType": (
+                "int (const struct p101_env *, struct p101_error *, int)"
+            )
+        },
+        "inner": [
+            {
+                "kind": "ParmVarDecl",
+                "type": {"qualType": "const struct p101_env *"},
+            },
+            {
+                "kind": "ParmVarDecl",
+                "type": {"qualType": "struct p101_error *"},
+            },
+            {
+                "kind": "ParmVarDecl",
+                "type": {"qualType": "int"},
+            },
+        ],
+    }
+    source = generator.portable_rejection_tests(
+        "p101_example",
+        declaration,
+        ["env", "err", "0"],
+        [
+            {
+                "cases": [
+                    {
+                        "input_kind": "negative-one",
+                        "result_kind": "negative-one",
+                    }
+                ],
+                "error_code": "EINVAL",
+                "parameter_index": 2,
+            }
+        ],
+    )
+    for marker in (
+        "p101_example(env, err, -1)",
+        "p101_error_is_errno(err, EINVAL)",
+        "errno == P101_TEST_ERRNO_SENTINEL",
+        "portable_result == -1",
+        "fault_resource_events == 0U",
+    ):
+        check(marker in source, f"portable rejection omits {marker}")
+
+
+def test_generated_harness_has_one_main_exit(generator) -> None:
+    declaration = {
+        "name": "p101_example",
+        "type": {
+            "qualType": (
+                "int (const struct p101_env *, struct p101_error *)"
+            )
+        },
+        "inner": [
+            {
+                "kind": "ParmVarDecl",
+                "type": {"qualType": "const struct p101_env *"},
+            },
+            {
+                "kind": "ParmVarDecl",
+                "type": {"qualType": "struct p101_error *"},
+            },
+        ],
+    }
+    source = generator.fault_source(
+        "lib_example",
+        "",
+        {"p101_example": declaration},
+        {"p101_example": "c:@F@p101_example"},
+        ["p101_example"],
+        {
+            "c:@F@p101_example": {
+                "linux": ["EIO"],
+                "macos": ["EIO"],
+                "freebsd": ["EIO"],
+                "posix": ["EIO"],
+            }
+        },
+        {
+            "c:@F@p101_example": {
+                "kind": "value",
+                "expression": "-1",
+                "error_domain": "errno",
+            }
+        },
+        {},
+        {},
+    )
+    main_source = source[source.index("int main(void)") :]
+    check("_Exit(" not in source, "generated harness bypasses main")
+    check(
+        "(void)fclose(outcome_stream)" not in source,
+        "generated harness ignores receipt cleanup",
+    )
+    check(
+        "(void)unsetenv(" not in source,
+        "generated harness ignores logging-environment setup failure",
+    )
+    check(
+        "(void)snprintf(" not in source
+        and "P101_NATIVE_FORMAT_PID_PATH_OR_SKIP" in source,
+        "generated harness ignores bounded path-formatting failure",
+    )
+    check(
+        not re.search(r"\b(?:strcat|strcpy|sprintf)\s*\(", source),
+        "generated harness uses an unbounded string operation",
+    )
+    check(
+        main_source.count("return ") == 1
+        and "return status;" in main_source,
+        "generated main has more than one exit point",
+    )
+    check(
+        "if(outcome_stream != NULL)" in source,
+        "generated receipt writer still needs an early return",
+    )
+    check(
+        "if(status == EXIT_SUCCESS && failures != 0)" in main_source,
+        "generated child can hide receipt-cleanup failure",
+    )
+    check(
+        "native_child_process = true;" in source
+        and "failures            = 0;" in source,
+        "generated child inherits unrelated parent failures",
+    )
+    check(
+        "while(result < 0 && errno == EINTR);" in source
+        and source.count("waitpid(") == 1,
+        "generated harness waits can fail spuriously on EINTR",
+    )
+
+
 def main() -> int:
     generator = load_generator()
     tests = (
@@ -645,7 +1537,10 @@ def main() -> int:
         lambda: test_function_pointer_result(generator),
         lambda: test_portable_zero_typedefs(generator),
         lambda: test_bool_result_spelling(generator),
+        lambda: test_function_selection_uses_semantic_extent(generator),
+        lambda: test_protocol_declaration_bit_selects_definitions(generator),
         lambda: test_single_exit_fault_result(generator),
+        lambda: test_single_exit_fault_result_follows_selector_value(generator),
         lambda: test_va_list_fixture_is_started(generator),
         lambda: test_public_aggregate_fixture_ignores_private_ast_alias(
             generator
@@ -654,8 +1549,19 @@ def main() -> int:
         lambda: test_fallible_wrapper_has_isolated_native_smoke(generator),
         lambda: test_fixture_roles_do_not_depend_on_parameter_names(generator),
         lambda: test_native_fixtures_use_types_and_api_positions(generator),
+        lambda: test_native_smoke_outcomes_are_asserted(generator),
+        lambda: test_native_resource_fixtures_are_live_and_cleanup_is_checked(
+            generator
+        ),
+        lambda: test_native_fixture_recovery_never_discards_cleanup_status(
+            generator
+        ),
         test_checked_contract,
         test_outcome_contract,
+        test_native_smoke_contract,
+        test_portable_input_contract,
+        lambda: test_generated_portable_rejection(generator),
+        lambda: test_generated_harness_has_one_main_exit(generator),
     )
     for test in tests:
         test()

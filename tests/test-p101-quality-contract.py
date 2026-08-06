@@ -31,12 +31,20 @@ class QualityContractTests(unittest.TestCase):
         )
 
     @staticmethod
-    def discovered(document: dict[str, object]) -> dict[tuple[str, str], list[str]]:
-        result: dict[tuple[str, str], list[str]] = {}
+    def discovered(document: dict[str, object]) -> dict[str, dict[str, object]]:
+        result: dict[str, dict[str, object]] = {}
         for row in document["typed_outcome_sets"]:  # type: ignore[index]
-            result[(row["source"], row["type"])] = list(row["variants"])
+            result[row["type_usr"]] = {
+                "source": row["source"],
+                "type": row["type"],
+                "variants": list(row["variants"]),
+            }
         for row in document["typed_outcome_exclusions"]:  # type: ignore[index]
-            result[(row["source"], row["type"])] = ["CLASSIFICATION_VALUE"]
+            result[row["type_usr"]] = {
+                "source": row["source"],
+                "type": row["type"],
+                "variants": ["CLASSIFICATION_VALUE"],
+            }
         return result
 
     def test_current_contract(self) -> None:
@@ -82,14 +90,18 @@ class QualityContractTests(unittest.TestCase):
                 / "error.h"
             )
             facts.write_text(
-                f"P101FACT\t4\tENUM\t{source}\terror\t1\t50\tp101_error_type\n"
-                f"P101FACT\t4\tENUMERATOR\t{source}\terror\t1\t52\tP101_ERROR_NONE\tp101_error_type\n",
+                f"P101FACT\t6\tENUM\t{source}\terror\t1\t50\tp101_error_type\tc:@E@p101_error_type\n"
+                f"P101FACT\t6\tENUMERATOR\t{source}\terror\t1\t52\tP101_ERROR_NONE\tp101_error_type\tc:@E@p101_error_type@P101_ERROR_NONE\tc:@E@p101_error_type\n",
                 encoding="utf-8",
             )
             observed = MODULE.discover_public_enums(facts_root)
             self.assertEqual(
-                observed[(str(source.relative_to(SCRIPTS_ROOT.parent)), "p101_error_type")],
-                ["P101_ERROR_NONE"],
+                observed["c:@E@p101_error_type"],
+                {
+                    "source": str(source.relative_to(SCRIPTS_ROOT.parent)),
+                    "type": "p101_error_type",
+                    "variants": ["P101_ERROR_NONE"],
+                },
             )
 
     def test_invalid_audit_delegation_is_rejected(self) -> None:
@@ -108,8 +120,17 @@ class QualityContractTests(unittest.TestCase):
 
     def test_non_main_exit_owner_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)
-        document["process_termination"]["allowed_owner"] = "library"
+        document["process_termination"]["allowed_caller_usr"] = "c:@F@worker"
         with self.assertRaisesRegex(MODULE.QualityContractError, "only main"):
+            MODULE.validate(document)
+
+    def test_termination_exclusion_requires_a_semantic_role(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["process_termination"]["excluded_semantic_roles"] = []
+        with self.assertRaisesRegex(
+            MODULE.QualityContractError,
+            "invalid semantic scope",
+        ):
             MODULE.validate(document)
 
     def test_platform_omission_is_rejected(self) -> None:
@@ -117,6 +138,89 @@ class QualityContractTests(unittest.TestCase):
         document["platform_evidence"]["required"].remove("freebsd")
         with self.assertRaisesRegex(MODULE.QualityContractError, "FreeBSD"):
             MODULE.validate(document)
+
+    def test_semantic_program_scans_are_repository_local(self) -> None:
+        units = MODULE.c_facts._analysis_units(  # pylint: disable=protected-access
+            SCRIPTS_ROOT.parent,
+            [SCRIPTS_ROOT.parent / "programs"],
+        )
+        by_repository = {
+            repository: set(paths) for repository, paths in units
+        }
+        doctor = (
+            SCRIPTS_ROOT.parent / "programs" / "p101-doctor"
+        ).resolve()
+        error_contract = (
+            SCRIPTS_ROOT.parent / "programs" / "p101-error-contract"
+        ).resolve()
+        self.assertIn(doctor, by_repository)
+        self.assertIn(error_contract, by_repository)
+        self.assertIn(doctor / "src", by_repository[doctor])
+        self.assertIn(doctor / "include", by_repository[doctor])
+        self.assertNotIn(
+            error_contract / "include",
+            by_repository[doctor],
+        )
+        direct_units = MODULE.c_facts._analysis_units(  # pylint: disable=protected-access
+            SCRIPTS_ROOT.parent,
+            [doctor],
+        )
+        self.assertEqual(direct_units[0][0], doctor)
+        self.assertIn(doctor / "src", direct_units[0][1])
+        self.assertIn(doctor / "test", direct_units[0][1])
+        self.assertNotIn(doctor, direct_units[0][1])
+
+    def test_semantic_scans_import_compile_database_include_roots(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="p101-quality-compile-db."
+        ) as temporary:
+            repository = Path(temporary)
+            include = repository / "include"
+            system = repository / "system"
+            quote = repository / "quote"
+            after = repository / "after"
+            command = repository / "command"
+            for path in (include, system, quote, after, command):
+                path.mkdir()
+            database = [
+                {
+                    "directory": str(repository),
+                    "arguments": [
+                        "clang",
+                        "-I",
+                        "include",
+                        f"-isystem={system}",
+                        f"-iquote{quote}",
+                        "-idirafter",
+                        str(after),
+                        "-c",
+                        "source.c",
+                    ],
+                    "file": "source.c",
+                },
+                {
+                    "directory": str(repository),
+                    "command": "clang -Icommand -c other.c",
+                    "file": "other.c",
+                },
+            ]
+            (repository / "compile_commands.json").write_text(
+                json.dumps(database),
+                encoding="utf-8",
+            )
+            roots = MODULE.c_facts._compile_database_include_roots(  # pylint: disable=protected-access
+                repository
+            )
+            self.assertEqual(
+                roots,
+                {
+                    include.resolve(),
+                    system.resolve(),
+                    quote.resolve(),
+                    after.resolve(),
+                    command.resolve(),
+                },
+            )
 
     def test_missing_limitation_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)

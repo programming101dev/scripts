@@ -18,7 +18,7 @@ PLATFORM_KEYS = {
 def load_contract(path: Path) -> dict[str, Any]:
     """Load the checked-in contract and reject an incompatible schema."""
     contract = json.loads(path.read_text(encoding="utf-8"))
-    if contract.get("schema") != "p101-wrapper-platform-faults-v1":
+    if contract.get("schema") != "p101-wrapper-platform-faults-v2":
         raise ValueError("unsupported wrapper platform-fault contract")
     return contract
 
@@ -205,3 +205,21 @@ def fault_domain(
     if function is not None and function in contract.get("system_faults", {}):
         return "system"
     return "errno"
+
+
+def fault_symbol_header(
+    contract: dict[str, Any],
+    function: str | None,
+) -> str:
+    """Return the declared header that defines this fault-code domain."""
+    if function is None:
+        return "errno.h"
+    system_record = contract.get("system_faults", {}).get(function)
+    if system_record is None:
+        return "errno.h"
+    header = system_record.get("symbol_header")
+    if not isinstance(header, str) or not header:
+        raise ValueError(
+            f"system fault contract for {function} has no symbol_header"
+        )
+    return header

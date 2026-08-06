@@ -1,45 +1,53 @@
 {
-  "schema": "p101-wrapper-fault-semantics-v1",
+  "schema": "p101-wrapper-fault-semantics-v3",
+  "mechanism": {
+    "hard_selector_usr": "c:@F@p101_env_check_fault",
+    "action_selector_usr": "c:@F@p101_env_check_fault_action",
+    "action_recorder_usr": "c:@F@p101_env_record_fault_action",
+    "entry_trace_usr": "c:@F@p101_env_trace"
+  },
   "modes": {
     "error": {
-      "kind": "P101_ENV_FAULT_ERROR",
+      "kind_usr": "c:@EA@p101_env_fault_kind@P101_ENV_FAULT_ERROR",
       "phase": "before-call",
       "disposition": "retry-safe",
       "operation_effect": "not-dispatched",
       "retry_rule": "retry-may-be-considered-by-caller",
-      "supported_wrappers": "all-fault-capable"
+      "supported_wrapper_usrs": "all-fault-capable"
     },
     "eintr": {
-      "kind": "P101_ENV_FAULT_ERROR",
+      "kind_usr": "c:@EA@p101_env_fault_kind@P101_ENV_FAULT_ERROR",
       "phase": "before-call",
       "disposition": "retry-safe",
       "operation_effect": "not-dispatched",
       "retry_rule": "retry-may-be-considered-by-caller",
-      "supported_wrappers": "all-fault-capable"
+      "supported_wrapper_usrs": "all-fault-capable"
     },
     "timeout": {
-      "kind": "P101_ENV_FAULT_ERROR",
+      "kind_usr": "c:@EA@p101_env_fault_kind@P101_ENV_FAULT_ERROR",
       "phase": "before-call",
       "disposition": "retry-safe",
       "operation_effect": "not-dispatched",
       "retry_rule": "retry-may-be-considered-by-caller",
-      "supported_wrappers": "all-fault-capable"
+      "supported_wrapper_usrs": "all-fault-capable"
     },
     "short": {
-      "kind": "P101_ENV_FAULT_SHORT",
+      "kind_usr": "c:@EA@p101_env_fault_kind@P101_ENV_FAULT_SHORT",
       "phase": "after-partial-progress",
       "disposition": "progress-known",
       "operation_effect": "bounded-operation-completed",
       "retry_rule": "retry-only-the-known-remainder",
-      "supported_wrappers": ["p101_pread", "p101_pwrite", "p101_read", "p101_write"]
+      "supported_wrapper_usrs": ["c:@F@p101_pread", "c:@F@p101_pwrite", "c:@F@p101_read", "c:@F@p101_write"]
     },
     "uncertain": {
-      "kind": "P101_ENV_FAULT_UNCERTAIN",
+      "kind_usr": "c:@EA@p101_env_fault_kind@P101_ENV_FAULT_UNCERTAIN",
       "phase": "after-dispatch",
       "disposition": "outcome-uncertain",
       "operation_effect": "operation-completed-successfully-but-result-hidden",
       "retry_rule": "automatic-retry-forbidden",
-      "supported_wrappers": ["p101_pread", "p101_pwrite", "p101_read", "p101_write"]
+      "supported_wrapper_usrs": ["c:@F@p101_pread", "c:@F@p101_pwrite", "c:@F@p101_read", "c:@F@p101_write"],
+      "evidence_role": "p101:fault-semantics:uncertain-native-effect",
+      "evidence_wrapper_usr": "c:@F@p101_write"
     }
   },
   "evidence": {

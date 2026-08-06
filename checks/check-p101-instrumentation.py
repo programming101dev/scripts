@@ -29,15 +29,18 @@ def compile_database(repo: Path) -> Path | None:
     return next((path for path in candidates if path.is_file()), None)
 
 
-def api_manifest_functions(repo: Path) -> dict[str, str]:
+def api_manifest_functions(repo: Path) -> dict[str, dict[str, str]]:
     path = repo / "api-manifest.tsv"
     if not path.is_file():
         return {}
     with path.open(encoding="utf-8") as stream:
         return {
-            row["function"]: row.get("current_source", "")
+            row["function_usr"]: {
+                "function": row["function"],
+                "source": row.get("current_source", ""),
+            }
             for row in csv.DictReader(stream, delimiter="\t")
-            if row.get("function", "")
+            if row.get("function", "") and row.get("function_usr", "")
         }
 
 
@@ -66,8 +69,8 @@ def main() -> int:
     audit = workspace / "programs" / "p101-wrapper-audit" / "p101-wrapper-audit"
     facts_cache_tool = workspace / "scripts" / "checks" / "p101-facts-cache.py"
     contract = json.loads(args.contract.read_text(encoding="utf-8"))
-    if contract.get("schema") != "p101-instrumentation-contract-v2":
-        print("FAIL: instrumentation contract must use schema p101-instrumentation-contract-v2")
+    if contract.get("schema") != "p101-instrumentation-contract-v3":
+        print("FAIL: instrumentation contract must use schema p101-instrumentation-contract-v3")
         return 2
 
     required: dict[str, list[str]] = contract["required"]
@@ -177,7 +180,14 @@ def main() -> int:
                     continue
                 record["library"] = name
                 record["library_role"] = role
-                observed.setdefault(str(record["function"]), []).append(record)
+                usr = str(record.get("usr", ""))
+                if not usr:
+                    failures.append(
+                        f"{repo.name}:{record['function']}: instrumentation "
+                        "record has no declaration identity"
+                    )
+                    continue
+                observed.setdefault(usr, []).append(record)
 
     for library, repo in sorted(libraries.items()):
         if library_roles.get(library) == "infrastructure":
@@ -188,49 +198,59 @@ def main() -> int:
             continue
         expected = set(manifest)
         actual = {
-            name
-            for name, records in observed.items()
+            usr
+            for usr, records in observed.items()
             if any(record["library"] == library for record in records)
         }
-        for name in sorted(actual - expected):
-            failures.append(f"{library}:{name}: public API is absent from api-manifest.tsv")
-        for name in sorted(expected - actual):
-            failures.append(f"{library}:{name}: API manifest entry has no public definition on this platform")
-        for name in sorted(expected & actual):
-            expected_path = str((workspace / manifest[name]).resolve())
+        for usr in sorted(actual - expected):
+            failures.append(f"{library}:{usr}: public API is absent from api-manifest.tsv")
+        for usr in sorted(expected - actual):
+            failures.append(f"{library}:{usr}: API manifest entry has no public definition on this platform")
+        for usr in sorted(expected & actual):
+            expected_path = str((workspace / manifest[usr]["source"]).resolve())
             actual_paths = {
                 str(record["path"])
-                for record in observed[name]
+                for record in observed[usr]
                 if record["library"] == library
             }
             if expected_path not in actual_paths:
                 failures.append(
-                    f"{library}:{name}: manifest source {manifest[name]!r} "
+                    f"{library}:{manifest[usr]['function']}: manifest source "
+                    f"{manifest[usr]['source']!r} "
                     f"does not match {', '.join(sorted(actual_paths))}"
                 )
 
-    for name, records in sorted(observed.items()):
+    for usr, records in sorted(observed.items()):
         for record in records:
             if record["has_env"] and (not record["trace_entry"] or not record["trace_exit"]):
-                failures.append(f"{record['path']}:{record['line']}: {name} lacks balanced entry/exit tracing")
+                failures.append(f"{record['path']}:{record['line']}: {record['function']} ({usr}) lacks balanced entry/exit tracing")
             if record["library_role"] == "native-wrapper" and record["has_error"] and not record["fault"]:
-                failures.append(f"{record['path']}:{record['line']}: {name} has an error contract but no fault-injection point")
+                failures.append(f"{record['path']}:{record['line']}: {record['function']} ({usr}) has an error contract but no fault-injection point")
 
-    for name, capabilities in sorted(required.items()):
-        records = observed.get(name, [])
+    for usr, requirement in sorted(required.items()):
+        if not isinstance(requirement, dict):
+            failures.append(f"contract: {usr} has an invalid requirement")
+            continue
+        display_name = str(requirement.get("function", usr))
+        capabilities = requirement.get("capabilities", [])
+        if not isinstance(capabilities, list):
+            failures.append(f"contract: {usr} has invalid capabilities")
+            continue
+        records = observed.get(usr, [])
         if not records:
-            failures.append(f"contract: required wrapper {name} was not found")
+            failures.append(f"contract: required wrapper {display_name} ({usr}) was not found")
             continue
         if any(record["library_role"] != "native-wrapper" for record in records):
-            failures.append(f"contract: required wrapper {name} is not owned by a native-wrapper library")
+            failures.append(f"contract: required wrapper {display_name} ({usr}) is not owned by a native-wrapper library")
         for capability in capabilities:
             if capability not in {"fault", "fd", "allocation", "resource"}:
-                failures.append(f"contract: {name} names unknown capability {capability}")
+                failures.append(f"contract: {usr} names unknown capability {capability}")
                 continue
             for record in records:
                 if not bool(record.get(capability)):
                     failures.append(
-                        f"{record['path']}:{record['line']}: contract requires {name} to provide {capability} instrumentation"
+                        f"{record['path']}:{record['line']}: contract requires "
+                        f"{display_name} ({usr}) to provide {capability} instrumentation"
                     )
 
     print(f"instrumented wrapper functions: {sum(len(items) for items in observed.values())}")
@@ -244,7 +264,7 @@ def main() -> int:
         "classified_libraries": sorted(library_roles),
         "functions": sorted(
             {
-                f"{record['library']}:{record['path']}:{record['line']}:{record['function']}"
+                f"{record['library']}:{record['path']}:{record['line']}:{record['usr']}"
                 for records in observed.values()
                 for record in records
             }
@@ -254,6 +274,7 @@ def main() -> int:
                 {
                     "library": record["library"],
                     "function": record["function"],
+                    "usr": record["usr"],
                     "has_env": bool(record["has_env"]),
                     "has_error": bool(record["has_error"]),
                     "trace_entry": bool(record["trace_entry"]),
@@ -266,7 +287,7 @@ def main() -> int:
                 for records in observed.values()
                 for record in records
             ),
-            key=lambda item: (str(item["library"]), str(item["function"])),
+            key=lambda item: (str(item["library"]), str(item["usr"])),
         ),
         "explicit_capability_contracts": len(required),
         "failures": failures,

@@ -1,0 +1,161 @@
+{
+  "default_outcome": "success",
+  "exceptions": [
+    {
+      "allowed_error_codes": [
+        "ENOENT"
+      ],
+      "error_result_expression": "-1",
+      "outcome": "success-or-error",
+      "rationale": "No portable ethers database entry is guaranteed to exist; success is accepted when the host provides one, while the documented missing-entry result is reported otherwise.",
+      "function_usr": "c:@F@p101_ether_hostton"
+    },
+    {
+      "allowed_error_codes": [
+        "ENOENT"
+      ],
+      "error_result_expression": "-1",
+      "outcome": "success-or-error",
+      "rationale": "No portable ethers database entry is guaranteed to exist; success is accepted when the host provides one, while the documented missing-entry result is reported otherwise.",
+      "function_usr": "c:@F@p101_ether_ntohost"
+    },
+    {
+      "error_code": "EINVAL",
+      "error_domain": "errno",
+      "outcome": "error",
+      "rationale": "The native smoke supplies a zeroed inactive AIO control block and verifies that the wrapper reports the operating system's rejection.",
+      "result_expression": "-1",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_aio_read"
+    },
+    {
+      "error_code": "EINVAL",
+      "error_domain": "errno",
+      "outcome": "error",
+      "rationale": "aio_return requires a completed request whose result has not already been collected; the smoke verifies rejection of an inactive control block.",
+      "result_expression": "-1",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_aio_return"
+    },
+    {
+      "error_code": "EINVAL",
+      "error_domain": "errno",
+      "outcome": "error",
+      "rationale": "The zero-entry list is a bounded deterministic native rejection and avoids manufacturing an asynchronous request with timing-dependent completion.",
+      "result_expression": "-1",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_aio_suspend"
+    },
+    {
+      "error_code": "EINVAL",
+      "error_domain": "errno",
+      "outcome": "error",
+      "rationale": "The native smoke supplies a zeroed inactive AIO control block and verifies that the wrapper reports the operating system's rejection.",
+      "result_expression": "-1",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_aio_write"
+    },
+    {
+      "error_code": "-1",
+      "error_domain": "check",
+      "outcome": "error",
+      "rationale": "A zeroed analysis options object and missing observer are deliberately invalid; the native smoke verifies the wrapper's deterministic defensive rejection.",
+      "result_expression": "false",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_c_analysis_scan"
+    },
+    {
+      "error_code": "-1",
+      "error_domain": "check",
+      "outcome": "error",
+      "rationale": "A zero-sized output buffer is deliberately invalid; the native smoke verifies the wrapper's deterministic defensive rejection.",
+      "result_expression": "false",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_c_facts_find_clang_compile_database"
+    },
+    {
+      "error_code": "EBADF",
+      "error_domain": "errno",
+      "outcome": "error",
+      "rationale": "A zero message-catalog descriptor is safely detectable and must be rejected before libc can dereference it.",
+      "result_expression": "-1",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_catclose"
+    },
+    {
+      "error_code": "EBADF",
+      "error_domain": "errno",
+      "outcome": "error",
+      "rationale": "A zero message-catalog descriptor is safely detectable; the wrapper reports EBADF and returns the caller's fallback text.",
+      "result_kind": "text",
+      "result_text": "p101",
+      "function_usr": "c:@F@p101_catgets"
+    },
+    {
+      "error_code": "ENOENT",
+      "error_domain": "errno",
+      "outcome": "error",
+      "rationale": "No portable message catalog is guaranteed to exist; the smoke uses a deliberately absent catalog and verifies the ordinary ENOENT path.",
+      "result_expression": "(nl_catd)-1",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_catopen"
+    },
+    {
+      "error_code": "EINVAL",
+      "error_domain": "errno",
+      "outcome": "error",
+      "rationale": "The smoke uses an empty list and verifies its deterministic rejection rather than creating timing-dependent asynchronous I/O.",
+      "result_expression": "-1",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_lio_listio"
+    },
+    {
+      "allowed_error_codes": [
+        "EACCES",
+        "EPERM"
+      ],
+      "error_result_expression": "-1",
+      "outcome": "success-or-error",
+      "rationale": "Changing niceness is host-policy dependent even in a subprocess; success is preferred, while only the documented permission refusals are accepted.",
+      "function_usr": "c:@F@p101_nice"
+    },
+    {
+      "error_code": "EINTR",
+      "error_domain": "errno",
+      "outcome": "error",
+      "rationale": "The bounded native smoke wakes pause with SIGALRM; POSIX therefore requires an EINTR failure result.",
+      "result_expression": "-1",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_pause"
+    },
+    {
+      "error_code": "EINVAL",
+      "error_domain": "errno",
+      "outcome": "error",
+      "rationale": "The smoke uses the invalid resource value -1 so it cannot mutate the process limits; the wrapper rejects it before dispatch.",
+      "result_expression": "-1",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_setrlimit"
+    },
+    {
+      "allowed_error_codes": [
+        "EACCES",
+        "EPERM"
+      ],
+      "error_result_expression": "-1",
+      "outcome": "success-or-error",
+      "rationale": "Changing process priority is host-policy dependent even when lowering priority; success is preferred, while only documented permission refusals are accepted.",
+      "function_usr": "c:@F@p101_setpriority"
+    },
+    {
+      "error_code": "EINTR",
+      "error_domain": "errno",
+      "outcome": "error",
+      "rationale": "The bounded native smoke wakes sigsuspend with SIGALRM; POSIX therefore requires an EINTR failure result.",
+      "result_expression": "-1",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_sigsuspend"
+    }
+  ],
+  "schema": "p101-wrapper-native-smoke-contract-v2"
+}

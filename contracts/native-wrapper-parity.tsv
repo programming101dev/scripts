@@ -1,70 +1,70 @@
-library	wrapper	native	test_source
-lib_c	p101_isalnum	isalnum	test/test_behavior.c
-lib_c	p101_isalpha	isalpha	test/test_behavior.c
-lib_c	p101_isblank	isblank	test/test_behavior.c
-lib_c	p101_iscntrl	iscntrl	test/test_behavior.c
-lib_c	p101_isdigit	isdigit	test/test_behavior.c
-lib_c	p101_isgraph	isgraph	test/test_behavior.c
-lib_c	p101_islower	islower	test/test_behavior.c
-lib_c	p101_isprint	isprint	test/test_behavior.c
-lib_c	p101_ispunct	ispunct	test/test_behavior.c
-lib_c	p101_isspace	isspace	test/test_behavior.c
-lib_c	p101_isupper	isupper	test/test_behavior.c
-lib_c	p101_isxdigit	isxdigit	test/test_behavior.c
-lib_c	p101_iswalnum	iswalnum	test/test_behavior.c
-lib_c	p101_iswalpha	iswalpha	test/test_behavior.c
-lib_c	p101_iswblank	iswblank	test/test_behavior.c
-lib_c	p101_iswcntrl	iswcntrl	test/test_behavior.c
-lib_c	p101_iswdigit	iswdigit	test/test_behavior.c
-lib_c	p101_iswgraph	iswgraph	test/test_behavior.c
-lib_c	p101_iswlower	iswlower	test/test_behavior.c
-lib_c	p101_iswprint	iswprint	test/test_behavior.c
-lib_c	p101_iswpunct	iswpunct	test/test_behavior.c
-lib_c	p101_iswspace	iswspace	test/test_behavior.c
-lib_c	p101_iswupper	iswupper	test/test_behavior.c
-lib_c	p101_iswxdigit	iswxdigit	test/test_behavior.c
-lib_c	p101_fetestexcept	fetestexcept	test/test_behavior.c
-lib_identity	p101_getuid	getuid	test/test_behavior.c
-lib_identity	p101_geteuid	geteuid	test/test_behavior.c
-lib_identity	p101_getgid	getgid	test/test_behavior.c
-lib_identity	p101_getegid	getegid	test/test_behavior.c
-lib_network	p101_htonl	htonl	test/test_behavior.c
-lib_network	p101_htons	htons	test/test_behavior.c
-lib_network	p101_inet_lnaof	inet_lnaof	test/test_behavior.c
-lib_network	p101_inet_netof	inet_netof	test/test_behavior.c
-lib_process	p101_getpid	getpid	test/test_behavior.c
-lib_process	p101_getppid	getppid	test/test_behavior.c
-lib_process	p101_getpgrp	getpgrp	test/test_behavior.c
-lib_terminal	p101_cfgetispeed	cfgetispeed	test/test_behavior.c
-lib_terminal	p101_cfgetospeed	cfgetospeed	test/test_behavior.c
-lib_text	p101_isalnum_l	isalnum_l	test/test_behavior.c
-lib_text	p101_isalpha_l	isalpha_l	test/test_behavior.c
-lib_text	p101_isblank_l	isblank_l	test/test_behavior.c
-lib_text	p101_iscntrl_l	iscntrl_l	test/test_behavior.c
-lib_text	p101_isdigit_l	isdigit_l	test/test_behavior.c
-lib_text	p101_isgraph_l	isgraph_l	test/test_behavior.c
-lib_text	p101_islower_l	islower_l	test/test_behavior.c
-lib_text	p101_isprint_l	isprint_l	test/test_behavior.c
-lib_text	p101_ispunct_l	ispunct_l	test/test_behavior.c
-lib_text	p101_isspace_l	isspace_l	test/test_behavior.c
-lib_text	p101_isupper_l	isupper_l	test/test_behavior.c
-lib_text	p101_isxdigit_l	isxdigit_l	test/test_behavior.c
-lib_text	p101_tolower_l	tolower_l	test/test_behavior.c
-lib_text	p101_toupper_l	toupper_l	test/test_behavior.c
-lib_text	p101_iswalnum_l	iswalnum_l	test/test_behavior.c
-lib_text	p101_iswalpha_l	iswalpha_l	test/test_behavior.c
-lib_text	p101_iswblank_l	iswblank_l	test/test_behavior.c
-lib_text	p101_iswcntrl_l	iswcntrl_l	test/test_behavior.c
-lib_text	p101_iswdigit_l	iswdigit_l	test/test_behavior.c
-lib_text	p101_iswgraph_l	iswgraph_l	test/test_behavior.c
-lib_text	p101_iswlower_l	iswlower_l	test/test_behavior.c
-lib_text	p101_iswprint_l	iswprint_l	test/test_behavior.c
-lib_text	p101_iswpunct_l	iswpunct_l	test/test_behavior.c
-lib_text	p101_iswspace_l	iswspace_l	test/test_behavior.c
-lib_text	p101_iswupper_l	iswupper_l	test/test_behavior.c
-lib_text	p101_iswxdigit_l	iswxdigit_l	test/test_behavior.c
-lib_text	p101_towctrans_l	towctrans_l	test/test_behavior.c
-lib_text	p101_towlower_l	towlower_l	test/test_behavior.c
-lib_text	p101_towupper_l	towupper_l	test/test_behavior.c
-lib_text	p101_a64l	a64l	test/test_behavior.c
-lib_text	p101_rpmatch	rpmatch	test/test_behavior.c
+library	wrapper	native	test_source	wrapper_usr	native_usr
+lib_c	p101_isalnum	isalnum	test/test_behavior.c	c:@F@p101_isalnum	c:@F@isalnum
+lib_c	p101_isalpha	isalpha	test/test_behavior.c	c:@F@p101_isalpha	c:@F@isalpha
+lib_c	p101_isblank	isblank	test/test_behavior.c	c:@F@p101_isblank	c:@F@isblank
+lib_c	p101_iscntrl	iscntrl	test/test_behavior.c	c:@F@p101_iscntrl	c:@F@iscntrl
+lib_c	p101_isdigit	isdigit	test/test_behavior.c	c:@F@p101_isdigit	c:@F@isdigit
+lib_c	p101_isgraph	isgraph	test/test_behavior.c	c:@F@p101_isgraph	c:@F@isgraph
+lib_c	p101_islower	islower	test/test_behavior.c	c:@F@p101_islower	c:@F@islower
+lib_c	p101_isprint	isprint	test/test_behavior.c	c:@F@p101_isprint	c:@F@isprint
+lib_c	p101_ispunct	ispunct	test/test_behavior.c	c:@F@p101_ispunct	c:@F@ispunct
+lib_c	p101_isspace	isspace	test/test_behavior.c	c:@F@p101_isspace	c:@F@isspace
+lib_c	p101_isupper	isupper	test/test_behavior.c	c:@F@p101_isupper	c:@F@isupper
+lib_c	p101_isxdigit	isxdigit	test/test_behavior.c	c:@F@p101_isxdigit	c:@F@isxdigit
+lib_c	p101_iswalnum	iswalnum	test/test_behavior.c	c:@F@p101_iswalnum	c:@F@iswalnum
+lib_c	p101_iswalpha	iswalpha	test/test_behavior.c	c:@F@p101_iswalpha	c:@F@iswalpha
+lib_c	p101_iswblank	iswblank	test/test_behavior.c	c:@F@p101_iswblank	c:@F@iswblank
+lib_c	p101_iswcntrl	iswcntrl	test/test_behavior.c	c:@F@p101_iswcntrl	c:@F@iswcntrl
+lib_c	p101_iswdigit	iswdigit	test/test_behavior.c	c:@F@p101_iswdigit	c:@F@iswdigit
+lib_c	p101_iswgraph	iswgraph	test/test_behavior.c	c:@F@p101_iswgraph	c:@F@iswgraph
+lib_c	p101_iswlower	iswlower	test/test_behavior.c	c:@F@p101_iswlower	c:@F@iswlower
+lib_c	p101_iswprint	iswprint	test/test_behavior.c	c:@F@p101_iswprint	c:@F@iswprint
+lib_c	p101_iswpunct	iswpunct	test/test_behavior.c	c:@F@p101_iswpunct	c:@F@iswpunct
+lib_c	p101_iswspace	iswspace	test/test_behavior.c	c:@F@p101_iswspace	c:@F@iswspace
+lib_c	p101_iswupper	iswupper	test/test_behavior.c	c:@F@p101_iswupper	c:@F@iswupper
+lib_c	p101_iswxdigit	iswxdigit	test/test_behavior.c	c:@F@p101_iswxdigit	c:@F@iswxdigit
+lib_c	p101_fetestexcept	fetestexcept	test/test_behavior.c	c:@F@p101_fetestexcept	c:@F@fetestexcept
+lib_identity	p101_getuid	getuid	test/test_behavior.c	c:@F@p101_getuid	c:@F@getuid
+lib_identity	p101_geteuid	geteuid	test/test_behavior.c	c:@F@p101_geteuid	c:@F@geteuid
+lib_identity	p101_getgid	getgid	test/test_behavior.c	c:@F@p101_getgid	c:@F@getgid
+lib_identity	p101_getegid	getegid	test/test_behavior.c	c:@F@p101_getegid	c:@F@getegid
+lib_network	p101_htonl	htonl	test/test_behavior.c	c:@F@p101_htonl	c:@F@htonl
+lib_network	p101_htons	htons	test/test_behavior.c	c:@F@p101_htons	c:@F@htons
+lib_network	p101_inet_lnaof	inet_lnaof	test/test_behavior.c	c:@F@p101_inet_lnaof	c:@F@inet_lnaof
+lib_network	p101_inet_netof	inet_netof	test/test_behavior.c	c:@F@p101_inet_netof	c:@F@inet_netof
+lib_process	p101_getpid	getpid	test/test_behavior.c	c:@F@p101_getpid	c:@F@getpid
+lib_process	p101_getppid	getppid	test/test_behavior.c	c:@F@p101_getppid	c:@F@getppid
+lib_process	p101_getpgrp	getpgrp	test/test_behavior.c	c:@F@p101_getpgrp	c:@F@getpgrp
+lib_terminal	p101_cfgetispeed	cfgetispeed	test/test_behavior.c	c:@F@p101_cfgetispeed	c:@F@cfgetispeed
+lib_terminal	p101_cfgetospeed	cfgetospeed	test/test_behavior.c	c:@F@p101_cfgetospeed	c:@F@cfgetospeed
+lib_text	p101_isalnum_l	isalnum_l	test/test_behavior.c	c:@F@p101_isalnum_l	c:@F@isalnum_l
+lib_text	p101_isalpha_l	isalpha_l	test/test_behavior.c	c:@F@p101_isalpha_l	c:@F@isalpha_l
+lib_text	p101_isblank_l	isblank_l	test/test_behavior.c	c:@F@p101_isblank_l	c:@F@isblank_l
+lib_text	p101_iscntrl_l	iscntrl_l	test/test_behavior.c	c:@F@p101_iscntrl_l	c:@F@iscntrl_l
+lib_text	p101_isdigit_l	isdigit_l	test/test_behavior.c	c:@F@p101_isdigit_l	c:@F@isdigit_l
+lib_text	p101_isgraph_l	isgraph_l	test/test_behavior.c	c:@F@p101_isgraph_l	c:@F@isgraph_l
+lib_text	p101_islower_l	islower_l	test/test_behavior.c	c:@F@p101_islower_l	c:@F@islower_l
+lib_text	p101_isprint_l	isprint_l	test/test_behavior.c	c:@F@p101_isprint_l	c:@F@isprint_l
+lib_text	p101_ispunct_l	ispunct_l	test/test_behavior.c	c:@F@p101_ispunct_l	c:@F@ispunct_l
+lib_text	p101_isspace_l	isspace_l	test/test_behavior.c	c:@F@p101_isspace_l	c:@F@isspace_l
+lib_text	p101_isupper_l	isupper_l	test/test_behavior.c	c:@F@p101_isupper_l	c:@F@isupper_l
+lib_text	p101_isxdigit_l	isxdigit_l	test/test_behavior.c	c:@F@p101_isxdigit_l	c:@F@isxdigit_l
+lib_text	p101_tolower_l	tolower_l	test/test_behavior.c	c:@F@p101_tolower_l	c:@F@tolower_l
+lib_text	p101_toupper_l	toupper_l	test/test_behavior.c	c:@F@p101_toupper_l	c:@F@toupper_l
+lib_text	p101_iswalnum_l	iswalnum_l	test/test_behavior.c	c:@F@p101_iswalnum_l	c:@F@iswalnum_l
+lib_text	p101_iswalpha_l	iswalpha_l	test/test_behavior.c	c:@F@p101_iswalpha_l	c:@F@iswalpha_l
+lib_text	p101_iswblank_l	iswblank_l	test/test_behavior.c	c:@F@p101_iswblank_l	c:@F@iswblank_l
+lib_text	p101_iswcntrl_l	iswcntrl_l	test/test_behavior.c	c:@F@p101_iswcntrl_l	c:@F@iswcntrl_l
+lib_text	p101_iswdigit_l	iswdigit_l	test/test_behavior.c	c:@F@p101_iswdigit_l	c:@F@iswdigit_l
+lib_text	p101_iswgraph_l	iswgraph_l	test/test_behavior.c	c:@F@p101_iswgraph_l	c:@F@iswgraph_l
+lib_text	p101_iswlower_l	iswlower_l	test/test_behavior.c	c:@F@p101_iswlower_l	c:@F@iswlower_l
+lib_text	p101_iswprint_l	iswprint_l	test/test_behavior.c	c:@F@p101_iswprint_l	c:@F@iswprint_l
+lib_text	p101_iswpunct_l	iswpunct_l	test/test_behavior.c	c:@F@p101_iswpunct_l	c:@F@iswpunct_l
+lib_text	p101_iswspace_l	iswspace_l	test/test_behavior.c	c:@F@p101_iswspace_l	c:@F@iswspace_l
+lib_text	p101_iswupper_l	iswupper_l	test/test_behavior.c	c:@F@p101_iswupper_l	c:@F@iswupper_l
+lib_text	p101_iswxdigit_l	iswxdigit_l	test/test_behavior.c	c:@F@p101_iswxdigit_l	c:@F@iswxdigit_l
+lib_text	p101_towctrans_l	towctrans_l	test/test_behavior.c	c:@F@p101_towctrans_l	c:@F@towctrans_l
+lib_text	p101_towlower_l	towlower_l	test/test_behavior.c	c:@F@p101_towlower_l	c:@F@towlower_l
+lib_text	p101_towupper_l	towupper_l	test/test_behavior.c	c:@F@p101_towupper_l	c:@F@towupper_l
+lib_text	p101_a64l	a64l	test/test_behavior.c	c:@F@p101_a64l	c:@F@a64l
+lib_text	p101_rpmatch	rpmatch	test/test_behavior.c	c:@F@p101_rpmatch	c:@F@rpmatch

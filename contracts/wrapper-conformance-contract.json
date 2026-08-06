@@ -1,5 +1,5 @@
 {
-  "schema": "p101-wrapper-conformance-contract-v3",
+  "schema": "p101-wrapper-conformance-contract-v4",
   "public_api": {
     "require_unit_invocation": true,
     "require_balanced_runtime_trace": true,
@@ -9,15 +9,17 @@
     "require_declared_resource_instrumentation": true
   },
   "logging": {
-    "arguments_required": [],
-    "results_required": []
+    "argument_wrapper_usrs": [],
+    "result_wrapper_usrs": []
   },
   "lifecycle_contract": "wrapper-lifecycle-contract.json",
+  "native_smoke_contract": "wrapper-native-smoke-contract.json",
   "platform_fault_contract": "wrapper-platform-faults.json",
+  "portable_input_contract": "wrapper-portable-input-contract.json",
   "blind_spots": [
     "Third-party and direct libc calls do not emit p101 events.",
     "Argument and result text is required only for wrappers explicitly listed by this contract.",
-    "An isolated native smoke proves that the wrapper reached and returned from its native path without crashing or blocking; it does not prove every native success result or side effect.",
+    "An isolated native smoke proves the declared success or reviewed failure outcome for one deterministic fixture; it does not prove every native result or side effect.",
     "Native and wrapper behavior is compared only by lifecycle scenarios with deterministic fixtures."
   ]
 }

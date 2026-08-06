@@ -1,5 +1,5 @@
 {
-  "schema": "p101-instrumentation-contract-v2",
+  "schema": "p101-instrumentation-contract-v3",
   "library_roles": {
     "lib_c": "native-wrapper",
     "lib_c_facts": "traced-api",
@@ -32,96 +32,559 @@
     "lib_util": "traced-api"
   },
   "required": {
-    "p101_accept": ["fd"],
-    "p101_calloc": ["allocation"],
-    "p101_close": ["fd"],
-    "p101_closedir": ["fd", "resource"],
-    "p101_closelog": ["resource"],
-    "p101_creat": ["fd"],
-    "p101_dbm_close": ["resource"],
-    "p101_dbm_open": ["resource"],
-    "p101_dlclose": ["resource"],
-    "p101_dlopen": ["resource"],
-    "p101_dup": ["fd"],
-    "p101_dup2": ["fd"],
-    "p101_duplocale": ["resource"],
-    "p101_fdopendir": ["resource"],
-    "p101_fclose": ["fd", "resource"],
-    "p101_fdopen": ["resource"],
-    "p101_fmemopen": ["resource"],
-    "p101_fork": ["fd"],
-    "p101_fopen": ["fd", "resource"],
-    "p101_free": ["allocation"],
-    "p101_freeaddrinfo": ["resource"],
-    "p101_freeifaddrs": ["allocation"],
-    "p101_freelocale": ["resource"],
-    "p101_freopen": ["fd", "resource"],
-    "p101_getaddrinfo": ["resource"],
-    "p101_getifaddrs": ["allocation"],
-    "p101_glob": ["resource"],
-    "p101_globfree": ["resource"],
-    "p101_hcreate": ["resource"],
-    "p101_hdestroy": ["resource"],
-    "p101_iconv_close": ["resource"],
-    "p101_iconv_open": ["resource"],
-    "p101_if_freenameindex": ["resource"],
-    "p101_if_nameindex": ["resource"],
-    "p101_malloc": ["allocation"],
-    "p101_mmap": ["resource"],
-    "p101_msgctl": ["resource"],
-    "p101_msgget": ["resource"],
-    "p101_munmap": ["resource"],
-    "p101_newlocale": ["resource"],
-    "p101_open": ["fd"],
-    "p101_open_memstream": ["resource"],
-    "p101_open_wmemstream": ["resource"],
-    "p101_openlog": ["resource"],
-    "p101_openat": ["fd"],
-    "p101_opendir": ["fd", "resource"],
-    "p101_pclose": ["fd", "resource"],
-    "p101_pipe": ["fd"],
-    "p101_popen": ["fd", "resource"],
-    "p101_posix_spawn": ["fd"],
-    "p101_posix_spawn_file_actions_destroy": ["resource"],
-    "p101_posix_spawn_file_actions_init": ["resource"],
-    "p101_posix_spawnattr_destroy": ["resource"],
-    "p101_posix_spawnattr_init": ["resource"],
-    "p101_pread": ["fault"],
-    "p101_pthread_attr_destroy": ["resource"],
-    "p101_pthread_attr_init": ["resource"],
-    "p101_pthread_cond_destroy": ["resource"],
-    "p101_pthread_cond_init": ["resource"],
-    "p101_pthread_condattr_destroy": ["resource"],
-    "p101_pthread_condattr_init": ["resource"],
-    "p101_pthread_create": ["resource"],
-    "p101_pthread_detach": ["resource"],
-    "p101_pthread_join": ["resource"],
-    "p101_pthread_mutex_destroy": ["resource"],
-    "p101_pthread_mutex_init": ["resource"],
-    "p101_pthread_mutexattr_destroy": ["resource"],
-    "p101_pthread_mutexattr_init": ["resource"],
-    "p101_pthread_rwlock_destroy": ["resource"],
-    "p101_pthread_rwlock_init": ["resource"],
-    "p101_pthread_rwlockattr_destroy": ["resource"],
-    "p101_pthread_rwlockattr_init": ["resource"],
-    "p101_pwrite": ["fault"],
-    "p101_read": ["fault"],
-    "p101_realloc": ["allocation"],
-    "p101_regcomp": ["resource"],
-    "p101_regfree": ["resource"],
-    "p101_sem_close": ["resource"],
-    "p101_semctl": ["resource"],
-    "p101_semget": ["resource"],
-    "p101_sem_open": ["resource"],
-    "p101_shmat": ["resource"],
-    "p101_shmctl": ["resource"],
-    "p101_shmdt": ["resource"],
-    "p101_shmget": ["resource"],
-    "p101_socket": ["fd"],
-    "p101_socketpair": ["fd"],
-    "p101_tmpfile": ["fd", "resource"],
-    "p101_wordexp": ["resource"],
-    "p101_wordfree": ["resource"],
-    "p101_write": ["fault"]
+    "c:@F@p101_accept": {
+      "function": "p101_accept",
+      "capabilities": [
+        "fd"
+      ]
+    },
+    "c:@F@p101_calloc": {
+      "function": "p101_calloc",
+      "capabilities": [
+        "allocation"
+      ]
+    },
+    "c:@F@p101_close": {
+      "function": "p101_close",
+      "capabilities": [
+        "fd"
+      ]
+    },
+    "c:@F@p101_closedir": {
+      "function": "p101_closedir",
+      "capabilities": [
+        "fd",
+        "resource"
+      ]
+    },
+    "c:@F@p101_closelog": {
+      "function": "p101_closelog",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_creat": {
+      "function": "p101_creat",
+      "capabilities": [
+        "fd"
+      ]
+    },
+    "c:@F@p101_dbm_close": {
+      "function": "p101_dbm_close",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_dbm_open": {
+      "function": "p101_dbm_open",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_dlclose": {
+      "function": "p101_dlclose",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_dlopen": {
+      "function": "p101_dlopen",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_dup": {
+      "function": "p101_dup",
+      "capabilities": [
+        "fd"
+      ]
+    },
+    "c:@F@p101_dup2": {
+      "function": "p101_dup2",
+      "capabilities": [
+        "fd"
+      ]
+    },
+    "c:@F@p101_duplocale": {
+      "function": "p101_duplocale",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_fdopendir": {
+      "function": "p101_fdopendir",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_fclose": {
+      "function": "p101_fclose",
+      "capabilities": [
+        "fd",
+        "resource"
+      ]
+    },
+    "c:@F@p101_fdopen": {
+      "function": "p101_fdopen",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_fmemopen": {
+      "function": "p101_fmemopen",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_fork": {
+      "function": "p101_fork",
+      "capabilities": [
+        "fd"
+      ]
+    },
+    "c:@F@p101_fopen": {
+      "function": "p101_fopen",
+      "capabilities": [
+        "fd",
+        "resource"
+      ]
+    },
+    "c:@F@p101_free": {
+      "function": "p101_free",
+      "capabilities": [
+        "allocation"
+      ]
+    },
+    "c:@F@p101_freeaddrinfo": {
+      "function": "p101_freeaddrinfo",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_freeifaddrs": {
+      "function": "p101_freeifaddrs",
+      "capabilities": [
+        "allocation"
+      ]
+    },
+    "c:@F@p101_freelocale": {
+      "function": "p101_freelocale",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_freopen": {
+      "function": "p101_freopen",
+      "capabilities": [
+        "fd",
+        "resource"
+      ]
+    },
+    "c:@F@p101_getaddrinfo": {
+      "function": "p101_getaddrinfo",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_getifaddrs": {
+      "function": "p101_getifaddrs",
+      "capabilities": [
+        "allocation"
+      ]
+    },
+    "c:@F@p101_glob": {
+      "function": "p101_glob",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_globfree": {
+      "function": "p101_globfree",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_hcreate": {
+      "function": "p101_hcreate",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_hdestroy": {
+      "function": "p101_hdestroy",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_iconv_close": {
+      "function": "p101_iconv_close",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_iconv_open": {
+      "function": "p101_iconv_open",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_if_freenameindex": {
+      "function": "p101_if_freenameindex",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_if_nameindex": {
+      "function": "p101_if_nameindex",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_malloc": {
+      "function": "p101_malloc",
+      "capabilities": [
+        "allocation"
+      ]
+    },
+    "c:@F@p101_mmap": {
+      "function": "p101_mmap",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_msgctl": {
+      "function": "p101_msgctl",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_msgget": {
+      "function": "p101_msgget",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_munmap": {
+      "function": "p101_munmap",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_newlocale": {
+      "function": "p101_newlocale",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_open": {
+      "function": "p101_open",
+      "capabilities": [
+        "fd"
+      ]
+    },
+    "c:@F@p101_open_memstream": {
+      "function": "p101_open_memstream",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_open_wmemstream": {
+      "function": "p101_open_wmemstream",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_openlog": {
+      "function": "p101_openlog",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_openat": {
+      "function": "p101_openat",
+      "capabilities": [
+        "fd"
+      ]
+    },
+    "c:@F@p101_opendir": {
+      "function": "p101_opendir",
+      "capabilities": [
+        "fd",
+        "resource"
+      ]
+    },
+    "c:@F@p101_pclose": {
+      "function": "p101_pclose",
+      "capabilities": [
+        "fd",
+        "resource"
+      ]
+    },
+    "c:@F@p101_pipe": {
+      "function": "p101_pipe",
+      "capabilities": [
+        "fd"
+      ]
+    },
+    "c:@F@p101_popen": {
+      "function": "p101_popen",
+      "capabilities": [
+        "fd",
+        "resource"
+      ]
+    },
+    "c:@F@p101_posix_spawn": {
+      "function": "p101_posix_spawn",
+      "capabilities": [
+        "fd"
+      ]
+    },
+    "c:@F@p101_posix_spawn_file_actions_destroy": {
+      "function": "p101_posix_spawn_file_actions_destroy",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_posix_spawn_file_actions_init": {
+      "function": "p101_posix_spawn_file_actions_init",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_posix_spawnattr_destroy": {
+      "function": "p101_posix_spawnattr_destroy",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_posix_spawnattr_init": {
+      "function": "p101_posix_spawnattr_init",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pread": {
+      "function": "p101_pread",
+      "capabilities": [
+        "fault"
+      ]
+    },
+    "c:@F@p101_pthread_attr_destroy": {
+      "function": "p101_pthread_attr_destroy",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_attr_init": {
+      "function": "p101_pthread_attr_init",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_cond_destroy": {
+      "function": "p101_pthread_cond_destroy",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_cond_init": {
+      "function": "p101_pthread_cond_init",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_condattr_destroy": {
+      "function": "p101_pthread_condattr_destroy",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_condattr_init": {
+      "function": "p101_pthread_condattr_init",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_create": {
+      "function": "p101_pthread_create",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_detach": {
+      "function": "p101_pthread_detach",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_join": {
+      "function": "p101_pthread_join",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_mutex_destroy": {
+      "function": "p101_pthread_mutex_destroy",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_mutex_init": {
+      "function": "p101_pthread_mutex_init",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_mutexattr_destroy": {
+      "function": "p101_pthread_mutexattr_destroy",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_mutexattr_init": {
+      "function": "p101_pthread_mutexattr_init",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_rwlock_destroy": {
+      "function": "p101_pthread_rwlock_destroy",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_rwlock_init": {
+      "function": "p101_pthread_rwlock_init",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_rwlockattr_destroy": {
+      "function": "p101_pthread_rwlockattr_destroy",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pthread_rwlockattr_init": {
+      "function": "p101_pthread_rwlockattr_init",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_pwrite": {
+      "function": "p101_pwrite",
+      "capabilities": [
+        "fault"
+      ]
+    },
+    "c:@F@p101_read": {
+      "function": "p101_read",
+      "capabilities": [
+        "fault"
+      ]
+    },
+    "c:@F@p101_realloc": {
+      "function": "p101_realloc",
+      "capabilities": [
+        "allocation"
+      ]
+    },
+    "c:@F@p101_regcomp": {
+      "function": "p101_regcomp",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_regfree": {
+      "function": "p101_regfree",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_sem_close": {
+      "function": "p101_sem_close",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_semctl": {
+      "function": "p101_semctl",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_semget": {
+      "function": "p101_semget",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_sem_open": {
+      "function": "p101_sem_open",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_shmat": {
+      "function": "p101_shmat",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_shmctl": {
+      "function": "p101_shmctl",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_shmdt": {
+      "function": "p101_shmdt",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_shmget": {
+      "function": "p101_shmget",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_socket": {
+      "function": "p101_socket",
+      "capabilities": [
+        "fd"
+      ]
+    },
+    "c:@F@p101_socketpair": {
+      "function": "p101_socketpair",
+      "capabilities": [
+        "fd"
+      ]
+    },
+    "c:@F@p101_tmpfile": {
+      "function": "p101_tmpfile",
+      "capabilities": [
+        "fd",
+        "resource"
+      ]
+    },
+    "c:@F@p101_wordexp": {
+      "function": "p101_wordexp",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_wordfree": {
+      "function": "p101_wordfree",
+      "capabilities": [
+        "resource"
+      ]
+    },
+    "c:@F@p101_write": {
+      "function": "p101_write",
+      "capabilities": [
+        "fault"
+      ]
+    }
   }
 }

@@ -27,7 +27,7 @@ def main() -> int:
     assert ("uncertain", "-") in keys
     assert len(keys) == len(scenarios)
 
-    selected = MODULE.build_scenarios(["open"], "macos", "lib_io")
+    selected = MODULE.build_scenarios(["p101_open"], "macos", "lib_io")
     assert selected
     assert all(item.wrapper == "p101_open" for item in selected)
     assert all(item.mode in {"error", "eintr"} for item in selected)

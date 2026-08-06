@@ -570,14 +570,44 @@ def source_owner(source_key: str, name: str) -> str:
 
 
 def current_source_path(domain: str, source_key: str) -> Path:
-    origin, _, relative = source_key.partition("/src/")
-    return (
-        LIBRARIES
-        / f"lib_{domain}"
-        / "src"
-        / origin.removeprefix("lib_")
-        / relative
+    del source_key
+    return LIBRARIES / f"lib_{domain}" / "src" / f"{domain}.c"
+
+
+def normalize_merged_source(domain: str, text: str) -> str:
+    if domain in {"filesystem", "process"}:
+        text = text.replace(
+            "#ifdef __APPLE__\n    #include <unistd.h>\n#endif",
+            "#include <unistd.h>",
+            1,
+        )
+    if domain == "text":
+        text = text.replace(
+            "#ifdef __APPLE__\n    #include <xlocale.h>\n#endif",
+            "#if defined(__APPLE__) || defined(__FreeBSD__)\n"
+            "    #include <xlocale.h>\n"
+            "#endif",
+            1,
+        )
+
+    seen: set[str] = set()
+    lines: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#include "):
+            if stripped in seen:
+                continue
+            seen.add(stripped)
+        lines.append(line)
+    normalized = "\n".join(lines) + "\n"
+    empty_condition = re.compile(
+        r"(?m)^[ \t]*#(?:if|ifdef|ifndef)[^\n]*\n"
+        r"(?:[ \t]*\n)*"
+        r"[ \t]*#endif(?:[ \t]*//[^\n]*)?\n"
     )
+    while empty_condition.search(normalized):
+        normalized = empty_condition.sub("", normalized)
+    return normalized
 
 
 def write_header(domain: str, entries: list[dict[str, object]], destination: Path) -> None:
@@ -847,12 +877,10 @@ def populate() -> None:
         entries = entries_by_domain[domain]
         write_header(domain, entries, repo / "include" / f"p101_{domain}" / f"{domain}.h")
 
-        generated_sources = []
+        generated_sections = []
         for (owner, source_key), chunks in sorted(source_chunks.items()):
             if owner != domain:
                 continue
-            output = current_source_path(domain, source_key)
-            output.parent.mkdir(parents=True, exist_ok=True)
             content = "\n".join(chunks)
             if source_key == "lib_posix/src/pthread.c":
                 content = prune_pthread_preamble(content, domain)
@@ -864,8 +892,24 @@ def populate() -> None:
                     f'#include "p101_{domain}/{domain}.h"\n#include <p101_thread/thread.h>',
                     1,
                 )
-            output.write_text(content)
-            generated_sources.append(str(output.relative_to(repo)))
+            if domain == "network" and source_key == "lib_unix/src/arpa/inet.c":
+                for old, new in {
+                    "is_inet_addr_none_string": "is_legacy_inet_addr_none_string",
+                    "P101_INET_ADDR_NONE_VALUE": "P101_INET_LEGACY_ADDR_NONE_VALUE",
+                    "P101_INET_TWO_BYTE_MAX": "P101_INET_LEGACY_TWO_BYTE_MAX",
+                    "P101_INET_THREE_BYTE_MAX": "P101_INET_LEGACY_THREE_BYTE_MAX",
+                    "P101_INET_OCTET_MAX": "P101_INET_LEGACY_OCTET_MAX",
+                    "P101_INET_ADDR_PARTS": "P101_INET_LEGACY_ADDR_PARTS",
+                }.items():
+                    content = content.replace(old, new)
+            generated_sections.append(content.rstrip() + "\n")
+
+        output = current_source_path(domain, "")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            normalize_merged_source(domain, "\n".join(generated_sections))
+        )
+        generated_sources = [str(output.relative_to(repo))]
 
         placeholder_rows = []
         for old_path, kind in PLACEHOLDERS.get(domain, []):
@@ -891,6 +935,8 @@ def populate() -> None:
             "The public API is the intersection implemented on Linux, macOS, and FreeBSD.\n"
             "POSIX, XSI, optional-POSIX, and common-Unix origins are recorded in\n"
             "`api-manifest.tsv`; provenance does not determine ownership.\n\n"
+            "The maintained implementation is deliberately one public header and one source\n"
+            "file. Standards origin is not part of the source-tree architecture.\n\n"
             "## Build and verification\n\n"
             "```sh\n./change-compiler.sh -c clang\n./check.sh\n```\n\n"
             "Instrumentation sees only calls routed through `p101_*` wrappers. It does\n"
@@ -899,12 +945,12 @@ def populate() -> None:
         shutil.copy2(WORKSPACE / "AGENTS.md", repo / "AGENTS.md")
 
         manifest = [
-            "function\tprovenance\tcurrent_source\tcurrent_header\t"
+            "function\tfunction_usr\tprovenance\tcurrent_source\tcurrent_header\t"
             "original_source\toriginal_header\tlinux\tmacos\tfreebsd\n"
         ]
         for entry in sorted(entries, key=lambda item: str(item["name"])):
             manifest.append(
-                f"{entry['name']}\t{entry['provenance']}\t"
+                f"{entry['name']}\tc:@F@{entry['name']}\t{entry['provenance']}\t"
                 f"{current_source_path(domain, str(entry['source_key'])).relative_to(WORKSPACE)}\t"
                 f"libraries/lib_{domain}/include/p101_{domain}/{domain}.h\t"
                 f"{Path(str(entry['source'])).relative_to(WORKSPACE)}\t"
@@ -956,13 +1002,13 @@ int main(void)
         )
 
     manifest = [
-        "function\tdomain\tprovenance\tcurrent_source\tcurrent_header\t"
+        "function\tfunction_usr\tdomain\tprovenance\tcurrent_source\tcurrent_header\t"
         "original_source\toriginal_header\n"
     ]
     for domain, entries in sorted(entries_by_domain.items()):
         for entry in sorted(entries, key=lambda item: str(item["name"])):
             manifest.append(
-                f"{entry['name']}\t{domain}\t{entry['provenance']}\t"
+                f"{entry['name']}\tc:@F@{entry['name']}\t{domain}\t{entry['provenance']}\t"
                 f"{current_source_path(domain, str(entry['source_key'])).relative_to(WORKSPACE)}\t"
                 f"libraries/lib_{domain}/include/p101_{domain}/{domain}.h\t"
                 f"{Path(str(entry['source'])).relative_to(WORKSPACE)}\t"

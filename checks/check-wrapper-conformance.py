@@ -139,6 +139,13 @@ def failure_output(output: str) -> list[str]:
     return lines
 
 
+def print_failure_output(summary: str, output: str) -> None:
+    """Print an actionable failure summary without hiding subprocess output."""
+    print(summary)
+    for line in failure_output(output):
+        print(f"  | {line}")
+
+
 def conformance_run_id(library: str) -> str:
     """Return the shared protocol identity for one library test campaign."""
     return f"p101-wrapper-conformance-{library.replace('_', '-')}"
@@ -263,10 +270,11 @@ def main() -> int:
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
     fault_contract = load_contract(FAULT_CONTRACT_PATH)
     platform_key = current_platform_key()
-    if contract.get("schema") != "p101-wrapper-conformance-contract-v3":
+    if contract.get("schema") != "p101-wrapper-conformance-contract-v4":
         print("FAIL: unsupported wrapper conformance contract")
         return 2
-    selected = active_libraries()
+    all_libraries = active_libraries()
+    selected = all_libraries
     if args.library:
         requested = set(args.library)
         unknown = requested - selected.keys()
@@ -296,34 +304,85 @@ def main() -> int:
         instrumentation.stdout, encoding="utf-8"
     )
     if instrumentation.returncode != 0:
-        print("FAIL: static instrumentation contract failed")
+        print_failure_output(
+            "FAIL: static instrumentation contract failed",
+            instrumentation.stdout,
+        )
         return 1
     capability_rows = json.loads(
         instrumentation_receipt.read_text(encoding="utf-8")
     )["function_capabilities"]
     capabilities = {
-        (row["library"], row["function"]): row for row in capability_rows
+        (row["library"], row["usr"]): row for row in capability_rows
     }
     failures: list[str] = []
     failure_details: list[dict[str, object]] = []
     receipts: list[dict[str, object]] = []
-    required_arguments = set(contract["logging"]["arguments_required"])
-    required_results = set(contract["logging"]["results_required"])
+    required_argument_usrs = set(
+        contract["logging"]["argument_wrapper_usrs"]
+    )
+    required_result_usrs = set(
+        contract["logging"]["result_wrapper_usrs"]
+    )
+    workspace_api_usrs = {
+        row["function_usr"]
+        for repo in all_libraries.values()
+        for row in rows(repo / "api-manifest.tsv")
+    }
+    unknown_logging_usrs = (
+        required_argument_usrs | required_result_usrs
+    ) - workspace_api_usrs
+    if unknown_logging_usrs:
+        print(
+            "FAIL: logging contract names unknown declaration identities: "
+            + ", ".join(sorted(unknown_logging_usrs))
+        )
+        return 2
+    fault_bindings_by_usr = {
+        binding.get("function_usr"): binding
+        for binding in fault_contract.get("wrappers", {}).values()
+        if isinstance(binding, dict) and binding.get("function_usr")
+    }
+    if len(fault_bindings_by_usr) != len(
+        fault_contract.get("wrappers", {})
+    ):
+        print(
+            "FAIL: platform-fault contract has missing or duplicate "
+            "declaration identities"
+        )
+        return 2
 
     for library, repo in selected.items():
-        api = {row["function"] for row in rows(repo / "api-manifest.tsv")}
-        tests = {
-            row["function"]: row["test_kind"]
+        api_by_usr = {
+            row["function_usr"]: row["function"]
+            for row in rows(repo / "api-manifest.tsv")
+        }
+        tests_by_usr = {
+            row["function_usr"]: row
             for row in rows(repo / "test" / "unit-test-manifest.tsv")
         }
+        missing_test_usrs = set(api_by_usr) - set(tests_by_usr)
+        extra_test_usrs = set(tests_by_usr) - set(api_by_usr)
+        for wrapper_usr in sorted(missing_test_usrs):
+            failures.append(
+                f"{library}:{wrapper_usr}: public API has no unit-test identity"
+            )
+        for wrapper_usr in sorted(extra_test_usrs):
+            failures.append(
+                f"{library}:{wrapper_usr}: unit test has no public API identity"
+            )
+        api = set(api_by_usr.values())
         fault_case_count = 0
         fault_cases_by_wrapper: dict[str, int] = {}
         expected_outcomes: set[tuple[str, str, str, str, str]] = set()
         receipt_platform = platform_key or "posix"
-        for name, kind in tests.items():
-            if kind != "fault":
+        for wrapper_usr, test_row in tests_by_usr.items():
+            if wrapper_usr not in api_by_usr:
                 continue
-            binding = fault_contract["wrappers"][name]
+            if test_row["test_kind"] != "fault":
+                continue
+            name = api_by_usr[wrapper_usr]
+            binding = fault_bindings_by_usr[wrapper_usr]
             function = binding.get("function")
             symbols = injected_fault_cases(
                 fault_contract,
@@ -409,15 +468,24 @@ def main() -> int:
 
         trace_api = {
             name
-            for name in api
-            if capabilities[(library, name)]["has_env"]
+            for wrapper_usr, name in api_by_usr.items()
+            if capabilities.get((library, wrapper_usr), {}).get("has_env")
         }
+        for wrapper_usr in sorted(api_by_usr):
+            if (library, wrapper_usr) not in capabilities:
+                failures.append(
+                    f"{library}:{wrapper_usr}: no instrumentation identity"
+                )
         missing_calls = sorted(name for name in trace_api if enters[name] == 0)
         unbalanced = sorted(
             name for name in trace_api if enters[name] != exits[name]
         )
         missing_failure = sorted(
-            name for name in api if tests.get(name) == "fault" and enters[name] == 0
+            api_by_usr[wrapper_usr]
+            for wrapper_usr, test_row in tests_by_usr.items()
+            if wrapper_usr in api_by_usr
+            if test_row["test_kind"] == "fault"
+            and enters[api_by_usr[wrapper_usr]] == 0
         )
         insufficient_fault_cases = sorted(
             (
@@ -428,8 +496,18 @@ def main() -> int:
             for name in fault_cases_by_wrapper
             if enters[name] < fault_cases_by_wrapper[name]
         )
-        missing_arguments = sorted((api & required_arguments) - arguments)
-        missing_results = sorted((api & required_results) - results)
+        required_arguments = {
+            api_by_usr[wrapper_usr]
+            for wrapper_usr in required_argument_usrs
+            if wrapper_usr in api_by_usr
+        }
+        required_results = {
+            api_by_usr[wrapper_usr]
+            for wrapper_usr in required_result_usrs
+            if wrapper_usr in api_by_usr
+        }
+        missing_arguments = sorted(required_arguments - arguments)
+        missing_results = sorted(required_results - results)
         non_injected_calls = {
             name: max(0, enters[name] - fault_cases_by_wrapper.get(name, 0))
             for name in api
@@ -461,14 +539,17 @@ def main() -> int:
                 "trace_applicable": len(trace_api),
                 "invoked": len(trace_api - set(missing_calls)),
                 "balanced": len(trace_api - set(unbalanced)),
-                "fault_tests": sum(kind == "fault" for kind in tests.values()),
+                "fault_tests": sum(
+                    row["test_kind"] == "fault"
+                    for row in tests_by_usr.values()
+                ),
                 "fault_cases": fault_case_count,
                 "fault_outcomes_observed": len(
                     expected_outcomes & observed_keys
                 ),
                 "fault_outcome_log": str(outcome_log),
-                "arguments_logged": len(api & arguments),
-                "results_logged": len(api & results),
+                "arguments_logged": len(required_arguments & arguments),
+                "results_logged": len(required_results & results),
                 "non_injected_apis_observed": len(non_injected_apis),
                 "non_injected_invocations": sum(
                     non_injected_calls.values()

@@ -353,7 +353,7 @@ To replay the source-contract audit over every active wrapper library:
 
 This uses each library's compile database, its optional checked-in
 `.p101-wrapper-audit-allow` boundary ledger, `p101-error-contract`, and
-`p101-module-map -L`. The boundary pass records a P101FACT v4 snapshot and
+`p101-module-map -L`. The boundary pass records a P101FACT v6 snapshot and
 admitted-input manifest; both downstream C policy tools reuse that snapshot.
 Runtime wrapper feature coverage is enforced by each split library's generated
 wrapper tests and `unit-test-manifest.tsv`. Reports are written under one
@@ -502,7 +502,7 @@ wrapper-audit checks over the C tools, and module-map design reports — run:
 By default, module-map design notes fail the audit. Use
 `--allow-module-notes` only for an exploratory report that should not enforce
 the current module-splitting rules. Each C tool is parsed once; module-map
-reuses the recorded P101FACT v4 snapshot, and a checked-in
+reuses the recorded P101FACT v6 snapshot, and a checked-in
 `.p101-wrapper-audit-allow` file is treated as a scoped, stale-checked boundary
 ledger.
 
@@ -624,7 +624,7 @@ The analyzer computes:
 ```text
 documented(Linux) ∩ documented(FreeBSD) ∩ documented(macOS)
   - POSIX interfaces
-  - existing p101 wrappers
+  - native identities explicitly declared by existing p101 API manifests
   - built-in legacy/unsafe exclusions
 ```
 

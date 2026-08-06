@@ -30,7 +30,6 @@ from typing import Iterable
 
 
 IDENT_RE = re.compile(r"^_?[a-z][A-Za-z0-9_]*$")
-P101_RE = re.compile(r"\bp101_([A-Za-z0-9_]+)\s*\(")
 ROFF_FONT_RE = re.compile(r"\\f[PBIR]")
 ROFF_ESCAPE_RE = re.compile(r"\\[&e~^|{}]")
 TRAILING_MAN_SUFFIX_RE = re.compile(r"\.[0-9][A-Za-z0-9]*(?:\.(?:gz|bz2|xz))?$")
@@ -426,31 +425,38 @@ def load_symbol_file(path: Path | None) -> set[str]:
             # Accept plain text, simple CSV, or copied interface-index rows.
             first = re.split(r"[,;\t ]+", line, maxsplit=1)[0]
             first = first.strip()
-            if first.startswith("p101_"):
-                first = first[5:]
             if is_identifier(first):
                 symbols.add(first)
 
     return symbols
 
 
-def harvest_wrappers(paths: Iterable[Path]) -> set[str]:
+def load_wrapped_native_functions(paths: Iterable[Path]) -> set[str]:
     wrappers: set[str] = set()
 
     for root in paths:
         if not root.exists():
             continue
-
-        for path in root.rglob("*"):
-            if path.suffix not in {".c", ".h"} or not path.is_file():
-                continue
-
-            text = read_text(path)
-            for match in P101_RE.finditer(text):
-                name = match.group(1)
-                raw = f"_{name[1:]}" if name.startswith("_") else name
-                if is_identifier(raw):
-                    wrappers.add(raw)
+        manifests = (
+            [root / "api-manifest.tsv"]
+            if (root / "api-manifest.tsv").is_file()
+            else sorted(root.rglob("api-manifest.tsv"))
+        )
+        for manifest in manifests:
+            with manifest.open(encoding="utf-8", newline="") as stream:
+                for row in csv.DictReader(stream, delimiter="\t"):
+                    native = row.get("native_function", "")
+                    native_usr = row.get("native_function_usr", "")
+                    if native == "-" and native_usr == "-":
+                        continue
+                    if (
+                        not is_identifier(native)
+                        or native_usr != f"c:@F@{native}"
+                    ):
+                        raise ValueError(
+                            f"{manifest}: invalid native semantic identity"
+                        )
+                    wrappers.add(native)
 
     return wrappers
 
@@ -600,7 +606,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--wrapper-root",
         action="append",
         type=Path,
-        help="Library tree to scan for existing p101 wrappers; may be repeated",
+        help=(
+            "Library tree whose API manifests declare wrapped native "
+            "identities; may be repeated"
+        ),
     )
     parser.add_argument(
         "--output",
@@ -652,7 +661,7 @@ def main(argv: list[str]) -> int:
     posix = load_symbol_file(args.posix_symbols)
     if args.posix_html:
         posix.update(harvest_posix_html(args.posix_html))
-    wrappers = harvest_wrappers(wrapper_roots)
+    wrappers = load_wrapped_native_functions(wrapper_roots)
     excluded = set(args.exclude_symbol)
     if not args.no_default_excludes:
         excluded.update(DEFAULT_EXCLUDED_SYMBOLS)

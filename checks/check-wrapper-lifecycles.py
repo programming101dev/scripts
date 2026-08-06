@@ -427,7 +427,7 @@ def main() -> int:
     args = parser.parse_args()
 
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
-    if contract.get("schema") != "p101-wrapper-lifecycle-contract-v1":
+    if contract.get("schema") != "p101-wrapper-lifecycle-contract-v2":
         print("FAIL: unsupported lifecycle contract")
         return 2
     args.output.mkdir(parents=True, exist_ok=True)

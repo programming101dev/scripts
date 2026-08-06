@@ -91,7 +91,26 @@ presentation in separate modules from execution. New coherent mechanisms
 should follow that pattern rather than expanding either orchestration file
 indefinitely.
 
-## 5. Make blind spots explicit
+## 5. Make semantic evidence the default
+
+A rule about C/C++ behavior must be decided from semantic facts:
+
+- declaration USRs identify functions, types, variables, and fields;
+- canonical parameter and return types identify API shape;
+- explicit semantic-role annotations identify purpose;
+- AST parent/child structure identifies control flow, discarded results, and
+  ownership operations;
+- source extents connect diagnostics to the semantic record that produced
+  them.
+
+Names remain display text, never evidence for ownership, instrumentation,
+wrapper membership, error handling, termination, or callback purpose. Lexical
+matching is permitted only when the thing being modeled is itself lexical:
+filesystem paths, include targets, macro identifiers, command-line tokens,
+external manual-page names, and versioned protocol tags. Each such use must be
+described as a boundary rather than generalized into a semantic claim.
+
+## 6. Make blind spots explicit
 
 Every tool README should be honest about important blind spots. Common examples:
 
@@ -104,7 +123,7 @@ Every tool README should be honest about important blind spots. Common examples:
 This keeps the tools trustworthy. A bounded report with a visible limitation is
 better than a confident report that silently overclaims.
 
-## 6. Keep APIs small and local
+## 7. Keep APIs small and local
 
 For C code:
 
@@ -117,7 +136,7 @@ The module-map and wrapper-audit work should continue to use real parsers for C
 facts. Hand-rolled C parsing is acceptable only for deliberately narrow
 line-oriented formats, not for C syntax.
 
-## 7. Use the role lens lightly
+## 8. Use the role lens lightly
 
 Before substantial work, classify it as one or more of:
 

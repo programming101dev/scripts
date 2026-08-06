@@ -12,6 +12,32 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
+SYNCHRONIZATION_HELD_RESOURCE_CLASSES = frozenset(
+    {
+        "pthread-mutex-held",
+        "pthread-rwlock-held",
+    }
+)
+SYNCHRONIZATION_WAIT_RESOURCE_CLASSES = frozenset(
+    {
+        "pthread-mutex-wait",
+        "pthread-rwlock-read-wait",
+        "pthread-rwlock-write-wait",
+        "pthread-condition-wait",
+        "pthread-join-wait",
+    }
+)
+SYNCHRONIZATION_RESOURCE_CLASSES = (
+    SYNCHRONIZATION_HELD_RESOURCE_CLASSES
+    | SYNCHRONIZATION_WAIT_RESOURCE_CLASSES
+)
+
+
+def is_synchronization_resource_class(value: object) -> bool:
+    """Return whether a typed resource class participates in sync policy."""
+    return value in SYNCHRONIZATION_RESOURCE_CLASSES
+
+
 class RuntimeModelError(Exception):
     """The normalized run model cannot be analyzed safely."""
 
@@ -498,14 +524,14 @@ def analyze_synchronization(model: dict[str, Any]) -> PolicyResult:
         node
         for node in _resource_nodes(model)
         if node["kind"] == "resource"
-        and str(node.get("resource_class", "")).startswith("pthread-")
+        and is_synchronization_resource_class(node.get("resource_class"))
     ]
     for node in sync_nodes:
         resource_class = str(node.get("resource_class"))
         operation = node.get("operation")
         current_thread = thread(node)
         current_resource = physical(node)
-        if resource_class in {"pthread-mutex-held", "pthread-rwlock-held"}:
+        if resource_class in SYNCHRONIZATION_HELD_RESOURCE_CLASSES:
             if operation == "acquire":
                 for item in held:
                     if (
@@ -542,13 +568,7 @@ def analyze_synchronization(model: dict[str, Any]) -> PolicyResult:
                     ):
                         item["active"] = False
                         break
-        elif resource_class in {
-            "pthread-mutex-wait",
-            "pthread-rwlock-read-wait",
-            "pthread-rwlock-write-wait",
-            "pthread-condition-wait",
-            "pthread-join-wait",
-        }:
+        elif resource_class in SYNCHRONIZATION_WAIT_RESOURCE_CLASSES:
             join = resource_class == "pthread-join-wait"
             wait_resource = (
                 f"{node['pid']}:{node['context']}:"
@@ -662,7 +682,6 @@ def analyze_trace(model: dict[str, Any]) -> tuple[PolicyResult, str]:
             "enters": 0,
             "exits": 0,
             "results": 0,
-            "suspect": 0,
             "timed": 0,
             "total_ns": 0,
             "max_ns": 0,
@@ -728,8 +747,6 @@ def analyze_trace(model: dict[str, Any]) -> tuple[PolicyResult, str]:
             site["exits"] += 1
             if result != "-":
                 site["results"] += 1
-                if result in {"NULL", "null", "false", "EOF"} or result.startswith("-"):
-                    site["suspect"] += 1
             metrics[context]["unmatched_exits"] += 1
             findings.append(
                 Finding(
@@ -753,8 +770,6 @@ def analyze_trace(model: dict[str, Any]) -> tuple[PolicyResult, str]:
             site["exits"] += 1
             if result != "-":
                 site["results"] += 1
-                if result in {"NULL", "null", "false", "EOF"} or result.startswith("-"):
-                    site["suspect"] += 1
             metrics[context]["mismatched_exits"] += 1
             findings.append(
                 Finding(
@@ -777,8 +792,6 @@ def analyze_trace(model: dict[str, Any]) -> tuple[PolicyResult, str]:
         site["exits"] += 1
         if result != "-":
             site["results"] += 1
-            if result in {"NULL", "null", "false", "EOF"} or result.startswith("-"):
-                site["suspect"] += 1
         stack.pop()
         begin = enter.get("monotonic_ns")
         end = node.get("monotonic_ns")
@@ -815,7 +828,7 @@ def analyze_trace(model: dict[str, Any]) -> tuple[PolicyResult, str]:
             f"mismatched_exits={values['mismatched_exits']}"
         )
     lines.append(
-        "enter  exit  result  suspect  timed      total-ns        max-ns  where"
+        "enter  exit  result  timed      total-ns        max-ns  where"
     )
     ranked = sorted(
         sites.items(),
@@ -824,8 +837,8 @@ def analyze_trace(model: dict[str, Any]) -> tuple[PolicyResult, str]:
     for (name, file_name, function, line), values in ranked:
         lines.append(
             f"{values['enters']:5d}  {values['exits']:4d}  "
-            f"{values['results']:6d}  {values['suspect']:7d}  "
-            f"{values['timed']:5d}  {values['total_ns']:12d}  "
+            f"{values['results']:6d}  {values['timed']:5d}  "
+            f"{values['total_ns']:12d}  "
             f"{values['max_ns']:12d}  {name} at {file_name}:{line} "
             f"in {function}()"
         )

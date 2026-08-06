@@ -12,6 +12,10 @@ from typing import Any, Iterable
 
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = SCRIPTS_ROOT.parent
+sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
+
+from c_facts import CFactError, acquire  # noqa: E402
+
 REGISTER = SCRIPTS_ROOT / "contracts" / "p101-source-responsibilities.json"
 SOURCE_SUFFIXES = {".c", ".h", ".cc", ".cpp", ".hpp"}
 CONFIG_ROOTS = ("libraries", "programs", "templates", "playgrounds")
@@ -19,6 +23,14 @@ CONFIG_ROOTS = ("libraries", "programs", "templates", "playgrounds")
 
 class ResponsibilityError(ValueError):
     """A shared mechanism escaped its declared source owner."""
+
+
+def path_is_beneath(path: str, relative_root: str) -> bool:
+    try:
+        Path(path).resolve().relative_to((WORKSPACE / relative_root).resolve())
+    except (OSError, ValueError):
+        return False
+    return True
 
 
 def source_files(roots: Iterable[str]) -> Iterable[Path]:
@@ -36,7 +48,7 @@ def source_files(roots: Iterable[str]) -> Iterable[Path]:
 
 
 def validate(document: dict[str, Any]) -> dict[str, int]:
-    if document.get("schema") != "p101-source-responsibilities-v1":
+    if document.get("schema") != "p101-source-responsibilities-v2":
         raise ResponsibilityError("unexpected source-responsibility schema")
     if not isinstance(document.get("does_not_prove"), str) or not document["does_not_prove"]:
         raise ResponsibilityError("register has no does_not_prove")
@@ -47,50 +59,72 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
     if not isinstance(facades, list) or not facades:
         raise ResponsibilityError("register has no facade ratchets")
 
+    admitted_roots: set[str] = set()
+    for owner in owners:
+        if isinstance(owner, dict):
+            owner_root = owner.get("owner")
+            roots = owner.get("consumer_roots")
+            if isinstance(owner_root, str):
+                admitted_roots.add(owner_root)
+            if isinstance(roots, list):
+                admitted_roots.update(root for root in roots if isinstance(root, str))
+    admitted_roots.update(CONFIG_ROOTS)
+    try:
+        facts = acquire(
+            WORKSPACE,
+            (WORKSPACE / path for path in sorted(admitted_roots)),
+        )
+    except CFactError as error:
+        raise ResponsibilityError(str(error)) from error
+
     checked_files: set[Path] = set()
     for owner in owners:
         if not isinstance(owner, dict):
             raise ResponsibilityError("owner row is not an object")
         identifier = owner.get("id")
         owner_root = owner.get("owner")
-        markers = owner.get("markers")
+        marker_usrs = owner.get("marker_usrs")
         roots = owner.get("consumer_roots")
         if not isinstance(identifier, str) or not identifier:
             raise ResponsibilityError("owner has no id")
         if not isinstance(owner_root, str) or not (WORKSPACE / owner_root).is_dir():
             raise ResponsibilityError(f"owner {identifier} has no owner root")
-        if not isinstance(markers, list) or not markers:
-            raise ResponsibilityError(f"owner {identifier} has no markers")
-        owner_text = "\n".join(
-            path.read_text(encoding="utf-8", errors="replace")
-            for path in source_files([owner_root])
-        )
-        for marker in markers:
-            if not isinstance(marker, str) or marker not in owner_text:
-                raise ResponsibilityError(f"owner {identifier} lacks marker {marker!r}")
+        if not isinstance(marker_usrs, list) or not marker_usrs:
+            raise ResponsibilityError(f"owner {identifier} has no semantic markers")
+        owner_definitions = {
+            fact["usr"]
+            for fact in facts
+            if fact["kind"] == "FUNCTION"
+            and path_is_beneath(fact["path"], owner_root)
+        }
+        for marker_usr in marker_usrs:
+            if not isinstance(marker_usr, str) or marker_usr not in owner_definitions:
+                raise ResponsibilityError(
+                    f"owner {identifier} lacks declaration identity {marker_usr!r}"
+                )
         if not isinstance(roots, list) or not roots:
             raise ResponsibilityError(f"owner {identifier} has no consumers")
 
-        forbidden_definitions = owner.get("forbidden_definitions", [])
-        forbidden_calls = owner.get("forbidden_calls", [])
+        forbidden_definitions = owner.get("forbidden_definition_usrs", [])
+        forbidden_calls = owner.get("forbidden_call_usrs", [])
+        consumer_facts = [
+            fact
+            for fact in facts
+            if any(path_is_beneath(fact["path"], root) for root in roots)
+        ]
         for path in source_files(roots):
             checked_files.add(path)
-            text = path.read_text(encoding="utf-8", errors="replace")
-            for symbol in forbidden_definitions:
-                pattern = re.compile(
-                    rf"(?m)^[ \t]*(?:static[ \t]+)?[A-Za-z_][A-Za-z0-9_ \t*]*"
-                    rf"\b{re.escape(symbol)}\s*\([^;\n]*\)\s*\{{"
+        for fact in consumer_facts:
+            if fact["kind"] == "FUNCTION" and fact["usr"] in forbidden_definitions:
+                raise ResponsibilityError(
+                    f"{Path(fact['path']).relative_to(WORKSPACE)} redefines "
+                    f"owner declaration {fact['usr']}"
                 )
-                if pattern.search(text):
-                    raise ResponsibilityError(
-                        f"{path.relative_to(WORKSPACE)} redefines owner symbol {symbol}"
-                    )
-            for function in forbidden_calls:
-                pattern = re.compile(rf"\b{re.escape(function)}\s*\(")
-                if pattern.search(text):
-                    raise ResponsibilityError(
-                        f"{path.relative_to(WORKSPACE)} bypasses {identifier} with {function}()"
-                    )
+            if fact["kind"] == "CALL" and fact["usr"] in forbidden_calls:
+                raise ResponsibilityError(
+                    f"{Path(fact['path']).relative_to(WORKSPACE)} bypasses "
+                    f"{identifier} with declaration {fact['usr']}"
+                )
 
     for facade in facades:
         if not isinstance(facade, dict):
@@ -122,21 +156,30 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
                 continue
             repository = config.parent
             config_text = config.read_text(encoding="utf-8")
-            source_text = "\n".join(
-                path.read_text(encoding="utf-8", errors="replace")
-                for path in source_files(
-                    [
-                        str((repository / child).relative_to(WORKSPACE))
-                        for child in ("src", "include")
-                        if (repository / child).exists()
-                    ]
+            repository_includes = {
+                fact["value"]
+                for fact in facts
+                if fact["kind"] == "INCLUDE"
+                and any(
+                    path_is_beneath(
+                        fact["path"],
+                        str((repository / child).relative_to(WORKSPACE)),
+                    )
+                    for child in ("src", "include")
+                    if (repository / child).exists()
                 )
-            )
+            }
             declares_event = bool(
                 re.search(r"(?m)^[ \t]+p101_tool_event(?:[ \t]|$)", config_text)
             )
-            uses_event = "p101_tool_event/" in source_text
-            uses_record = "p101_record/" in source_text
+            uses_event = any(
+                str(target).startswith("p101_tool_event/")
+                for target in repository_includes
+            )
+            uses_record = any(
+                str(target).startswith("p101_record/")
+                for target in repository_includes
+            )
             declares_record = bool(
                 re.search(r"(?m)^[ \t]+p101_record(?:[ \t]|$)", config_text)
             )
@@ -161,13 +204,11 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
                     ),
                 )
             )
-            included_targets = set(
-                re.findall(
-                    r"(?m)^[ \t]*#[ \t]*include[ \t]*[<\"]"
-                    r"(p101_[A-Za-z0-9_]+)/",
-                    source_text,
-                )
-            )
+            included_targets = {
+                str(target).split("/", 1)[0]
+                for target in repository_includes
+                if str(target).startswith("p101_") and "/" in str(target)
+            }
             own_targets = set(
                 re.findall(
                     r"(?m)^[ \t]+(p101_[A-Za-z0-9_]+)(?:[ \t]|$)",

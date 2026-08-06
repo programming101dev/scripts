@@ -1,5 +1,5 @@
 {
-  "schema": "p101-wrapper-lifecycle-contract-v1",
+  "schema": "p101-wrapper-lifecycle-contract-v2",
   "seed": 101,
   "generated_cases_per_scenario": 8,
   "maximum_steps": 12,
@@ -79,6 +79,7 @@
       "terminal": "empty",
       "fault_modes": ["short"],
       "fault_name": "p101_write",
+      "fault_usr": "c:@F@p101_write",
       "transitions": [
         {"from": "empty", "operation": "pipe", "to": "ready"},
         {"from": "ready", "operation": "write", "to": "written"},
@@ -91,6 +92,7 @@
       "terminal": "empty",
       "fault_modes": ["short"],
       "fault_name": "p101_read",
+      "fault_usr": "c:@F@p101_read",
       "transitions": [
         {"from": "empty", "operation": "pipe", "to": "ready"},
         {"from": "ready", "operation": "write", "to": "written"},
@@ -103,6 +105,7 @@
       "terminal": "empty",
       "fault_modes": ["short"],
       "fault_name": "p101_pwrite",
+      "fault_usr": "c:@F@p101_pwrite",
       "transitions": [
         {"from": "empty", "operation": "open", "to": "ready"},
         {"from": "ready", "operation": "write", "to": "written"},
@@ -115,6 +118,7 @@
       "terminal": "empty",
       "fault_modes": ["short"],
       "fault_name": "p101_pread",
+      "fault_usr": "c:@F@p101_pread",
       "transitions": [
         {"from": "empty", "operation": "open", "to": "ready"},
         {"from": "ready", "operation": "write", "to": "written"},

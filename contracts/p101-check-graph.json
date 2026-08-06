@@ -163,7 +163,7 @@
       "group": "architecture",
       "required": true,
       "command": ["./checks/check-p101-boundaries.py"],
-      "inputs": ["scripts/checks/check-p101-boundaries.py", "scripts/contracts/p101-boundaries.json", "libraries/lib_c_facts/include/**", "libraries/lib_c_facts/test/**", "libraries/lib_tool_event/include/**", "libraries/lib_tool_event/test/**", "libraries/lib_util/include/**", "libraries/lib_util/test/**", "libraries/lib_env/include/**", "libraries/lib_env/test/**", "libraries/lib_fsm/include/**", "libraries/lib_fsm/test/**"],
+      "inputs": ["scripts/checks/check-p101-boundaries.py", "scripts/runtime/c_facts.py", "scripts/contracts/p101-boundaries.json", "libraries/lib_c_facts/include/**", "libraries/lib_c_facts/test/**", "libraries/lib_tool_event/include/**", "libraries/lib_tool_event/test/**", "libraries/lib_util/include/**", "libraries/lib_util/test/**", "libraries/lib_env/include/**", "libraries/lib_env/test/**", "libraries/lib_fsm/include/**", "libraries/lib_fsm/test/**"],
       "inputs_complete": true,
       "depends_on": ["performance-contract-tests"],
       "resources": {"writes": [], "units": {}},
@@ -175,7 +175,7 @@
       "group": "architecture",
       "required": true,
       "command": ["./tests/test-p101-boundaries.py"],
-      "inputs": ["scripts/tests/test-p101-boundaries.py", "scripts/checks/check-p101-boundaries.py", "scripts/contracts/p101-boundaries.json", "libraries/lib_c_facts/include/**", "libraries/lib_c_facts/test/**", "libraries/lib_tool_event/include/**", "libraries/lib_tool_event/test/**", "libraries/lib_util/include/**", "libraries/lib_util/test/**", "libraries/lib_env/include/**", "libraries/lib_env/test/**", "libraries/lib_fsm/include/**", "libraries/lib_fsm/test/**"],
+      "inputs": ["scripts/tests/test-p101-boundaries.py", "scripts/checks/check-p101-boundaries.py", "scripts/runtime/c_facts.py", "scripts/contracts/p101-boundaries.json", "libraries/lib_c_facts/include/**", "libraries/lib_c_facts/test/**", "libraries/lib_tool_event/include/**", "libraries/lib_tool_event/test/**", "libraries/lib_util/include/**", "libraries/lib_util/test/**", "libraries/lib_env/include/**", "libraries/lib_env/test/**", "libraries/lib_fsm/include/**", "libraries/lib_fsm/test/**"],
       "inputs_complete": true,
       "depends_on": ["boundaries"],
       "resources": {"writes": [], "units": {}},
@@ -187,6 +187,8 @@
       "group": "architecture",
       "required": true,
       "command": ["./tests/test-p101-quality-contract.py"],
+      "inputs": ["scripts/tests/test-p101-quality-contract.py", "scripts/checks/check-p101-quality-contract.py", "scripts/runtime/c_facts.py", "scripts/contracts/p101-quality-contract.json", "scripts/contracts/p101-boundaries.json", "scripts/contracts/p101-check-graph.json", "programs/**", "libraries/lib_c_facts/**", "libraries/lib_tool_event/include/**", "playgrounds/lessons/manifest.json"],
+      "inputs_complete": true,
       "depends_on": ["boundary-tests"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Missing public-surface oracles, refusal variants, boundary cases, platform evidence, and invalid audit delegation are rejected."
@@ -197,6 +199,8 @@
       "group": "architecture",
       "required": true,
       "command": ["./checks/check-p101-quality-contract.py"],
+      "inputs": ["scripts/checks/check-p101-quality-contract.py", "scripts/runtime/c_facts.py", "scripts/contracts/p101-quality-contract.json", "scripts/contracts/p101-boundaries.json", "scripts/contracts/p101-check-graph.json", "programs/**", "libraries/lib_c_facts/**", "libraries/lib_tool_event/include/**", "playgrounds/lessons/manifest.json"],
+      "inputs_complete": true,
       "depends_on": ["quality-contract-tests"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Public surfaces, typed refusals, local and delegated audit ownership, boundaries, main-only termination, platform evidence, and implementation oracles remain explicitly governed."
@@ -217,6 +221,8 @@
       "group": "architecture",
       "required": true,
       "command": ["./checks/check-p101-source-responsibilities.py"],
+      "inputs": ["scripts/checks/check-p101-source-responsibilities.py", "scripts/runtime/c_facts.py", "scripts/contracts/p101-source-responsibilities.json", "libraries/**", "programs/**", "templates/**", "playgrounds/**"],
+      "inputs_complete": true,
       "depends_on": ["test-inventory"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Shared parsers, subprocess mechanics, and lifecycle reducers remain in their declared libraries."
@@ -423,6 +429,8 @@
       "group": "receipts",
       "required": true,
       "command": ["./tests/test-p101-fault-campaign.py"],
+      "inputs": ["scripts/tests/test-p101-fault-campaign.py", "scripts/runtime/p101-fault-campaign.py", "scripts/runtime/wrapper_fault_contract.py", "scripts/contracts/wrapper-platform-faults.json", "libraries/*/api-manifest.tsv"],
+      "inputs_complete": true,
       "depends_on": ["runtime-policy", "wrapper-fault-semantics"],
       "resources": {"writes": ["/tmp"], "units": {}},
       "guarantee": "Platform fault campaigns enumerate only admitted wrapper faults and preserve bounded dry-run receipts."
@@ -433,6 +441,8 @@
       "group": "receipts",
       "required": true,
       "command": ["./tests/test-p101-interleaving-walk.py"],
+      "inputs": ["scripts/tests/test-p101-interleaving-walk.py", "scripts/runtime/p101-interleaving-walk.py", "scripts/runtime/p101_runtime.py", "libraries/lib_tool_event/**"],
+      "inputs_complete": true,
       "depends_on": ["runtime-policy"],
       "resources": {"writes": ["/tmp"], "units": {}},
       "guarantee": "The interleaving explorer preserves admitted order constraints and exposes prefix synchronization counterexamples."
@@ -544,13 +554,13 @@
     },
     {
       "id": "functional-library-split",
-      "title": "functional wrapper-library ownership",
+      "title": "functional wrapper-library ownership and layout",
       "group": "library-audit",
       "required": true,
       "command": ["./checks/check-functional-library-split.py"],
       "depends_on": ["boundaries"],
       "resources": {"writes": [], "units": {}},
-      "guarantee": "Every wrapper remains in its declared functional library."
+      "guarantee": "Every wrapper remains in its declared functional library, with one domain header and one domain source."
     },
     {
       "id": "wrapper-platform-faults-tests",
@@ -570,7 +580,7 @@
       "command": ["./tests/test-wrapper-failure-contract.py"],
       "depends_on": ["wrapper-platform-faults-tests"],
       "resources": {"writes": [], "units": {}},
-      "guarantee": "Nested failure expressions, function-pointer return declarations, and the checked failure-contract schema pass deterministic regression fixtures."
+      "guarantee": "Nested failure expressions, function-pointer return declarations, typed cross-platform rejection cases, single-exit generated harnesses, and the checked failure-contract schema pass deterministic regression fixtures."
     },
     {
       "id": "wrapper-failure-contract",
@@ -585,11 +595,11 @@
         "--clang-format",
         "clang-format"
       ],
-      "inputs": ["scripts/generators/generate-wrapper-unit-tests.py", "scripts/contracts/wrapper-conformance-contract.json", "scripts/contracts/wrapper-failure-contract.json", "scripts/contracts/wrapper-platform-faults.json", "libraries/**"],
+      "inputs": ["scripts/generators/generate-wrapper-unit-tests.py", "scripts/contracts/wrapper-conformance-contract.json", "scripts/contracts/wrapper-failure-contract.json", "scripts/contracts/wrapper-native-smoke-contract.json", "scripts/contracts/wrapper-platform-faults.json", "scripts/contracts/wrapper-portable-input-contract.json", "libraries/**"],
       "inputs_complete": true,
       "depends_on": ["wrapper-failure-contract-tests"],
       "resources": {"writes": [], "units": {"compiler": 1}},
-      "guarantee": "Every public API has an explicit reviewed outcome class; every API accepting p101_error is directly injectable before observable work; and generated return, errno, output-canary, and resource-event assertions match the Clang-derived source contract."
+      "guarantee": "Every public API has an explicit reviewed outcome class; every API accepting p101_error is directly injectable after its call-entry trace and before native or resource work; and generated fault plus portable-rejection return, errno, output-canary, and resource-event assertions match the Clang-derived source contract."
     },
     {
       "id": "wrapper-fault-semantics-tests",
@@ -597,6 +607,8 @@
       "group": "library-audit",
       "required": true,
       "command": ["./tests/test-wrapper-fault-semantics.py"],
+      "inputs": ["scripts/tests/test-wrapper-fault-semantics.py", "scripts/checks/check-wrapper-fault-semantics.py", "scripts/runtime/c_facts.py", "scripts/contracts/wrapper-fault-semantics.json", "scripts/contracts/wrapper-failure-contract.json", "scripts/contracts/wrapper-lifecycle-contract.json", "libraries/lib_env/include/**", "libraries/lib_io/api-manifest.tsv", "libraries/lib_io/src/**", "libraries/lib_io/test/test_behavior.c"],
+      "inputs_complete": true,
       "depends_on": ["wrapper-failure-contract-tests"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Phase, disposition, retry policy, and supported-wrapper drift are rejected by executable negative controls."
@@ -607,6 +619,8 @@
       "group": "library-audit",
       "required": true,
       "command": ["./checks/check-wrapper-fault-semantics.py"],
+      "inputs": ["scripts/checks/check-wrapper-fault-semantics.py", "scripts/runtime/c_facts.py", "scripts/contracts/wrapper-fault-semantics.json", "scripts/contracts/wrapper-failure-contract.json", "scripts/contracts/wrapper-lifecycle-contract.json", "libraries/lib_env/include/**", "libraries/lib_io/api-manifest.tsv", "libraries/lib_io/src/**", "libraries/lib_io/test/test_behavior.c"],
+      "inputs_complete": true,
       "depends_on": ["wrapper-failure-contract", "wrapper-fault-semantics-tests"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Early failures, known partial progress, and uncertain after-dispatch outcomes retain explicit retry semantics and native evidence."
@@ -617,7 +631,7 @@
       "group": "library-audit",
       "required": true,
       "command": ["./checks/check-wrapper-unit-tests.py"],
-      "inputs": ["scripts/checks/check-wrapper-unit-tests.py", "scripts/contracts/wrapper-conformance-contract.json", "scripts/contracts/wrapper-failure-contract.json", "scripts/contracts/wrapper-platform-faults.json", "libraries/**"],
+      "inputs": ["scripts/checks/check-wrapper-unit-tests.py", "scripts/contracts/wrapper-conformance-contract.json", "scripts/contracts/wrapper-failure-contract.json", "scripts/contracts/wrapper-native-smoke-contract.json", "scripts/contracts/wrapper-platform-faults.json", "scripts/contracts/wrapper-portable-input-contract.json", "libraries/**"],
       "inputs_complete": true,
       "depends_on": ["wrapper-failure-contract", "wrapper-fault-semantics"],
       "resources": {"writes": [], "units": {}},
@@ -653,6 +667,8 @@
       "group": "library-audit",
       "required": true,
       "command": ["./checks/check-p101-quality-contract.py", "--discover-workspace", "{out}/quality-discovery"],
+      "inputs": ["scripts/checks/check-p101-quality-contract.py", "scripts/runtime/c_facts.py", "scripts/contracts/p101-quality-contract.json", "libraries/**"],
+      "inputs_complete": true,
       "depends_on": ["library-audit"],
       "replace_outputs": true,
       "resources": {"writes": ["{out}/quality-discovery"], "units": {"compiler": 1}},
@@ -664,6 +680,8 @@
       "group": "library-audit",
       "required": true,
       "command": ["./tests/test-wrapper-conformance-output.py"],
+      "inputs": ["scripts/tests/test-wrapper-conformance-output.py", "scripts/checks/check-wrapper-conformance.py", "scripts/contracts/wrapper-conformance-contract.json", "scripts/contracts/wrapper-platform-faults.json", "libraries/*/api-manifest.tsv"],
+      "inputs_complete": true,
       "depends_on": ["instrumentation"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Wrapper test failures print complete diagnostics, malformed and duplicate outcome records are rejected, and missing, unexpected, or failed symbolic pairs are caught."
@@ -674,6 +692,8 @@
       "group": "library-audit",
       "required": true,
       "command": ["./checks/check-native-wrapper-parity.py"],
+      "inputs": ["scripts/checks/check-native-wrapper-parity.py", "scripts/runtime/c_facts.py", "scripts/contracts/native-wrapper-parity.tsv", "libraries/*/test/**"],
+      "inputs_complete": true,
       "depends_on": ["wrapper-unit-tests"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Admitted deterministic wrappers are compared directly with their native functions in compiled unit-test assertions."
@@ -684,6 +704,8 @@
       "group": "library-audit",
       "required": true,
       "command": ["./checks/check-wrapper-conformance.py", "-o", "{out}/wrapper-conformance"],
+      "inputs": ["scripts/checks/check-wrapper-conformance.py", "scripts/runtime/c_facts.py", "scripts/contracts/wrapper-conformance-contract.json", "scripts/contracts/wrapper-platform-faults.json", "libraries/**"],
+      "inputs_complete": true,
       "depends_on": ["wrapper-conformance-output-tests", "native-wrapper-parity"],
       "replace_outputs": true,
       "resources": {"writes": ["{out}/wrapper-conformance"], "units": {"compiler": 1}},
@@ -695,6 +717,8 @@
       "group": "library-audit",
       "required": true,
       "command": ["./tests/test-wrapper-lifecycle-driver.py"],
+      "inputs": ["scripts/tests/test-wrapper-lifecycle-driver.py", "scripts/checks/check-wrapper-lifecycles.py", "scripts/contracts/wrapper-lifecycle-contract.json", "libraries/**"],
+      "inputs_complete": true,
       "depends_on": ["wrapper-conformance"],
       "resources": {"writes": [], "units": {"compiler": 1}},
       "guarantee": "The lifecycle driver selects compiler-matched library builds and rejects unsupported inherited link flags."
@@ -705,6 +729,8 @@
       "group": "library-audit",
       "required": true,
       "command": ["./checks/check-wrapper-lifecycles.py", "-c", "{cc}", "--cases", "2", "--max-steps", "6", "-o", "{out}/wrapper-lifecycles"],
+      "inputs": ["scripts/checks/check-wrapper-lifecycles.py", "scripts/contracts/wrapper-lifecycle-contract.json", "scripts/contracts/wrapper-fault-semantics.json", "libraries/**"],
+      "inputs_complete": true,
       "depends_on": ["wrapper-lifecycle-driver-tests"],
       "replace_outputs": true,
       "resources": {"writes": ["{out}/wrapper-lifecycles"], "units": {"compiler": 1}},
@@ -754,7 +780,7 @@
       "group": "architecture",
       "required": true,
       "command": ["./checks/check-p101-boundaries.py", "--execution-receipt", "{out}/repository-tests/receipt.json"],
-      "inputs": ["scripts/checks/check-p101-boundaries.py", "scripts/contracts/p101-boundaries.json"],
+      "inputs": ["scripts/checks/check-p101-boundaries.py", "scripts/runtime/c_facts.py", "scripts/contracts/p101-boundaries.json"],
       "inputs_complete": true,
       "depends_on": ["repository-tests"],
       "resources": {"writes": [], "units": {}},

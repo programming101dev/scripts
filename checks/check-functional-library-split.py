@@ -47,6 +47,66 @@ def active_repository_paths() -> list[Path]:
     return active
 
 
+def validate_functional_layout(repo: Path, domain: str) -> list[str]:
+    """Return violations of the one-header/one-source domain layout."""
+    failures: list[str] = []
+    expected_source = repo / "src" / f"{domain}.c"
+    expected_header = repo / "include" / f"p101_{domain}" / f"{domain}.h"
+    implementation_sources = sorted(
+        path
+        for path in (repo / "src").rglob("*.c")
+        if path.is_file()
+    )
+    public_headers = sorted(
+        path
+        for path in (repo / "include").rglob("*.h")
+        if path.is_file()
+    )
+    if implementation_sources != [expected_source]:
+        rendered = ", ".join(
+            str(path.relative_to(repo)) for path in implementation_sources
+        ) or "<none>"
+        failures.append(
+            f"{repo.name}: expected only src/{domain}.c; found {rendered}"
+        )
+    if public_headers != [expected_header]:
+        rendered = ", ".join(
+            str(path.relative_to(repo)) for path in public_headers
+        ) or "<none>"
+        failures.append(
+            f"{repo.name}: expected only include/p101_{domain}/{domain}.h; "
+            f"found {rendered}"
+        )
+    for origin in ("posix", "posix_xsi", "posix_optional", "unix"):
+        if (repo / "src" / origin).exists():
+            failures.append(
+                f"{repo.name}: obsolete implementation origin directory src/{origin}"
+            )
+    config = repo / "config.cmake"
+    if not config.is_file():
+        failures.append(f"{repo.name}: missing config.cmake")
+        return failures
+    config_text = config.read_text(encoding="utf-8")
+    for variable, expected in (
+        (f"p101_{domain}_SOURCES", f"src/{domain}.c"),
+        (
+            f"p101_{domain}_HEADERS",
+            f"include/p101_{domain}/{domain}.h",
+        ),
+    ):
+        match = re.search(
+            rf"set\({re.escape(variable)}\s+(.*?)\)",
+            config_text,
+            re.DOTALL,
+        )
+        values = re.findall(r"[^\s()]+", match.group(1)) if match else []
+        if values != [expected]:
+            failures.append(
+                f"{repo.name}: {variable} must contain only {expected}"
+            )
+    return failures
+
+
 def main() -> int:
     failures: list[str] = []
     active_paths = active_repository_paths()
@@ -64,41 +124,69 @@ def main() -> int:
         failures.append(f"repos.txt still admits retired libraries: {', '.join(sorted(retired_active))}")
 
     central_rows = table(SCRIPTS_ROOT / "contracts" / "wrapper-library-map.tsv")
-    central: dict[str, tuple[str, str, str]] = {}
+    central: dict[str, tuple[str, str, str, str]] = {}
     for row in central_rows:
-        name = row["function"]
-        if name in central:
-            failures.append(f"central manifest duplicates {name}")
+        usr = row["function_usr"]
+        if usr in central:
+            failures.append(f"central manifest duplicates {usr}")
             continue
-        central[name] = (row["domain"], row["current_source"], row["current_header"])
+        central[usr] = (
+            row["function"],
+            row["domain"],
+            row["current_source"],
+            row["current_header"],
+        )
 
     local: dict[str, str] = {}
     for domain in DOMAINS:
         repo = WORKSPACE / "libraries" / f"lib_{domain}"
         manifest = repo / "api-manifest.tsv"
+        failures.extend(validate_functional_layout(repo, domain))
         if not manifest.is_file():
             failures.append(f"{repo.name}: missing api-manifest.tsv")
             continue
         for row in table(manifest):
             name = row["function"]
-            if name in local:
-                failures.append(f"{name}: owned by both {local[name]} and {domain}")
-            local[name] = domain
+            usr = row["function_usr"]
+            if usr in local:
+                failures.append(f"{usr}: owned by both {local[usr]} and {domain}")
+            local[usr] = domain
             if any(row[platform] != "yes" for platform in ("linux", "macos", "freebsd")):
                 failures.append(f"{name}: not admitted on all three platforms")
+            expected_current_source = (
+                f"libraries/lib_{domain}/src/{domain}.c"
+            )
+            expected_current_header = (
+                f"libraries/lib_{domain}/include/p101_{domain}/{domain}.h"
+            )
+            if row["current_source"] != expected_current_source:
+                failures.append(
+                    f"{name}: current_source is not the domain implementation "
+                    f"{expected_current_source}"
+                )
+            if row["current_header"] != expected_current_header:
+                failures.append(
+                    f"{name}: current_header is not the domain interface "
+                    f"{expected_current_header}"
+                )
             for field in ("current_source", "current_header"):
                 path = WORKSPACE / row[field]
                 if not path.is_file():
                     failures.append(f"{name}: missing {field} {row[field]}")
-            expected_row = central.get(name)
-            actual_row = (domain, row["current_source"], row["current_header"])
+            expected_row = central.get(usr)
+            actual_row = (
+                name,
+                domain,
+                row["current_source"],
+                row["current_header"],
+            )
             if expected_row != actual_row:
-                failures.append(f"{name}: central/per-library ownership drift")
+                failures.append(f"{name} ({usr}): central/per-library ownership drift")
 
-    for name in sorted(central.keys() - local.keys()):
-        failures.append(f"{name}: central ownership has no per-library row")
-    for name in sorted(local.keys() - central.keys()):
-        failures.append(f"{name}: per-library row is absent from central ownership")
+    for usr in sorted(central.keys() - local.keys()):
+        failures.append(f"{usr}: central ownership has no per-library row")
+    for usr in sorted(local.keys() - central.keys()):
+        failures.append(f"{usr}: per-library row is absent from central ownership")
 
     for root in active_paths:
         if not root.is_dir():

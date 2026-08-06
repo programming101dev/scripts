@@ -1,118 +1,217 @@
 #!/usr/bin/env python3
-"""Check the small, executable contract for wrapper fault outcomes."""
+"""Check the identity-bound contract for wrapper fault outcomes."""
 
 from __future__ import annotations
 
+import csv
 import json
+import sys
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = SCRIPTS_ROOT.parent
+sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
+
+from c_facts import CFactError, acquire  # noqa: E402
+
+
 CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-fault-semantics.json"
 FAILURE_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-failure-contract.json"
 LIFECYCLE_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-lifecycle-contract.json"
 ENV_HEADER = WORKSPACE / "libraries" / "lib_env" / "include" / "p101_env" / "env.h"
-ENV_SOURCE = WORKSPACE / "libraries" / "lib_env" / "src" / "env.c"
-IO_SOURCE = WORKSPACE / "libraries" / "lib_io" / "src" / "posix" / "unistd.c"
+IO_SOURCE = WORKSPACE / "libraries" / "lib_io" / "src" / "io.c"
 IO_BEHAVIOR = WORKSPACE / "libraries" / "lib_io" / "test" / "test_behavior.c"
-
-
+IO_MANIFEST = WORKSPACE / "libraries" / "lib_io" / "api-manifest.tsv"
 def load(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def manifest_identities() -> dict[str, str]:
+    with IO_MANIFEST.open(encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream, delimiter="\t"))
+    by_usr = {row["function_usr"]: row["function"] for row in rows}
+    return by_usr
 
 
 def validate(
     contract: dict[str, Any],
     failure: dict[str, Any],
     lifecycle: dict[str, Any],
-    env_header: str,
-    env_source: str,
-    io_source: str,
-    io_behavior: str,
 ) -> list[str]:
     failures: list[str] = []
     expected_modes = {"error", "eintr", "timeout", "short", "uncertain"}
     modes = contract.get("modes", {})
-    if contract.get("schema") != "p101-wrapper-fault-semantics-v1":
+    if contract.get("schema") != "p101-wrapper-fault-semantics-v3":
         failures.append("unsupported fault-semantics schema")
     if set(modes) != expected_modes:
         failures.append("fault mode inventory drifted")
 
+    try:
+        facts = acquire(WORKSPACE, (ENV_HEADER, IO_SOURCE, IO_BEHAVIOR))
+    except CFactError as error:
+        return [str(error)]
+    enum_usrs = {
+        str(fact.get("usr", ""))
+        for fact in facts
+        if fact["kind"] == "ENUMERATOR"
+    }
+    calls_by_caller: dict[str, set[str]] = defaultdict(set)
+    roles: dict[str, set[str]] = defaultdict(set)
+    for fact in facts:
+        caller_usr = str(fact.get("caller_usr", ""))
+        if fact["kind"] == "CALL" and caller_usr:
+            calls_by_caller[caller_usr].add(str(fact.get("usr", "")))
+        elif fact["kind"] == "NOTE" and caller_usr:
+            value = str(fact.get("value", ""))
+            if value.startswith("SEMANTIC_ROLE:"):
+                roles[value.removeprefix("SEMANTIC_ROLE:")].add(caller_usr)
+
     expected = {
-        "error": ("P101_ENV_FAULT_ERROR", "before-call", "retry-safe"),
-        "eintr": ("P101_ENV_FAULT_ERROR", "before-call", "retry-safe"),
-        "timeout": ("P101_ENV_FAULT_ERROR", "before-call", "retry-safe"),
+        "error": (
+            "c:@EA@p101_env_fault_kind@P101_ENV_FAULT_ERROR",
+            "before-call",
+            "retry-safe",
+        ),
+        "eintr": (
+            "c:@EA@p101_env_fault_kind@P101_ENV_FAULT_ERROR",
+            "before-call",
+            "retry-safe",
+        ),
+        "timeout": (
+            "c:@EA@p101_env_fault_kind@P101_ENV_FAULT_ERROR",
+            "before-call",
+            "retry-safe",
+        ),
         "short": (
-            "P101_ENV_FAULT_SHORT",
+            "c:@EA@p101_env_fault_kind@P101_ENV_FAULT_SHORT",
             "after-partial-progress",
             "progress-known",
         ),
         "uncertain": (
-            "P101_ENV_FAULT_UNCERTAIN",
+            "c:@EA@p101_env_fault_kind@P101_ENV_FAULT_UNCERTAIN",
             "after-dispatch",
             "outcome-uncertain",
         ),
     }
-    required_fields = {
-        "kind",
+    base_fields = {
+        "kind_usr",
         "phase",
         "disposition",
         "operation_effect",
         "retry_rule",
-        "supported_wrappers",
+        "supported_wrapper_usrs",
     }
-    for name, values in expected.items():
-        record = modes.get(name, {})
+    for mode, values in expected.items():
+        record = modes.get(mode, {})
+        required_fields = set(base_fields)
+        if mode == "uncertain":
+            required_fields.update(("evidence_role", "evidence_wrapper_usr"))
         if set(record) != required_fields:
-            failures.append(f"{name}: semantic fields drifted")
+            failures.append(f"{mode}: semantic fields drifted")
             continue
-        if (record["kind"], record["phase"], record["disposition"]) != values:
-            failures.append(f"{name}: phase or disposition drifted")
-        if record["kind"] not in env_header:
-            failures.append(f"{name}: fault kind is absent from lib_env")
-        if f'"{name}"' not in env_source:
-            failures.append(f"{name}: environment mode is not implemented")
+        observed = (
+            record["kind_usr"],
+            record["phase"],
+            record["disposition"],
+        )
+        if observed != values:
+            failures.append(f"{mode}: phase or disposition drifted")
+        if record["kind_usr"] not in enum_usrs:
+            failures.append(
+                f"{mode}: fault-kind identity is absent from lib_env: "
+                f"{record['kind_usr']}"
+            )
 
-    io_wrappers = ["p101_pread", "p101_pwrite", "p101_read", "p101_write"]
-    for name in ("short", "uncertain"):
-        if modes.get(name, {}).get("supported_wrappers") != io_wrappers:
-            failures.append(f"{name}: supported wrapper inventory drifted")
-    short_wrappers = sorted(
-        name
-        for name, record in failure.get("wrappers", {}).items()
-        if "short" in record.get("fault_modes", [])
+    by_usr = manifest_identities()
+    short_usrs = modes.get("short", {}).get("supported_wrapper_usrs")
+    uncertain_usrs = modes.get("uncertain", {}).get(
+        "supported_wrapper_usrs"
     )
-    if short_wrappers != io_wrappers:
-        failures.append("generated short-I/O wrapper inventory drifted")
-    lifecycle_wrappers = sorted(
-        record["fault_name"]
+    if (
+        not isinstance(short_usrs, list)
+        or not isinstance(uncertain_usrs, list)
+        or short_usrs != uncertain_usrs
+        or any(usr not in by_usr for usr in short_usrs)
+    ):
+        failures.append("partial/uncertain wrapper identities are invalid")
+        admitted_usrs: set[str] = set()
+    else:
+        admitted_usrs = set(short_usrs)
+
+    mechanism = contract.get("mechanism", {})
+    if set(mechanism) != {
+        "hard_selector_usr",
+        "action_selector_usr",
+        "action_recorder_usr",
+        "entry_trace_usr",
+    }:
+        failures.append("fault mechanism identities drifted")
+        action_selector_usr = ""
+        action_recorder_usr = ""
+    else:
+        action_selector_usr = mechanism["action_selector_usr"]
+        action_recorder_usr = mechanism["action_recorder_usr"]
+    action_callers = {
+        caller_usr
+        for caller_usr, callees in calls_by_caller.items()
+        if action_selector_usr in callees
+    }
+    if action_callers != admitted_usrs:
+        failures.append(
+            "fault-action implementation identities drifted: "
+            f"expected={sorted(admitted_usrs)} observed={sorted(action_callers)}"
+        )
+    record_callers = {
+        caller_usr
+        for caller_usr, callees in calls_by_caller.items()
+        if action_recorder_usr in callees
+    }
+    if record_callers != admitted_usrs:
+        failures.append(
+            "after-dispatch record identities drifted: "
+            f"expected={sorted(admitted_usrs)} observed={sorted(record_callers)}"
+        )
+
+    short_failure_usrs = {
+        record.get("function_usr")
+        for record in failure.get("wrappers", {}).values()
+        if "short" in record.get("fault_modes", [])
+        and record.get("function_usr") in by_usr
+    }
+    if short_failure_usrs != admitted_usrs:
+        failures.append("generated short-I/O wrapper identities drifted")
+    lifecycle_usrs = {
+        record.get("fault_usr")
         for record in lifecycle.get("scenarios", {}).values()
         if "short" in record.get("fault_modes", [])
-    )
-    if lifecycle_wrappers != io_wrappers:
-        failures.append("short-I/O lifecycle evidence drifted")
+        and record.get("fault_usr") in by_usr
+    }
+    if lifecycle_usrs != admitted_usrs:
+        failures.append("short-I/O lifecycle evidence identities drifted")
 
-    for symbol in (
-        "P101_ENV_FAULT_SHORT",
-        "P101_ENV_FAULT_UNCERTAIN",
-        "hide_success",
-        "p101_env_record_fault_action",
-    ):
-        if symbol not in io_source:
-            failures.append(f"lib_io is missing {symbol}")
-    for evidence in (
-        "test_uncertain_write_hides_completed_operation",
-        "p101_error_is_errno(err, ETIMEDOUT)",
-        "memcmp(received, payload",
-    ):
-        if evidence not in io_behavior:
-            failures.append(f"uncertain-outcome native evidence is missing {evidence}")
+    uncertain = modes.get("uncertain", {})
+    role = uncertain.get("evidence_role")
+    evidence_usr = uncertain.get("evidence_wrapper_usr")
+    evidence_functions = roles.get(role, set()) if isinstance(role, str) else set()
+    if len(evidence_functions) != 1:
+        failures.append("uncertain-outcome semantic evidence is not unique")
+    else:
+        evidence_function = next(iter(evidence_functions))
+        if evidence_usr not in calls_by_caller.get(evidence_function, set()):
+            failures.append(
+                "uncertain-outcome semantic evidence does not call its "
+                "declared wrapper identity"
+            )
 
-    if modes.get("uncertain", {}).get("retry_rule") != "automatic-retry-forbidden":
+    if uncertain.get("retry_rule") != "automatic-retry-forbidden":
         failures.append("uncertain outcomes must not authorize automatic retry")
-    if failure.get("semantics", {}).get("fault_boundary") != "before-observable-work":
+    if (
+        failure.get("semantics", {}).get("fault_boundary")
+        != "after-entry-trace-before-native-work"
+    ):
         failures.append("generated early-failure boundary drifted")
     return failures
 
@@ -122,16 +221,15 @@ def main() -> int:
         load(CONTRACT_PATH),
         load(FAILURE_PATH),
         load(LIFECYCLE_PATH),
-        ENV_HEADER.read_text(encoding="utf-8"),
-        ENV_SOURCE.read_text(encoding="utf-8"),
-        IO_SOURCE.read_text(encoding="utf-8"),
-        IO_BEHAVIOR.read_text(encoding="utf-8"),
     )
     if failures:
         for failure in failures:
             print(f"FAIL: {failure}")
         return 1
-    print("wrapper fault semantics: 5 modes, 4 after-dispatch/partial-progress wrappers")
+    print(
+        "wrapper fault semantics: 5 modes, "
+        "4 identity-bound after-dispatch/partial-progress wrappers"
+    )
     return 0
 
 
