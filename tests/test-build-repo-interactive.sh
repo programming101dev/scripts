@@ -208,7 +208,9 @@ grep -Fq 'cmake --install build-runtime' "$sandbox/install-selection.stdout"
 
 mkdir -p "$sandbox/matrix"
 cp ./update-all.sh "$sandbox/matrix/update-all.sh"
-mkdir -p "$sandbox/matrix/distribution" "$sandbox/matrix/workspace"
+mkdir -p "$sandbox/matrix/distribution" "$sandbox/matrix/workspace" \
+  "$sandbox/matrix/shared"
+cp ./shared/compilers.sh "$sandbox/matrix/shared/compilers.sh"
 cp ./distribution/pull.sh "$sandbox/matrix/distribution/pull.sh"
 cp ./distribution/refresh-repo.sh "$sandbox/matrix/distribution/refresh-repo.sh"
 cp ./workspace/update.sh "$sandbox/matrix/workspace/update.sh"
@@ -241,8 +243,10 @@ grep -Fxq -- 'address' "$sandbox/matrix/driver-arguments.txt"
 snapshot_root="$sandbox/update-snapshot"
 snapshot_scripts="$snapshot_root/scripts"
 mkdir -p "$snapshot_scripts/workspace" "$snapshot_scripts/distribution" \
+  "$snapshot_scripts/shared" \
   "$snapshot_scripts/generators" "$snapshot_root/.flags" "$snapshot_root/bin"
 cp ./workspace/update.sh "$snapshot_scripts/workspace/update.sh"
+cp ./shared/compilers.sh "$snapshot_scripts/shared/compilers.sh"
 chmod +x "$snapshot_scripts/workspace/update.sh"
 
 cat > "$snapshot_root/bin/tool" <<'EOF'

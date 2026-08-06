@@ -94,6 +94,8 @@ python3 - "$posix_dir" <<'PY'
 from __future__ import annotations
 
 import sys
+import os
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -125,16 +127,34 @@ class FunctionLinkParser(HTMLParser):
 
 
 def fetch(url: str, output: Path) -> bool:
-    if output.exists() and output.stat().st_size > 0:
-        return True
+    if output.is_file() and output.stat().st_size >= 256:
+        tail = output.read_bytes()[-4096:].lower()
+        if b"</html>" in tail:
+            return True
 
+    temporary: Path | None = None
     try:
         with urllib.request.urlopen(url, timeout=30) as response:
-            output.write_bytes(response.read())
+            data = response.read()
+        if len(data) < 256 or b"</html>" not in data[-4096:].lower():
+            raise OSError(f"download was incomplete ({len(data)} bytes)")
+        handle, name = tempfile.mkstemp(
+            prefix=output.name + ".",
+            suffix=".part",
+            dir=output.parent,
+        )
+        temporary = Path(name)
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+        temporary.replace(output)
         return True
     except (OSError, urllib.error.URLError) as error:
         print(f"warning: failed to fetch {url}: {error}", file=sys.stderr)
         return False
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 out_dir = Path(sys.argv[1])

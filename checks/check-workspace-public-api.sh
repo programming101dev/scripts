@@ -2,6 +2,8 @@
 # Closed-workspace public API audit using Clang facts from every built consumer.
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+# shellcheck source=shared/artifacts.sh
+. ./shared/artifacts.sh
 
 out_dir=""
 fail_findings=0
@@ -37,33 +39,10 @@ scope_exclusion_reason() {
   done < "$scope_exclusions"
 }
 
-find_tool() {
-  repo="$1"
-  name="$2"
-  marker="$repo/.last-build-dir"
-  if [ ! -f "$marker" ]; then
-    marker="$repo/.last-runtime-build-dir"
-  fi
-  if [ -f "$marker" ]; then
-    build_dir="$(cat "$marker")"
-    if [ -x "$repo/$build_dir/$name" ]; then
-      printf '%s\n' "$repo/$build_dir/$name"
-      return
-    fi
-  fi
-  find "$repo" -maxdepth 2 -type f -name "$name" -perm -111 -print -quit
-}
+find_tool() { p101_find_built_tool "$1" "$2"; }
+find_db() { p101_find_compile_database "$1"; }
 
-find_db() {
-  repo="$1"
-  if [ -f "$repo/.last-build-dir" ] && [ -f "$repo/$(cat "$repo/.last-build-dir")/compile_commands.json" ]; then
-    printf '%s\n' "$repo/$(cat "$repo/.last-build-dir")/compile_commands.json"
-    return
-  fi
-  find "$repo" -maxdepth 2 -type f -name compile_commands.json -path '*/build*/*' -print -quit
-}
-
-module_map="$(find_tool "$workspace/programs/p101-module-map" p101-module-map)"
+module_map="$(find_tool "$workspace/programs/p101-module-map" p101-module-map || true)"
 [ -x "$audit" ] && [ -x "$module_map" ] || { echo "Build p101-wrapper-audit and p101-module-map first." >&2; exit 2; }
 
 combined="$out_dir/workspace-facts.tsv"
@@ -87,7 +66,7 @@ while IFS='|' read -r _url relative _language || [ -n "${relative:-}" ]; do
     missing+=("$relative (repository missing)")
     continue
   fi
-  db="$(find_db "$repo")"
+  db="$(find_db "$repo" || true)"
   if [ -z "$db" ]; then
     missing+=("$relative (compile_commands.json missing)")
     continue
@@ -188,13 +167,34 @@ rc=$?
 set -e
 [ "$rc" -le 1 ] || { cat "$out_dir/module-map.stderr.txt" >&2; exit 2; }
 
+extract_public_api_candidates() {
+  # Match the rule semantics emitted by the live module-map tool, not its
+  # diagnostic numbering. Renumbering a finding must not silently turn this
+  # workspace gate into a zero-finding parser.
+  grep -E '^- P101-MOD-[0-9]+:' "$1" |
+    grep -E 'non-static but does not appear to be part|declared here, but no matching non-static definition|declared here, but no other module includes|Macro .* is exposed|Type .* is exposed' |
+    grep '/libraries/' || true
+}
+
+parser_fixture="$out_dir/public-api-parser-fixture.md"
+cat > "$parser_fixture" <<'EOF'
+- P101-MOD-106: /workspace/libraries/lib_demo/include/demo.h: `demo` is non-static but does not appear to be part of a used module interface.
+- P101-MOD-210: /workspace/libraries/lib_demo/src/demo.c: Type `demo` is exposed, but no other module includes its interface.
+- P101-MOD-005: /workspace/libraries/lib_demo/src/not-public.c: unrelated teaching note.
+EOF
+fixture_findings="$(extract_public_api_candidates "$parser_fixture" | wc -l | tr -d '[:space:]')"
+if [ "$fixture_findings" -ne 2 ]; then
+  printf 'Public-API finding parser rejected its known-positive fixture.\n' >&2
+  exit 2
+fi
+
 {
   printf '# p101 workspace public API candidates\n\n'
   printf '> These are deterministic candidates, not proof of dead API. Function use is\n'
   printf '> derived from Clang call facts. Type and macro findings are module-level:\n'
   printf '> they mean no workspace consumer included the declaring interface.\n\n'
   printf '## Candidates\n\n'
-  grep -E '^- P101-MOD-00[6-9]:|^- P101-MOD-010:' "$out_dir/module-map-full.md" | grep '/libraries/' || true
+  extract_public_api_candidates "$out_dir/module-map-full.md"
 } > "$out_dir/public-api.md"
 
 findings="$(grep -c '^- P101-' "$out_dir/public-api.md" || true)"

@@ -12,6 +12,13 @@
 # Platforms: macOS, Linux, FreeBSD.  Compilers: gcc and clang.
 set -uo pipefail        # NOT -e: we run every check, then summarise.
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." || exit 1
+# shellcheck source=shared/compilers.sh
+. ./shared/compilers.sh
+workspace_root="$(CDPATH='' cd -- .. && pwd -P)"
+case "${P101_FLAGS_PROFILE:-maximal}" in
+  standard) flags_root="$workspace_root/.flags-standard" ;;
+  *) flags_root="$workspace_root/.flags" ;;
+esac
 
 usage() {
   cat <<'USAGE'
@@ -115,10 +122,10 @@ here="$(basename "$(pwd)")"
 
 printf 'p101 doctor — %s\n' "$here"
 printf 'platform: %s (%s)\n' "$osname" "$arch"
-if [ -L .flags ] || [ -d .flags ]; then
-  printf 'flags:    %s\n' "$(cd .flags 2>/dev/null && pwd || echo '.flags')"
+if [ -L "$flags_root" ] || [ -d "$flags_root" ]; then
+  printf 'flags:    %s\n' "$(cd "$flags_root" 2>/dev/null && pwd || printf '%s' "$flags_root")"
 else
-  printf 'flags:    %s .flags not found — run ./change-compiler.sh to probe this machine\n' "$WARN"
+  printf 'flags:    %s %s not found — run ./change-compiler.sh to probe this machine\n' "$WARN" "$flags_root"
 fi
 
 # ========================= toolchain =========================
@@ -135,12 +142,20 @@ _cxxs="$(names_from "$_slist_cxx")"
 [ -n "$_cxxs" ] || _cxxs="g++ clang++"
 echo "  compilers (supported):"
 for c in $_ccs; do
-  if have "$c"; then printf '    %s %-10s %s\n' "$OK" "$c" "$(firstline "$c" --version)"
-  else printf '    %s %-10s not on PATH\n' "$NO" "$c"; fi
+  resolved="$(p101_resolve_compiler "$c" compiler_paths.txt 2>/dev/null || true)"
+  if [ -n "$resolved" ]; then
+    printf '    %s %-10s %s\n' "$OK" "$c" "$(firstline "$resolved" --version)"
+  else
+    printf '    %s %-10s unavailable (refresh compiler discovery)\n' "$WARN" "$c"
+  fi
 done
 for c in $_cxxs; do
-  if have "$c"; then printf '    %s %-10s %s\n' "$OK" "$c" "$(firstline "$c" --version)"
-  else printf '    %s %-10s not on PATH\n' "$NO" "$c"; fi
+  resolved="$(p101_resolve_compiler "$c" compiler_paths.txt 2>/dev/null || true)"
+  if [ -n "$resolved" ]; then
+    printf '    %s %-10s %s\n' "$OK" "$c" "$(firstline "$resolved" --version)"
+  else
+    printf '    %s %-10s unavailable (refresh compiler discovery)\n' "$WARN" "$c"
+  fi
 done
 
 # analysis tools the build uses
@@ -159,12 +174,18 @@ else printf '    %s clang-format  missing  (optional; ./build.sh --format skips 
 
 # ===================== instrumentation =====================
 report_instr() {
-  local cc="$1" d=".flags/$1"
+  local cc="$1" key resolved d
+  key="$(basename "$cc")"
+  resolved="$(p101_resolve_compiler "$cc" compiler_paths.txt 2>/dev/null || true)"
+  d="$flags_root/$key"
   line
-  printf 'instrumentation — %s\n' "$cc"
-  if ! have "$cc"; then printf '  %s %s not on PATH — cannot use here\n' "$NO" "$cc"; fi
+  printf 'instrumentation — %s\n' "$key"
+  if [ -z "$resolved" ]; then
+    printf '  %s %s is unavailable — cannot use here\n' "$NO" "$key"
+    return 1
+  fi
   if [ ! -d "$d" ]; then
-    printf '  %s no probed flags in .flags/%s — run ./change-compiler.sh -c %s\n' "$WARN" "$cc" "$cc"
+    printf '  %s no probed flags in %s/%s — run ./change-compiler.sh -c %s\n' "$WARN" "$flags_root" "$key" "$key"
     return 0
   fi
 
@@ -172,9 +193,9 @@ report_instr() {
   if [ -s "$d/coverage_flags.txt" ]; then
     local mcdc=""
     grep -q -- '-fcondition-coverage' "$d/coverage_flags.txt" && mcdc="  + MC/DC (--conditions)"
-    printf '  coverage    %s  gcov tool: %s%s\n' "$OK" "$(gcov_for "$cc")" "$mcdc"
+    printf '  coverage    %s  gcov tool: %s%s\n' "$OK" "$(gcov_for "$key")" "$mcdc"
   else
-    printf '  coverage    %s  not available for %s here\n' "$NO" "$cc"
+    printf '  coverage    %s  not available for %s here\n' "$NO" "$key"
   fi
 
   # profiling (compile-time -pg) + sampling backend
@@ -214,7 +235,8 @@ if [ "$show_all" -eq 1 ]; then
   _seen=""
   for c in $_all_list; do
     case " $_seen " in *" $c "*) continue ;; esac
-    report_instr "$c"; _seen="$_seen $c"
+    report_instr "$c" || true
+    _seen="$_seen $c"
   done
 else
   cc="$(configured_cc)"
@@ -222,11 +244,18 @@ else
     # nothing configured — fall back to first supported compiler on PATH
     lang="$(project_lang)"; [ -n "$lang" ] || lang="C"
     if [ "$lang" = "CXX" ] || [ "$lang" = "CPP" ]; then _pref="$_cxxs"; else _pref="$_ccs"; fi
-    for c in $_pref; do if have "$c"; then cc="$c"; break; fi; done
+    for c in $_pref; do
+      resolved="$(p101_resolve_compiler "$c" compiler_paths.txt 2>/dev/null || true)"
+      if [ -n "$resolved" ]; then cc="$c"; break; fi
+    done
     line
     printf '%s no build configured (run ./change-compiler.sh) — showing %s\n' "$WARN" "${cc:-<none>}"
   fi
-  if [ -n "$cc" ]; then report_instr "$cc"; else
+  if [ -n "$cc" ]; then
+    if ! report_instr "$cc"; then
+      required_missing=1
+    fi
+  else
     line; printf '%s no usable compiler found on PATH\n' "$NO"; required_missing=1
   fi
 fi

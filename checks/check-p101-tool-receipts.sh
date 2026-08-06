@@ -3,6 +3,8 @@ set -eu
 
 output=
 script_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)
+# shellcheck source=shared/artifacts.sh
+. "$script_root/shared/artifacts.sh"
 
 usage()
 {
@@ -41,23 +43,7 @@ find_tool()
 
 last_build_tool()
 {
-    repository=$1
-    tool_name=$2
-    marker=$repository/.last-build-dir
-
-    if [ ! -f "$marker" ]
-    then
-        marker=$repository/.last-runtime-build-dir
-    fi
-    if [ -f "$marker" ]
-    then
-        IFS= read -r build_directory <"$marker"
-        candidate=$repository/$build_directory/$tool_name
-        if [ -x "$candidate" ]
-        then
-            printf '%s\n' "$candidate"
-        fi
-    fi
+    p101_find_built_tool "$1" "$2"
 }
 
 while getopts "o:" option

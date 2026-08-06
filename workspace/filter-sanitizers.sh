@@ -43,7 +43,7 @@ IFS=','
 read -r -a requested_names <<< "$requested"
 IFS="$old_ifs"
 
-for sanitizer in "${requested_names[@]}"; do
+for sanitizer in "${requested_names[@]+"${requested_names[@]}"}"; do
   sanitizer="$(printf '%s' "$sanitizer" |
     sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
   [[ -n "$sanitizer" ]] || continue

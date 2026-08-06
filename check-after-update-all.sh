@@ -26,6 +26,8 @@
 
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+# shellcheck source=shared/compilers.sh
+. ./shared/compilers.sh
 
 cc=""
 cxx=""
@@ -70,7 +72,8 @@ Options:
   -f <formatter>   clang-format executable. Default: clang-format.
   -C <file>        C compiler list. Default: supported_c_compilers.txt.
   -X <file>        C++ compiler list. Default: supported_cxx_compilers.txt.
-  -o <dir>         Artifact directory. Default: /tmp/p101-after-update-all-check-<pid>.
+  -o <dir>         Artifact directory. Default: a new
+                   ${TMPDIR:-/tmp}/p101-after-update-all-check.* directory.
   -n <count>       Fault-injection cases for playground tour. Default: 1.
   --fuzz-secs <s>  Per-target repository fuzz budget and optional playground
                    fuzz budget. Default: 5.
@@ -144,25 +147,11 @@ trim_line() {
 }
 
 resolve_compiler() {
-  requested="$1"
-  resolved=""
-  if [ -f compiler_paths.txt ]; then
-    resolved="$(awk -F= -v name="$requested" '$1 == name { print substr($0, index($0, "=") + 1); exit }' compiler_paths.txt)"
-  fi
-  if [ -n "$resolved" ]; then
-    printf '%s\n' "$resolved"
-  else
-    command -v "$requested" 2>/dev/null || printf '%s\n' "$requested"
-  fi
+  p101_resolve_compiler "$1" compiler_paths.txt
 }
 
 derive_cxx_name() {
-  base="$(basename "$1")"
-  case "$base" in
-    gcc*) printf 'g++%s\n' "${base#gcc}" ;;
-    clang*) printf 'clang++%s\n' "${base#clang}" ;;
-    *) printf '\n' ;;
-  esac
+  p101_derive_cxx_name "$1"
 }
 
 find_cxx_for_c() {
@@ -195,8 +184,12 @@ run_checks() {
   local graph_status
   local -a graph_args
 
-  run_out_dir="$(mkdir -p "$run_out_dir" && CDPATH='' cd -P "$run_out_dir" && pwd -P)"
-  mkdir -p "$run_out_dir/logs"
+  if ! mkdir -p "$run_out_dir"; then
+    printf 'Cannot create check output directory: %s\n' "$run_out_dir" >&2
+    return 2
+  fi
+  run_out_dir="$(CDPATH='' cd -P "$run_out_dir" && pwd -P)" || return 2
+  mkdir -p "$run_out_dir/logs" || return 2
   profile="$run_out_dir/profile.md"
   summary="$run_out_dir/summary.md"
 
@@ -271,7 +264,7 @@ if [ "$compiler_was_selected" -eq 0 ]; then
   pairs_failed=0
   pairs_skipped=0
 
-  while IFS= read -r matrix_cc; do
+  while IFS= read -r matrix_cc <&3; do
     [ -n "$matrix_cc" ] || continue
     matrix_cxx="$(find_cxx_for_c "$matrix_cc" "$cxx_list_file")"
     if [ -z "$matrix_cxx" ]; then
@@ -279,8 +272,18 @@ if [ "$compiler_was_selected" -eq 0 ]; then
       pairs_skipped=$((pairs_skipped + 1))
       continue
     fi
-    resolved_cc="$(resolve_compiler "$matrix_cc")"
-    resolved_cxx="$(resolve_compiler "$matrix_cxx")"
+    if ! resolved_cc="$(resolve_compiler "$matrix_cc")"; then
+      printf 'WARN: C compiler %s is no longer available; skipping pair.\n' \
+        "$matrix_cc" >&2
+      pairs_skipped=$((pairs_skipped + 1))
+      continue
+    fi
+    if ! resolved_cxx="$(resolve_compiler "$matrix_cxx")"; then
+      printf 'WARN: C++ compiler %s is no longer available; skipping pair.\n' \
+        "$matrix_cxx" >&2
+      pairs_skipped=$((pairs_skipped + 1))
+      continue
+    fi
     pair_name="$(printf '%s__%s' "$(basename "$matrix_cc")" "$(basename "$matrix_cxx")" | tr -c '[:alnum:]_.-' '_')"
     pair_out="$out_dir/$pair_name"
     printf '\n===============================================================================\n'
@@ -293,7 +296,7 @@ if [ "$compiler_was_selected" -eq 0 ]; then
       pairs_failed=$((pairs_failed + 1))
     fi
     pairs_run=$((pairs_run + 1))
-  done < <(awk 'NF && $0 !~ /^[[:space:]]*#/ { print $1 }' "$c_list_file")
+  done 3< <(awk 'NF && $0 !~ /^[[:space:]]*#/ { print $1 }' "$c_list_file")
 
   [ "$pairs_run" -gt 0 ] || { printf 'No usable compiler pairs were found.\n' >&2; exit 3; }
   printf '\nCompiler matrix complete: %d passed, %d failed, %d skipped.\n' \
@@ -303,6 +306,16 @@ if [ "$compiler_was_selected" -eq 0 ]; then
   exit
 fi
 
+if [ -z "$cc" ] || [ -z "$cxx" ]; then
+  [ -f "$c_list_file" ] || {
+    printf 'C compiler list not found: %s\n' "$c_list_file" >&2
+    exit 2
+  }
+  [ -f "$cxx_list_file" ] || {
+    printf 'C++ compiler list not found: %s\n' "$cxx_list_file" >&2
+    exit 2
+  }
+fi
 if [ -z "$cc" ]; then
   cc="$(trim_line "$c_list_file")"
 fi
@@ -321,4 +334,10 @@ cxx="$(resolve_compiler "$cxx")"
 if [ -z "$out_dir" ]; then
   out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-after-update-all-check.XXXXXX")"
 fi
-run_checks "$cc" "$cxx" "$out_dir"
+if run_checks "$cc" "$cxx" "$out_dir"; then
+  exit 0
+fi
+# Public option/configuration errors use exit 2 above. Normalize every
+# executed-check failure to 1 so callers can distinguish a bad invocation
+# from a governed finding or tool failure.
+exit 1

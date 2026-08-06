@@ -100,10 +100,12 @@ class ArchitectureContractTests(unittest.TestCase):
 
         position = {repository: index for index, repository in enumerate(repositories)}
         target_owner: dict[str, Path] = {}
+        inspected_configs = 0
         for repository in repositories:
             config = repository / "config.cmake"
             if not config.is_file():
                 continue
+            inspected_configs += 1
             text = config.read_text(encoding="utf-8")
             match = re.search(r"set\(LIBRARY_TARGETS\s+([^)]*)\)", text, re.DOTALL)
             if match is not None:
@@ -128,6 +130,16 @@ class ArchitectureContractTests(unittest.TestCase):
                             f"{repository.name} precedes {owner.name} ({dependency})"
                         )
 
+        self.assertGreater(
+            inspected_configs,
+            0,
+            "repository dependency-order test inspected no config.cmake files",
+        )
+        self.assertGreater(
+            len(target_owner),
+            0,
+            "repository dependency-order test discovered no library targets",
+        )
         self.assertEqual(violations, [])
 
     def test_functional_layout_accepts_native_headers_and_sources(self) -> None:

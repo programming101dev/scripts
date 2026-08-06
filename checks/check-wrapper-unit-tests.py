@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import json
 import platform
+import re
 import sys
 from pathlib import Path
 
@@ -34,6 +35,21 @@ LIFECYCLE_CONTRACT_PATH = (
     SCRIPTS_ROOT / "contracts" / "wrapper-lifecycle-contract.json"
 )
 VALID_KINDS = {"fault", "behavior", "behavior-existing"}
+
+
+def active_cmake_text(text: str) -> str:
+    """Remove comments before checking exact CMake tokens."""
+    return "\n".join(line.split("#", 1)[0] for line in text.splitlines())
+
+
+def cmake_has_token(text: str, token: str) -> bool:
+    return (
+        re.search(
+            rf"(?<![A-Za-z0-9_]){re.escape(token)}(?![A-Za-z0-9_])",
+            active_cmake_text(text),
+        )
+        is not None
+    )
 
 
 def table(path: Path) -> list[dict[str, str]]:
@@ -633,23 +649,23 @@ def main() -> int:
         for row in manifest:
             source_value = row.get("test_source", "")
             source_stem = Path(source_value).stem
-            if source_stem and source_stem not in cmake:
+            if source_stem and not cmake_has_token(cmake, source_stem):
                 failures.append(
                     f"{library}:{row.get('function', '')}: "
                     f"{source_value} is not wired into test/CMakeLists.txt"
                 )
         if any(row.get("test_kind") == "fault" for row in manifest):
-            if "test_fault_wrappers" not in cmake:
+            if not cmake_has_token(cmake, "test_fault_wrappers"):
                 failures.append(f"{library}: fault tests are not built by CMake")
         if any(row.get("test_kind") == "behavior" for row in manifest):
-            if "test_behavior" not in cmake:
+            if not cmake_has_token(cmake, "test_behavior"):
                 failures.append(f"{library}: behavior tests are not built by CMake")
 
     print(f"public p101 API unit tests: {tested_total}/{expected_total}")
     print(
-        f"generated fault cases required on "
+        f"generated fault cases admitted on "
         f"{platform_key or platform.system()}: "
-        f"{fault_case_total}/{fault_case_total}"
+        f"{fault_case_total}"
     )
     documented_wrappers = {
         wrapper_usr
@@ -676,9 +692,8 @@ def main() -> int:
         f"{len(documented_wrappers)}"
     )
     print(
-        f"injectable APIs: {len(fault_wrappers)}/{len(fault_wrappers)}; "
-        "explicitly classified non-direct APIs: "
-        f"{expected_total - len(fault_wrappers)}/"
+        f"injectable APIs classified: {len(fault_wrappers)}; "
+        "non-direct APIs explicitly classified: "
         f"{expected_total - len(fault_wrappers)}"
     )
     print(

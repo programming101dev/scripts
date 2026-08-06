@@ -51,12 +51,20 @@ class CheckGraphTests(unittest.TestCase):
     def test_current_graph(self) -> None:
         ordered = MODULE.validate(copy.deepcopy(self.document))
         self.assertGreaterEqual(len(ordered), 30)
+        self.assertNotIn(
+            "/tmp",
+            {
+                path
+                for node in ordered
+                for path in node.get("resources", {}).get("writes", [])
+            },
+        )
         self.assertLess(
             [node["id"] for node in ordered].index("boundaries"),
             [node["id"] for node in ordered].index("tool-audit"),
         )
 
-    def test_post_update_wrapper_propagates_graph_failure(self) -> None:
+    def test_post_update_wrapper_normalizes_internal_graph_failure(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             graph = root / "failing-graph"
@@ -80,7 +88,7 @@ class CheckGraphTests(unittest.TestCase):
                 text=True,
                 check=False,
             )
-            self.assertEqual(result.returncode, 7)
+            self.assertEqual(result.returncode, 1)
             self.assertIn("post-update-all checks failed", result.stderr)
             self.assertNotIn("post-update-all checks passed", result.stdout)
 
@@ -124,6 +132,26 @@ class CheckGraphTests(unittest.TestCase):
             {"required": "value", "optional": ""},
         )
         self.assertEqual(command, ["tool", "value"])
+
+    def test_temporary_root_marker_is_not_owned_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory).resolve()
+            node = {
+                "id": "temporary",
+                "resources": {
+                    "writes": ["{temporary_root}", "{out}/owned"],
+                    "units": {},
+                },
+            }
+            paths = MODULE.expanded_writes(
+                node,
+                {
+                    "out": os.fspath(output),
+                    "temporary_root": tempfile.gettempdir(),
+                },
+                output,
+            )
+            self.assertEqual(paths, [output / "owned"])
 
     def test_impact_selection_is_conservative_and_flows_downstream(self) -> None:
         nodes = [
@@ -441,6 +469,72 @@ class CheckGraphTests(unittest.TestCase):
             self.assertEqual(counter.read_text(), "2")
             self.assertEqual(measured["mode"], "measurement")
             self.assertEqual(measured["records"][0]["outcome"], "clean")
+
+    def test_cache_publication_keeps_execution_input_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "output"
+            cache = root / "cache"
+            invalidated = root / "invalidated"
+            invalidator = self.node(
+                "invalidator",
+                (
+                    "from pathlib import Path; "
+                    f"Path({str(invalidated)!r}).write_text('changed')"
+                ),
+            )
+            invalidator["invalidates_source_identity"] = True
+            invalidator["cacheable"] = False
+            sibling = self.node(
+                "sibling",
+                "import time; time.sleep(0.25); print('old identity result')",
+            )
+            document = self.make_document([invalidator, sibling], jobs=2)
+
+            def source_identity(
+                patterns: tuple[str, ...] | None = None,
+            ) -> dict[str, object]:
+                generation = "new" if invalidated.exists() else "old"
+                return {
+                    "algorithm": "sha256",
+                    "digest": f"sha256:{generation}",
+                    "files": 1,
+                    "bytes": 1,
+                    "repositories": [],
+                    "patterns": patterns,
+                }
+
+            with patch.object(
+                MODULE, "workspace_source_identity", side_effect=source_identity
+            ):
+                status = MODULE.run_graph(
+                    document,
+                    [invalidator, sibling],
+                    output,
+                    {"out": str(output)},
+                    False,
+                    jobs=2,
+                    cache_directory=cache,
+                )
+
+            self.assertEqual(status, 0)
+            receipt = json.loads((output / "receipt.json").read_text())
+            sibling_record = next(
+                record
+                for record in receipt["records"]
+                if record["id"] == "sibling"
+            )
+            cache_receipts = [
+                json.loads(path.read_text(encoding="utf-8"))
+                for path in cache.rglob("receipt.json")
+            ]
+            sibling_cache = next(
+                item for item in cache_receipts if item["node"] == "sibling"
+            )
+            self.assertEqual(
+                sibling_cache["input_identity"],
+                sibling_record["input_identity"],
+            )
 
     def test_replace_outputs_makes_fresh_rerun_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

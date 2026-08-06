@@ -97,7 +97,9 @@ def parse_artifact_line(line: str, line_number: int) -> tuple[str, Fingerprint]:
         raise CaptureInvalid(str(error)) from error
 
 
-def parse_capture_receipt(receipt_path: Path) -> dict[str, Fingerprint]:
+def parse_capture_receipt(
+    receipt_path: Path,
+) -> tuple[dict[str, Fingerprint], RunResult]:
     if receipt_path.is_symlink() or not receipt_path.is_file():
         raise CaptureInvalid(f"missing regular receipt: {receipt_path}")
     try:
@@ -110,6 +112,7 @@ def parse_capture_receipt(receipt_path: Path) -> dict[str, Fingerprint]:
     scalar: dict[str, str] = {}
     artifacts: dict[str, Fingerprint] = {}
     status_roles: set[str] = set()
+    command_result: RunResult | None = None
     for line_number, line in enumerate(lines[1:], 2):
         if line.startswith("artifact="):
             role, expected = parse_artifact_line(line, line_number)
@@ -133,13 +136,27 @@ def parse_capture_receipt(receipt_path: Path) -> dict[str, Fingerprint]:
             if status_value_keys not in ({"exit"}, {"signal"}, {"raw"}):
                 raise CaptureInvalid(f"malformed status on line {line_number}")
             status_value_key = next(iter(status_value_keys))
-            parse_nonnegative(status_fields[status_value_key], status_value_key)
+            status_value = parse_nonnegative(
+                status_fields[status_value_key], status_value_key
+            )
             status_role = status_fields["status"]
             if status_role not in COMPLETED_STATUS_ROLES:
                 raise CaptureInvalid(f"unsupported receipt status: {status_role}")
             if status_role in status_roles:
                 raise CaptureInvalid(f"duplicate receipt status: {status_role}")
             status_roles.add(status_role)
+            if status_role == "command":
+                if status_value_key == "exit":
+                    command_status = (
+                        EXIT_CLEAN if status_value == 0 else EXIT_FINDINGS
+                    )
+                else:
+                    command_status = EXIT_TROUBLE
+                command_result = RunResult(
+                    "capture_command",
+                    command_status,
+                    status_value if status_value_key == "signal" else None,
+                )
         elif "=" in line:
             key, value = line.split("=", 1)
             if key in scalar:
@@ -197,10 +214,14 @@ def parse_capture_receipt(receipt_path: Path) -> dict[str, Fingerprint]:
         raise CaptureInvalid(
             "receipt artifact fingerprints are incomplete: " + "; ".join(detail)
         )
-    return artifacts
+    if command_result is None:
+        raise CaptureInvalid("receipt has no command status")
+    return artifacts, command_result
 
 
-def verify_capture(capture_dir: Path) -> dict[str, Fingerprint]:
+def verify_capture(
+    capture_dir: Path,
+) -> tuple[dict[str, Fingerprint], RunResult]:
     receipt_path = capture_dir / "receipt.txt"
     receipt_fingerprint = fingerprint_file(
         receipt_path,
@@ -209,7 +230,7 @@ def verify_capture(capture_dir: Path) -> dict[str, Fingerprint]:
     )
     if receipt_fingerprint.final_newline != 1:
         raise CaptureInvalid("receipt has no final newline")
-    expected_artifacts = parse_capture_receipt(receipt_path)
+    expected_artifacts, command_result = parse_capture_receipt(receipt_path)
     actual: dict[str, Fingerprint] = {"receipt": receipt_fingerprint}
     for role, expected in expected_artifacts.items():
         path = capture_dir / CAPTURE_FILES[role]
@@ -221,7 +242,7 @@ def verify_capture(capture_dir: Path) -> dict[str, Fingerprint]:
         if observed != expected:
             raise CaptureInvalid(f"artifact fingerprint mismatch: {path}")
         actual[role] = observed
-    return actual
+    return actual, command_result
 
 
 def snapshot_capture(capture_dir: Path) -> dict[str, Fingerprint]:
@@ -539,7 +560,7 @@ def main(argv: list[str] | None = None) -> int:
     verification = "verified"
     verification_detail = "capture receipt and artifact fingerprints matched"
     try:
-        input_snapshot = verify_capture(capture_dir)
+        input_snapshot, capture_result = verify_capture(capture_dir)
         stability_snapshot = snapshot_capture(capture_dir)
         for role, expected in input_snapshot.items():
             if stability_snapshot.get(role) != expected:
@@ -554,6 +575,7 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_TROUBLE
         verification = "overridden"
         verification_detail = str(error)
+        capture_result = RunResult("capture_command", EXIT_FINDINGS)
         try:
             input_snapshot = snapshot_capture(capture_dir)
             stability_snapshot = input_snapshot
@@ -653,7 +675,7 @@ def main(argv: list[str] | None = None) -> int:
         output_dir / OUTPUT_FILES["report_driver_output"],
         output_dir / OUTPUT_FILES["report_tools_stderr"],
     )
-    results = [model_result]
+    results = [capture_result, model_result]
     if model_result.status == EXIT_CLEAN:
         try:
             runtime_analysis = analyze_model(

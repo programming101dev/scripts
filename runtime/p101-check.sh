@@ -171,13 +171,16 @@ project_dir="$(CDPATH='' cd -P "$project_dir" && pwd -P)" || {
 export P101_DISPATCH_CWD="$project_dir"
 if [ -z "$out_dir" ]; then
   out_dir="$(mktemp -d "$project_dir/p101-check.XXXXXX")"
+  generated_out_dir=1
+else
+  generated_out_dir=0
 fi
 case "$out_dir" in
   /*) ;;
   *) out_dir="$project_dir/$out_dir" ;;
 esac
 
-if [ -e "$out_dir" ]; then
+if [ "$generated_out_dir" -eq 0 ] && [ -e "$out_dir" ]; then
   echo "p101 check: output path already exists: $out_dir" >&2
   exit 2
 fi
@@ -241,9 +244,26 @@ walk_args=(-n "$fault_count" -l "$out_dir/fault-walk/case" -U "$script_dir/p101-
 (cd "$project_dir" && run_logged "p101 error-path walk" "$log_dir/error-path-walk.log" "$walk_tool" "${walk_args[@]}")
 walk_status=$?
 
-python3 "$script_dir/p101_lessons.py" --catalog "$workspace_dir/playgrounds/lessons/manifest.json" guide --markdown \
-  "$out_dir/doctor" "$out_dir/runtime/analysis" "$out_dir/fault-walk" > "$out_dir/lesson-guide.md" 2> "$log_dir/lesson-guide.log"
-lesson_status=$?
+lesson_inputs=("$out_dir/doctor" "$out_dir/runtime/analysis" "$out_dir/fault-walk")
+lesson_missing=0
+for lesson_input in "${lesson_inputs[@]}"; do
+  if [ ! -d "$lesson_input" ]; then
+    printf 'FAIL: required lesson evidence is missing: %s\n' "$lesson_input" \
+      >> "$log_dir/lesson-guide.log"
+    lesson_missing=1
+  fi
+done
+if [ "$lesson_missing" -eq 0 ]; then
+  python3 "$script_dir/p101_lessons.py" --catalog "$workspace_dir/playgrounds/lessons/manifest.json" guide --markdown \
+    "${lesson_inputs[@]}" > "$out_dir/lesson-guide.md" 2> "$log_dir/lesson-guide.log"
+  lesson_status=$?
+else
+  lesson_status=2
+  {
+    printf '# Lesson guide unavailable\n\n'
+    printf 'Required analysis evidence was not produced. See `logs/lesson-guide.log`.\n'
+  } > "$out_dir/lesson-guide.md"
+fi
 
 if [ "$run_coverage" -eq 1 ] && [ -x "$project_dir/coverage-report.sh" ]; then
   (cd "$project_dir" && run_logged "project coverage receipt" "$log_dir/coverage.log" ./coverage-report.sh --no-open -- "$@")

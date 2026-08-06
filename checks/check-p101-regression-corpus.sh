@@ -4,6 +4,8 @@
 set -euo pipefail
 unset CDPATH
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+# shellcheck source=shared/artifacts.sh
+. ./shared/artifacts.sh
 
 out_dir=""
 
@@ -55,19 +57,7 @@ find_tool() {
 }
 
 last_build_tool() {
-  repo="$1"
-  name="$2"
-  marker="$repo/.last-build-dir"
-  if [ ! -f "$marker" ]; then
-    marker="$repo/.last-runtime-build-dir"
-  fi
-  if [ -f "$marker" ]; then
-    IFS= read -r build_dir < "$marker"
-    candidate="$repo/$build_dir/$name"
-    if [ -x "$candidate" ]; then
-      printf '%s\n' "$candidate"
-    fi
-  fi
+  p101_find_built_tool "$1" "$2"
 }
 
 observe="$(find_tool P101_OBSERVE \

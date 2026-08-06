@@ -118,8 +118,16 @@ if [ -f "$out_dir/freebsd-failed-phase" ]; then
   freebsd_phase="$(tr -d '[:space:]' < "$out_dir/freebsd-failed-phase")"
 fi
 if [ -f "$out_dir/freebsd-exit-code" ]; then
-  freebsd_status="$(tr -d '[:space:]' < "$out_dir/freebsd-exit-code")"
-  if [ -n "$freebsd_status" ] && [ "$freebsd_status" -ne 0 ]; then
+  freebsd_status="$(sed \
+    -e 's/^[[:space:]]*//' \
+    -e 's/[[:space:]]*$//' \
+    "$out_dir/freebsd-exit-code")"
+  if ! [[ "$freebsd_status" =~ ^[0-9]+$ ]] ||
+     [ "$freebsd_status" -gt 255 ]; then
+    printf 'Invalid FreeBSD exit-status receipt: %s\n' "$freebsd_status" >&2
+    update_outcome="failure"
+    check_outcome="failure"
+  elif [ "$freebsd_status" -ne 0 ]; then
     case "$freebsd_phase" in
       clone|compilers|update)
         update_outcome="failure"

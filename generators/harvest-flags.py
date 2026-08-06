@@ -39,6 +39,7 @@ import argparse
 import fnmatch
 import json
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -107,13 +108,13 @@ def clean_flag(tok):
     """Normalize one option token from help output.
     Returns (flag, needs_value) or None if it isn't a curatable flag."""
     tok = tok.strip().rstrip(".,;")
-    if not tok.startswith("-") or tok.startswith("--"):
+    if not tok.startswith("-") or tok == "--":
         return None
     # placeholder tails from help text: -Wfoo=<n>, -Wbar=[a|b], -Wbaz=N
     needs_value = False
     # NOTE: '#' excluded from the name charset — a literal # in a flag name
     # (-W#warnings) would be truncated by every #-comment parser downstream
-    m = re.match(r"^(-[A-Za-z][A-Za-z0-9_+.-]*)(=|\[=)?", tok)
+    m = re.match(r"^(--?[A-Za-z][A-Za-z0-9_+.-]*)(=|\[=)?", tok)
     if not m:
         return None
     flag = m.group(1)
@@ -207,7 +208,12 @@ def load_selection():
                 if not stripped:
                     continue
                 is_comment = stripped.startswith("#")
-                for tok in tok_re.findall(raw):
+                content = (
+                    stripped[1:].partition("#")[0]
+                    if is_comment
+                    else raw.partition("#")[0]
+                )
+                for tok in tok_re.findall(content):
                     key = base_key(tok.rstrip('".,'))
                     (excluded if is_comment else included).add(key)
     # an active mention anywhere wins over a commented mention elsewhere
@@ -386,20 +392,45 @@ def merge_database(per_cc):
     flags = db.setdefault("flags", {})
     queried = set(per_cc)
     for cc, (family, label, universe) in per_cc.items():
+        compiler_identity = (
+            f"{family}@{platform.system()}-{platform.machine()}:{cc}"
+        )
         for flag, needs_value in universe.items():
             e = flags.setdefault(flag, {})
-            if needs_value:
-                e["takes_value"] = True
             e.setdefault("category", bucket_for(flag).split()[0])
             e.setdefault("families", {})[family] = True
-            e.setdefault("seen_in", {})[cc] = label
+            e.setdefault("seen_in", {})[compiler_identity] = label
+            e.setdefault("takes_value_in", {})[compiler_identity] = bool(
+                needs_value
+            )
     # drop stale seen_in entries for compilers we re-queried
     for flag, e in list(flags.items()):
         seen = e.get("seen_in", {})
         for cc in queried:
             fam = per_cc[cc][0]
-            if cc in seen and flag not in per_cc[cc][2]:
-                del seen[cc]
+            compiler_identity = (
+                f"{fam}@{platform.system()}-{platform.machine()}:{cc}"
+            )
+            if (
+                compiler_identity in seen
+                and flag not in per_cc[cc][2]
+            ):
+                del seen[compiler_identity]
+                e.get("takes_value_in", {}).pop(compiler_identity, None)
+        families = {
+            identity.split("@", 1)[0]
+            for identity in seen
+            if "@" in identity
+        }
+        if families:
+            e["families"] = {
+                family: True for family in sorted(families)
+            }
+        value_evidence = e.get("takes_value_in", {})
+        if value_evidence:
+            e["takes_value"] = any(value_evidence.values())
+        else:
+            e.pop("takes_value", None)
         if not seen:
             del flags[flag]
     fd, tmp_path = tempfile.mkstemp(prefix=".flag-database.", suffix=".json", dir=SCRIPT_DIR)

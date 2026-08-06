@@ -138,25 +138,15 @@ do_rm() {
   fi
 }
 
-do_rmdir() {
-  local d="$1"
-  [[ -d "$d" ]] || return 0
-  if $DRY_RUN; then
-    say "DRY-RUN: rmdir -- $d"
-    return 0
-  fi
-  if needs_sudo "$d"; then
-    sudo rmdir "$d" 2>/dev/null || true
-  else
-    rmdir "$d" 2>/dev/null || true
-  fi
-}
-
 append_search_prefix() {
   local candidate="$1"
   local existing
 
   [[ -n "${candidate//[[:space:]]/}" ]] || return 0
+  if [[ "$candidate" != /* || "$candidate" == *$'\n'* || "$candidate" == *[\*\?\[]* ]]; then
+    err "Install prefix must be an absolute path without glob metacharacters: $candidate"
+    exit 2
+  fi
   for existing in "${SEARCH_PREFIXES[@]:-}"; do
     [[ "$existing" == "$candidate" ]] && return 0
   done
@@ -226,15 +216,23 @@ for P in "${SEARCH_PREFIXES[@]}"; do
   TARGETS+=("$P/share/pkgconfig/${NAME}-*.pc")
 done
 
-# Filter to existing matches (expand globs safely)
+# Filter to existing matches.  `compgen -G` expands the pattern without
+# subjecting a prefix containing whitespace to shell word splitting.
 declare -a EXISTING=()
-shopt -s nullglob
-for pat in "${TARGETS[@]}"; do
-  for hit in $pat; do
-    [[ -e "$hit" || -L "$hit" ]] && EXISTING+=("$hit")
+append_existing() {
+  local candidate="$1"
+  local existing
+  for existing in "${EXISTING[@]:-}"; do
+    [[ "$existing" == "$candidate" ]] && return 0
   done
+  EXISTING+=("$candidate")
+}
+for pat in "${TARGETS[@]}"; do
+  while IFS= read -r hit; do
+    [[ -e "$hit" || -L "$hit" ]] || continue
+    append_existing "$hit"
+  done < <(compgen -G "$pat" || true)
 done
-shopt -u nullglob
 
 if [[ ${#EXISTING[@]} -eq 0 ]]; then
   say "Nothing found to remove for '${NAME}'."
@@ -260,18 +258,6 @@ for p in "${EXISTING[@]}"; do
     log "Removing file: $p"
     do_rm "$p" || err "Failed to remove $p"
   fi
-done
-
-# Best-effort cleanup of now-empty dirs
-for P in "${SEARCH_PREFIXES[@]}"; do
-  do_rmdir "$P/share/pkgconfig"
-  do_rmdir "$P/lib/pkgconfig"
-  do_rmdir "$P/lib/cmake/${NAME}" || true
-  do_rmdir "$P/lib/cmake/$(cap1 "$NAME")" || true
-  do_rmdir "$P/lib/cmake" || true
-  do_rmdir "$P/share/cmake/${NAME}" || true
-  do_rmdir "$P/share/cmake/$(cap1 "$NAME")" || true
-  do_rmdir "$P/share/cmake" || true
 done
 
 say "Uninstall complete for '${NAME}'."

@@ -26,7 +26,7 @@ def is_src(p): return os.path.splitext(p)[1].lower() in SRC_EXT
 
 def strip_out(argv):
     out, skip = [], False
-    for i, a in enumerate(argv):
+    for a in argv:
         if skip:
             skip = False; continue
         if a == "-c": continue
@@ -85,6 +85,7 @@ def main():
 
     with open(db_path, encoding="utf-8") as f:
         db = json.load(f)
+    db_directory = os.path.dirname(os.path.realpath(db_path))
 
     # in-tree TUs + their compile argv. A source compiled into more than one
     # target (e.g. shared between a library and an executable) appears in the
@@ -92,26 +93,48 @@ def main():
     # duplicate keys ("multiple definitions ... for the same key in index").
     tus = []
     seen = set()
+    source_entries = 0
     for e in db:
-        fpath = e.get("file", "")
-        if not fpath or not is_src(fpath):
+        raw_file = e.get("file", "")
+        if not raw_file or not is_src(raw_file):
             continue
+        source_entries += 1
+        directory = e.get("directory") or db_directory
+        if not os.path.isabs(directory):
+            directory = os.path.join(db_directory, directory)
+        directory = os.path.realpath(directory)
+        fpath = (
+            raw_file
+            if os.path.isabs(raw_file)
+            else os.path.join(directory, raw_file)
+        )
         real = os.path.realpath(fpath)
         if not real.startswith(root + os.sep) or real in seen:
             continue
         seen.add(real)
         argv = e["arguments"] if isinstance(e.get("arguments"), list) else __import__("shlex").split(e.get("command", ""))
         if argv:
-            tus.append((real, e.get("directory") or None, argv))
-    if not tus:
+            tus.append((real, directory, argv))
+    if source_entries == 0:
+        print("CTU analysis skipped: compile database has no translation units")
         return 0
+    if not tus:
+        print("CTU analysis found no in-tree translation units", file=sys.stderr)
+        return 2
 
     # pass 1: emit one AST per TU + collect extdef map lines
     map_lines = []
     for fpath, cwd, argv in tus:
         ast_out = os.path.join(ast_dir, fpath.lstrip("/").replace("/", "_") + ".ast")
         cmd = strip_out(argv) + ["-emit-ast", "-o", ast_out]
-        r = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        r = subprocess.run(
+            cmd,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=300,
+        )
         if r.returncode != 0:
             print(f"CTU emit-ast failed for {fpath} (exit {r.returncode})", file=sys.stderr)
             if r.stdout:
@@ -120,8 +143,14 @@ def main():
         # extdef-mapping prints "<len>:<usr> <sourcepath>"; repoint at the .ast
         # clang-extdef-mapping wants: <file> -- <compiler flags>
         flags = extdef_flags(argv)
-        r = subprocess.run([extdef, fpath, "--"] + flags,
-                           cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        r = subprocess.run(
+            [extdef, fpath, "--"] + flags,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=300,
+        )
         if r.returncode != 0:
             print(f"CTU extdef mapping failed for {fpath} (exit {r.returncode})", file=sys.stderr)
             if r.stdout:
@@ -163,7 +192,14 @@ def main():
         # drop the original compiler (argv[0]); keep this TU's flags + file
         cmd = [clang, "--analyze", "-Wno-unused-command-line-argument"] \
               + sa_args + ctu_cfg + analyze_flags(argv)
-        r = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        r = subprocess.run(
+            cmd,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=300,
+        )
         out = (r.stdout or "").strip()
         if out:
             have_diag = True
@@ -176,4 +212,12 @@ def main():
     return 0
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except subprocess.TimeoutExpired as error:
+        print(
+            f"CTU subprocess timed out after {error.timeout} seconds: "
+            + " ".join(map(str, error.cmd)),
+            file=sys.stderr,
+        )
+        raise SystemExit(2) from error

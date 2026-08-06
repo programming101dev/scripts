@@ -13,6 +13,8 @@
 
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+# shellcheck source=shared/artifacts.sh
+. ./shared/artifacts.sh
 
 programs_dir="../programs"
 out_dir=""
@@ -72,56 +74,8 @@ workspace_dir="$(CDPATH='' cd "$programs_dir/.." && pwd)"
 wrapper_audit="$programs_dir/p101-wrapper-audit/p101-wrapper-audit"
 facts_cache_tool="$workspace_dir/scripts/checks/p101-facts-cache.py"
 
-find_built_tool() {
-  repo="$1"
-  name="$2"
-  marker="$repo/.last-build-dir"
-  if [ ! -f "$marker" ]; then
-    marker="$repo/.last-runtime-build-dir"
-  fi
-  if [ -f "$marker" ]; then
-    build_dir="$(cat "$marker")"
-    if [ -x "$repo/$build_dir/$name" ]; then
-      printf '%s\n' "$repo/$build_dir/$name"
-      return 0
-    fi
-  fi
-  for build_dir in build-clang build; do
-    if [ -x "$repo/$build_dir/$name" ]; then
-      printf '%s\n' "$repo/$build_dir/$name"
-      return 0
-    fi
-  done
-  for candidate in "$repo"/build-*/"$name" "$repo"/build/"$name"; do
-    if [ -x "$candidate" ]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-  command -v "$name" 2>/dev/null
-}
-
-find_compile_database() {
-  repo="$1"
-  marker="$repo/.last-build-dir"
-  if [ ! -f "$marker" ]; then
-    marker="$repo/.last-runtime-build-dir"
-  fi
-  if [ -f "$marker" ]; then
-    build_dir="$(cat "$marker")"
-    if [ -f "$repo/$build_dir/compile_commands.json" ]; then
-      printf '%s\n' "$repo/$build_dir/compile_commands.json"
-      return 0
-    fi
-  fi
-  for candidate in "$repo"/build-clang/compile_commands.json "$repo"/build/compile_commands.json "$repo"/build-*/compile_commands.json; do
-    if [ -f "$candidate" ]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-  return 1
-}
+find_built_tool() { p101_find_built_tool "$1" "$2"; }
+find_compile_database() { p101_find_compile_database "$1"; }
 
 error_contract="$(find_built_tool "$programs_dir/p101-error-contract" p101-error-contract || true)"
 module_map="$(find_built_tool "$programs_dir/p101-module-map" p101-module-map || true)"
@@ -265,11 +219,13 @@ if [ "$skip_wrapper" -eq 0 ]; then
     printf '| FAIL | p101-wrapper-audit availability | missing executable |\n' >> "$summary"
     failed=1
   else
+    wrapper_tools_checked=0
     for tool_dir in "$programs_dir"/p101-*; do
       [ -d "$tool_dir" ] || continue
       if ! has_c_sources "$tool_dir"; then
         continue
       fi
+      wrapper_tools_checked=$((wrapper_tools_checked + 1))
 
       name="$(basename "$tool_dir")"
       log="$log_dir/${name}-wrapper-audit.log"
@@ -321,7 +277,11 @@ if [ "$skip_wrapper" -eq 0 ]; then
         fi
         missed="$(metric_value missed_wrappers "$log")"
         external="$(metric_value external_calls "$log")"
-        if [ "${missed:-0}" != "0" ] || [ "${external:-0}" != "0" ]; then
+        if [ -z "$missed" ] || [ -z "$external" ]; then
+          say "    FAIL: $name wrapper-audit metrics are missing"
+          printf '| FAIL | strict wrapper audit metrics: %s | [log](./logs/%s) |\n' "$name" "$(basename "$log")" >> "$summary"
+          failed=1
+        elif [ "$missed" != "0" ] || [ "$external" != "0" ]; then
           say "    FAIL: $name missed_wrappers=${missed:-?} external_calls=${external:-?}"
           printf '| FAIL | strict wrapper audit metrics: %s | [log](./logs/%s) |\n' "$name" "$(basename "$log")" >> "$summary"
           failed=1
@@ -330,6 +290,11 @@ if [ "$skip_wrapper" -eq 0 ]; then
         failed=1
       fi
     done
+    if [ "$wrapper_tools_checked" -eq 0 ]; then
+      say "FAIL: strict wrapper audit checked no C p101 tools"
+      printf '| FAIL | strict wrapper audits | no C p101 tools discovered |\n' >> "$summary"
+      failed=1
+    fi
   fi
 else
   say "==> strict wrapper audits"
@@ -343,11 +308,13 @@ if [ "$skip_error_contract" -eq 0 ]; then
     printf '| FAIL | p101-error-contract availability | missing executable |\n' >> "$summary"
     failed=1
   else
+    error_tools_checked=0
     for tool_dir in "$programs_dir"/p101-*; do
       [ -d "$tool_dir" ] || continue
       if ! has_c_sources "$tool_dir"; then
         continue
       fi
+      error_tools_checked=$((error_tools_checked + 1))
 
       name="$(basename "$tool_dir")"
       log="$log_dir/${name}-error-contract.log"
@@ -367,6 +334,11 @@ if [ "$skip_error_contract" -eq 0 ]; then
         failed=1
       fi
     done
+    if [ "$error_tools_checked" -eq 0 ]; then
+      say "FAIL: error-contract audit checked no C p101 tools"
+      printf '| FAIL | error-contract audits | no C p101 tools discovered |\n' >> "$summary"
+      failed=1
+    fi
   fi
 else
   say "==> error-contract audits"
@@ -381,11 +353,13 @@ if [ "$skip_module_map" -eq 0 ]; then
     failed=1
   else
     module_note_total=0
+    module_tools_checked=0
     for tool_dir in "$programs_dir"/p101-*; do
       [ -d "$tool_dir" ] || continue
       if ! has_c_sources "$tool_dir"; then
         continue
       fi
+      module_tools_checked=$((module_tools_checked + 1))
 
       name="$(basename "$tool_dir")"
       report="$out_dir/${name}-module-map.md"
@@ -423,6 +397,11 @@ if [ "$skip_module_map" -eq 0 ]; then
         failed=1
       fi
     done
+    if [ "$module_tools_checked" -eq 0 ]; then
+      say "FAIL: module-map audit checked no C p101 tools"
+      printf '| FAIL | module-map design reports | no C p101 tools discovered |\n' >> "$summary"
+      failed=1
+    fi
     printf '\nModule-map design notes observed: `%s`\n' "$module_note_total" >> "$summary"
   fi
 else

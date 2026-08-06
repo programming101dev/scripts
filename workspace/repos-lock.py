@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -213,7 +214,14 @@ def inspect_repository(
         raise LockError(f"{path}: worktree is not clean")
     upstream = ""
     if require_upstream:
-        branch = git(path, "symbolic-ref", "--quiet", "--short", "HEAD")
+        branch_result = subprocess.run(
+            ["git", "-C", str(path), "symbolic-ref", "--quiet", "--short", "HEAD"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+        )
+        branch = branch_result.stdout.strip()
         if not branch:
             raise LockError(f"{path}: cannot refresh a lock from detached HEAD")
         if allow_ahead and not git_succeeds(path, "rev-parse", "--verify", "@{u}"):
@@ -249,11 +257,20 @@ def inspect_repository(
 
 def write_json(path: Path, document: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
-    temporary.write_text(
-        json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=path.name + ".",
+        suffix=".tmp",
+        dir=path.parent,
     )
-    os.replace(temporary, path)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(json.dumps(document, indent=2, sort_keys=True) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def refresh(args: argparse.Namespace) -> int:

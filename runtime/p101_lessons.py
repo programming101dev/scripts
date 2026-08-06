@@ -9,7 +9,6 @@ import json
 import os
 import platform
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -790,6 +789,7 @@ def coverage_document(
     receipt_paths: Iterable[Path] = (),
 ) -> dict[str, Any]:
     verified_platforms = _verified_full_platforms(catalog, receipt_paths)
+    missing_ids, _ = validate_coverage(catalog, catalog.workspace)
     rows = [
         acceptance_for(catalog, finding_id)
         for finding_id in sorted(catalog.by_finding_id)
@@ -830,7 +830,7 @@ def coverage_document(
             "native_case_ids": native_cases,
             "native_suite_ids": len(rows) - native_cases,
             "protocol_pairs": len(rows),
-            "uncovered_ids": 0,
+            "uncovered_ids": len(missing_ids),
             "platform_contract": list(catalog.default_platforms),
             "platforms_verified_by_full_receipt": sorted(verified_platforms),
         },
@@ -954,6 +954,7 @@ def _run_logged(
     cwd: Path,
     output: Path,
     label: str,
+    timeout_seconds: int = 900,
 ) -> dict[str, Any]:
     log = output / f"{_safe_name(label)}.log"
     started = time.time_ns()
@@ -965,6 +966,8 @@ def _run_logged(
             stderr=subprocess.STDOUT,
             text=True,
             check=False,
+            timeout=timeout_seconds,
+            errors="replace",
             env={
                 **os.environ,
                 "PYTHONPYCACHEPREFIX": str(output / "pycache"),
@@ -972,7 +975,16 @@ def _run_logged(
         )
         code = completed.returncode
         text = completed.stdout
-    except OSError as error:
+    except subprocess.TimeoutExpired as error:
+        code = 2
+        captured = error.stdout or ""
+        if isinstance(captured, bytes):
+            captured = captured.decode("utf-8", errors="replace")
+        text = (
+            str(captured)
+            + f"\ncommand timed out after {timeout_seconds} seconds\n"
+        )
+    except (OSError, UnicodeError) as error:
         code = 2
         text = f"could not run {' '.join(command)}: {error}\n"
     log.write_text("$ " + " ".join(command) + "\n\n" + text, encoding="utf-8")
@@ -1057,6 +1069,10 @@ def _run_profiles(
                 representatives,
             )
         )
+    if len(representatives) != len(executed):
+        raise LessonCatalogError(
+            "lesson acceptance executor returned an incomplete result set"
+        )
     result_by_key = {
         (profile.command, profile.cwd): result
         for profile, result in zip(representatives, executed)
@@ -1120,6 +1136,14 @@ def _receipt(
     protocol_pairs: int,
 ) -> dict[str, Any]:
     failures = sum(result.get("status") == "FAIL" for result in results)
+    completed = sum(
+        result.get("status") in {"PASS", "FAIL"} for result in results
+    )
+    receipt_result = (
+        "FAIL"
+        if failures != 0 or (mode == "full" and completed == 0)
+        else "PASS"
+    )
     return {
         "schema": RECEIPT_SCHEMA,
         "mode": mode,
@@ -1136,7 +1160,7 @@ def _receipt(
             "native_skipped": sum(
                 result.get("status") == "SKIP" for result in results
             ),
-            "result": "PASS" if failures == 0 else "FAIL",
+            "result": receipt_result,
         },
     }
 

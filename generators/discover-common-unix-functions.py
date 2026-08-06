@@ -334,7 +334,7 @@ def harvest_manpages(root: Path) -> dict[str, Hit]:
 
         for name in names:
             hit = hits.setdefault(name, Hit())
-            hit.paths.add(str(path))
+            hit.paths.add(path.relative_to(root).as_posix())
             hit.sections.add(section)
 
     return hits

@@ -21,6 +21,10 @@ if [[ ! "$status" =~ ^[0-9]+$ ]]; then
   printf 'FreeBSD VM returned an invalid exit status: %s\n' "$status" >&2
   exit 2
 fi
+if [[ "$status" -gt 255 ]]; then
+  printf 'FreeBSD VM returned an out-of-range exit status: %s\n' "$status" >&2
+  exit 2
+fi
 if [[ "$status" -eq 0 ]]; then
   exit 0
 fi

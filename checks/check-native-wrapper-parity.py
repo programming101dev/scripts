@@ -24,6 +24,8 @@ def main() -> int:
     libraries: set[str] = set()
     with CONTRACT.open(encoding="utf-8") as stream:
         rows = list(csv.DictReader(stream, delimiter="\t"))
+    if not rows:
+        failures.append(f"{CONTRACT.name}: contract contains no fixtures")
     sources: dict[Path, list[tuple[int, dict[str, str]]]] = defaultdict(list)
     for number, row in enumerate(rows, start=2):
         library = row.get("library", "")
@@ -94,7 +96,7 @@ def main() -> int:
             elif fact["kind"] == "MACRO" and not fact.get("is_definition"):
                 macros_by_source_and_caller[key].add(str(fact.get("value", "")))
         for source, source_rows in sources.items():
-            for number, row in source_rows:
+            for _number, row in source_rows:
                 if not any(
                     row["wrapper_usr"] in calls
                     and (

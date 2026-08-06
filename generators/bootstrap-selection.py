@@ -170,10 +170,11 @@ SEED_UNITS = {
 def load_patterns():
     pats = []
     if os.path.exists(EXCLUSIONS_FILE):
-        for line in open(EXCLUSIONS_FILE, encoding="utf-8", errors="replace"):
-            line = line.split("#", 1)[0].strip()
-            if line:
-                pats.append(line)
+        with open(EXCLUSIONS_FILE, encoding="utf-8", errors="replace") as stream:
+            for line in stream:
+                line = line.split("#", 1)[0].strip()
+                if line:
+                    pats.append(line)
     return pats
 
 
@@ -184,7 +185,8 @@ def excluded(flag, pats):
 
 def main():
     compare = "--compare" in sys.argv
-    db = json.load(open(DB_FILE, encoding="utf-8"))
+    with open(DB_FILE, encoding="utf-8") as stream:
+        db = json.load(stream)
     pats = load_patterns()
     flags = db["flags"]
 
@@ -307,7 +309,8 @@ def main():
         print(f"  -> flag_report/bootstrap-needs-value.txt")
 
     if compare and os.path.exists(SELECTION):
-        cur = json.load(open(SELECTION, encoding="utf-8"))
+        with open(SELECTION, encoding="utf-8") as stream:
+            cur = json.load(stream)
         def units(sel):
             return {" ".join(e["flags"].split())
                     for v in sel["files"].values()

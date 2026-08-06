@@ -2,6 +2,10 @@
 # Remove repositories that remain under a managed collection after repos.txt
 # stops declaring them.
 set -euo pipefail
+script_path="$(
+  CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &&
+    printf '%s/%s' "$PWD" "$(basename -- "${BASH_SOURCE[0]}")"
+)"
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 apply=false
@@ -75,6 +79,12 @@ while IFS= read -r manifest_line || [[ -n "$manifest_line" ]]; do
   active_repositories+=("$repository_root")
 done < "$repos_file"
 
+if [[ "${#active_repositories[@]}" -eq 0 ]]; then
+  printf 'Error: repository manifest contains no active repositories: %s\n' \
+    "$repos_file" >&2
+  exit 2
+fi
+
 is_active_repository() {
   local candidate="$1"
   local active_repository
@@ -105,6 +115,24 @@ fi
 
 eligible_repositories=()
 blocked=0
+contains_unrecoverable_ignored_content() {
+  local listing="$1"
+  local ignored_path
+
+  while IFS= read -r ignored_path || [[ -n "$ignored_path" ]]; do
+    [[ -n "$ignored_path" ]] || continue
+    case "$ignored_path" in
+      build|build/*|build-*|\
+      .flags|.flags/*|.flags-standard|.flags-standard/*|\
+      .last-build-dir|.last-runtime-build-dir|\
+      compile_commands.json|compiler_paths.txt)
+        ;;
+      *) return 0 ;;
+    esac
+  done <<< "$listing"
+  return 1
+}
+
 for repository in "${retired_repositories[@]}"; do
   if [[ ! -d "$repository/.git" ]]; then
     printf 'BLOCKED (linked worktree or nonstandard Git metadata): %s\n' "$repository" >&2
@@ -113,6 +141,15 @@ for repository in "${retired_repositories[@]}"; do
   fi
   if [[ -n "$(git -C "$repository" status --porcelain --untracked-files=all 2>/dev/null || printf 'invalid')" ]]; then
     printf 'BLOCKED (dirty): %s\n' "$repository" >&2
+    blocked=$((blocked + 1))
+    continue
+  fi
+  ignored_listing="$(
+    git -C "$repository" ls-files --others --ignored --exclude-standard \
+      2>/dev/null
+  )" || ignored_listing="__p101_invalid_ignored_listing__"
+  if contains_unrecoverable_ignored_content "$ignored_listing"; then
+    printf 'BLOCKED (contains ignored files): %s\n' "$repository" >&2
     blocked=$((blocked + 1))
     continue
   fi
@@ -176,6 +213,8 @@ if [[ "$blocked" -gt 0 ]] && $interactive; then
       exit 1
       ;;
   esac
-  exec "$0" --apply --yes --interactive
+  retry_args=(--apply --interactive)
+  $assume_yes && retry_args+=(--yes)
+  exec "$script_path" "${retry_args[@]}"
 fi
 [[ "$blocked" -eq 0 ]]

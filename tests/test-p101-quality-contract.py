@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -53,6 +54,17 @@ class QualityContractTests(unittest.TestCase):
         self.assertGreaterEqual(report["typed_outcome_sets"], 8)
         self.assertGreaterEqual(report["typed_outcome_variants"], 40)
         self.assertEqual(report["platforms"], 3)
+
+    def test_cli_requires_public_enum_evidence_by_default(self) -> None:
+        completed = subprocess.run(
+            [str(SCRIPTS_ROOT / "checks" / "check-p101-quality-contract.py")],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("public enum facts are required", completed.stdout)
 
     def test_unknown_oracle_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)

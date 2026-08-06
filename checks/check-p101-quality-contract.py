@@ -706,6 +706,11 @@ def main() -> int:
         help="acquire all public-header enum facts with lib_c_facts into this directory",
     )
     parser.add_argument(
+        "--allow-no-facts",
+        action="store_true",
+        help="validate policy structure without checking the public-enum inventory",
+    )
+    parser.add_argument(
         "--merge-platform-receipts",
         nargs="+",
         type=Path,
@@ -739,6 +744,11 @@ def main() -> int:
         facts_root = arguments.facts_root
         if arguments.discover_workspace is not None:
             facts_root = acquire_public_enum_facts(arguments.discover_workspace)
+        if facts_root is None and not arguments.allow_no_facts:
+            raise QualityContractError(
+                "public enum facts are required; use --discover-workspace, "
+                "--facts-root, or explicitly opt out with --allow-no-facts"
+            )
         discovered = discover_public_enums(facts_root) if facts_root is not None else None
         report = validate(document, discovered)
     except QualityContractError as error:
@@ -754,7 +764,9 @@ def main() -> int:
         f"({report['delegated_responsibilities']} delegated), "
         f"{report['boundaries']} boundaries, "
         f"{report['platforms']} platforms, "
-        f"{report['implementation_oracles']} implementation oracles"
+        f"{report['implementation_oracles']} implementation oracles, "
+        "public-enum-oracle="
+        + ("verified" if discovered is not None else "not-run")
     )
     return 0
 

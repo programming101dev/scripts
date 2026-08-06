@@ -18,7 +18,7 @@ P101_USAGE
   exit "${1:-0}"
 }
 
-script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 src_dir="$script_dir/cmake"
 out_dir="$(pwd)/cmake.generated"
 force=0

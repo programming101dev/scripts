@@ -1129,6 +1129,14 @@ def test_checked_contract() -> None:
         contract.get("schema") == "p101-wrapper-failure-contract-v2",
         "failure contract schema drifted",
     )
+    check(
+        contract.get("semantics", {}).get("parse_environment")
+        == (
+            "c17-posix2008-xopen700-explicit-platform-feature-profile;"
+            "selected-sdk;libclang-headers-only"
+        ),
+        "failure contract parse environment is not pinned",
+    )
     wrappers = contract.get("wrappers", {})
     check(bool(wrappers), "failure contract is empty")
     required = {

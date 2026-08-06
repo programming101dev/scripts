@@ -62,8 +62,9 @@ fi
 
 repositories=()
 states=()
+branches=()
 
-while IFS='|' read -r _url relative_path _kind; do
+while IFS='|' read -r _url relative_path _kind <&3; do
     [[ -n "${relative_path:-}" ]] || continue
     [[ "${_url:-}" != \#* ]] || continue
 
@@ -77,20 +78,52 @@ while IFS='|' read -r _url relative_path _kind; do
         exit 2
     fi
 
-    git -C "$repository" fetch --quiet --prune origin
-    state=$(git -C "$repository" status --short --branch | sed -n '1p')
-    case "$state" in
-        *diverged* | *behind*)
-            printf 'Error: repository is not ahead-only: %s (%s)\n' \
-                "$repository" "$state" >&2
+    branch="$(git -C "$repository" symbolic-ref --quiet --short HEAD)" || {
+        printf 'Error: repository is detached: %s\n' "$repository" >&2
+        exit 2
+    }
+    git -C "$repository" fetch --quiet --prune origin </dev/null
+    upstream="$(
+        git -C "$repository" rev-parse \
+            --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null ||
+            true
+    )"
+    if [[ -n "$upstream" ]]; then
+        read -r behind ahead < <(
+            git -C "$repository" rev-list \
+                --left-right --count "$upstream...HEAD"
+        )
+        if ((behind > 0)); then
+            printf 'Error: repository is not ahead-only: %s (%s behind, %s ahead)\n' \
+                "$repository" "$behind" "$ahead" >&2
             exit 2
-            ;;
-        *ahead* | *gone*)
+        fi
+        if ((ahead > 0)); then
             repositories+=("$repository")
-            states+=("$state")
-            ;;
-    esac
-done < repos.txt
+            states+=("tracked")
+            branches+=("$branch")
+        fi
+        continue
+    fi
+
+    configured_remote="$(
+        git -C "$repository" config --get "branch.$branch.remote" ||
+            true
+    )"
+    configured_merge="$(
+        git -C "$repository" config --get "branch.$branch.merge" ||
+            true
+    )"
+    if [[ "$configured_remote" == "origin" && -n "$configured_merge" ]]; then
+        repositories+=("$repository")
+        states+=("gone")
+        branches+=("$branch")
+    else
+        printf 'Error: repository has no configured upstream: %s (%s)\n' \
+            "$repository" "$branch" >&2
+        exit 2
+    fi
+done 3< repos.txt
 
 printf 'scripts repository: EXCLUDED\n'
 
@@ -131,21 +164,37 @@ if [[ $assume_yes -eq 0 ]]; then
     esac
 fi
 
+push_failures=0
 for index in "${!repositories[@]}"; do
     repository=${repositories[$index]}
     state=${states[$index]}
+    branch=${branches[$index]}
     printf '==> %s\n' "$repository"
     if [[ "$state" == *gone* ]]; then
         if [[ $dry_run -eq 1 ]]; then
-            git -C "$repository" push --dry-run -u origin main
+            if ! git -C "$repository" push --dry-run -u origin "$branch"; then
+                push_failures=$((push_failures + 1))
+            fi
         else
-            git -C "$repository" push -u origin main
+            if ! git -C "$repository" push -u origin "$branch"; then
+                push_failures=$((push_failures + 1))
+            fi
         fi
     elif [[ $dry_run -eq 1 ]]; then
-        git -C "$repository" push --dry-run
+        if ! git -C "$repository" push --dry-run; then
+            push_failures=$((push_failures + 1))
+        fi
     else
-        git -C "$repository" push
+        if ! git -C "$repository" push; then
+            push_failures=$((push_failures + 1))
+        fi
     fi
 done
+
+if ((push_failures > 0)); then
+    printf 'Push operation failed for %d of %d repositories.\n' \
+        "$push_failures" "${#repositories[@]}" >&2
+    exit 1
+fi
 
 printf 'Push operation completed for %d repositories.\n' "${#repositories[@]}"

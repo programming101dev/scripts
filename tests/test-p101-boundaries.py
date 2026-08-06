@@ -30,12 +30,18 @@ class BoundaryTests(unittest.TestCase):
     def test_current_register(self) -> None:
         report = MODULE.validate(copy.deepcopy(self.document))
         self.assertGreaterEqual(report["boundaries"], 6)
-        self.assertEqual(
-            report["matrix_cases"],
-            report["boundaries"] * len(MODULE.REQUIRED_TESTS),
-        )
+        for boundary in self.document["boundaries"]:
+            self.assertEqual(
+                set(boundary["tests"]),
+                MODULE.REQUIRED_TESTS,
+                boundary["id"],
+            )
+        self.assertGreater(report["matrix_cases"], 0)
 
     def test_fact_decoder_requires_v6(self) -> None:
+        file_record = "P101FACT\t6\tFILE\ttest.c\ttest\t0\t0"
+        decoded_file = MODULE.c_facts.decode_lines([file_record])
+        self.assertEqual(decoded_file[0]["kind"], "FILE")
         valid = (
             "P101FACT\t6\tFUNCTION\ttest.c\ttest\t0\t1\tfunction\t1\t0"
             "\tc:@F@function\t0\t1"

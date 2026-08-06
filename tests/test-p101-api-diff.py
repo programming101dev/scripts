@@ -12,10 +12,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PATH = ROOT / "runtime" / "p101-api-diff.py"
 SPEC = importlib.util.spec_from_file_location("p101_api_diff", PATH)
-assert SPEC is not None and SPEC.loader is not None
+if SPEC is None or SPEC.loader is None:
+    raise RuntimeError(f"could not load {PATH}")
 MODULE = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
+
+
+def check(condition: bool, message: str) -> None:
+    if not condition:
+        raise AssertionError(message)
 
 
 def write_manifest(root: Path, library: str, rows: list[str]) -> None:
@@ -51,12 +57,12 @@ def main() -> int:
             encoding="utf-8",
         )
         report = MODULE.compare(old, MODULE.snapshot(root))
-        assert report["summary"]["additions"] == 1
-        assert report["summary"]["breaking_changes"] == 2
-        assert {item["id"] for item in report["findings"]} == {
+        check(report["summary"]["additions"] == 1, "addition count drift")
+        check(report["summary"]["breaking_changes"] == 2, "breaking count drift")
+        check({item["id"] for item in report["findings"]} == {
             "P101-API-001",
             "P101-API-004",
-        }
+        }, "API diagnostic identities drifted")
     print("p101 API diff tests: PASS")
     return 0
 

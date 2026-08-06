@@ -272,6 +272,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-fault-index", type=int, default=1024)
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--amount", type=int, default=1)
+    parser.add_argument(
+        "--case-timeout",
+        type=float,
+        default=60.0,
+        help="maximum seconds for each executed fault case (default: 60)",
+    )
     parser.add_argument("-o", "--output", type=Path, required=True)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("command", nargs=argparse.REMAINDER)
@@ -284,7 +290,7 @@ def parse_args() -> argparse.Namespace:
         parser.error("select at least one --wrapper or one --library")
     if args.max_cases < 0 or args.max_fault_index < 0:
         parser.error("case and fault-index limits must be non-negative")
-    if args.repeat <= 0 or args.amount < 0:
+    if args.repeat <= 0 or args.amount < 0 or args.case_timeout <= 0:
         parser.error("repeat must be positive and amount must be non-negative")
     return args
 
@@ -350,10 +356,26 @@ def main() -> int:
             f"{scenario.mode} {scenario.code_name}"
         )
         if args.dry_run:
-            status = 0
+            status: int | None = None
+            raw_status: int | None = None
+            signal_number: int | None = None
+            timed_out = False
             print(" ".join(command))
         else:
-            status = subprocess.run(command, check=False).returncode
+            try:
+                raw_status = subprocess.run(
+                    command,
+                    check=False,
+                    timeout=args.case_timeout,
+                ).returncode
+                signal_number = -raw_status if raw_status < 0 else None
+                status = raw_status if raw_status in {0, 1} else 2
+                timed_out = False
+            except subprocess.TimeoutExpired:
+                raw_status = None
+                signal_number = None
+                status = 2
+                timed_out = True
         results.append(
             {
                 "wrapper": scenario.wrapper,
@@ -362,6 +384,9 @@ def main() -> int:
                 "code_value": code_value,
                 "domain": scenario.domain,
                 "status": status,
+                "raw_status": raw_status,
+                "signal": signal_number,
+                "timed_out": timed_out,
                 "output": str(case_dir),
             }
         )
@@ -373,6 +398,7 @@ def main() -> int:
     receipt = {
         "schema": "p101-fault-campaign-v1",
         "platform": args.platform,
+        "dry_run": args.dry_run,
         "cases": results,
         "summary": {
             "total": len(results),

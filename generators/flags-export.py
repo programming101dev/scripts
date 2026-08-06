@@ -39,38 +39,39 @@ def parse_file(path):
     header = []
     entries = []
     in_header = True
-    for raw in open(path, encoding="utf-8", errors="replace"):
-        line = raw.rstrip("\n")
-        stripped = line.strip()
-        if not stripped:
-            in_header = False
-            continue
-        # pure comment line: header text, or a disabled entry if it holds flags
-        if stripped.startswith("#"):
-            body = stripped.lstrip("#").strip()
-            cleaned = body.replace('"', " ").strip()
-            tok = cleaned.split()[0] if cleaned.split() else ""
-            if re.match(r"^--?[A-Za-z]", tok):
-                # disabled entry, possibly with trailing rationale comment
-                m = re.match(r"([^#]*)#?\s*(.*)$", cleaned)
-                flags = " ".join(m.group(1).replace('"', " ").split())
-                entries.append({"flags": flags, "enabled": False,
-                                **({"comment": m.group(2).strip()}
-                                   if m.group(2).strip() else {})})
+    with open(path, encoding="utf-8", errors="replace") as stream:
+        for raw in stream:
+            line = raw.rstrip("\n")
+            stripped = line.strip()
+            if not stripped:
                 in_header = False
-            elif in_header:
-                header.append(body)
-            continue
-        in_header = False
-        # active line, maybe with trailing comment
-        code, _, comment = line.partition("#")
-        flags = " ".join(code.replace('"', " ").split())
-        if not flags:
-            continue
-        e = {"flags": flags, "enabled": True}
-        if comment.strip():
-            e["comment"] = comment.strip()
-        entries.append(e)
+                continue
+            # pure comment line: header text, or a disabled entry if it holds flags
+            if stripped.startswith("#"):
+                body = stripped.lstrip("#").strip()
+                cleaned = body.replace('"', " ").strip()
+                tok = cleaned.split()[0] if cleaned.split() else ""
+                if re.match(r"^--?[A-Za-z]", tok):
+                    # disabled entry, possibly with trailing rationale comment
+                    m = re.match(r"([^#]*)#?\s*(.*)$", cleaned)
+                    flags = " ".join(m.group(1).replace('"', " ").split())
+                    entries.append({"flags": flags, "enabled": False,
+                                    **({"comment": m.group(2).strip()}
+                                       if m.group(2).strip() else {})})
+                    in_header = False
+                elif in_header:
+                    header.append(body)
+                continue
+            in_header = False
+            # active line, maybe with trailing comment
+            code, _, comment = line.partition("#")
+            flags = " ".join(code.replace('"', " ").split())
+            if not flags:
+                continue
+            e = {"flags": flags, "enabled": True}
+            if comment.strip():
+                e["comment"] = comment.strip()
+            entries.append(e)
     return header, entries
 
 

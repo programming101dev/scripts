@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -75,7 +76,23 @@ def require_shell_test_wiring(
     cmake = path.parent / "CMakeLists.txt"
     if not launcher.is_file():
         raise BoundaryError(f"{context} owner has no test.sh launcher")
-    if not cmake.is_file() or path.name not in cmake.read_text(encoding="utf-8"):
+    cmake_text = (
+        "\n".join(
+            line.split("#", 1)[0]
+            for line in cmake.read_text(encoding="utf-8").splitlines()
+        )
+        if cmake.is_file()
+        else ""
+    )
+    wired = (
+        re.search(
+            rf"(?<![A-Za-z0-9_.-]){re.escape(path.name)}"
+            r"(?![A-Za-z0-9_.-])",
+            cmake_text,
+        )
+        is not None
+    )
+    if not wired:
         raise BoundaryError(f"{context} shell evidence is not registered with CTest")
 
 

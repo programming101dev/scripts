@@ -12,10 +12,11 @@ clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
 sanitizers=""
 sanitizers_given=false
+record_sanitizers=true
 
 usage() {
   cat <<'USAGE'
-Usage: check-env.sh [-c <C compiler>] [-x <C++ compiler>] [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [-h]
+Usage: check-env.sh [-c <C compiler>] [-x <C++ compiler>] [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [--no-record] [-h]
   -c <cc>          C compiler (e.g. gcc, clang, gcc-15); optional — when
                    omitted, only the generic tools are checked
   -x <cxx>         C++ compiler (e.g. g++, clang++, g++-15); optional
@@ -23,6 +24,7 @@ Usage: check-env.sh [-c <C compiler>] [-x <C++ compiler>] [-f <clang-format>] [-
   -t <name>        clang-tidy executable name   [default: clang-tidy]
   -k <name>        cppcheck executable name     [default: cppcheck]
   -s <list>        sanitizers (comma-separated, optional; e.g. address,undefined)
+  --no-record      Validate -s without changing the durable sanitizers.txt
   -h               show this help and exit
 Exit status: number of missing/invalid tools (0 means all good).
              64 indicates a usage error (bad/missing arguments).
@@ -31,6 +33,21 @@ USAGE
 
 # --help / -h -> usage, exit 0 (P101 uniform CLI help)
 case " $* " in *" --help "*|*" -h "*) ( usage ) || true; exit 0 ;; esac
+
+# Remove the one long option before getopts processes the short options.
+filtered_args=()
+for argument in "$@"; do
+  if [[ "$argument" == "--no-record" ]]; then
+    record_sanitizers=false
+  else
+    filtered_args+=("$argument")
+  fi
+done
+if ((${#filtered_args[@]})); then
+  set -- "${filtered_args[@]}"
+else
+  set --
+fi
 
 # Parse options
 while getopts ":c:x:f:t:k:s:h" opt; do
@@ -192,7 +209,7 @@ fi
 # Record sanitizers whenever -s was given — including an explicit -s "",
 # which truncates the file so downstream repos really do see "no
 # sanitizers" (a stale non-empty file would silently win otherwise).
-if $sanitizers_given; then
+if $sanitizers_given && $record_sanitizers; then
   printf '%s\n' "$sanitizers" > sanitizers.txt
 fi
 

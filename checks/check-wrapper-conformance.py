@@ -85,6 +85,7 @@ def normalize_events(
         stderr=subprocess.PIPE,
         text=True,
         check=False,
+        timeout=600,
     )
     if result.returncode < 0:
         raise RuntimeError(
@@ -299,6 +300,7 @@ def main() -> int:
         stderr=subprocess.STDOUT,
         text=True,
         check=False,
+        timeout=600,
     )
     (args.output / "instrumentation.log").write_text(
         instrumentation.stdout, encoding="utf-8"
@@ -353,6 +355,7 @@ def main() -> int:
         return 2
 
     for library, repo in selected.items():
+        library_failure_start = len(failures)
         api_by_usr = {
             row["function_usr"]: row["function"]
             for row in rows(repo / "api-manifest.tsv")
@@ -430,6 +433,7 @@ def main() -> int:
             stderr=subprocess.STDOUT,
             text=True,
             check=False,
+            timeout=600,
         )
         (args.output / f"{library}.test.log").write_text(
             result.stdout, encoding="utf-8"
@@ -447,7 +451,6 @@ def main() -> int:
             )
             continue
 
-        outcome_failure_start = len(failures)
         observed_outcomes, outcome_failures = fault_outcome_evidence(
             outcome_log
         )
@@ -561,7 +564,7 @@ def main() -> int:
                     or insufficient_fault_cases
                     or missing_arguments
                     or missing_results
-                    or len(failures) != outcome_failure_start
+                    or len(failures) != library_failure_start
                 ),
             }
         )
@@ -616,4 +619,12 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except subprocess.TimeoutExpired as error:
+        print(
+            f"FAIL: wrapper conformance subprocess timed out after "
+            f"{error.timeout} seconds: "
+            + " ".join(map(str, error.cmd))
+        )
+        raise SystemExit(2) from error

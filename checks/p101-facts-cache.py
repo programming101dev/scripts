@@ -14,7 +14,9 @@ import hashlib
 import json
 import os
 import platform
+import shlex
 import shutil
+import subprocess
 import sys
 import tempfile
 from contextlib import contextmanager
@@ -47,7 +49,11 @@ def admitted_files(root: Path) -> list[Path]:
         names[:] = sorted(
             name
             for name in names
-            if name not in IGNORED_DIRECTORIES and not name.startswith("build")
+            if name not in IGNORED_DIRECTORIES
+            and not (
+                name == "build"
+                or name.startswith(("build-", "build_", "build."))
+            )
         )
         base = Path(directory)
         files.extend(base / name for name in sorted(filenames) if (base / name).is_file())
@@ -82,6 +88,128 @@ def producer_files(producer: Path) -> list[Path]:
     return files
 
 
+def dependency_files(build_root: Path) -> list[Path]:
+    """Return depfiles and every absolute header dependency they admit."""
+    admitted: list[Path] = []
+    if not build_root.is_dir():
+        return admitted
+    for depfile in sorted(build_root.rglob("*.d")):
+        if not depfile.is_file():
+            continue
+        admitted.append(depfile)
+        try:
+            text = depfile.read_text(encoding="utf-8", errors="surrogateescape")
+            _target, separator, dependencies = text.replace("\\\n", " ").partition(":")
+            if not separator:
+                continue
+            tokens = shlex.split(dependencies)
+        except (OSError, ValueError):
+            continue
+        for token in tokens:
+            dependency = Path(token)
+            if dependency.is_absolute() and dependency.is_file():
+                admitted.append(dependency)
+    return admitted
+
+
+def system_header_identity(compiler: str) -> list[dict[str, object]]:
+    """Identify the selected compiler's system-header environment.
+
+    Compiler version and predefined macros do not change when a system SDK or
+    libc package is upgraded in place. Record the compiler's actual include
+    roots, their directory metadata, representative public headers, and the
+    platform package/SDK receipts that own those headers.
+    """
+    try:
+        completed = subprocess.run(
+            [compiler, "-E", "-x", "c", "-", "-v"],
+            input="",
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise CacheError(f"cannot identify system include roots: {error}") from error
+
+    roots: list[Path] = []
+    reading = False
+    for raw_line in completed.stderr.splitlines():
+        line = raw_line.strip()
+        if line == "#include <...> search starts here:":
+            reading = True
+            continue
+        if reading and line == "End of search list.":
+            break
+        if not reading:
+            continue
+        path_text = line.removesuffix(" (framework directory)")
+        candidate = Path(path_text)
+        if candidate.is_dir():
+            roots.append(candidate.resolve())
+
+    records: list[dict[str, object]] = []
+    representative_headers = (
+        "errno.h",
+        "stddef.h",
+        "stdint.h",
+        "stdio.h",
+        "stdlib.h",
+        "unistd.h",
+        "arpa/inet.h",
+        "sys/types.h",
+    )
+    for root in sorted(set(roots), key=str):
+        status = root.stat()
+        record: dict[str, object] = {
+            "path": str(root),
+            "mtime_ns": status.st_mtime_ns,
+        }
+        headers = []
+        for relative in representative_headers:
+            header = root / relative
+            if header.is_file():
+                headers.append(
+                    {
+                        "path": relative,
+                        "sha256": hash_file(header),
+                    }
+                )
+        record["representative_headers"] = headers
+        records.append(record)
+
+    package_receipts = (
+        Path("/var/lib/dpkg/status"),
+        Path("/var/lib/rpm/Packages"),
+        Path("/var/db/pkg/local.sqlite"),
+    )
+    for receipt in package_receipts:
+        if receipt.is_file():
+            records.append(
+                {
+                    "path": str(receipt),
+                    "sha256": hash_file(receipt),
+                }
+            )
+    for root in roots:
+        for relative in (
+            "SDKSettings.json",
+            "../SDKSettings.json",
+            "../../SDKSettings.json",
+            "../../../SDKSettings.json",
+        ):
+            receipt = (root / relative).resolve()
+            if receipt.is_file():
+                records.append(
+                    {
+                        "path": str(receipt),
+                        "sha256": hash_file(receipt),
+                    }
+                )
+    return records
+
+
 def cache_key(args: argparse.Namespace) -> tuple[str, list[dict[str, str]]]:
     producer = args.producer.resolve()
     compile_db = args.compile_db.resolve()
@@ -90,7 +218,11 @@ def cache_key(args: argparse.Namespace) -> tuple[str, list[dict[str, str]]]:
     if not compile_db.is_file():
         raise CacheError(f"compile database does not exist: {compile_db}")
 
-    inputs = [*producer_files(producer), compile_db]
+    inputs = [
+        *producer_files(producer),
+        compile_db,
+        *dependency_files(compile_db.parent),
+    ]
     for path in args.path:
         inputs.extend(admitted_files(path.resolve()))
     for root in args.dependency_root:
@@ -98,11 +230,87 @@ def cache_key(args: argparse.Namespace) -> tuple[str, list[dict[str, str]]]:
 
     unique = sorted({path.resolve() for path in inputs}, key=str)
     records = [{"path": str(path), "sha256": hash_file(path)} for path in unique]
+    try:
+        database = json.loads(compile_db.read_text(encoding="utf-8"))
+        first = database[0]
+        compiler_argv = (
+            first.get("arguments")
+            if isinstance(first.get("arguments"), list)
+            else shlex.split(first.get("command", ""))
+        )
+        if not compiler_argv:
+            raise CacheError("compile database entry has no compiler command")
+        compiler_text = compiler_argv[0]
+        if os.sep in compiler_text:
+            compiler_candidate = Path(compiler_text)
+            if not compiler_candidate.is_absolute():
+                compiler_candidate = (
+                    Path(first.get("directory", compile_db.parent))
+                    / compiler_candidate
+                )
+            compiler = (
+                str(compiler_candidate.resolve())
+                if compiler_candidate.is_file()
+                else None
+            )
+        else:
+            compiler = shutil.which(compiler_text)
+        if compiler is None:
+            raise CacheError(
+                f"compile-database compiler is not available: {compiler_text}"
+            )
+        compiler_path = str(Path(compiler).resolve())
+        compiler_version = (
+            subprocess.run(
+                [compiler_path, "--version"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                check=False,
+                timeout=10,
+            ).stdout
+            if compiler_path
+            else ""
+        )
+        compiler_predefines = (
+            subprocess.run(
+                [compiler_path, "-dM", "-E", "-x", "c", "-"],
+                input="",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                check=False,
+                timeout=10,
+            ).stdout
+            if compiler_path
+            else ""
+        )
+    except (
+        OSError,
+        UnicodeError,
+        json.JSONDecodeError,
+        IndexError,
+        AttributeError,
+        TypeError,
+        subprocess.SubprocessError,
+    ) as error:
+        raise CacheError(
+            f"cannot identify compile-database compiler: {error}"
+        ) from error
     request = {
         "schema": SCHEMA,
         "namespace": args.namespace,
         "platform": platform.system(),
+        "platform_release": platform.release(),
         "machine": platform.machine(),
+        "compiler": {
+            "path": compiler_path,
+            "version": compiler_version,
+            "predefines_sha256": hashlib.sha256(
+                compiler_predefines.encode("utf-8")
+            ).hexdigest(),
+            "system_headers": system_header_identity(compiler_path),
+        },
         "inputs": records,
     }
     encoded = json.dumps(request, separators=(",", ":"), sort_keys=True).encode("utf-8")

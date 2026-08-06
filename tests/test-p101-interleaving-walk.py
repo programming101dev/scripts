@@ -12,10 +12,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "runtime"))
 PATH = ROOT / "runtime" / "p101-interleaving-walk.py"
 SPEC = importlib.util.spec_from_file_location("p101_interleaving_walk", PATH)
-assert SPEC is not None and SPEC.loader is not None
+if SPEC is None or SPEC.loader is None:
+    raise RuntimeError(f"could not load {PATH}")
 MODULE = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
+
+
+def check(condition: bool, message: str) -> None:
+    if not condition:
+        raise AssertionError(message)
 
 
 def node(
@@ -61,13 +67,13 @@ def main() -> int:
         "lifecycle": {"entries": [], "findings": []},
     }
     report = MODULE.explore(model, 256)
-    assert report["summary"]["schedules_explored"] > 1
-    assert report["summary"]["counterexample_schedules"] > 0
-    assert any(
+    check(report["summary"]["schedules_explored"] > 1, "multiple schedules required")
+    check(report["summary"]["counterexample_schedules"] > 0, "counterexample required")
+    check(any(
         finding["id"] == "P101-SYNC-002"
         for case in report["counterexamples"]
         for finding in case["findings"]
-    )
+    ), "deadlock diagnostic was not emitted")
     print("p101 interleaving walk tests: PASS")
     return 0
 

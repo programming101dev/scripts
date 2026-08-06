@@ -120,14 +120,16 @@ def validate(document: dict[str, Any], graph: dict[str, Any]) -> dict[str, int]:
         entry = SCRIPTS_ROOT / path
         if not entry.is_file() or not entry.stat().st_mode & 0o111:
             raise InventoryError(f"governed scripts entry point is not executable: {path}")
+    discovery_roots = (
+        SCRIPTS_ROOT,
+        SCRIPTS_ROOT / "checks",
+        SCRIPTS_ROOT / "workspace",
+        SCRIPTS_ROOT / "tests",
+    )
     discovered = {
         path.relative_to(SCRIPTS_ROOT).as_posix()
-        for directory in (
-            SCRIPTS_ROOT,
-            SCRIPTS_ROOT / "checks",
-            SCRIPTS_ROOT / "workspace",
-        )
-        for path in directory.iterdir()
+        for directory in discovery_roots
+        for path in directory.rglob("*")
         if path.is_file() and VERIFY_NAME.match(path.name)
     }
     unknown_exclusions = exclusions - discovered

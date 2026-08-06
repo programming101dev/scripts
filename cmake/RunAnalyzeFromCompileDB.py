@@ -37,6 +37,8 @@ def main():
         db = json.load(f)
 
     have_diag = False
+    translation_units = 0
+    child_failure = False
 
     for entry in db:
         directory = entry.get("directory", "") or None
@@ -53,6 +55,7 @@ def main():
 
         if not argv:
             continue
+        translation_units += 1
 
         # Convert to syntax-only while preserving TU flags/defs/includes
         argv = strip_output_flags(argv)
@@ -73,8 +76,11 @@ def main():
                 text=True
             )
             out = (p.stdout or "").strip()
-        except Exception as e:
+            if p.returncode != 0:
+                child_failure = True
+        except (OSError, subprocess.SubprocessError) as e:
             out = f"Exception running analyze: {e}"
+            child_failure = True
 
         with open(out_txt, "w", encoding="utf-8") as fo:
             fo.write(out + ("\n" if out else ""))
@@ -82,6 +88,15 @@ def main():
         if out:
             have_diag = True
 
+    if translation_units == 0:
+        print(
+            "Analyzer (syntax-only) found no source translation units.",
+            file=sys.stderr,
+        )
+        return 2
+    if child_failure:
+        print("Analyzer (syntax-only) command failed. See:", out_dir)
+        return 2
     if have_diag:
         print("Analyzer (syntax-only) produced diagnostics. See:", out_dir)
         if fail_on_diag:

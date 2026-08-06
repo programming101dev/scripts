@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+script_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+# shellcheck source=../shared/compilers.sh
+. "$script_root/shared/compilers.sh"
 
 usage() {
     cat <<'P101_USAGE'
@@ -41,17 +44,7 @@ case "${operation}" in
 esac
 
 resolve_compiler() {
-    local requested="$1"
-
-    case "${requested}" in
-        /*)
-            [[ -x "${requested}" ]] || return 1
-            printf '%s' "${requested}"
-            ;;
-        *)
-            command -v "${requested}" 2>/dev/null
-            ;;
-    esac
+    p101_resolve_compiler "$1" "$script_root/compiler_paths.txt"
 }
 
 resolved="$(resolve_compiler "${compiler}")" || {

@@ -12,6 +12,8 @@
 set -euo pipefail
 unset CDPATH
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+# shellcheck source=shared/artifacts.sh
+. ./shared/artifacts.sh
 
 libraries_dir="../libraries"
 programs_dir="../programs"
@@ -65,61 +67,8 @@ programs_dir="$(CDPATH='' cd "$programs_dir" && pwd -P)"
 out_dir="$(mkdir -p "$out_dir" && CDPATH='' cd -P "$out_dir" && pwd -P)"
 summary="$out_dir/summary.md"
 
-find_built_tool() {
-  repo="$1"
-  name="$2"
-
-  if [ -f "$repo/.last-build-dir" ]; then
-    build_dir="$(cat "$repo/.last-build-dir")"
-    case "$build_dir" in
-      *coverage*|*profile*) ;;
-      *)
-        if [ -x "$repo/$build_dir/$name" ]; then
-          printf '%s\n' "$repo/$build_dir/$name"
-          return 0
-        fi
-        ;;
-    esac
-  fi
-
-  # Prefer conventional non-instrumented builds before version-suffixed build
-  # directories. Shell glob ordering can otherwise select an older
-  # build-clang-<version> binary ahead of a freshly rebuilt build-clang tool.
-  for candidate in "$repo"/build/"$name" "$repo"/build-clang/"$name" "$repo"/build-gcc/"$name" "$repo"/build-*/"$name"; do
-    case "$candidate" in
-      *coverage*|*profile*) ;;
-      *)
-        if [ -x "$candidate" ]; then
-          printf '%s\n' "$candidate"
-          return 0
-        fi
-        ;;
-    esac
-  done
-
-  command -v "$name" 2>/dev/null
-}
-
-find_compile_database() {
-  repo="$1"
-
-  if [ -f "$repo/.last-build-dir" ]; then
-    build_dir="$(cat "$repo/.last-build-dir")"
-    if [ -f "$repo/$build_dir/compile_commands.json" ]; then
-      printf '%s\n' "$repo/$build_dir/compile_commands.json"
-      return 0
-    fi
-  fi
-
-  for candidate in "$repo"/build-*/compile_commands.json "$repo"/build/compile_commands.json; do
-    if [ -f "$candidate" ]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-
-  return 1
-}
+find_built_tool() { p101_find_built_tool "$1" "$2"; }
+find_compile_database() { p101_find_compile_database "$1"; }
 
 wrapper_audit="$programs_dir/p101-wrapper-audit/p101-wrapper-audit"
 facts_cache_tool="$PWD/checks/p101-facts-cache.py"
@@ -214,12 +163,19 @@ run_library_audit() {
 }
 
 repository_rows=()
+governed_libraries=0
 while IFS='|' read -r _url relative_path language; do
   [ -n "${relative_path:-}" ] || continue
   case "$language" in c|cxx) ;; *) continue ;; esac
   repo="$(CDPATH='' cd "$(dirname "$relative_path")" 2>/dev/null && pwd -P)/$(basename "$relative_path")"
   [ "$(dirname "$repo")" = "$libraries_dir" ] || continue
-  [ -d "$repo/src" ] || continue
+  governed_libraries=$((governed_libraries + 1))
+  if [ ! -d "$repo/src" ]; then
+    printf 'FAIL: governed library has no src directory: %s\n' "$repo" >&2
+    printf '| %s | FAIL | FAIL | FAIL |\n' "$(basename "$repo")" >> "$summary"
+    failed=1
+    continue
+  fi
   repository_rows+=("$repo")
 done < repos.txt
 
@@ -276,7 +232,7 @@ while [ "$index" -lt "$found" ]; do
   index=$((index + 1))
 done
 
-if [ "$found" -eq 0 ]; then
+if [ "$governed_libraries" -eq 0 ]; then
   echo "No lib_* repositories found." >&2
   exit 2
 fi

@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -75,17 +77,34 @@ class StackContractTests(unittest.TestCase):
                 stack_contract.admitted_path(scripts, "../../outside")
 
     def test_invalid_contract_is_a_typed_refusal_shape(self) -> None:
-        refusal = {
-            "schema": "p101-stack-contract-refusal-v1",
-            "outcome": "refused",
-            "reason": "invalid-input",
-            "diagnostic": "invalid",
-            "does_not_prove": stack_contract.DOES_NOT_PROVE,
-        }
-        refusal["receipt_digest"] = stack_contract.canonical_digest(refusal)
-        encoded = json.dumps(refusal, sort_keys=True)
-        self.assertIn('"outcome": "refused"', encoded)
-        self.assertIn('"receipt_digest": "sha256:', encoded)
+        with tempfile.TemporaryDirectory(prefix="p101-stack-contract.") as temporary:
+            scripts = self.create_workspace(Path(temporary))
+            contract = scripts / "contracts/p101-stack-contract.json"
+            contract.parent.mkdir(parents=True, exist_ok=True)
+            contract.write_text("{}\n", encoding="utf-8")
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(MODULE_PATH),
+                    "--scripts-root",
+                    str(scripts),
+                    "--contract",
+                    str(contract),
+                    "verify",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                text=True,
+            )
+            self.assertEqual(completed.returncode, 2)
+            refusal = json.loads(completed.stderr)
+            self.assertEqual(
+                refusal["schema"], "p101-stack-contract-refusal-v1"
+            )
+            self.assertEqual(refusal["outcome"], "refused")
+            self.assertEqual(refusal["reason"], "invalid-input")
+            self.assertTrue(refusal["receipt_digest"].startswith("sha256:"))
 
 
 if __name__ == "__main__":

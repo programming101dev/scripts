@@ -4,6 +4,7 @@
     "errno": "preserved",
     "error_object": "exact-injected-code-and-domain",
     "fault_boundary": "after-entry-trace-before-native-work",
+    "parse_environment": "c17-posix2008-xopen700-explicit-platform-feature-profile;selected-sdk;libclang-headers-only",
     "resource_events": "none",
     "writable_arguments": "unchanged-by-early-return-with-portable-runtime-canaries"
   },

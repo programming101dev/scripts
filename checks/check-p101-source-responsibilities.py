@@ -33,16 +33,30 @@ def path_is_beneath(path: str, relative_root: str) -> bool:
     return True
 
 
+def is_repository_production_path(path: str, repository: Path) -> bool:
+    try:
+        relative = Path(path).resolve().relative_to(repository.resolve())
+    except (OSError, ValueError):
+        return False
+    return not any(
+        part in {"test", "tests", "fuzz", ".git"}
+        or part == "build"
+        or part.startswith(("build-", "build_", "build."))
+        for part in relative.parts
+    )
+
+
 def source_files(roots: Iterable[str]) -> Iterable[Path]:
     for relative in roots:
         root = WORKSPACE / relative
         if not root.exists():
             raise ResponsibilityError(f"missing consumer root: {relative}")
         for path in root.rglob("*"):
+            relative_parts = path.relative_to(root).parts
             if (
                 path.is_file()
                 and path.suffix in SOURCE_SUFFIXES
-                and not any(part.startswith("build") for part in path.parts)
+                and not any(part.startswith("build") for part in relative_parts)
             ):
                 yield path
 
@@ -160,13 +174,8 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
                 fact["value"]
                 for fact in facts
                 if fact["kind"] == "INCLUDE"
-                and any(
-                    path_is_beneath(
-                        fact["path"],
-                        str((repository / child).relative_to(WORKSPACE)),
-                    )
-                    for child in ("src", "include")
-                    if (repository / child).exists()
+                and is_repository_production_path(
+                    str(fact["path"]), repository
                 )
             }
             declares_event = bool(

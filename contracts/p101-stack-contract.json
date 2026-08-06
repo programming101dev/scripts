@@ -46,49 +46,49 @@
       "sha256": "8d17bedcec212f276abd400a97aecf0cdfc9d33c1be16ef8606ae1893e7cef29"
     },
     {
-      "bytes": 12724,
+      "bytes": 13369,
       "path": "check-after-update-all.sh",
-      "sha256": "6713fe2cca743b769d9482f4b5a1fde67e2169c356e5d5289de8185c5dcc537b"
+      "sha256": "b0a28d1db3adc43268def997bc954c4c1aee0a6ecd4178106301d03dd93b7e66"
     },
     {
-      "bytes": 4779,
+      "bytes": 4872,
       "path": "checks/check-native-wrapper-parity.py",
-      "sha256": "b0c1772e9409e61d81b2ba042da50d032a5ecdbe867ca090a3374fca77daa04d"
+      "sha256": "d00c1488856ff2dc9b8e110d027dc5b89523962aa0576a778890bd773d643206"
     },
     {
-      "bytes": 12827,
+      "bytes": 13161,
       "path": "checks/check-p101-boundaries.py",
-      "sha256": "056ca254b735f8c6ab0a791b0c0fe56fcdc216c8eddb4d7c8bdf7ce38eff276a"
+      "sha256": "b9c31b37610864cc513b690bab734e2eaaf9dc60a217916139ad388dd320c101"
     },
     {
-      "bytes": 30705,
+      "bytes": 31245,
       "path": "checks/check-p101-quality-contract.py",
-      "sha256": "50259d963b36a58be9b40e4cabaa109b928677c4f53265f3e7885db31a153682"
+      "sha256": "9c0f50b98f2e19cc7738d46f6e2e5afabd2bd3786415fe474ee12adbdeef727c"
     },
     {
-      "bytes": 22364,
+      "bytes": 22709,
       "path": "checks/check-wrapper-conformance.py",
-      "sha256": "384d2a29257ddb49a44226f86366879d8dc13a53d96dc6bad00e323b4d356ae1"
+      "sha256": "bb2f590ed1b7be4917b0ca9ab34818f7ea059e4c51414f1e606fcbb8db41a1f7"
     },
     {
-      "bytes": 8239,
+      "bytes": 8544,
       "path": "checks/check-wrapper-fault-semantics.py",
-      "sha256": "4fc423a296cf2a9f36e01aba46f07157b14746a2ec1abc23d4e285c44c505c92"
+      "sha256": "a5f6edfa0ddce97b9a8d993e4a14f95b5d8041c125cd8f0cd4c8574b73373a86"
     },
     {
-      "bytes": 19494,
+      "bytes": 22012,
       "path": "checks/check-wrapper-lifecycles.py",
-      "sha256": "aa0acc5b13efbcea30697e87a7a34a4cd6c97f950c7ae934c0dc53e0a2a8e0d3"
+      "sha256": "c6db1c3f1ab596c31550d0463438fd8119be2c787e353037b70bce76dff8b855"
     },
     {
-      "bytes": 33976,
+      "bytes": 34357,
       "path": "checks/check-wrapper-unit-tests.py",
-      "sha256": "864d2d7125ed5a2fcbe2a190add0fdad1650b14f25251587592fea28519a39dc"
+      "sha256": "20863932dcf8ee08959bdec6b00f75f9fa09d38f255af8d311ee55e25e537670"
     },
     {
-      "bytes": 51285,
+      "bytes": 52267,
       "path": "checks/p101-check-graph.py",
-      "sha256": "8b97ac311ced5320c6633d94e98ef9ca3f750d02ae61a523cbcd0d9f13a23cad"
+      "sha256": "0bcf765c138ff92934dc2041ffe80a812b7b7db1339abdb02c3ab3dd5a9152a5"
     },
     {
       "bytes": 10324,
@@ -131,9 +131,9 @@
       "sha256": "98d3cd6083e06e8bf965edfe66164b7ee0dc73f5ed8cfff07edbb6ec661f89af"
     },
     {
-      "bytes": 41933,
+      "bytes": 42229,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "e3e0bec8a024cb560af8a29f8161e756b5d0df7c50e438f9372be6ecf1aedac6"
+      "sha256": "99d61d0163ea54a2dec8b020954bdd936727c565f952f07a23cd8d987188b26f"
     },
     {
       "bytes": 62722,
@@ -156,9 +156,9 @@
       "sha256": "622cc57149f8a2e0317d2cc80227d5867a48778cad24dbb0b45b1a9baeff6fb1"
     },
     {
-      "bytes": 1933,
+      "bytes": 2653,
       "path": "contracts/p101-test-inventory.json",
-      "sha256": "67e2362e5d320082374c31c1dca4000710d37b0c1723a268b089fb31ff901184"
+      "sha256": "ba18f6c0d50c4587c77d0f9a1174e3652332af48d40e8a76d6fd4357ba092942"
     },
     {
       "bytes": 1171,
@@ -166,9 +166,9 @@
       "sha256": "e1ac1e69ba5613c951a5fca678cadb1aeeb1068f33ea3fb78849b718a2598b83"
     },
     {
-      "bytes": 363883,
+      "bytes": 364003,
       "path": "contracts/wrapper-failure-contract.json",
-      "sha256": "d26c61d7482edb63bd33ea09a03d13b3ef72932e68300263e05440f8eac5911a"
+      "sha256": "6d73fa4070ec7fc42ddc7550f613e67c0bac0562f8be74bef8942b5587d046b6"
     },
     {
       "bytes": 2762,
@@ -221,19 +221,19 @@
       "sha256": "d14ecd0a6d6b3d2099739e12514240793740c3e927e718fc15c43e28a056bca2"
     },
     {
-      "bytes": 201546,
+      "bytes": 202577,
       "path": "generators/generate-wrapper-unit-tests.py",
-      "sha256": "24d38608cd6a6a7e6820465fdc0ff831b3796016fe543d0d036e06864885caaa"
+      "sha256": "5b9ff9c67dbbe8d08853e3d8f63aedc48ca44940fe401ce9a09085a5acfd521c"
     },
     {
-      "bytes": 36886,
+      "bytes": 39289,
       "path": "generators/refresh-wrapper-platform-faults.py",
-      "sha256": "9e129f3f4f8e3eb70f8e0e56a4e6d493ba676682a0c597e9b8e752c064181f59"
+      "sha256": "2ba24cdbec5472c7908dda5e010506c2e757b1d8d7bc7ba98421e2a6264c0a5c"
     },
     {
       "bytes": 9510,
       "path": "repos.lock",
-      "sha256": "a0408517d615daf18bc09fda97f1a540cfb44e9296f1aa543964594fb68fe77d"
+      "sha256": "7ac3e62b2b24a6d3ce0443cc210bd37f2b3dae6d781129eb73fe894d8864c558"
     },
     {
       "bytes": 3743,
@@ -241,9 +241,9 @@
       "sha256": "db51c5099139111b97efa75ef96e2ab1651be158974fa4ada38ec9e2e2d388b4"
     },
     {
-      "bytes": 12505,
+      "bytes": 13630,
       "path": "runtime/c_facts.py",
-      "sha256": "b6d5026d45009660c406953be91c1069a6544992db00f60e7571282c116a53bc"
+      "sha256": "510e372cd808715915d5adcfd25ba91d8e192af530be67f352b69c4afa04d712"
     },
     {
       "bytes": 6875,
@@ -251,29 +251,39 @@
       "sha256": "86590b4f73611651f8b682aa6d2dce3dc3fbd6fbd7bc4f0ef6d8ce6f2c4334f3"
     },
     {
-      "bytes": 5065,
+      "bytes": 2682,
+      "path": "shared/artifacts.sh",
+      "sha256": "c3945c48ee6a71fe3f586541964dab7823772aa3f79a72235a24afc9837a0580"
+    },
+    {
+      "bytes": 2100,
+      "path": "shared/compilers.sh",
+      "sha256": "9ced109a6ea3d37f24c285839940683fcdd2dfcf8cedc0b1cf7e7cba411c3f5f"
+    },
+    {
+      "bytes": 5268,
       "path": "shared/library/install.sh",
-      "sha256": "de1fc6838c4be33ba835ed625352296ab38d74a56940446d18ffb44978470fb9"
+      "sha256": "b129021011ddd818cbd2ee2c62fe7b50a5348604f3e0092863122fdd6c3b4356"
     },
     {
-      "bytes": 13805,
+      "bytes": 14346,
       "path": "workspace/build-repo.sh",
-      "sha256": "9da0e9f0523fa3f992a6947fe72627fec7362845edaa74a0438bb733876ef5da"
+      "sha256": "eece089170522eec8d606871c244609af1fedffc7d4b39af8a8b42da9e58cc33"
     },
     {
-      "bytes": 2792,
+      "bytes": 2816,
       "path": "workspace/filter-sanitizers.sh",
-      "sha256": "899b2ab206e066c35debe8f9da3c53d65052c8b032414652ce9da035603bfe15"
+      "sha256": "318c9c9c05f4db1970655d6f0772f166e68fe794d70a5d5b753b854669446707"
     },
     {
-      "bytes": 9218,
+      "bytes": 9834,
       "path": "workspace/stack-contract.py",
-      "sha256": "65831df88032dddbb7db4bb42c71640a2a85469771a8671ee9fb9db2a25b847a"
+      "sha256": "decd32b14b2b66a4f91b4d372d4df0b5e8bd5d24e376acff1ec2fe6c213237bc"
     },
     {
-      "bytes": 23925,
+      "bytes": 23920,
       "path": "workspace/update.sh",
-      "sha256": "3d2bddd4b1565f2e1cd52ad0355910fd9a6ff70e793afbc9d065bd20b5a6bc85"
+      "sha256": "d1339f6e8ba5a2b5619719d1ac6186feea658ea14b51c4406637899dd7738944"
     }
   ],
   "does_not_prove": "This contract binds the declared stack policy bytes. It does not prove that the policy is complete, correct, or sufficient for an undeclared platform.",

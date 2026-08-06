@@ -7,8 +7,10 @@ declaration identities, source extents, and typed fact kinds.
 from __future__ import annotations
 
 import json
+import os
 import platform
 import shlex
+import shutil
 import subprocess
 from collections import defaultdict
 from pathlib import Path
@@ -21,6 +23,33 @@ class CFactError(RuntimeError):
 
 SOURCE_DIRECTORY_NAMES = ("src", "include", "test", "fuzz")
 SOURCE_SUFFIXES = {".c", ".h"}
+
+
+def _libclang_include_roots() -> set[Path]:
+    """Discover public libclang headers from the selected LLVM toolchain."""
+    candidates: set[Path] = set()
+    configured = os.environ.get("P101_LIBCLANG_INCLUDE_DIR", "")
+    if configured:
+        candidates.add(Path(configured))
+    for name in ("llvm-config",):
+        executable = shutil.which(name)
+        if executable is None:
+            continue
+        result = subprocess.run(
+            [executable, "--includedir"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            candidates.add(Path(result.stdout.strip()))
+    return {
+        path.resolve()
+        for path in candidates
+        if (path / "clang-c" / "Index.h").is_file()
+    }
 
 
 def _unescape(value: str) -> str:
@@ -54,7 +83,9 @@ def _decode(line: str, number: int) -> dict[str, object] | None:
         "is_header": fields[5] == "1",
         "line": int(fields[6]),
     }
-    if fields[2] == "FUNCTION" and len(fields) == 13:
+    if fields[2] == "FILE" and len(fields) == 7:
+        pass
+    elif fields[2] == "FUNCTION" and len(fields) == 13:
         base.update(
             value=fields[7],
             is_static=fields[8] == "1",
@@ -104,7 +135,9 @@ def _decode(line: str, number: int) -> dict[str, object] | None:
             end=int(fields[11]),
         )
     else:
-        return None
+        raise CFactError(
+            f"malformed {fields[2]} P101FACT v6 record at output line {number}"
+        )
     return base
 
 
@@ -280,6 +313,7 @@ def acquire(
         for path in (workspace / "libraries").glob("lib_*/include")
         if path.is_dir()
     }
+    shared_include_roots.update(_libclang_include_roots())
     shared_include_roots.update(
         path.resolve()
         for path in additional_include_roots

@@ -474,11 +474,13 @@ class RuntimePolicyTests(unittest.TestCase):
             operation: str,
             identity: str,
             thread: str,
+            context: int,
         ) -> dict[str, object]:
             return node(
                 "resource",
                 "resource",
                 sequence,
+                context=context,
                 operation=operation,
                 resource_class="pthread-mutex-held",
                 resource_identity=f"{identity}@{thread}",
@@ -489,16 +491,88 @@ class RuntimePolicyTests(unittest.TestCase):
 
         analysis = analyze_model(
             model(
-                sync(1, "acquire", "A", "thread=one"),
-                sync(2, "acquire", "B", "thread=one"),
-                sync(3, "release", "B", "thread=one"),
-                sync(4, "release", "A", "thread=one"),
-                sync(5, "acquire", "B", "thread=two"),
-                sync(6, "acquire", "A", "thread=two"),
+                sync(1, "acquire", "A", "thread=one", 1),
+                sync(2, "acquire", "B", "thread=one", 1),
+                sync(3, "release", "B", "thread=one", 1),
+                sync(4, "release", "A", "thread=one", 1),
+                sync(5, "acquire", "B", "thread=two", 2),
+                sync(6, "acquire", "A", "thread=two", 2),
             )
         )
         self.assertIn(
             "P101-SYNC-001",
+            [
+                finding.diagnostic_id
+                for finding in analysis.synchronization.findings
+            ],
+        )
+
+    def test_sync_policy_finds_join_cycle_across_contexts(self) -> None:
+        def join_wait(
+            sequence: int,
+            operation: str,
+            thread: str,
+            target: str,
+            context: int,
+        ) -> dict[str, object]:
+            return node(
+                "resource",
+                "resource",
+                sequence,
+                context=context,
+                operation=operation,
+                resource_class="pthread-join-wait",
+                resource_identity=thread,
+                related_identity=target,
+                metadata=thread,
+                size=0,
+            )
+
+        analysis = analyze_model(
+            model(
+                join_wait(1, "acquire", "thread=one", "thread=two", 1),
+                join_wait(2, "acquire", "thread=two", "thread=one", 2),
+            )
+        )
+        self.assertIn(
+            "P101-SYNC-003",
+            [
+                finding.diagnostic_id
+                for finding in analysis.synchronization.findings
+            ],
+        )
+
+    def test_sync_policy_releases_completed_joins(self) -> None:
+        def join_wait(
+            sequence: int,
+            operation: str,
+            thread: str,
+            target: str,
+            context: int,
+        ) -> dict[str, object]:
+            return node(
+                "resource",
+                "resource",
+                sequence,
+                context=context,
+                operation=operation,
+                resource_class="pthread-join-wait",
+                resource_identity=thread,
+                related_identity=target,
+                metadata=thread,
+                size=0,
+            )
+
+        analysis = analyze_model(
+            model(
+                join_wait(1, "acquire", "thread=one", "thread=two", 1),
+                join_wait(2, "release", "thread=one", "thread=two", 1),
+                join_wait(3, "acquire", "thread=two", "thread=one", 2),
+                join_wait(4, "release", "thread=two", "thread=one", 2),
+            )
+        )
+        self.assertNotIn(
+            "P101-SYNC-003",
             [
                 finding.diagnostic_id
                 for finding in analysis.synchronization.findings

@@ -71,6 +71,21 @@ grep -Fq "fatal: repository 'missing' not found" "$sandbox/freebsd-summary.md"
 grep -Fq '::error title=p101%3A repository update/build::Cloning repositories...' \
   "$sandbox/freebsd-stdout"
 
+mkdir -p "$sandbox/freebsd-invalid"
+printf 'check\n' > "$sandbox/freebsd-invalid/freebsd-failed-phase"
+printf '1 (core dumped)\n' > "$sandbox/freebsd-invalid/freebsd-exit-code"
+GITHUB_STEP_SUMMARY="$sandbox/freebsd-invalid-summary.md" \
+  ./github-actions/publish-ci-summary.sh \
+  "$sandbox/freebsd-invalid" FreeBSD success success \
+  > "$sandbox/freebsd-invalid-stdout" \
+  2> "$sandbox/freebsd-invalid-stderr"
+grep -Fq 'Invalid FreeBSD exit-status receipt: 1 (core dumped)' \
+  "$sandbox/freebsd-invalid-stderr"
+grep -Fq '| Repository update/build | failure |' \
+  "$sandbox/freebsd-invalid-summary.md"
+grep -Fq '| Governed acceptance graph | failure |' \
+  "$sandbox/freebsd-invalid-summary.md"
+
 ./tests/test-freebsd-result.sh
 
 printf 'PASS: GitHub Actions failures produce annotations and an inline job summary.\n'

@@ -215,7 +215,12 @@ def main() -> int:
             failures.append(f"active repository is missing: {root.relative_to(WORKSPACE)}")
             continue
         for path in root.rglob("*"):
-            if not path.is_file() or ".git" in path.parts or any(part.startswith("build") for part in path.parts):
+            relative_parts = path.relative_to(root).parts
+            if (
+                not path.is_file()
+                or ".git" in relative_parts
+                or any(part.startswith("build") for part in relative_parts)
+            ):
                 continue
             if any(retired in path.parts for retired in RETIRED):
                 continue

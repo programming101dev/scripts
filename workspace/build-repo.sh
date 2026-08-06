@@ -163,6 +163,12 @@ change_compiler_supports_sanitizers() {
   grep -Fq -- '-s)' ./change-compiler.sh
 }
 
+change_compiler_supports_runtime_artifact() {
+  grep -Fq -- '-b)' ./change-compiler.sh &&
+    grep -Fq -- '--)' ./change-compiler.sh &&
+    change_compiler_supports_sanitizers
+}
+
 CC_PATH="$(resolve_any "$c_compiler")"
 CXX_PATH="$(resolve_any "$cxx_compiler")"
 CLANG_FORMAT_PATH="$(resolve_any "$clang_format_name")"
@@ -227,6 +233,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   pushd "$dir" >/dev/null
   quality_build_dir=""
   runtime_build_dir=""
+  runtime_install_supported=1
 
   # Decide which compiler to feed into change-compiler.sh
   case "$repo_type" in
@@ -333,6 +340,9 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     if [[ -z "$quality_build_dir" ]]; then
       say "  -> FAIL: ${dir} did not publish .last-build-dir after its quality build."
       failures=$((failures + 1))
+    elif ! change_compiler_supports_runtime_artifact; then
+      runtime_install_supported=0
+      say "  -> SKIP install: change-compiler.sh cannot create a separate sanitizer-free runtime artifact."
     else
       runtime_build_dir="${quality_build_dir}-runtime"
       if [[ "$repo_type" == "cxx" ]]; then
@@ -387,6 +397,8 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   # If there’s an installer, run it (forward -s to skip cache if -S was given)
   if $skip_install; then
     say "Skipping install: ${dir}"
+  elif [[ "$runtime_install_supported" -eq 0 ]]; then
+    say "Skipping install without a sanitizer-free runtime artifact: ${dir}"
   elif [[ -x ./install.sh ]]; then
     if $forward_skip_cache; then
       say "Installing (skip cache update): ${dir}"

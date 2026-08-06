@@ -12,6 +12,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -393,8 +394,10 @@ def expanded_writes(
 ) -> list[Path]:
     paths: list[Path] = []
     for value in node.get("resources", {}).get("writes", []):
+        if value == "{temporary_root}":
+            continue
         expanded = value.format_map(variables)
-        if not expanded or expanded == "/tmp":
+        if not expanded:
             continue
         path = Path(expanded)
         if not path.is_absolute():
@@ -553,8 +556,11 @@ def publish_cache_entry(
         entry.parent.mkdir(parents=True, exist_ok=True)
         try:
             temporary.rename(entry)
-        except FileExistsError:
-            shutil.rmtree(temporary)
+        except OSError:
+            # Cache publication is opportunistic. A concurrent publisher,
+            # read-only cache, or full cache filesystem must not change the
+            # verdict of the check whose evidence was already produced.
+            return
     finally:
         if temporary.exists():
             shutil.rmtree(temporary)
@@ -679,14 +685,23 @@ def execute_node(
                 )
                 result = subprocess.CompletedProcess(command, 2)
             else:
-                result = subprocess.run(
-                    command,
-                    cwd=SCRIPTS_ROOT,
-                    stdout=log,
-                    stderr=subprocess.STDOUT,
-                    check=False,
-                    env=os.environ.copy(),
-                )
+                timeout_seconds = int(node.get("timeout_seconds", 3600))
+                try:
+                    result = subprocess.run(
+                        command,
+                        cwd=SCRIPTS_ROOT,
+                        stdout=log,
+                        stderr=subprocess.STDOUT,
+                        check=False,
+                        env=os.environ.copy(),
+                        timeout=timeout_seconds,
+                    )
+                except subprocess.TimeoutExpired:
+                    log.write(
+                        "\ncheck timed out after "
+                        f"{timeout_seconds} seconds\n"
+                    )
+                    result = subprocess.CompletedProcess(command, 2)
         if result.returncode == 0 and declared_receipts:
             with log_path.open("a", encoding="utf-8") as log:
                 if not receipt_verifier:
@@ -968,6 +983,7 @@ def run_graph(
     output = output.resolve()
     variables = dict(variables)
     variables["out"] = os.fspath(output)
+    variables["temporary_root"] = tempfile.gettempdir()
     variables["receipt_verifier"] = os.environ.get(
         "P101_TOOL_RECEIPT", shutil.which("p101-tool-receipt") or ""
     )
@@ -1079,7 +1095,7 @@ def run_graph(
     pending = dict(selected_by_id)
     running: dict[
         concurrent.futures.Future[dict[str, Any]],
-        tuple[dict[str, Any], dict[str, int], list[Path]],
+        tuple[dict[str, Any], dict[str, int], list[Path], str],
     ] = {}
     capacities = document.get("resource_capacities", {})
     used_units = {name: 0 for name in capacities}
@@ -1091,8 +1107,10 @@ def run_graph(
     def node_writes(node: dict[str, Any]) -> list[Path]:
         paths = []
         for raw in node.get("resources", {}).get("writes", []):
+            if raw == "{temporary_root}":
+                continue
             value = raw.format_map(variables)
-            if not value or value == "/tmp":
+            if not value:
                 continue
             path = Path(value)
             paths.append(
@@ -1239,12 +1257,13 @@ def run_graph(
                 if len(running) >= run_jobs or not resources_available(node, writes):
                     continue
                 reserve(node, writes)
+                input_identity = identity_for(identifier)
                 future = executor.submit(
                     execute_node,
                     node,
                     commands[identifier],
                     output,
-                    identity_for(identifier),
+                    input_identity,
                     interactive,
                     order_by_id[identifier],
                     console_lock,
@@ -1252,7 +1271,12 @@ def run_graph(
                     expanded_receipts(node, variables, output),
                     variables["receipt_verifier"],
                 )
-                running[future] = (node, node_units(node), writes)
+                running[future] = (
+                    node,
+                    node_units(node),
+                    writes,
+                    input_identity,
+                )
                 del pending[identifier]
                 progress = True
 
@@ -1262,7 +1286,7 @@ def run_graph(
                     return_when=concurrent.futures.FIRST_COMPLETED,
                 )
                 for future in done:
-                    node, _, _ = running.pop(future)
+                    node, _, _, input_identity = running.pop(future)
                     release(node)
                     record = future.result()
                     records.append(record)
@@ -1281,7 +1305,7 @@ def run_graph(
                     ):
                         publish_cache_entry(
                             active_cache,
-                            identity_for(node["id"]),
+                            input_identity,
                             node,
                             variables,
                             output,

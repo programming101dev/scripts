@@ -31,7 +31,8 @@ def discover_json(paths: list[Path]) -> tuple[list[Path], list[Path]]:
     missing: list[Path] = []
     for path in paths:
         if path.is_dir():
-            files.extend(sorted(path.rglob("*.json")))
+            canonical = sorted(path.rglob("correlated-report.json"))
+            files.extend(canonical if canonical else sorted(path.rglob("*.json")))
         elif path.is_file():
             files.append(path)
         else:
@@ -99,7 +100,7 @@ def collect(files: list[Path], catalog: Catalog) -> dict[str, Any]:
                 }
             elif diag not in catalog.ignored_diagnostic_ids:
                 unmapped[diag] += 1
-            site = finding.get("site")
+            site = finding.get("location", finding.get("site"))
             if isinstance(site, dict):
                 source = site.get("file")
                 if isinstance(source, str) and source:

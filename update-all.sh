@@ -11,6 +11,8 @@ set -eu
 
 # Always operate from the directory this script lives in.
 cd -- "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+# shellcheck source=shared/compilers.sh
+. ./shared/compilers.sh
 
 # Defaults
 clang_format_name="clang-format"
@@ -57,9 +59,8 @@ usage() {
             if [ -z "$_c" ]; then continue; fi
             _cb=$(basename "$_c")
             case "$_cb" in
-              gcc*)   _xb="g++${_cb#gcc}" ;;
-              clang*) _xb="clang++${_cb#clang}" ;;
-              *)      _xb="(no C++ pair)" ;;
+              gcc*|clang*) _xb=$(p101_derive_cxx_name "$_cb") ;;
+              *) _xb="(no C++ pair)" ;;
             esac
             printf '  %s : %s\n' "$_cb" "$_xb"
         done < "$c_list_file"
@@ -159,26 +160,13 @@ fi
 
 # Derive the C++ compiler NAME that corresponds to a C compiler name.
 derive_cxx() {
-  case "$1" in
-    gcc*)   printf 'g++%s' "${1#gcc}" ;;
-    clang*) printf 'clang++%s' "${1#clang}" ;;
-    *)      printf '' ;;
-  esac
+  p101_derive_cxx_name "$1"
 }
 
 # Find the list entry whose BASENAME matches $1. Supported lists hold names
 # now; older generated lists may hold paths, so this still handles both.
 find_by_basename() {
-  # $1 = wanted basename, $2 = list file
-  awk -v want="$1" '
-    /^[[:space:]]*(#|$)/ { next }
-    {
-      line=$0
-      sub(/^[[:space:]]+/, "", line); sub(/[[:space:]]+$/, "", line)
-      n=split(line, parts, "/")
-      if (parts[n] == want) { print line; exit }
-    }
-  ' "$2"
+  p101_find_compiler_by_basename "$1" "$2"
 }
 
 pairs_run=0

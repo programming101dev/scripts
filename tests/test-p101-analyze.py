@@ -123,7 +123,13 @@ class AnalyzeTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
-    def write_capture(self, *, completed: bool = False) -> None:
+    def write_capture(
+        self,
+        *,
+        completed: bool = False,
+        command_status: int = 0,
+        status_kind: str = "exit",
+    ) -> None:
         contents = {
             "manifest.txt": "manifest\\n",
             "command.txt": "./student-program\\n",
@@ -150,7 +156,7 @@ class AnalyzeTests(unittest.TestCase):
             "fingerprint=fnv1a64",
             "fingerprint_security=change-detection-only",
             f"analysis={'completed' if completed else 'deferred'}",
-            "status=command\texit=0",
+            f"status=command\t{status_kind}={command_status}",
         ]
         if completed:
             for role in sorted(ANALYZE.COMPLETED_STATUS_ROLES - {"command"}):
@@ -257,10 +263,11 @@ class AnalyzeTests(unittest.TestCase):
         output = self.root / "analysis"
         (self.capture / "resources.log").write_text("modified\n", encoding="utf-8")
         completed = self.run_analyze(output, "--force")
-        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.returncode, 1, completed.stderr)
         receipt = (output / "analysis-receipt.txt").read_text(encoding="utf-8")
         self.assertIn("capture_verification=overridden\n", receipt)
         self.assertIn("fingerprint mismatch", receipt)
+        self.assertIn("result=findings\n", receipt)
 
     def test_missing_receipt_requires_force(self) -> None:
         (self.capture / "receipt.txt").unlink()
@@ -271,11 +278,12 @@ class AnalyzeTests(unittest.TestCase):
 
         forced_output = self.root / "forced"
         forced = self.run_analyze(forced_output, "--force")
-        self.assertEqual(forced.returncode, 0, forced.stderr)
+        self.assertEqual(forced.returncode, 1, forced.stderr)
         receipt = (forced_output / "analysis-receipt.txt").read_text(
             encoding="utf-8"
         )
         self.assertIn("capture_verification=overridden\n", receipt)
+        self.assertIn("result=findings\n", receipt)
 
     def test_incomplete_receipt_requires_force(self) -> None:
         receipt_path = self.capture / "receipt.txt"
@@ -290,11 +298,30 @@ class AnalyzeTests(unittest.TestCase):
 
         forced_output = self.root / "forced"
         forced = self.run_analyze(forced_output, "--force")
-        self.assertEqual(forced.returncode, 0, forced.stderr)
+        self.assertEqual(forced.returncode, 1, forced.stderr)
         receipt = (forced_output / "analysis-receipt.txt").read_text(
             encoding="utf-8"
         )
         self.assertIn("capture_verification=overridden\n", receipt)
+        self.assertIn("result=findings\n", receipt)
+
+    def test_failed_captured_command_is_recorded_as_a_finding(self) -> None:
+        self.write_capture(command_status=7)
+        output = self.root / "analysis"
+        completed = self.run_analyze(output)
+        self.assertEqual(completed.returncode, 1, completed.stderr)
+        receipt = (output / "analysis-receipt.txt").read_text(encoding="utf-8")
+        self.assertIn("status=capture_command\texit=1", receipt)
+        self.assertIn("result=findings\n", receipt)
+
+    def test_signaled_captured_command_makes_analysis_trouble(self) -> None:
+        self.write_capture(command_status=9, status_kind="signal")
+        output = self.root / "analysis"
+        completed = self.run_analyze(output)
+        self.assertEqual(completed.returncode, 2, completed.stderr)
+        receipt = (output / "analysis-receipt.txt").read_text(encoding="utf-8")
+        self.assertIn("status=capture_command\texit=2\tsignal=9", receipt)
+        self.assertIn("result=trouble\n", receipt)
 
     def test_findings_are_preserved_without_becoming_tool_trouble(self) -> None:
         output = self.root / "analysis"

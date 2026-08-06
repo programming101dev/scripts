@@ -139,6 +139,7 @@ fi
 shellcheck_scripts=()
 bash_scripts=()
 sh_scripts=()
+syntax_failures=0
 for script in "${scripts[@]}"; do
   first_line=""
   IFS= read -r first_line < "$script" || true
@@ -160,7 +161,7 @@ done
 
 # Each shell accepts multiple input files. Checking each file in a fresh
 # interpreter made this gate spend most of its time starting ~1,000 processes.
-syntax_status=0
+syntax_status="$syntax_failures"
 if [[ "${#bash_scripts[@]}" -gt 0 ]]; then
   bash -n "${bash_scripts[@]}" || syntax_status=1
 fi

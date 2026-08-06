@@ -84,7 +84,7 @@
       "inputs": ["scripts/tests/test-repository-lock.py", "scripts/workspace/repos-lock.py", "scripts/repos.txt", "scripts/repos.lock"],
       "inputs_complete": true,
       "depends_on": [],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Lock refresh is deterministic, manifest drift is rejected, dirty-state policy is explicit, and fresh clones select the recorded commit."
     },
     {
@@ -121,7 +121,7 @@
       "required": true,
       "command": ["./tests/test-stack-contract.py"],
       "depends_on": ["format-workspace"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Stack policy refresh is deterministic and altered, substituted, missing, or escaping artifacts are refused."
     },
     {
@@ -154,7 +154,7 @@
       "depends_on": ["check-graph-tests"],
       "inputs": ["scripts/checks/compare-check-performance.py", "scripts/tests/test-check-performance.py"],
       "inputs_complete": true,
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Performance claims require at least five source/workload/result-identical samples and a policy-sized median improvement."
     },
     {
@@ -198,7 +198,7 @@
       "title": "p101 governed quality catalog",
       "group": "architecture",
       "required": true,
-      "command": ["./checks/check-p101-quality-contract.py"],
+      "command": ["./checks/check-p101-quality-contract.py", "--allow-no-facts"],
       "inputs": ["scripts/checks/check-p101-quality-contract.py", "scripts/runtime/c_facts.py", "scripts/contracts/p101-quality-contract.json", "scripts/contracts/p101-boundaries.json", "scripts/contracts/p101-check-graph.json", "programs/**", "libraries/lib_c_facts/**", "libraries/lib_tool_event/include/**", "playgrounds/lessons/manifest.json"],
       "inputs_complete": true,
       "depends_on": ["quality-contract-tests"],
@@ -254,7 +254,7 @@
       "required": true,
       "command": ["./tests/test-refresh-repo.sh"],
       "depends_on": ["shell-scripts"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Repository refresh explicitly fetches the configured upstream, fast-forwards updates, preserves local commits, and refuses divergence."
     },
     {
@@ -264,7 +264,7 @@
       "required": true,
       "command": ["./tests/test-compiler-fingerprint.sh"],
       "depends_on": ["repository-refresh"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Probed flag caches are invalidated when the compiler executable, reported version, or target changes."
     },
     {
@@ -274,7 +274,7 @@
       "required": true,
       "command": ["./tests/test-remove-retired-repos.sh"],
       "depends_on": ["compiler-cache-tests"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Manifest-retired repositories are removed only when clean and fully represented by their configured upstream."
     },
     {
@@ -284,7 +284,7 @@
       "required": true,
       "command": ["./tests/test-build-repo-interactive.sh"],
       "depends_on": ["retired-repository-cleanup"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Interactive builds retry only the failed repository phase and preserve its exit status on abort."
     },
     {
@@ -304,7 +304,7 @@
       "required": true,
       "command": ["./tests/test-github-actions-summary.sh"],
       "depends_on": ["github-workflow-drift"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "CI failures emit GitHub annotations and publish bounded diagnostics in the job summary without requiring artifact downloads."
     },
     {
@@ -317,7 +317,7 @@
         "RepositoryLockTests.test_ephemeral_lock_admits_clean_ahead_commits"
       ],
       "depends_on": ["github-summary-tests"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "A temporary candidate lock can admit clean ahead-only commits without weakening the published lock contract."
     },
     {
@@ -327,7 +327,7 @@
       "required": true,
       "command": ["./tests/test-push-repos-preflight.sh"],
       "depends_on": ["github-preflight-tests"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "The supported multi-repository push path refuses to contact push remotes until the GitHub Actions preflight succeeds, unless explicitly overridden."
     },
     {
@@ -377,7 +377,7 @@
       "required": true,
       "command": ["./tests/test-p101-analyze.py"],
       "depends_on": ["source-responsibilities"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Replay analysis refuses incomplete or modified capture receipts."
     },
     {
@@ -387,7 +387,7 @@
       "required": true,
       "command": ["./tests/test-p101-run.py"],
       "depends_on": ["analyze-receipts"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Capture and deferred analysis compose through their declared receipts."
     },
     {
@@ -410,7 +410,7 @@
       "required": true,
       "command": ["./tests/test-p101-model.py"],
       "depends_on": ["tool-receipt-contract"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "The causal model verifies and compares only bound analysis artifacts."
     },
     {
@@ -420,7 +420,7 @@
       "required": true,
       "command": ["./tests/test-p101-runtime.py"],
       "depends_on": ["capture-composition"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Shared runtime policy remains deterministic over admitted tool outputs."
     },
     {
@@ -432,7 +432,7 @@
       "inputs": ["scripts/tests/test-p101-fault-campaign.py", "scripts/runtime/p101-fault-campaign.py", "scripts/runtime/wrapper_fault_contract.py", "scripts/contracts/wrapper-platform-faults.json", "libraries/*/api-manifest.tsv"],
       "inputs_complete": true,
       "depends_on": ["runtime-policy", "wrapper-fault-semantics"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Platform fault campaigns enumerate only admitted wrapper faults and preserve bounded dry-run receipts."
     },
     {
@@ -444,7 +444,7 @@
       "inputs": ["scripts/tests/test-p101-interleaving-walk.py", "scripts/runtime/p101-interleaving-walk.py", "scripts/runtime/p101_runtime.py", "libraries/lib_tool_event/**"],
       "inputs_complete": true,
       "depends_on": ["runtime-policy"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "The interleaving explorer preserves admitted order constraints and exposes prefix synchronization counterexamples."
     },
     {
@@ -454,7 +454,7 @@
       "required": true,
       "command": ["./tests/test-p101-api-diff.py"],
       "depends_on": ["functional-library-split"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Manifest snapshots reject removals, library moves, header moves, and platform-support loss."
     },
     {
@@ -464,7 +464,7 @@
       "required": true,
       "command": ["./tests/test-p101-fuzz.py"],
       "depends_on": ["test-inventory"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "The p101 fuzz command enters the admitted repository, preserves its arguments, and refuses missing fuzz contracts."
     },
     {
@@ -474,7 +474,7 @@
       "required": true,
       "command": ["./tests/test-p101-lessons.py"],
       "depends_on": ["runtime-policy"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Stable finding identifiers resolve to their declared lessons."
     },
     {
@@ -494,7 +494,7 @@
       "required": true,
       "command": ["./tests/test-c-facts-external-corpus.sh"],
       "depends_on": ["source-responsibilities"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "The external C/C++ corpus remains categorized and bounded."
     },
     {
@@ -515,7 +515,7 @@
       "required": true,
       "command": ["./tests/test-cmake.sh", "-c", "{cc}", "-x", "{cxx}", "-k"],
       "depends_on": ["cmake-distribution"],
-      "resources": {"writes": ["/tmp"], "units": {"compiler": 1}},
+      "resources": {"writes": ["{temporary_root}"], "units": {"compiler": 1}},
       "guarantee": "Shared CMake behavior passes its positive and negative regression controls."
     },
     {
@@ -537,7 +537,7 @@
       "inputs": ["scripts/tests/test-p101-facts-cache.py", "scripts/checks/p101-facts-cache.py", "libraries/lib_c_facts/**", "libraries/lib_error/**", "libraries/lib_env/**"],
       "inputs_complete": true,
       "depends_on": ["source-responsibilities"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "C-fact acquisition artifacts are restored only for matching producers, compile databases, source trees, and shared headers."
     },
     {
@@ -757,7 +757,7 @@
       "inputs": ["scripts/tests/test-repository-tests-parallel.sh", "scripts/checks/check-repository-tests.sh", "scripts/checks/write-repository-test-receipt.py", "templates/template-c/test.sh", "templates/template-cxx/test.sh"],
       "inputs_complete": true,
       "depends_on": ["workspace-api"],
-      "resources": {"writes": ["/tmp"], "units": {}},
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Repository test workers overlap safely while preserving deterministic results and complete diagnostics."
     },
     {

@@ -13,10 +13,12 @@ from __future__ import annotations
 import argparse
 import csv
 import gzip
+import hashlib
 import json
+import os
 import re
-import subprocess
 import sys
+import tempfile
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
@@ -47,6 +49,23 @@ PLATFORM_ERROR_OVERRIDES = {
         "reason": "The shared newlocale(3) page ERRORS list applies to locale creation, not freelocale().",
     },
 }
+
+
+def atomic_write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(text)
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
 
 # These interfaces report failures in their own return-code domains rather
 # than through errno.  The lists below are reviewed extractions from the same
@@ -419,7 +438,8 @@ class FunctionIndexParser(HTMLParser):
         match = re.fullmatch(r"\.\./functions/([^/#]+)\.html", href)
         if match is not None:
             name = match.group(1)
-            self.functions[name] = f"{POSIX_BASE}/functions/{name}.html"
+            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+                self.functions[name] = f"{POSIX_BASE}/functions/{name}.html"
 
 
 class PosixErrorsParser(HTMLParser):
@@ -439,6 +459,7 @@ class PosixErrorsParser(HTMLParser):
         self.shall_fail: set[str] = set()
         self.may_fail: set[str] = set()
         self.error_text: list[str] = []
+        self.saw_errors_heading = False
 
     def handle_starttag(
         self,
@@ -497,6 +518,7 @@ class PosixErrorsParser(HTMLParser):
             return
         heading = " ".join(self.heading_text).strip().upper()
         self.in_errors = heading == "ERRORS"
+        self.saw_errors_heading = self.saw_errors_heading or self.in_errors
         self.in_heading = False
 
     def handle_data(self, data: str) -> None:
@@ -547,8 +569,17 @@ def posix_record(
         raise FileNotFoundError(
             f"missing {page}; download {url} before generating the contract"
         )
+    page_bytes = page.read_bytes()
+    if len(page_bytes) < 256 or re.search(
+        rb"</html\s*>", page_bytes, re.IGNORECASE
+    ) is None:
+        raise ValueError(f"incomplete cached POSIX page: {page}")
     parser = PosixErrorsParser(function, errno_names)
-    parser.feed(page.read_text(encoding="utf-8", errors="replace"))
+    parser.feed(page_bytes.decode("utf-8", errors="replace"))
+    if not parser.saw_errors_heading:
+        raise ValueError(
+            f"cached POSIX page has no ERRORS heading: {page} ({url})"
+        )
     references: set[str] = set()
     error_text = " ".join(" ".join(parser.error_text).split())
     for trigger in (
@@ -572,6 +603,8 @@ def posix_record(
         "shall_fail": sorted(parser.shall_fail),
         "may_fail": sorted(parser.may_fail - parser.shall_fail),
         "references": sorted(references - {function}),
+        "source_bytes": len(page_bytes),
+        "source_sha256": hashlib.sha256(page_bytes).hexdigest(),
     }
 
 
@@ -865,7 +898,15 @@ def effective_platform_errors(
         records_by_function,
         visiting,
     )
-    if not effective:
+    platform_record = records_by_function.get(function, {}).get(
+        "platforms", {}
+    ).get(platform_name)
+    reviewed_empty_override = (
+        isinstance(platform_record, dict)
+        and platform_record.get("status") == "documented"
+        and "reviewed_override" in platform_record
+    )
+    if not effective and not reviewed_empty_override:
         effective.update(
             effective_posix_errors(function, records_by_function, set())
         )
@@ -884,7 +925,9 @@ def curl_config(
         output = page_dir / f"{function}.html"
         if output.is_file():
             continue
-        lines.extend((f'url = "{url}"', f'output = "{output}"'))
+        lines.extend(
+            (f'url = "{url}"', f'output = "{output.with_suffix(".html.part")}"')
+        )
     return "\n".join(lines) + ("\n" if lines else "")
 
 
@@ -913,11 +956,23 @@ def main() -> int:
         if item["role"] == "native-wrapper"
     }
     if args.curl_config is not None:
-        args.curl_config.write_text(
+        atomic_write_text(
+            args.curl_config,
             curl_config(index, args.page_dir, set(index)),
-            encoding="utf-8",
         )
         return 0
+
+    for function in sorted(index):
+        page = args.page_dir / f"{function}.html"
+        partial = page.with_suffix(".html.part")
+        if not partial.exists():
+            continue
+        partial_bytes = partial.read_bytes()
+        if len(partial_bytes) < 256 or re.search(
+            rb"</html\s*>", partial_bytes, re.IGNORECASE
+        ) is None:
+            raise ValueError(f"incomplete POSIX download: {partial}")
+        os.replace(partial, page)
 
     errno_names = posix_errno_names(args.errno_page)
     # Keep the full indexed function set so ERRORS sections that delegate to
@@ -978,7 +1033,16 @@ def main() -> int:
                 platform_name
             )
             if platform_value is None:
-                continue
+                platform_value = {
+                    "status": "not-harvested",
+                    "source": None,
+                    "source_path": None,
+                    "errors": [],
+                    "references": [],
+                }
+                records_by_function[function]["platforms"][
+                    platform_name
+                ] = platform_value
             platform_value["effective_errors"] = sorted(
                 effective_platform_errors(
                     function,
@@ -998,6 +1062,7 @@ def main() -> int:
             platform_requires_posix_fallback = (
                 platform_value["status"] == "documented"
                 and not platform_has_explicit_faults
+                and "reviewed_override" not in platform_value
                 and bool(posix["effective_errors"])
             )
             if (
@@ -1136,9 +1201,9 @@ def main() -> int:
         "functions": records_by_function,
         "wrappers": wrappers,
     }
-    args.output.write_text(
+    atomic_write_text(
+        args.output,
         json.dumps(contract, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
     )
     print(
         f"wrapper platform-fault contract: {len(wrappers)} APIs, "

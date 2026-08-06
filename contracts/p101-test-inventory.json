@@ -48,6 +48,24 @@
       "owner": "scripts",
       "oracle": "external corpus execution receipt",
       "reason": "full opt-in corpus executor; the graph governs its deterministic manifest test"
+    },
+    {
+      "path": "tests/test-copy-scripts-standalone.sh",
+      "owner": "scripts",
+      "oracle": "standalone shared-script distribution fixture",
+      "reason": "manual standalone smoke pending a hermetic repository fixture"
+    },
+    {
+      "path": "tests/test-freebsd-result.sh",
+      "owner": "scripts",
+      "oracle": "FreeBSD exit-receipt enforcement regression",
+      "reason": "focused local regression also exercised by the GitHub summary suite"
+    },
+    {
+      "path": "tests/test-native-wrapper-parity.py",
+      "owner": "scripts",
+      "oracle": "native and wrapper differential fixture contract",
+      "reason": "focused local regression owned transitively by native-wrapper-parity"
     }
   ],
   "does_not_prove": "Inventory coverage proves that discovered repository and scripts verification entry points have a declared owner and runner. It does not prove that each oracle is complete or independent."

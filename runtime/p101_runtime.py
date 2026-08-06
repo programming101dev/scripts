@@ -250,8 +250,8 @@ def _causal_nodes(model: dict[str, Any]) -> list[dict[str, Any]]:
         contexts[(node["pid"], node["context"])].append(index)
     for indices in contexts.values():
         indices.sort(key=lambda index: (nodes[index]["sequence"], index))
-        for source, destination in zip(indices, indices[1:]):
-            add_edge(source, destination)
+        for offset in range(1, len(indices)):
+            add_edge(indices[offset - 1], indices[offset])
 
     ready = [index for index, degree in enumerate(indegree) if degree == 0]
     heapq.heapify(ready)
@@ -501,7 +501,11 @@ def analyze_synchronization(model: dict[str, Any]) -> PolicyResult:
 
     def physical(node: dict[str, Any]) -> str:
         identity = str(node.get("resource_identity", "?")).split("@", 1)[0]
-        return f"{node['pid']}:{node['context']}:{identity}"[:159]
+        return f"{node['pid']}:{identity}"[:159]
+
+    def join_identity(node: dict[str, Any], field: str) -> str:
+        identity = str(node.get(field) or "thread=?").split("@", 1)[0]
+        return f"{node['pid']}:{identity}"[:159]
 
     def add(identifier: str, node: dict[str, Any], first: str, second: str) -> None:
         if any(
@@ -571,23 +575,22 @@ def analyze_synchronization(model: dict[str, Any]) -> PolicyResult:
         elif resource_class in SYNCHRONIZATION_WAIT_RESOURCE_CLASSES:
             join = resource_class == "pthread-join-wait"
             wait_resource = (
-                f"{node['pid']}:{node['context']}:"
-                f"{node.get('resource_identity') or 'thread=?'}"
+                join_identity(node, "resource_identity")
                 if join
                 else current_resource
-            )[:159]
+            )
+            wait_thread = wait_resource if join else current_thread
             if operation == "acquire":
                 target = (
-                    f"{node['pid']}:{node['context']}:"
-                    f"{node.get('related_identity') or 'thread=?'}"
+                    join_identity(node, "related_identity")
                     if join
                     else ""
-                )[:159]
+                )
                 waits.append(
                     {
                         "active": True,
                         "join": join,
-                        "thread": current_thread,
+                        "thread": wait_thread,
                         "resource": wait_resource,
                         "target": target,
                         "node": node,
@@ -597,7 +600,7 @@ def analyze_synchronization(model: dict[str, Any]) -> PolicyResult:
                 for item in reversed(waits):
                     if (
                         item["active"]
-                        and item["thread"] == current_thread
+                        and item["thread"] == wait_thread
                         and item["resource"] == wait_resource
                     ):
                         item["active"] = False

@@ -225,7 +225,8 @@ policy_force_reject() {
   local cc="$1" lang="$2" flag="$3"
   if [[ "$lang" == c   && $flag == -std=c++* ]]; then return 0; fi
   if [[ "$lang" == c   && $flag == -Wc++*  ]]; then return 0; fi
-  if [[ "$lang" == c++ && $flag == -std=c* ]]; then return 0; fi
+  if [[ "$lang" == c++ && $flag == -std=c* && $flag != -std=c++* ]]; then return 0; fi
+  if [[ "$lang" == c++ && $flag == -std=gnu* && $flag != -std=gnu++* ]]; then return 0; fi
   if is_clang_like "$cc"; then
     # vtable verification is a GCC feature (needs libvtv); clang does not
     # implement it — the old gate had this backwards.
@@ -436,6 +437,14 @@ probe_flags_file() {
   # ("${supported[*]:-}": expanding an empty array under set -u errors on
   # the stock macOS bash 3.2)
   printf "%s" "${supported[*]:-}" > "${out_cc}/${base}.txt"
+  # Preserve the original probe-unit boundaries for the whole-set conflict
+  # resolver. Some options are valid only as a multi-token unit; removing one
+  # token from such a unit can manufacture a broken cache.
+  mkdir -p "${out_cc}/.p101-units"
+  : > "${out_cc}/.p101-units/${base}"
+  if [[ ${#supported[@]} -gt 0 ]]; then
+    printf '%s\n' "${supported[@]}" > "${out_cc}/.p101-units/${base}"
+  fi
 }
 
 # ---------- tmp & tiny sources ----------
@@ -570,15 +579,20 @@ whole_set_check() {
   local name="$1" cc="$2" lang="$3" src="$4"
   local out_cc
   out_cc="${OUT_DIR}/$(basename "$name")"
-  local all="" f base tok exe="$TMP/ws.out" so="$TMP/ws.so" errlog="$TMP/ws.err"
+  local f base exe="$TMP/ws.out" so="$TMP/ws.so" errlog="$TMP/ws.err"
   local sel="" g gfile
+  local units=() unit_file unit
 
-  # non-sanitizer accepted flags, in cache order
+  # Non-sanitizer accepted probe units, in cache order.
   for f in "$out_cc"/*.txt; do
     [[ -f "$f" ]] || continue
     base="$(basename "$f")"
     case "$base" in *_sanitizer_flags.txt|*.log) continue ;; esac
-    all="$all $(cat "$f")"
+    unit_file="$out_cc/.p101-units/${base%.txt}"
+    [[ -f "$unit_file" ]] || continue
+    while IFS= read -r unit || [[ -n "$unit" ]]; do
+      [[ -n "$unit" ]] && units+=("$unit")
+    done < "$unit_file"
   done
   # plus the currently selected sanitizer groups, like the real build
   if [[ -f "${SCRIPT_DIR}/sanitizers.txt" ]]; then
@@ -588,58 +602,83 @@ whole_set_check() {
       IFS="$IFS_saved"
       g="$(trim "$g")"
       gfile="$out_cc/${g}_sanitizer_flags.txt"
-      [[ -n "$g" && -f "$gfile" ]] && all="$all $(cat "$gfile")"
+      if [[ -n "$g" && -f "$gfile" ]]; then
+        unit_file="$out_cc/.p101-units/${g}_sanitizer_flags"
+        if [[ -f "$unit_file" ]]; then
+          while IFS= read -r unit || [[ -n "$unit" ]]; do
+            [[ -n "$unit" ]] && units+=("$unit")
+          done < "$unit_file"
+        fi
+      fi
       IFS=','
     done
     IFS="$IFS_saved"
   fi
-  [[ -n "${all// /}" ]] || return 0
+  [[ ${#units[@]} -gt 0 ]] || return 0
 
-  # shellcheck disable=SC2086
-  if ( cd "$TMP" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" $all "$src" -o "$exe" ) >"$errlog" 2>&1; then
+  whole_set_candidate_check() {
+    local candidate_tokens=() candidate_unit
+    local unit_tokens=()
+    for candidate_unit in "$@"; do
+      unit_tokens=()
+      IFS=' ' read -r -a unit_tokens <<< "$candidate_unit"
+      candidate_tokens+=("${unit_tokens[@]}")
+    done
+    ( cd "$TMP" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" \
+      ${candidate_tokens[@]+"${candidate_tokens[@]}"} "$src" -o "$exe" ) >/dev/null 2>&1 ||
+      return 1
+    ( cd "$TMP" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" -shared -fPIC \
+      ${candidate_tokens[@]+"${candidate_tokens[@]}"} "$src" -o "$so" ) >/dev/null 2>&1
+  }
+
+  local initial_tokens=() initial_unit_tokens=()
+  for unit in "${units[@]}"; do
+    initial_unit_tokens=()
+    IFS=' ' read -r -a initial_unit_tokens <<< "$unit"
+    initial_tokens+=("${initial_unit_tokens[@]}")
+  done
+  if ( cd "$TMP" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" \
+       "${initial_tokens[@]}" "$src" -o "$exe" ) >"$errlog" 2>&1 &&
+     ( cd "$TMP" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" -shared -fPIC \
+       "${initial_tokens[@]}" "$src" -o "$so" ) >>"$errlog" 2>&1; then
     # p101 libraries are shared libraries, so also prove the accepted compile
     # flag set can produce a shared object. This catches executable-only codegen
     # flags such as -fPIE that can pass an executable probe but break .so links.
-    # shellcheck disable=SC2086
-    if ( cd "$TMP" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" -shared -fPIC $all "$src" -o "$so" ) >>"$errlog" 2>&1; then
-      return 0
-    fi
+    return 0
   fi
 
   echo "  ⚠️  whole-set check FAILED for $name — bisecting for mutually exclusive flags..."
-  whole_set_candidate_check() {
-    local candidate_flags="$1"
-    # shellcheck disable=SC2086
-    ( cd "$TMP" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" $candidate_flags "$src" -o "$exe" ) >/dev/null 2>&1 || return 1
-    # shellcheck disable=SC2086
-    ( cd "$TMP" && "$cc" "${COMPILER_PLATFORM_ARGS[@]}" -shared -fPIC $candidate_flags "$src" -o "$so" ) >/dev/null 2>&1
-  }
 
-  # phase 1 — single-drop: drop one token at a time until the set compiles.
-  # Finds conflicts where ONE flag is the odd one out. Candidate sets must
+  # phase 1 — single-drop: drop one probe unit at a time until the set compiles.
+  # Finds conflicts where ONE unit is the odd one out. Candidate sets must
   # produce both an executable and a shared object, matching the final gate.
-  local conflicts="" keep tokens t candidate
-  tokens="$all"
+  local conflicts=() keep=() tokens=("${units[@]}")
+  local candidate_index index other_index
   while :; do
-    candidate=""
-    for t in $tokens; do
-      keep=""
-      for tok in $tokens; do
-        [[ "$tok" == "$t" ]] || keep="$keep $tok"
+    candidate_index=-1
+    index=0
+    while [[ "$index" -lt "${#tokens[@]}" ]]; do
+      keep=()
+      other_index=0
+      while [[ "$other_index" -lt "${#tokens[@]}" ]]; do
+        if [[ "$other_index" -ne "$index" ]]; then
+          keep+=("${tokens[$other_index]}")
+        fi
+        other_index=$((other_index + 1))
       done
-      if whole_set_candidate_check "$keep"; then
-        candidate="$t"
+      if whole_set_candidate_check ${keep[@]+"${keep[@]}"}; then
+        candidate_index="$index"
         break
       fi
+      index=$((index + 1))
     done
-    [[ -n "$candidate" ]] || break
-    conflicts="$conflicts $candidate"
-    keep=""
-    for tok in $tokens; do
-      [[ "$tok" == "$candidate" ]] || keep="$keep $tok"
-    done
-    tokens="$keep"
-    whole_set_candidate_check "$tokens" && break
+    [[ "$candidate_index" -ge 0 ]] || break
+    conflicts+=("${tokens[$candidate_index]}")
+    tokens=()
+    if [[ ${#keep[@]} -gt 0 ]]; then
+      tokens=("${keep[@]}")
+    fi
+    whole_set_candidate_check ${tokens[@]+"${tokens[@]}"} && break
   done
 
   # phase 2 — greedy forward-build: when single-drop can't fix it (three
@@ -647,17 +686,22 @@ whole_set_check() {
   # conflicting pair), rebuild from the front, dropping each token that
   # breaks the accumulated set. First-listed of an exclusive group wins,
   # matching last-one-wins expectations as closely as a keep-set can.
-  if ! whole_set_candidate_check "$tokens"; then
+  if ! whole_set_candidate_check ${tokens[@]+"${tokens[@]}"}; then
     echo "  ⚠️  single-drop insufficient — greedy forward-build..."
-    keep=""
-    for t in $tokens; do
-      if whole_set_candidate_check "$keep $t"; then
-        keep="$keep $t"
-      else
-        conflicts="$conflicts $t"
-      fi
-    done
-    tokens="$keep"
+    keep=()
+    if [[ ${#tokens[@]} -gt 0 ]]; then
+      for unit in "${tokens[@]}"; do
+        if whole_set_candidate_check ${keep[@]+"${keep[@]}"} "$unit"; then
+          keep+=("$unit")
+        else
+          conflicts+=("$unit")
+        fi
+      done
+    fi
+    tokens=()
+    if [[ ${#keep[@]} -gt 0 ]]; then
+      tokens=("${keep[@]}")
+    fi
   fi
 
   {
@@ -666,25 +710,39 @@ whole_set_check() {
     echo "# combined command line; it was removed from this cache."
     echo "# Original combined error:"
     sed 's/^/#   | /' "$errlog" | head -8
-    for t in $conflicts; do printf '%s\n' "$t"; done
+    if [[ ${#conflicts[@]} -gt 0 ]]; then
+      printf '%s\n' "${conflicts[@]}"
+    fi
   } >"$out_cc/conflicts.txt"
 
-  if [[ -n "${conflicts// /}" ]]; then
+  if [[ ${#conflicts[@]} -gt 0 ]]; then
     echo "  ⚠️  removed from $name cache (see .flags/$(basename "$name")/conflicts.txt):"
-    for t in $conflicts; do
-      echo "      $t"
-      for f in "$out_cc"/*.txt; do
-        base="$(basename "$f")"
-        case "$base" in conflicts.txt|*.log) continue ;; esac
-        if grep -q -- "$t" "$f" 2>/dev/null; then
-          # rewrite the cache file without the conflicting token
-          local rebuilt="" tok2
-          for tok2 in $(cat "$f"); do
-            [[ "$tok2" == "$t" ]] || rebuilt="$rebuilt $tok2"
-          done
-          printf '%s' "${rebuilt# }" >"$f"
-        fi
-      done
+    for unit in "${conflicts[@]}"; do
+      echo "      $unit"
+    done
+    for unit_file in "$out_cc"/.p101-units/*; do
+      [[ -f "$unit_file" ]] || continue
+      keep=()
+      while IFS= read -r unit || [[ -n "$unit" ]]; do
+        remove_unit=0
+        for conflict_unit in "${conflicts[@]}"; do
+          if [[ "$unit" == "$conflict_unit" ]]; then
+            remove_unit=1
+            break
+          fi
+        done
+        [[ "$remove_unit" -eq 1 ]] || keep+=("$unit")
+      done < "$unit_file"
+      base="$(basename "$unit_file")"
+      if [[ ! -f "$out_cc/${base}.txt" ]]; then
+        rm -f "$unit_file"
+        continue
+      fi
+      : > "$unit_file"
+      if [[ ${#keep[@]} -gt 0 ]]; then
+        printf '%s\n' "${keep[@]}" > "$unit_file"
+      fi
+      printf '%s' "${keep[*]:-}" > "$out_cc/${base}.txt"
     done
   else
     echo "  ⚠️  bisect could not isolate a single flag — see $out_cc/conflicts.txt"
@@ -702,6 +760,7 @@ if [[ ${#supported_c_compilers[@]} -gt 0 ]]; then
     load_lang_deny "c"
     out="${OUT_DIR}/$(basename "$cc")"; mkdir -p "$out"
     rm -f "$out"/* "$out"/.compiler-fingerprint || true
+    rm -rf "$out/.p101-units"
     for f in "${flags_files[@]}"; do
       probe_flags_file "$cc" "$cc_path" "c" "$tmp_c_src" "$f" "$TMP"
     done
@@ -718,6 +777,7 @@ if [[ ${#supported_cxx_compilers[@]} -gt 0 ]]; then
     load_lang_deny "c++"
     out="${OUT_DIR}/$(basename "$cc")"; mkdir -p "$out"
     rm -f "$out"/* "$out"/.compiler-fingerprint || true
+    rm -rf "$out/.p101-units"
     for f in "${flags_files[@]}"; do
       probe_flags_file "$cc" "$cc_path" "c++" "$tmp_cxx_src" "$f" "$TMP"
     done

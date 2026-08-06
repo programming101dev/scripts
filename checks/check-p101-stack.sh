@@ -11,6 +11,8 @@
 set -euo pipefail
 unset CDPATH
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+# shellcheck source=shared/compilers.sh
+. ./shared/compilers.sh
 
 cc="clang"
 cxx="clang++"
@@ -95,16 +97,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 resolve_compiler() {
-  requested="$1"
-  resolved=""
-  if [ -f compiler_paths.txt ]; then
-    resolved="$(awk -F= -v name="$requested" '$1 == name { print substr($0, index($0, "=") + 1); exit }' compiler_paths.txt)"
-  fi
-  if [ -n "$resolved" ]; then
-    printf '%s\n' "$resolved"
-  else
-    command -v "$requested" 2>/dev/null || printf '%s\n' "$requested"
-  fi
+  p101_resolve_compiler "$1" compiler_paths.txt
 }
 
 playground_program() {

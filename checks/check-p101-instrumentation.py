@@ -61,7 +61,12 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.merge_receipts:
-        return merge_receipts(args.merge_receipts, set(args.require_platform))
+        required_platforms = set(args.require_platform) or {
+            "Darwin",
+            "Linux",
+            "FreeBSD",
+        }
+        return merge_receipts(args.merge_receipts, required_platforms)
     if args.require_platform:
         parser.error("--require-platform requires --merge-receipts")
 
@@ -102,7 +107,7 @@ def main() -> int:
             output = Path(temp) / f"{repo.name}.json"
             facts = Path(temp) / f"{repo.name}.tsv"
             paths = [repo / "src"]
-            if args.facts_cache is not None and (repo / "include").is_dir():
+            if (repo / "include").is_dir():
                 paths.append(repo / "include")
             cache_command = [
                 str(facts_cache_tool),
@@ -320,7 +325,19 @@ def merge_receipts(paths: list[Path], required_platforms: set[str]) -> int:
             continue
         receipts.append(receipt)
 
-    platforms = {str(receipt.get("platform", "")) for receipt in receipts}
+    platform_names = [str(receipt.get("platform", "")) for receipt in receipts]
+    platforms = set(platform_names)
+    duplicates = sorted(
+        platform_name
+        for platform_name in platforms
+        if platform_names.count(platform_name) > 1
+    )
+    if not receipts:
+        failures.append("no platform receipts were admitted")
+    if duplicates:
+        failures.append(
+            "duplicate platform receipts: " + ", ".join(duplicates)
+        )
     missing = required_platforms - platforms
     if missing:
         failures.append(f"missing required platforms: {', '.join(sorted(missing))}")

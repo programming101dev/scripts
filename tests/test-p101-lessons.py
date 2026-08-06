@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import subprocess
 import sys
 import tempfile
 import threading
@@ -14,7 +15,7 @@ from argparse import Namespace
 from contextlib import redirect_stderr, redirect_stdout
 from copy import deepcopy
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
@@ -102,12 +103,36 @@ class LessonCatalogTests(unittest.TestCase):
         cls.catalog_path = cls.workspace / "playgrounds" / "lessons" / "manifest.json"
         cls.catalog = p101_lessons.load_catalog(cls.catalog_path)
 
+    def test_dispatcher_preserves_callers_working_directory(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="p101-lesson-cwd.") as temporary:
+            completed = subprocess.run(
+                [str(SCRIPTS_ROOT / "p101"), "lessons", "list"],
+                cwd=temporary,
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("P101-LAB-", completed.stdout)
+
     def test_all_emitted_diagnostics_have_lessons(self) -> None:
         missing, stale_ignored = p101_lessons.validate_coverage(
             self.catalog, self.workspace
         )
         self.assertEqual(missing, set())
         self.assertEqual(stale_ignored, set())
+
+    def test_full_receipt_cannot_pass_when_every_native_profile_skips(
+        self,
+    ) -> None:
+        receipt = p101_lessons._receipt(
+            self.catalog,
+            "full",
+            [{"status": "SKIP", "label": "unsupported-platform"}],
+            1,
+        )
+        self.assertEqual(receipt["summary"]["result"], "FAIL")
 
     def test_runtime_finding_has_primary_and_related_lessons(self) -> None:
         lessons = self.catalog.by_finding_id["P101-FD-001"]
@@ -139,6 +164,15 @@ class LessonCatalogTests(unittest.TestCase):
             self.assertEqual(
                 set(row["platforms"]), {"macos", "linux", "freebsd"}
             )
+
+    def test_coverage_document_counts_unmapped_diagnostics(self) -> None:
+        with patch.object(
+            p101_lessons,
+            "validate_coverage",
+            return_value=({"P101-UNMAPPED-999"}, set()),
+        ):
+            coverage = p101_lessons.coverage_document(self.catalog)
+        self.assertEqual(coverage["summary"]["uncovered_ids"], 1)
 
     def test_every_protocol_pair_maps_broken_and_clears_repaired(self) -> None:
         for finding_id in self.catalog.by_finding_id:

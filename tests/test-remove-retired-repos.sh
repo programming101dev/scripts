@@ -27,7 +27,8 @@ create_repository() {
   git -C "$publisher" config user.name "p101 cleanup test"
   git -C "$publisher" config user.email "cleanup-test@invalid.example"
   printf '%s\n' "$name" > "$publisher/value.txt"
-  git -C "$publisher" add value.txt
+  printf 'build-*\n.env\n' > "$publisher/.gitignore"
+  git -C "$publisher" add value.txt .gitignore
   git -C "$publisher" commit --quiet -m initial
   git -C "$publisher" branch -M main
   git -C "$publisher" remote add origin "$remote"
@@ -39,11 +40,15 @@ create_repository() {
 create_repository active
 create_repository retired-clean
 create_repository retired-dirty
+create_repository retired-secret
 ln -s "$sandbox/workspace/libraries/active" \
   "$sandbox/workspace/libraries/retired-symlink"
 printf '%s|../libraries/active|c\n' "$sandbox/remotes/active.git" \
   > "$sandbox/workspace/scripts/repos.txt"
 printf 'local work\n' >> "$sandbox/workspace/libraries/retired-dirty/value.txt"
+mkdir -p "$sandbox/workspace/libraries/retired-clean/build-clang"
+printf 'generated\n' > "$sandbox/workspace/libraries/retired-clean/build-clang/output.o"
+printf 'credential\n' > "$sandbox/workspace/libraries/retired-secret/.env"
 
 (
   cd "$sandbox/workspace/scripts"
@@ -53,9 +58,11 @@ printf 'local work\n' >> "$sandbox/workspace/libraries/retired-dirty/value.txt"
 [[ -d "$sandbox/workspace/libraries/active" ]]
 [[ -d "$sandbox/workspace/libraries/retired-clean" ]]
 [[ -d "$sandbox/workspace/libraries/retired-dirty" ]]
+[[ -d "$sandbox/workspace/libraries/retired-secret" ]]
 [[ -L "$sandbox/workspace/libraries/retired-symlink" ]]
 grep -Fq 'WOULD REMOVE:' "$sandbox/dry-run.out"
 grep -Fq 'BLOCKED (dirty):' "$sandbox/dry-run.err"
+grep -Fq 'BLOCKED (contains ignored files):' "$sandbox/dry-run.err"
 
 (
   cd "$sandbox/workspace/scripts"
@@ -66,15 +73,19 @@ grep -Fq 'BLOCKED (dirty):' "$sandbox/dry-run.err"
 [[ -d "$sandbox/workspace/libraries/active" ]]
 [[ ! -e "$sandbox/workspace/libraries/retired-clean" ]]
 [[ -d "$sandbox/workspace/libraries/retired-dirty" ]]
+[[ -d "$sandbox/workspace/libraries/retired-secret" ]]
 [[ -L "$sandbox/workspace/libraries/retired-symlink" ]]
 grep -Fq 'Retired repository cleanup aborted.' "$sandbox/apply.err"
 
 git -C "$sandbox/workspace/libraries/retired-dirty" restore value.txt
 (
   cd "$sandbox/workspace/scripts"
-  ./distribution/remove-retired-repos.sh --apply --yes > "$sandbox/final.out"
+  ./distribution/remove-retired-repos.sh --apply --yes > "$sandbox/final.out" \
+    2> "$sandbox/final.err" || status=$?
+  [[ "${status:-0}" -eq 1 ]]
 )
 [[ ! -e "$sandbox/workspace/libraries/retired-dirty" ]]
+[[ -d "$sandbox/workspace/libraries/retired-secret" ]]
 [[ -d "$sandbox/workspace/libraries/active" ]]
 [[ -L "$sandbox/workspace/libraries/retired-symlink" ]]
 

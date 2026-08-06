@@ -6,9 +6,12 @@ scripts_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P
 work="$(mktemp -d "${TMPDIR:-/tmp}/p101-repository-tests-parallel.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 
-mkdir -p "$work/scripts/checks" "$work/repos/alpha/test" "$work/repos/bravo/test" "$work/repos/charlie/test" "$work/probe"
+mkdir -p "$work/scripts/checks" "$work/scripts/shared" \
+  "$work/repos/alpha/test" "$work/repos/bravo/test" \
+  "$work/repos/charlie/test" "$work/probe"
 cp "$scripts_root/checks/check-repository-tests.sh" "$work/scripts/checks/"
 cp "$scripts_root/checks/write-repository-test-receipt.py" "$work/scripts/checks/"
+cp "$scripts_root/shared/compilers.sh" "$work/scripts/shared/"
 cat > "$work/scripts/repos.txt" <<'EOF'
 |../repos/alpha|c
 |../repos/bravo|c
@@ -79,7 +82,15 @@ assert statuses == {"alpha": "PASS", "bravo": "PASS", "charlie": "FAIL"}
 assert receipt["passed"] is False
 PY
 
-reported="$(awk -F'|' '/^\\| (alpha|bravo|charlie) / { gsub(/^ +| +$/, "", $2); print $2 }' "$work/output/summary.md")"
+reported="$(awk -F'|' '
+  {
+    name = $2
+    gsub(/^ +| +$/, "", name)
+    if(name ~ /^(alpha|bravo|charlie)$/) {
+      print name
+    }
+  }
+' "$work/output/summary.md")"
 [ "$reported" = "$(printf 'alpha\nbravo\ncharlie')" ] || {
   printf 'repository report order changed:\n%s\n' "$reported" >&2
   exit 1
@@ -88,7 +99,40 @@ reported="$(awk -F'|' '/^\\| (alpha|bravo|charlie) / { gsub(/^ +| +$/, "", $2); 
 compiler="$(command -v clang 2>/dev/null || command -v cc)"
 launcher="$work/launcher"
 mkdir -p "$launcher/build-main" "$launcher/test"
-cp "$scripts_root/../templates/template-c/test.sh" "$launcher/test.sh"
+cat > "$launcher/test.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+
+compiler_identity() {
+  path="$1"
+  case "$path" in
+    */*) ;;
+    *) path="$(command -v "$path")" ;;
+  esac
+  while [ -L "$path" ]; do
+    target="$(readlink "$path")"
+    case "$target" in
+      /*) path="$target" ;;
+      *) path="$(dirname "$path")/$target" ;;
+    esac
+  done
+  directory="$(CDPATH='' cd -P -- "$(dirname "$path")" && pwd -P)"
+  printf '%s/%s' "$directory" "$(basename "$path")"
+}
+
+main_bd="$(cat .last-build-dir)"
+cached="$(sed -n 's/^CMAKE_C_COMPILER:[^=]*=//p' "$main_bd/CMakeCache.txt" | head -1)"
+requested="${P101_TEST_CC:-$cached}"
+[ "$(compiler_identity "$cached")" = "$(compiler_identity "$requested")" ] || {
+  printf 'configured and requested compilers differ\n' >&2
+  exit 1
+}
+cmake -S test -B test/build -DCMAKE_C_COMPILER="$cached"
+cmake --build test/build
+ctest --test-dir test/build --output-on-failure
+EOF
+chmod +x "$launcher/test.sh"
 cat > "$launcher/config.cmake" <<'EOF'
 set(PROJECT_LANGUAGE C)
 EOF

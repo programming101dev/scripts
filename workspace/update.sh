@@ -25,6 +25,8 @@ IFS=$' \t\n'
 
 # Always operate from the original scripts repository.
 CDPATH='' cd -- "$P101_UPDATE_ROOT"
+# shellcheck source=../shared/compilers.sh
+. ./shared/compilers.sh
 
 # ----------------- globals and defaults -----------------
 c_compiler=""
@@ -76,7 +78,7 @@ note() { printf "%s\n" "$*"; }
 # ----------------- usage -----------------
 # detected-compiler helpers (smarter --help; harmless if lists absent)
 _p101_names() { [ -f "$1" ] && awk 'NF && $0 !~ /^[[:space:]]*#/ {n=split($0,a,"/"); printf "%s%s",(c++?", ":""),a[n]}' "$1"; }
-_p101_cxx_of() { case "$1" in gcc*) printf 'g++%s' "${1#gcc}";; clang*) printf 'clang++%s' "${1#clang}";; *) printf '';; esac; }
+_p101_cxx_of() { p101_derive_cxx_name "$1"; }
 
 usage() {
   cat <<'USAGE'
@@ -189,22 +191,13 @@ resolve_compiler() {
   # Compiler names resolve through the pinned map first, then PATH; if
   # neither works, re-run discovery once (self-heal) and retry the map.
   local user_value="$1" path
-  if [[ "$user_value" = /* ]]; then
-    [[ -x "$user_value" ]] || die "'$user_value' is not executable"
-    printf "%s" "$user_value"
-    return
-  fi
-  if path="$(map_lookup "$user_value")" && [[ -x "$path" ]]; then
-    printf "%s" "$path"
-    return
-  fi
-  if path="$(command -v "$user_value" 2>/dev/null)"; then
+  if path="$(p101_resolve_compiler "$user_value" "$MAP_FILE" 2>/dev/null)"; then
     printf "%s" "$path"
     return
   fi
   note "compiler '$user_value' not in $MAP_FILE or PATH — re-running discovery..." >&2
   "$CHECK_COMPILERS_SH" >&2 || true
-  if path="$(map_lookup "$user_value")" && [[ -x "$path" ]]; then
+  if path="$(p101_resolve_compiler "$user_value" "$MAP_FILE" 2>/dev/null)"; then
     printf "%s" "$path"
     return
   fi
@@ -334,6 +327,7 @@ if ! $sanitizers_given; then
     sanitizers="$sanitizers_default"
   fi
 fi
+requested_sanitizers="$sanitizers"
 
 [[ -n "$c_compiler"   ]] || { printf "Error: -c (C compiler) is required\n" >&2; usage; }
 [[ -n "$cxx_compiler" ]] || { printf "Error: -x (C++ compiler) is required\n" >&2; usage; }
@@ -389,11 +383,17 @@ if [[ -n "$sanitizers" ]] && ! $dry_run; then
   )"
 fi
 
-# Verify environment tools exist and are usable by downstream
-run_or_echo "$CHECK_ENV_SH" \
-  -c "$CC_PATH" -x "$CXX_PATH" \
-  -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH" \
-  -s "$sanitizers"
+# Verify environment tools exist and are usable by downstream. Transient
+# profiles must not overwrite the user's durable sanitizer selection.
+check_env_args=(
+  -c "$CC_PATH" -x "$CXX_PATH"
+  -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH"
+  -s "$requested_sanitizers"
+)
+if $no_flags || $standard; then
+  check_env_args+=(--no-record)
+fi
+run_or_echo "$CHECK_ENV_SH" "${check_env_args[@]}"
 
 # Clone or update repos listed in repos.txt. Interactive mode applies to this
 # phase too: local edits or branch divergence must be resolved by the user, but

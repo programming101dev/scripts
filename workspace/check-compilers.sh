@@ -55,8 +55,12 @@ OS="$(uname)"
 #     existing — the map self-heals after upgrades and uninstalls
 # ---------------------------------------------------------------------------
 
-MAP_FILE="compiler_paths.txt"
-DISCOVERY_LOG="compiler-discovery.log"
+MAP_FINAL="compiler_paths.txt"
+DISCOVERY_LOG_FINAL="compiler-discovery.log"
+discovery_tmp="$(mktemp -d "$PWD/.compiler-discovery.XXXXXX")"
+trap 'rm -rf -- "$discovery_tmp"' EXIT
+MAP_FILE="$discovery_tmp/$MAP_FINAL"
+DISCOVERY_LOG="$discovery_tmp/$DISCOVERY_LOG_FINAL"
 
 c_patterns=(
   gcc "gcc-[0-9]*" "gcc[0-9]*" "gcc-mp-[0-9]*"
@@ -116,8 +120,16 @@ _version_line() {
 }
 
 _version_major() {
-  # first "version <N>" occurrence; empty if undetectable
-  _version_line "$1" | sed -n -E 's/.*version ([0-9]+).*/\1/p'
+  local version
+  version="$("$1" -dumpfullversion 2>/dev/null || true)"
+  [[ -n "$version" ]] || version="$("$1" -dumpversion 2>/dev/null || true)"
+  if [[ "$version" =~ ^([0-9]+) ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+  _version_line "$1" |
+    sed -n -E 's/.*version ([0-9]+).*/\1/p' ||
+    true
 }
 
 _is_versioned_compiler_alias() {
@@ -134,7 +146,8 @@ _is_versioned_compiler_alias() {
 # Args: <type> <lang> <patterns...>
 probe_list() {
   local type="$1" lang="$2"; shift 2
-  local out="supported_${type}.txt"
+  local final_out="supported_${type}.txt"
+  local out="$discovery_tmp/$final_out"
   : >"$out"
 
   # -- collect (name, path) candidates --
@@ -241,10 +254,10 @@ probe_list() {
   done
 
   if [[ ! -s "$out" ]]; then
-    echo "No working ${type} found. Wrote empty ${out}." >&2
+    echo "No working ${type} found. Wrote empty ${final_out}." >&2
     exit 1
   fi
-  echo "Supported ${type} compilers written to ${out} (paths pinned in ${MAP_FILE}):"
+  echo "Supported ${type} compilers written to ${final_out} (paths pinned in ${MAP_FINAL}):"
   sed 's/^/  /' "$out"
 }
 
@@ -268,5 +281,10 @@ if grep -q '^== REJECTED' "$DISCOVERY_LOG" 2>/dev/null; then
   echo
   echo "NOTE: some discovered compilers were rejected as broken:"
   grep '^== REJECTED' "$DISCOVERY_LOG" | sed 's/^== REJECTED /  - /'
-  echo "  Full error output: $DISCOVERY_LOG"
+  echo "  Full error output: $DISCOVERY_LOG_FINAL"
 fi
+
+mv -- "$discovery_tmp/supported_c_compilers.txt" supported_c_compilers.txt
+mv -- "$discovery_tmp/supported_cxx_compilers.txt" supported_cxx_compilers.txt
+mv -- "$MAP_FILE" "$MAP_FINAL"
+mv -- "$DISCOVERY_LOG" "$DISCOVERY_LOG_FINAL"

@@ -21,6 +21,8 @@ def receipt(path: Path, elapsed: int, identity: str = "same") -> None:
             {
                 "schema": "p101-check-graph-receipt-v2",
                 "outcome": "clean",
+                "mode": "measurement",
+                "cache": {"reused": 0},
                 "elapsed_ns": elapsed,
                 "records": [
                     {
@@ -74,6 +76,23 @@ class PerformanceTests(unittest.TestCase):
             result = self.run_check(baseline, candidate)
             self.assertEqual(result.returncode, 2)
             self.assertIn("identity differs", result.stdout)
+
+    def test_cache_reuse_cannot_be_claimed_as_a_speedup(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            baseline = [root / f"b{index}.json" for index in range(5)]
+            candidate = [root / f"c{index}.json" for index in range(5)]
+            for path in baseline:
+                receipt(path, 100)
+            for path in candidate:
+                receipt(path, 1)
+                document = json.loads(path.read_text(encoding="utf-8"))
+                document["cache"]["reused"] = 1
+                document["records"][0]["outcome"] = "reused"
+                path.write_text(json.dumps(document), encoding="utf-8")
+            result = self.run_check(baseline, candidate)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("reused cached nodes", result.stdout)
 
 
 if __name__ == "__main__":

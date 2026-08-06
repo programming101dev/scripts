@@ -52,10 +52,11 @@ USAGE
 }
 
 find_tool() {
-  env_name="$1"
+  local env_name="$1"
+  local configured=""
   shift
 
-  eval "configured=\${$env_name:-}"
+  configured="${!env_name:-}"
   if [ -n "$configured" ]; then
     printf '%s\n' "$configured"
     return 0
@@ -112,6 +113,13 @@ exec_found() {
   exec "$tool_path" ${command_args[@]+"${command_args[@]}"}
 }
 
+exec_runtime() {
+  local runtime="$1"
+  shift
+  CDPATH='' cd -- "$dispatch_cwd"
+  exec "$script_dir/runtime/$runtime" "$@"
+}
+
 if [ "$#" -eq 0 ]; then
   usage
   exit 2
@@ -129,28 +137,28 @@ case "$command_name" in
     exec_found p101-observe P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe
     ;;
   run)
-    exec "$script_dir/runtime/p101-run.py" "$@"
+    exec_runtime p101-run.py "$@"
     ;;
   analyze)
-    exec ./runtime/p101-analyze.py "$@"
+    exec_runtime p101-analyze.py "$@"
     ;;
   verify)
-    exec ./runtime/p101-model.py verify "$@"
+    exec_runtime p101-model.py verify "$@"
     ;;
   compare)
-    exec ./runtime/p101-model.py compare "$@"
+    exec_runtime p101-model.py compare "$@"
     ;;
   explain)
-    exec ./runtime/p101-model.py explain "$@"
+    exec_runtime p101-model.py explain "$@"
     ;;
   report)
-    exec ./runtime/p101-view.py report "$@"
+    exec_runtime p101-view.py report "$@"
     ;;
   trace)
-    exec ./runtime/p101-view.py trace "$@"
+    exec_runtime p101-view.py trace "$@"
     ;;
   resource|resource-tracker)
-    exec ./runtime/p101-view.py resource "$@"
+    exec_runtime p101-view.py resource "$@"
     ;;
   walk|error-path-walk)
     observe_path="$(find_tool P101_OBSERVE "$(last_build_tool ../programs/p101-observe p101-observe)" ../programs/p101-observe/build-clang-22/p101-observe ../programs/p101-observe/build-clang/p101-observe p101-observe)" || {
@@ -161,17 +169,23 @@ case "$command_name" in
       echo "p101: p101-event-model not found; build it first or set P101_EVENT_MODEL" >&2
       exit 2
     }
-    command_args=(-U "$script_dir/runtime/p101-run.py" -O "$observe_path" -Y "$script_dir/runtime/p101-analyze.py" -B "$model_path" "${command_args[@]}")
+    command_args=(
+      -U "$script_dir/runtime/p101-run.py"
+      -O "$observe_path"
+      -Y "$script_dir/runtime/p101-analyze.py"
+      -B "$model_path"
+      ${command_args[@]+"${command_args[@]}"}
+    )
     exec_found p101-error-path-walk P101_ERROR_PATH_WALK "$(last_build_tool ../programs/p101-error-path-walk p101-error-path-walk)" ../programs/p101-error-path-walk/build-clang-22/p101-error-path-walk ../programs/p101-error-path-walk/build-clang/p101-error-path-walk p101-error-path-walk
     ;;
   fault-campaign)
-    exec ./runtime/p101-fault-campaign.py "$@"
+    exec_runtime p101-fault-campaign.py "$@"
     ;;
   interleaving-walk)
-    exec ./runtime/p101-interleaving-walk.py "$@"
+    exec_runtime p101-interleaving-walk.py "$@"
     ;;
   api-diff)
-    exec ./runtime/p101-api-diff.py "$@"
+    exec_runtime p101-api-diff.py "$@"
     ;;
   fuzz)
     if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
@@ -203,7 +217,7 @@ FUZZ_USAGE
     exec_found p101-module-map P101_MODULE_MAP "$(last_build_tool ../programs/p101-module-map p101-module-map)" ../programs/p101-module-map/build-clang-22/p101-module-map ../programs/p101-module-map/build-clang/p101-module-map p101-module-map
     ;;
   sync|sync-check)
-    exec ./runtime/p101-view.py sync "$@"
+    exec_runtime p101-view.py sync "$@"
     ;;
   mutation|mutation-check)
     exec_found p101-mutation-check P101_MUTATION_CHECK ../programs/p101-mutation-check/p101-mutation-check p101-mutation-check
@@ -218,11 +232,11 @@ FUZZ_USAGE
     for argument in "$@"; do
       case "$argument" in
         --rules|--rules=*)
-          exec ./runtime/p101-model.py check "$@"
+          exec_runtime p101-model.py check "$@"
           ;;
       esac
     done
-    exec ./runtime/p101-check.sh "$@"
+    exec_runtime p101-check.sh "$@"
     ;;
   corpus)
     exec ../playgrounds/corpus.sh "$@"
@@ -231,26 +245,28 @@ FUZZ_USAGE
     exec ../playgrounds/lab.sh "$@"
     ;;
   lesson)
+    CDPATH='' cd -- "$dispatch_cwd"
     case "${1:-}" in
       run)
         shift
-        exec python3 ./runtime/p101_lessons.py --catalog ../playgrounds/lessons/manifest.json run "$@"
+        exec python3 "$script_dir/runtime/p101_lessons.py" --catalog "$script_dir/../playgrounds/lessons/manifest.json" run "$@"
         ;;
       verify)
         shift
-        exec python3 ./runtime/p101_lessons.py --catalog ../playgrounds/lessons/manifest.json verify-one "$@"
+        exec python3 "$script_dir/runtime/p101_lessons.py" --catalog "$script_dir/../playgrounds/lessons/manifest.json" verify-one "$@"
         ;;
       show)
         shift
-        exec python3 ./runtime/p101_lessons.py --catalog ../playgrounds/lessons/manifest.json show "$@"
+        exec python3 "$script_dir/runtime/p101_lessons.py" --catalog "$script_dir/../playgrounds/lessons/manifest.json" show "$@"
         ;;
       *)
-        exec python3 ./runtime/p101_lessons.py --catalog ../playgrounds/lessons/manifest.json show "$@"
+        exec python3 "$script_dir/runtime/p101_lessons.py" --catalog "$script_dir/../playgrounds/lessons/manifest.json" show "$@"
         ;;
     esac
     ;;
   lessons)
-    exec python3 ./runtime/p101_lessons.py --catalog ../playgrounds/lessons/manifest.json "$@"
+    CDPATH='' cd -- "$dispatch_cwd"
+    exec python3 "$script_dir/runtime/p101_lessons.py" --catalog "$script_dir/../playgrounds/lessons/manifest.json" "$@"
     ;;
   contracts|tool-contracts)
     exec ./checks/check-p101-tool-contracts.sh "$@"
@@ -268,13 +284,13 @@ FUZZ_USAGE
     exec ./github-actions/preflight.sh "$@"
     ;;
   html-report)
-    exec ./runtime/p101-html-report.py "$@"
+    exec_runtime p101-html-report.py "$@"
     ;;
   cohort)
-    exec ./runtime/p101-cohort-summary.py "$@"
+    exec_runtime p101-cohort-summary.py "$@"
     ;;
   bug-bundle)
-    exec ./runtime/p101-bug-bundle.sh "$@"
+    exec_runtime p101-bug-bundle.sh "$@"
     ;;
   *)
     echo "Unknown p101 command: $command_name" >&2

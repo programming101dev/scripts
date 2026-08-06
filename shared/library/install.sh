@@ -69,6 +69,14 @@ build_dir="${build_dir:-build}"
 # ----------------- sanity checks -----------------
 [[ -d "$build_dir" ]] || { echo "Error: build dir '$build_dir' not found." >&2; exit 2; }
 
+cached_prefix=""
+if [[ -f "$build_dir/CMakeCache.txt" ]]; then
+  cached_prefix="$(
+    sed -n 's/^CMAKE_INSTALL_PREFIX:[^=]*=//p' "$build_dir/CMakeCache.txt" |
+      head -n 1
+  )"
+fi
+
 # Compose cmake --install command
 cmake_cmd=(cmake --install "$build_dir")
 [[ -n "$destdir" ]] && export DESTDIR="$destdir"
@@ -116,7 +124,7 @@ else
     # staged install likely user-writable → try without sudo
     "${cmake_cmd[@]}"
   else
-    install_prefix="${prefix:-/usr/local}"
+    install_prefix="${prefix:-${cached_prefix:-/usr/local}}"
     if needs_sudo_for_prefix "$install_prefix"; then
       sudo "${cmake_cmd[@]}"
     else

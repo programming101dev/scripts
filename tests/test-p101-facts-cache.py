@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -29,7 +31,25 @@ class FactsCacheTests(unittest.TestCase):
         (self.source / "demo.c").write_text("int demo(void) { return 1; }\n", encoding="utf-8")
         (self.include / "demo.h").write_text("int demo(void);\n", encoding="utf-8")
         self.database = self.repo / "compile_commands.json"
-        self.database.write_text("[]\n", encoding="utf-8")
+        compiler = shutil.which("cc")
+        self.assertIsNotNone(compiler)
+        self.database.write_text(
+            json.dumps(
+                [
+                    {
+                        "directory": str(self.repo),
+                        "file": str(self.source / "demo.c"),
+                        "arguments": [
+                            compiler,
+                            "-c",
+                            str(self.source / "demo.c"),
+                        ],
+                    }
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         self.producer = self.root / "producer"
         self.producer.write_text("producer-v1\n", encoding="utf-8")
         self.facts = self.root / "facts.tsv"
@@ -114,6 +134,27 @@ class FactsCacheTests(unittest.TestCase):
         self.dependency_header.write_text("long dependency(void);\n", encoding="utf-8")
         missed = subprocess.run(
             self.command("restore", f"facts={self.root / 'dependency-stale.tsv'}"),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(missed.returncode, 1, missed.stderr)
+
+    def test_depfile_header_change_invalidates_entry(self) -> None:
+        platform_header = self.root / "platform-sdk" / "platform.h"
+        platform_header.parent.mkdir()
+        platform_header.write_text("#define PLATFORM_VALUE 1\n", encoding="utf-8")
+        depfile = self.repo / "CMakeFiles" / "demo.c.o.d"
+        depfile.parent.mkdir()
+        depfile.write_text(
+            f"demo.c.o: {self.source / 'demo.c'} {platform_header}\n",
+            encoding="utf-8",
+        )
+        subprocess.run(self.command("store", f"facts={self.facts}"), check=True)
+
+        platform_header.write_text("#define PLATFORM_VALUE 2\n", encoding="utf-8")
+        missed = subprocess.run(
+            self.command("restore", f"facts={self.root / 'sdk-stale.tsv'}"),
             text=True,
             capture_output=True,
             check=False,

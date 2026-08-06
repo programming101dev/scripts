@@ -29,6 +29,7 @@ maximal profile (flag-selection.json -> flags/).
 import argparse
 import json
 import os
+import re
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -58,6 +59,12 @@ def render_file(name, spec):
     for e in spec["entries"]:
         flags = e["flags"]
         comment = e.get("comment", "")
+        comment = re.sub(
+            r"^\[(?:gcc|clang|c|cxx)(?:/(?:gcc|clang|c|cxx))* "
+            r"off via overrides\]\s*",
+            "",
+            comment,
+        )
         suffix = f"    # {comment}" if comment else ""
         fam = [f for f in ("gcc", "clang", "c", "cxx") if e.get(f) is False]
         if fam and e.get("enabled", False):
@@ -75,10 +82,11 @@ def tokens_of(path):
     units = []
     if not os.path.exists(path):
         return units
-    for line in open(path, encoding="utf-8", errors="replace"):
-        code = line.split("#", 1)[0].replace('"', " ").strip()
-        if code:
-            units.append(" ".join(code.split()))
+    with open(path, encoding="utf-8", errors="replace") as stream:
+        for line in stream:
+            code = line.split("#", 1)[0].replace('"', " ").strip()
+            if code:
+                units.append(" ".join(code.split()))
     return units
 
 
@@ -100,7 +108,7 @@ def main():
     overrides = {"gcc": [], "clang": [], "c": [], "cxx": []}
     rc = 0
 
-    for name, spec in sel["files"].items():
+    for _name, spec in sel["files"].items():
         for e in spec["entries"]:
             if e.get("enabled", False):
                 for fam in ("gcc", "clang", "c", "cxx"):

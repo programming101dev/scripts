@@ -589,7 +589,8 @@ fi
 # uses); skip otherwise. A cross-TU div-by-zero is invisible to the compile,
 # per-file tidy, and per-file --analyze stages — only CTU sees it.
 _ctu_tool=""
-if [[ "$c_compiler" == *clang* ]] && have "$c_compiler"; then
+if have "$c_compiler" &&
+   "$c_compiler" --version 2>/dev/null | head -1 | grep -qi clang; then
   _ccbin="$(command -v "$c_compiler")"
   _ccreal="$(readlink -f "$_ccbin" 2>/dev/null || echo "$_ccbin")"
   for _c in "$(dirname "$_ccreal")/clang-extdef-mapping" \
@@ -656,7 +657,7 @@ set(EXECUTABLE_TARGETS app)
 set(app_SOURCES src/main.c)
 set(P101_FILE_FLAG_OPTOUTS "src/main.c -fharden-control-flow-redundancy")
 EOF
-  printf "$_sjsrc" > "$PROJ/src/main.c"
+  printf '%s' "$_sjsrc" > "$PROJ/src/main.c"
   configure "$PROJ"
   if (( RC == 0 )); then
     build "$PROJ"
@@ -678,7 +679,7 @@ set(STANDARD_FLAGS -std=c17 -Werror)
 set(EXECUTABLE_TARGETS app)
 set(app_SOURCES src/main.c)
 EOF
-  printf "$_sjsrc" > "$PROJ/src/main.c"
+  printf '%s' "$_sjsrc" > "$PROJ/src/main.c"
   configure "$PROJ"
   if (( RC == 0 )); then
     build "$PROJ"
@@ -841,7 +842,75 @@ else
   bad "nested-local-precedence: configure failed" "$PROJ/configure.log"
 fi
 
+# ---------- sanitized compile DB keeps semantics, drops foreign codegen ----------
+sanitize_input="$SANDBOX/sanitize-input.json"
+sanitize_output="$SANDBOX/sanitize-output.json"
+cat > "$sanitize_input" <<'EOF'
+[
+  {
+    "directory": "/tmp",
+    "arguments": [
+      "gcc",
+      "-fno-var-tracking-assignments",
+      "-ffat-lto-objects",
+      "-fwrapv",
+      "-fno-strict-aliasing",
+      "-fshort-wchar",
+      "sample.c"
+    ],
+    "file": "sample.c"
+  }
+]
+EOF
+python3 "$SCRIPT_DIR/cmake/SanitizeCompileCommands.py" \
+  "$sanitize_input" "$sanitize_output"
+if grep -q -- '"-fwrapv"' "$sanitize_output" \
+   && grep -q -- '"-fno-strict-aliasing"' "$sanitize_output" \
+   && grep -q -- '"-fshort-wchar"' "$sanitize_output" \
+   && ! grep -q -- 'var-tracking' "$sanitize_output" \
+   && ! grep -q -- 'fat-lto' "$sanitize_output"; then
+  ok "tidy-db-flags: semantic flags kept and GCC-only codegen flags removed"
+else
+  bad "tidy-db-flags: sanitized compile DB changed the admitted flag policy" "$sanitize_output"
+fi
+
+# ---------- CTU distinguishes header-only from filtered source evidence ----------
+ctu_root="$SANDBOX/ctu-root"
+ctu_work="$SANDBOX/ctu-work"
+mkdir -p "$ctu_root" "$ctu_work"
+printf '[]\n' > "$SANDBOX/ctu-empty.json"
+if python3 "$SCRIPT_DIR/cmake/RunClangSaCtu.py" \
+     /bin/false /bin/false "$SANDBOX/ctu-empty.json" "$ctu_work" 1 "$ctu_root" \
+     -- > "$SANDBOX/ctu-empty.log" 2>&1; then
+  ok "ctu-empty: header-only compile database is a clean optional skip"
+else
+  bad "ctu-empty: header-only compile database was treated as broken" "$SANDBOX/ctu-empty.log"
+fi
+cat > "$SANDBOX/ctu-filtered.json" <<'EOF'
+[
+  {
+    "directory": "/tmp",
+    "arguments": ["cc", "-c", "/tmp/outside.c"],
+    "file": "/tmp/outside.c"
+  }
+]
+EOF
+ctu_filtered_rc=0
+python3 "$SCRIPT_DIR/cmake/RunClangSaCtu.py" \
+  /bin/false /bin/false "$SANDBOX/ctu-filtered.json" "$ctu_work" 1 "$ctu_root" \
+  -- > "$SANDBOX/ctu-filtered.log" 2>&1 || ctu_filtered_rc=$?
+if [[ "$ctu_filtered_rc" -eq 2 ]] \
+   && grep -q 'no in-tree translation units' "$SANDBOX/ctu-filtered.log"; then
+  ok "ctu-filtered: source evidence filtered out of tree is rejected"
+else
+  bad "ctu-filtered: misconfigured source database was not rejected" "$SANDBOX/ctu-filtered.log"
+fi
+
 # ---------- summary ----------
+minimum_passes=15
+if (( pass < minimum_passes )); then
+  bad "harness-floor: only $pass cases ran; expected at least $minimum_passes"
+fi
 echo
 echo "== test-cmake.sh: $pass passed, $fail failed =="
 if (( fail > 0 )); then

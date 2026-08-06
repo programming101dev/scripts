@@ -97,21 +97,31 @@ def sanitizer_link_flags(link_directories: list[Path]) -> list[str]:
     return flags
 
 
-def compiler_supported_link_flags(cc: str, flags: list[str]) -> list[str]:
-    """Keep only link flags accepted by the selected lifecycle compiler."""
+def compiler_supported_link_flags(
+    cc: str, flags: list[str]
+) -> tuple[list[str], list[str]]:
+    """Classify link flags accepted by the selected lifecycle compiler."""
     supported: list[str] = []
+    dropped: list[str] = []
     for flag in flags:
-        result = subprocess.run(
-            [cc, "-Werror", flag, "-x", "c", "-", "-o", os.devnull],
-            input="int main(void) { return 0; }\n",
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                [cc, "-Werror", flag, "-x", "c", "-", "-o", os.devnull],
+                input="int main(void) { return 0; }\n",
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                check=False,
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            dropped.append(flag)
+            continue
         if result.returncode == 0:
             supported.append(flag)
-    return supported
+        else:
+            dropped.append(flag)
+    return supported, dropped
 
 
 def find_program(repo: Path, name: str) -> Path:
@@ -127,13 +137,23 @@ def find_program(repo: Path, name: str) -> Path:
 
 
 def run_logged(command: list[str], log_path: Path, phase: str) -> None:
-    result = subprocess.run(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+            timeout=600,
+        )
+    except subprocess.TimeoutExpired as error:
+        output = error.stdout or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", errors="replace")
+        log_path.write_text(output, encoding="utf-8")
+        raise RuntimeError(
+            f"lifecycle driver {phase} timed out; see {log_path}"
+        ) from error
     log_path.write_text(result.stdout, encoding="utf-8")
     if result.returncode != 0:
         if result.stdout:
@@ -144,11 +164,21 @@ def run_logged(command: list[str], log_path: Path, phase: str) -> None:
         )
 
 
-def configure_driver(output: Path, cc: str) -> Path:
+def configure_driver(
+    output: Path, cc: str
+) -> tuple[Path, list[str], list[str]]:
     includes, links = p101_paths(cc)
-    sanitizer_flags = compiler_supported_link_flags(
-        cc, sanitizer_link_flags(links)
+    requested_sanitizers = sanitizer_link_flags(links)
+    sanitizer_flags, dropped_sanitizers = compiler_supported_link_flags(
+        cc, requested_sanitizers
     )
+    if dropped_sanitizers:
+        print(
+            "lifecycle sanitizer flags not supported by this compiler: "
+            + ", ".join(dropped_sanitizers)
+        )
+    if requested_sanitizers and not sanitizer_flags:
+        print("lifecycle driver continuing without sanitizer link flags")
     build = output / "build"
     command = [
         "cmake",
@@ -167,7 +197,11 @@ def configure_driver(output: Path, cc: str) -> Path:
         output / "build.log",
         "build",
     )
-    return build / "p101-wrapper-lifecycle-driver"
+    return (
+        build / "p101-wrapper-lifecycle-driver",
+        sanitizer_flags,
+        dropped_sanitizers,
+    )
 
 
 def generated_replays(specification: dict[str, Any], count: int, maximum: int, seed: int) -> list[list[str]]:
@@ -300,31 +334,62 @@ def run_case(
                 )
             environment["P101_FAULT_NAME"] = fault_name
             environment["P101_FAULT_AMOUNT"] = "2"
-    result = subprocess.run(
-        [str(driver), scenario, ",".join(replay)],
-        env=environment,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            [str(driver), scenario, ",".join(replay)],
+            env=environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired as error:
+        stdout = error.stdout or ""
+        stderr = error.stderr or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", errors="replace")
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode("utf-8", errors="replace")
+        result = subprocess.CompletedProcess(
+            [str(driver), scenario, ",".join(replay)],
+            2,
+            stdout=stdout,
+            stderr=stderr + "\nlifecycle case timed out after 60 seconds\n",
+        )
     (case_dir / "stdout.txt").write_text(result.stdout, encoding="utf-8")
     (case_dir / "stderr.txt").write_text(result.stderr, encoding="utf-8")
-    model_result = subprocess.run(
-        [
-            str(event_model),
-            "-r",
-            str(resources),
-            "-c",
-            str(calls),
-            "-o",
-            str(model),
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        check=False,
-    )
+    model_command = [
+        str(event_model),
+        "-r",
+        str(resources),
+        "-c",
+        str(calls),
+        "-o",
+        str(model),
+    ]
+    try:
+        model_result = subprocess.run(
+            model_command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired as error:
+        stdout = error.stdout or ""
+        stderr = error.stderr or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", errors="replace")
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode("utf-8", errors="replace")
+        model_result = subprocess.CompletedProcess(
+            model_command,
+            2,
+            stdout=stdout,
+            stderr=stderr + "\nevent model timed out after 60 seconds\n",
+        )
     (case_dir / "event-model-report.txt").write_text(
         model_result.stdout + model_result.stderr, encoding="utf-8"
     )
@@ -432,7 +497,9 @@ def main() -> int:
         return 2
     args.output.mkdir(parents=True, exist_ok=True)
     try:
-        driver = configure_driver(args.output, args.compiler)
+        driver, sanitizer_flags, dropped_sanitizers = configure_driver(
+            args.output, args.compiler
+        )
         event_model = find_program(WORKSPACE / "libraries" / "lib_tool_event", "p101-event-model")
     except RuntimeError as exc:
         print(f"FAIL: {exc}")
@@ -524,6 +591,8 @@ def main() -> int:
         "platform": platform.system(),
         "machine": platform.machine(),
         "compiler": args.compiler,
+        "sanitizer_flags": sanitizer_flags,
+        "dropped_sanitizer_flags": dropped_sanitizers,
         "seed": seed,
         "cases": len(receipts),
         "scenarios": sorted(contract["scenarios"]),

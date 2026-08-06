@@ -2,6 +2,8 @@
 # Run each repository-owned unit suite and a bounded fuzz smoke where supported.
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+# shellcheck source=shared/compilers.sh
+. ./shared/compilers.sh
 
 out_dir=""
 fuzz_secs=5
@@ -47,14 +49,7 @@ done
 resolve_compiler() {
   requested="$1"
   [ -n "$requested" ] || return 0
-  if [ -f compiler_paths.txt ]; then
-    resolved="$(awk -F= -v name="$requested" '$1 == name { print substr($0, index($0, "=") + 1); exit }' compiler_paths.txt)"
-    if [ -n "$resolved" ]; then
-      printf '%s\n' "$resolved"
-      return 0
-    fi
-  fi
-  command -v "$requested" 2>/dev/null || printf '%s\n' "$requested"
+  p101_resolve_compiler "$requested" compiler_paths.txt
 }
 
 c_compiler="$(resolve_compiler "$c_compiler")"
@@ -76,6 +71,19 @@ results_dir="$out_dir/results"
 cost_contract="contracts/repository-test-costs.tsv"
 mkdir -p "$results_dir"
 printf '# p101 standalone repository tests\n\n| Repository | Unit tests | Fuzz smoke | Seconds |\n| --- | --- | --- | ---: |\n' > "$summary"
+
+if [ -f "$cost_contract" ]; then
+  if ! awk -F '|' '
+    /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+    NF != 2 || $1 == "" || $2 !~ /^[1-9][0-9]*$/ || seen[$1]++ {
+      printf "%s:%d: invalid repository cost row: %s\n", FILENAME, NR, $0 > "/dev/stderr"
+      invalid=1
+    }
+    END { exit invalid ? 1 : 0 }
+  ' "$cost_contract"; then
+    exit 2
+  fi
+fi
 
 run_repository() {
   index="$1"
@@ -108,6 +116,10 @@ run_repository() {
     else
       unit="FAIL"
     fi
+  elif [ "$has_unit_suite" -eq 1 ]; then
+    unit="MISSING"
+    printf 'Declared unit suite has no executable test.sh: %s\n' "$repo" \
+      > "$test_log"
   fi
 
   if [ "$skip_fuzz" -eq 1 ]; then
@@ -119,7 +131,7 @@ run_repository() {
     if [ -n "$fuzz_compiler" ]; then
       fuzz_command=(env "FUZZ_CC=$fuzz_compiler" ./fuzz.sh)
     fi
-    if (CDPATH='' cd "$repo" && "${fuzz_command[@]}" --can-fuzz) >/dev/null 2>&1; then
+    if (CDPATH='' cd "$repo" && "${fuzz_command[@]}" --can-fuzz) > "$fuzz_log" 2>&1; then
       if (CDPATH='' cd "$repo" && "${fuzz_command[@]}" -t "$fuzz_secs") > "$fuzz_log" 2>&1; then
         fuzz="PASS"
       else
@@ -223,6 +235,7 @@ while [ "$worker_count" -gt 0 ]; do
 done
 
 failed=0
+fuzz_unavailable=0
 failure_logs=()
 index=0
 while [ "$index" -lt "$repository_count" ]; do
@@ -236,15 +249,15 @@ while [ "$index" -lt "$repository_count" ]; do
   IFS='|' read -r name unit fuzz test_log fuzz_log duration < "$result"
   printf '%-30s test=%-8s fuzz=%-14s seconds=%s\n' "$name" "$unit" "$fuzz" "$duration"
   printf '| %s | %s | %s | %s |\n' "$name" "$unit" "$fuzz" "$duration" >> "$summary"
-  if [ "$unit" = "FAIL" ]; then
+  if [ "$unit" = "FAIL" ] || [ "$unit" = "MISSING" ]; then
     failure_logs+=("$name unit tests|$test_log")
-    failed=1
-  elif [ "$unit" = "MISSING" ]; then
     failed=1
   fi
   if [ "$fuzz" = "FAIL" ]; then
     failure_logs+=("$name fuzz smoke|$fuzz_log")
     failed=1
+  elif [ "$fuzz" = "UNAVAILABLE" ]; then
+    fuzz_unavailable=$((fuzz_unavailable + 1))
   fi
   index=$((index + 1))
 done
@@ -265,6 +278,8 @@ if [ "$failed" -ne 0 ]; then
 fi
 
 printf 'Repository test workers: %s\n' "$jobs"
+printf 'Repository fuzz targets unavailable on this toolchain: %s\n' \
+  "$fuzz_unavailable"
 printf 'Repository test summary: %s\n' "$summary"
 receipt_status=0
 ./checks/write-repository-test-receipt.py \

@@ -48,6 +48,24 @@ from pathlib import Path
 from typing import Any, Iterator
 
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
+
+
+def atomic_write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=path.name + ".",
+        suffix=".tmp",
+        dir=path.parent,
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 
 from wrapper_fault_contract import (  # noqa: E402
@@ -372,7 +390,7 @@ def nodes(node: dict[str, Any]) -> Iterator[dict[str, Any]]:
 
 
 def versioned_libclang_include_dirs(root: Path) -> tuple[Path, ...]:
-    """Return package-manager libclang include roots below a prefix."""
+    """Return package-manager LLVM include roots below a prefix."""
     candidates = {
         *root.glob("lib/llvm-*/include"),
         *root.glob("llvm*/include"),
@@ -381,20 +399,23 @@ def versioned_libclang_include_dirs(root: Path) -> tuple[Path, ...]:
 
 
 @cache
-def clang_system_include_dirs(clang: str) -> tuple[Path, ...]:
-    """Find Clang's builtin and public libclang headers."""
+def libclang_include_dirs(clang: str) -> tuple[Path, ...]:
+    """Return only include roots that actually own clang-c headers.
+
+    lib_c_facts must parse its public libclang dependency, but adding generic
+    /usr/local or package-manager include roots lets ambient headers shadow the
+    selected SDK. Keep this exception narrow and evidence-based.
+    """
     candidates = {
         Path(clang).resolve().parent.parent / "include",
-        Path("/usr/include"),
-        Path("/usr/local/include"),
+        *versioned_libclang_include_dirs(Path("/usr")),
+        *versioned_libclang_include_dirs(Path("/usr/local")),
     }
-    candidates.update(versioned_libclang_include_dirs(Path("/usr")))
-    candidates.update(versioned_libclang_include_dirs(Path("/usr/local")))
-    llvm_config_names = [
+    llvm_config_candidates = (
         str(Path(clang).resolve().with_name("llvm-config")),
         "llvm-config",
-    ]
-    for llvm_config in llvm_config_names:
+    )
+    for llvm_config in llvm_config_candidates:
         executable = shutil.which(llvm_config)
         if executable is None:
             continue
@@ -418,7 +439,13 @@ def clang_system_include_dirs(clang: str) -> tuple[Path, ...]:
         )
         if result.returncode == 0 and result.stdout.strip():
             candidates.add(Path(result.stdout.strip()) / "include")
-    return tuple(sorted(path for path in candidates if path.is_dir()))
+    return tuple(
+        sorted(
+            path.resolve()
+            for path in candidates
+            if (path / "clang-c" / "Index.h").is_file()
+        )
+    )
 
 
 def clang_ast(
@@ -442,9 +469,9 @@ def clang_ast(
         platform_definitions.append("-D_GNU_SOURCE")
     elif system == "FreeBSD":
         platform_definitions.extend(("-D_BSD_SOURCE", "-D__BSD_VISIBLE"))
-    toolchain_includes = [
+    libclang_flags = [
         flag
-        for directory in clang_system_include_dirs(clang)
+        for directory in libclang_include_dirs(clang)
         for flag in ("-isystem", str(directory))
     ]
     command = [
@@ -454,7 +481,7 @@ def clang_ast(
         "-D_XOPEN_SOURCE=700",
         *platform_definitions,
         *platform_flags,
-        *toolchain_includes,
+        *libclang_flags,
         *(flag for directory in include_dirs for flag in ("-I", str(directory))),
         "-fsyntax-only",
         "-Xclang",
@@ -4399,10 +4426,11 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         for path in LIBRARIES.glob("lib_*/include")
         if path.is_dir()
     )
-    semantic_include_dirs = [
-        *include_dirs,
-        *clang_system_include_dirs(clang),
-    ]
+    # lib_c_facts receives the same explicit public-library include roots as
+    # the AST pass. Do not inject host /usr/local or package-manager include
+    # trees: those are ambient state and can shadow the platform SDK, causing
+    # cross-platform contract drift.
+    semantic_include_dirs = [*include_dirs]
     formatter = shutil.which(clang_format)
     if formatter is None:
         raise RuntimeError(
@@ -4645,6 +4673,10 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                 "unchanged-by-early-return-with-portable-runtime-canaries"
             ),
             "resource_events": "none",
+            "parse_environment": (
+                "c17-posix2008-xopen700-explicit-platform-feature-profile;"
+                "selected-sdk;libclang-headers-only"
+            ),
         },
         "wrappers": {},
     }
@@ -5169,10 +5201,9 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
             canary_arguments = [
                 {
                     "index": index,
-                    "type": parameter.get("type", {}).get(
-                        "desugaredQualType",
-                        parameter.get("type", {}).get("qualType", ""),
-                    ),
+                    # Persist the public spelling, not this host's desugared
+                    # ABI typedef (for example, mode_t differs by platform).
+                    "type": parameter.get("type", {}).get("qualType", ""),
                 }
                 for index, parameter in enumerate(parameters)
                 if argument_expression(parameter, declarations[name])
@@ -5261,10 +5292,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                         )
                     drift.append(fault_path)
             else:
-                fault_path.write_text(
-                    expected_fault_source,
-                    encoding="utf-8",
-                )
+                atomic_write_text(fault_path, expected_fault_source)
         elif fault_path.is_file():
             if check:
                 drift.append(fault_path)
@@ -5300,10 +5328,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
             if actual_manifest != expected_manifest:
                 drift.append(manifest_path)
         else:
-            manifest_path.write_text(
-                expected_manifest,
-                encoding="utf-8",
-            )
+            atomic_write_text(manifest_path, expected_manifest)
         print(
             f"{library}: {len(fault_names)} injected-failure, "
             f"{len(behavior_names)} behavior tests"
@@ -5342,10 +5367,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         if actual_contract != expected_contract:
             drift.append(FAILURE_CONTRACT_PATH)
     else:
-        FAILURE_CONTRACT_PATH.write_text(
-            expected_contract,
-            encoding="utf-8",
-        )
+        atomic_write_text(FAILURE_CONTRACT_PATH, expected_contract)
     if drift:
         for path in drift:
             print(f"FAIL: generated wrapper contract drift: {path}")

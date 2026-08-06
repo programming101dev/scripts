@@ -15,6 +15,14 @@ EXIT_FINDINGS = 1
 EXIT_TROUBLE = 2
 
 
+def normalized_status(returncode: int) -> int:
+    return (
+        returncode
+        if returncode in {EXIT_CLEAN, EXIT_FINDINGS}
+        else EXIT_TROUBLE
+    )
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="p101 run",
@@ -65,7 +73,8 @@ def main(argv: list[str]) -> int:
         observe_command.append("-R")
     observe_command.extend(["-o", str(capture), "--", *args.command])
     observed = subprocess.run(observe_command, cwd=invocation_dir, check=False)
-    if observed.returncode > EXIT_FINDINGS:
+    observed_status = normalized_status(observed.returncode)
+    if observed_status == EXIT_TROUBLE:
         print(
             f"p101 run: capture failed with status {observed.returncode}",
             file=sys.stderr,
@@ -81,10 +90,11 @@ def main(argv: list[str]) -> int:
         analyze_command.extend(["--model-tool", str(args.model_tool)])
     analyze_command.append(str(capture))
     analyzed = subprocess.run(analyze_command, cwd=invocation_dir, check=False)
-    if analyzed.returncode > EXIT_FINDINGS:
+    analyzed_status = normalized_status(analyzed.returncode)
+    if analyzed_status == EXIT_TROUBLE:
         return EXIT_TROUBLE
 
-    status = max(observed.returncode, analyzed.returncode)
+    status = max(observed_status, analyzed_status)
     print(f"p101 run output: {output}")
     print(f"Capture: {capture}")
     print(f"Analysis: {analysis}")

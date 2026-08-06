@@ -388,30 +388,37 @@ run_case() {
 }
 
 matched=0
-while IFS=$'\t' read -r cohort case_id repository url revision language mode selection maximum license; do
+expected_cases="$(awk -F '\t' 'NR > 1 && NF { count++ } END { print count + 0 }' "$manifest")"
+while IFS=$'\t' read -r cohort case_id repository url revision language mode selection maximum license <&3; do
   [ "$cohort" = "cohort" ] && continue
   [ -z "$cohort_filter" ] || [ "$cohort" = "$cohort_filter" ] || continue
   [ -z "$case_filter" ] || [ "$case_id" = "$case_filter" ] || continue
   matched=$((matched + 1))
   run_case "$cohort" "$case_id" "$repository" "$url" "$revision" "$language" \
     "$mode" "$selection" "$maximum" "$license"
-done < "$manifest"
+done 3< "$manifest"
 
 if [ "$matched" -eq 0 ]; then
   echo "No manifest cases matched the requested filter." >&2
   exit 2
 fi
+if [ -z "$cohort_filter" ] && [ -z "$case_filter" ] &&
+   [ "$matched" -ne "$expected_cases" ]; then
+  printf 'Manifest iteration was incomplete: expected %s cases, ran %s.\n' \
+    "$expected_cases" "$matched" >&2
+  exit 2
+fi
 
 failures="$(awk -F '\t' 'NR > 1 && $1 == "FAIL" { count++ } END { print count + 0 }' "$results")"
 partial="$(awk -F '\t' 'NR > 1 && $1 == "PASS-PARTIAL" { count++ } END { print count + 0 }' "$results")"
-ioccc_macros="$(awk -F '\t' 'NR > 1 && $2 == "ioccc" { total += $7 } END { print total + 0 }' "$results")"
+ioccc_macros="$(awk -F '\t' 'NR > 1 && $2 == "ioccc" { total += $15 } END { print total + 0 }' "$results")"
 if { [ -z "$cohort_filter" ] || [ "$cohort_filter" = "ioccc" ]; } &&
    [ -z "$case_filter" ] && [ "$ioccc_macros" -eq 0 ]; then
   echo "IOCCC cohort emitted no macro facts." >&2
   failures=$((failures + 1))
-  printf '\nIOCCC macro coverage gate: **FAIL** (zero source macro definitions).\n' >> "$summary"
+  printf '\nIOCCC macro coverage gate: **FAIL** (zero emitted macro facts).\n' >> "$summary"
 else
-  printf '\nIOCCC source macro definitions exercised: **%s**.\n' "$ioccc_macros" >> "$summary"
+  printf '\nIOCCC emitted macro facts: **%s**.\n' "$ioccc_macros" >> "$summary"
 fi
 
 printf '\nCases: **%s**; partial: **%s**; failures: **%s**.\n' \

@@ -88,6 +88,26 @@ retry_git() {
     done
 }
 
+retry_clone() {
+    local repo_url="$1"
+    local target_dir="$2"
+    local attempt=1
+
+    while true; do
+        if git clone --recursive "$repo_url" "$target_dir"; then
+            return 0
+        fi
+        rm -rf -- "$target_dir"
+        if ((attempt >= GIT_RETRY_ATTEMPTS)); then
+            echo "  ! Git clone failed after ${GIT_RETRY_ATTEMPTS} attempts." >&2
+            return 1
+        fi
+        echo "  ! Git clone failed. Retrying in ${GIT_RETRY_DELAY_SECONDS} seconds (${attempt}/${GIT_RETRY_ATTEMPTS})..." >&2
+        sleep "$GIT_RETRY_DELAY_SECONDS"
+        attempt=$((attempt + 1))
+    done
+}
+
 trim_whitespace() {
     local value
 
@@ -363,7 +383,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         fi
     else
         echo "  -> Cloning ${repo_url}"
-        if retry_git git clone --recursive "${repo_url}" "${target_dir}"; then
+        if retry_clone "${repo_url}" "${target_dir}"; then
             echo "  -> Clone OK."
             if ! ${latest} && [[ -z "${locked_commit}" ]]; then
                 if git -C "${target_dir}" rev-parse --verify HEAD >/dev/null 2>&1; then

@@ -23,6 +23,11 @@ def load(path: Path) -> dict[str, Any]:
         raise PerformanceError(f"{path}: unsupported receipt schema")
     if document.get("outcome") != "clean":
         raise PerformanceError(f"{path}: run outcome is not clean")
+    if document.get("mode") != "measurement":
+        raise PerformanceError(f"{path}: run is not a measurement receipt")
+    cache = document.get("cache")
+    if not isinstance(cache, dict) or int(cache.get("reused", -1)) != 0:
+        raise PerformanceError(f"{path}: performance sample reused cached nodes")
     return document
 
 
@@ -34,7 +39,7 @@ def record_map(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
         str(record["id"]): record
         for record in records
         if isinstance(record, dict)
-        and record.get("outcome") in {"clean", "reused"}
+        and record.get("outcome") == "clean"
     }
 
 

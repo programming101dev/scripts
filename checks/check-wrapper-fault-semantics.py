@@ -217,8 +217,9 @@ def validate(
 
 
 def main() -> int:
+    contract = load(CONTRACT_PATH)
     failures = validate(
-        load(CONTRACT_PATH),
+        contract,
         load(FAILURE_PATH),
         load(LIFECYCLE_PATH),
     )
@@ -226,9 +227,17 @@ def main() -> int:
         for failure in failures:
             print(f"FAIL: {failure}")
         return 1
+    modes = contract["modes"]
+    identity_bound = {
+        usr
+        for specification in modes.values()
+        if specification.get("phase") != "before-call"
+        for usr in specification.get("supported_wrapper_usrs", [])
+    }
     print(
-        "wrapper fault semantics: 5 modes, "
-        "4 identity-bound after-dispatch/partial-progress wrappers"
+        f"wrapper fault semantics: {len(modes)} modes, "
+        f"{len(identity_bound)} identity-bound "
+        "after-dispatch/partial-progress wrappers"
     )
     return 0
 

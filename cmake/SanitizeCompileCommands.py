@@ -7,9 +7,10 @@ import json, os, shlex, sys
 DROP_EXACT = {"--coverage", "-coverage", "-pg", "-p"}
 DROP_PAIR_FLAGS = set()
 
-# -f flags that change language/ABI semantics: clang-tidy must see these or
-# it analyzes different code than the compiler built. Everything else under
-# -f (instrumentation, GCC-only codegen knobs, ...) is still dropped.
+# Preserve only compiler-family-independent -f options that change the
+# language or ABI seen by clang-tidy. An inverse denylist is unsafe here:
+# GCC-only code-generation flags then reach clang-tidy and abort the analysis
+# before it can inspect any source.
 KEEP_F_PREFIXES = (
     "-fPIC", "-fpic", "-fPIE", "-fpie",
     "-fexceptions", "-fno-exceptions",
@@ -17,7 +18,12 @@ KEEP_F_PREFIXES = (
     "-fvisibility",
     "-fsigned-char", "-funsigned-char",
     "-fshort-enums", "-fno-short-enums",
+    "-fshort-wchar",
     "-ffreestanding", "-fno-builtin",
+    "-fwrapv", "-fno-wrapv",
+    "-fstrict-aliasing", "-fno-strict-aliasing",
+    "-fdelete-null-pointer-checks", "-fno-delete-null-pointer-checks",
+    "-fopenmp",
 )
 
 def should_drop(tok: str) -> bool:
@@ -67,7 +73,7 @@ def main():
         if "command" in e:
             del e["command"]
 
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(db, f, indent=2)
         f.write("\n")

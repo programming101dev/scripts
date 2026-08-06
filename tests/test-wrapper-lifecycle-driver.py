@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import importlib.util
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from types import ModuleType
+from unittest import mock
 
 
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
@@ -62,12 +64,29 @@ class LifecycleDriverTests(unittest.TestCase):
         compiler = shutil.which("cc")
         self.assertIsNotNone(compiler)
 
-        supported = self.module.compiler_supported_link_flags(
+        supported, dropped = self.module.compiler_supported_link_flags(
             compiler,
             ["-Wall", "-fsanitize=p101-this-sanitizer-does-not-exist"],
         )
 
         self.assertEqual(supported, ["-Wall"])
+        self.assertEqual(
+            dropped,
+            ["-fsanitize=p101-this-sanitizer-does-not-exist"],
+        )
+
+    def test_timed_out_link_flag_is_removed(self) -> None:
+        with mock.patch.object(
+            self.module.subprocess,
+            "run",
+            side_effect=subprocess.TimeoutExpired(["cc"], 30),
+        ):
+            supported, dropped = self.module.compiler_supported_link_flags(
+                "cc", ["-fsanitize=address"]
+            )
+
+        self.assertEqual(supported, [])
+        self.assertEqual(dropped, ["-fsanitize=address"])
 
     def test_replay_trace_is_stable_and_typed(self) -> None:
         specification = {

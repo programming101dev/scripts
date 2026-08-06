@@ -34,6 +34,15 @@ grep -Fq 'FreeBSD update phase failed with exit 7.' "$sandbox/stderr"
 grep -Fq '# p101 CI result — FreeBSD' "$sandbox/stderr"
 grep -Fq 'source.c:10:2: error: deliberate FreeBSD failure' "$sandbox/stderr"
 
+printf '1792\n' > "$sandbox/output/freebsd-exit-code"
+set +e
+./github-actions/enforce-freebsd-result.sh "$sandbox/output" \
+  > "$sandbox/range-stdout" 2> "$sandbox/range-stderr"
+status=$?
+set -e
+[[ "$status" -eq 2 ]]
+grep -Fq 'out-of-range exit status: 1792' "$sandbox/range-stderr"
+
 mkdir -p "$sandbox/missing"
 set +e
 ./github-actions/enforce-freebsd-result.sh "$sandbox/missing" \

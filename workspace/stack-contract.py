@@ -6,7 +6,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import stat
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +23,8 @@ DEFAULT_PATHS = (
     "flag-selection.standard.json",
     "CMakeLists.txt",
     "cmake/P101Install.cmake",
+    "shared/compilers.sh",
+    "shared/artifacts.sh",
     "cmake/P101Linking.cmake",
     "cmake/P101Summary.cmake",
     "cmake/ToolConfig.cmake",
@@ -105,11 +110,15 @@ def admitted_path(scripts_root: Path, relative_text: str) -> Path:
 def artifact_record(scripts_root: Path, relative_text: str) -> dict[str, Any]:
     path = admitted_path(scripts_root, relative_text)
     try:
+        mode = path.stat().st_mode
+    except OSError as error:
+        raise ContractError(f"cannot stat {relative_text}: {error}") from error
+    if not stat.S_ISREG(mode):
+        raise ContractError(f"artifact is not a regular file: {relative_text}")
+    try:
         payload = path.read_bytes()
     except OSError as error:
         raise ContractError(f"cannot read {relative_text}: {error}") from error
-    if not path.is_file():
-        raise ContractError(f"artifact is not a regular file: {relative_text}")
     return {
         "path": relative_text,
         "bytes": len(payload),
@@ -199,9 +208,21 @@ def verify(scripts_root: Path, contract_path: Path) -> dict[str, Any]:
 
 def write_json(path: Path, document: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
     )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(
+                json.dumps(document, indent=2, sort_keys=True) + "\n"
+            )
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
 
 
 def parser() -> argparse.ArgumentParser:

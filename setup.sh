@@ -5,6 +5,8 @@ set -euo pipefail
 
 # Always operate from the directory this script lives in.
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+# shellcheck source=shared/compilers.sh
+. ./shared/compilers.sh
 
 c_compiler=""
 cxx_compiler=""
@@ -17,8 +19,13 @@ latest=false
 
 # Function to display script usage
 # detected-compiler helpers (smarter --help; harmless if lists absent)
-_p101_names() { [ -f "$1" ] && awk 'NF && $0 !~ /^[[:space:]]*#/ {n=split($0,a,"/"); printf "%s%s",(c++?", ":""),a[n]}' "$1"; }
-_p101_cxx_of() { case "$1" in gcc*) printf 'g++%s' "${1#gcc}";; clang*) printf 'clang++%s' "${1#clang}";; *) printf '';; esac; }
+_p101_names() {
+    if [ -f "$1" ]; then
+        awk 'NF && $0 !~ /^[[:space:]]*#/ {n=split($0,a,"/"); printf "%s%s",(c++?", ":""),a[n]}' "$1"
+    fi
+    return 0
+}
+_p101_cxx_of() { p101_derive_cxx_name "$1"; }
 
 usage()
 {
@@ -145,30 +152,8 @@ fi
 ./workspace/check-compilers.sh
 
 MAP_FILE="compiler_paths.txt"
-map_lookup() {
-  local name="$1" line
-  [ -f "$MAP_FILE" ] || return 1
-  while IFS= read -r line || [ -n "$line" ]; do
-    case "$line" in "$name="*) printf '%s' "${line#*=}"; return 0 ;; esac
-  done < "$MAP_FILE"
-  return 1
-}
-
-resolve_compiler() {
-  # pinned map first, then PATH; absolute paths pass through
-  local v="$1" p
-  case "$v" in
-    /*) [ -x "$v" ] || { echo "Error: '$v' is not executable" >&2; exit 1; }
-        printf '%s' "$v"; return ;;
-  esac
-  if p="$(map_lookup "$v")" && [ -x "$p" ]; then printf '%s' "$p"; return; fi
-  if p="$(command -v "$v" 2>/dev/null)"; then printf '%s' "$p"; return; fi
-  echo "Error: could not resolve compiler '$v' (not in $MAP_FILE, not in PATH)" >&2
-  exit 1
-}
-
-CC_PATH="$(resolve_compiler "$c_compiler")"
-CXX_PATH="$(resolve_compiler "$cxx_compiler")"
+CC_PATH="$(p101_resolve_compiler "$c_compiler" "$MAP_FILE")"
+CXX_PATH="$(p101_resolve_compiler "$cxx_compiler" "$MAP_FILE")"
 
 ./workspace/check-env.sh -c "$CC_PATH" -x "$CXX_PATH" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers"
 

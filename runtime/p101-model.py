@@ -28,6 +28,7 @@ EXIT_FINDINGS = 1
 EXIT_TROUBLE = 2
 
 ANALYSIS_STATUS_ROLES = {
+    "capture_command",
     "event_model",
     "resource_policy",
     "sync_policy",
@@ -508,7 +509,9 @@ def rule_evidence(
 
 
 def check_rules(directory: Path, pack_names: list[str], json_output: bool) -> int:
-    receipt_result(directory)
+    if receipt_result(directory) == "trouble":
+        print("p101 check: analysis receipt reports trouble", file=sys.stderr)
+        return EXIT_TROUBLE
     model = validate_model(directory)
     observed_findings = finding_values(directory)
     packs = [load_rule_pack(name) for name in pack_names]
@@ -873,6 +876,9 @@ def receipt_result(directory: Path) -> str:
 
 def verify(directory: Path, expectation_path: Path | None) -> int:
     actual_result = receipt_result(directory)
+    if actual_result == "trouble":
+        print("FAIL: analysis receipt reports trouble", file=sys.stderr)
+        return EXIT_TROUBLE
     model = validate_model(directory)
     finding_ids, _ = findings(directory)
     failures: list[str] = []
