@@ -560,7 +560,7 @@
       "command": ["./checks/check-functional-library-split.py"],
       "depends_on": ["boundaries"],
       "resources": {"writes": [], "units": {}},
-      "guarantee": "Every wrapper remains in its declared functional library, with one domain header and one domain source."
+      "guarantee": "Every wrapper remains in its declared functional library, while its public header mirrors the native C/POSIX/Unix header and its implementation source mirrors that public header."
     },
     {
       "id": "wrapper-platform-faults-tests",

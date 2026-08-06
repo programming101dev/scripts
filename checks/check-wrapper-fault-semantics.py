@@ -22,7 +22,7 @@ CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-fault-semantics.json"
 FAILURE_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-failure-contract.json"
 LIFECYCLE_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-lifecycle-contract.json"
 ENV_HEADER = WORKSPACE / "libraries" / "lib_env" / "include" / "p101_env" / "env.h"
-IO_SOURCE = WORKSPACE / "libraries" / "lib_io" / "src" / "io.c"
+IO_SOURCE = WORKSPACE / "libraries" / "lib_io" / "src" / "unistd.c"
 IO_BEHAVIOR = WORKSPACE / "libraries" / "lib_io" / "test" / "test_behavior.c"
 IO_MANIFEST = WORKSPACE / "libraries" / "lib_io" / "api-manifest.tsv"
 def load(path: Path) -> dict[str, Any]:

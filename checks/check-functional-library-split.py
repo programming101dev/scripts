@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import re
 from pathlib import Path
+from pathlib import PurePosixPath
 
 
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
@@ -47,35 +48,49 @@ def active_repository_paths() -> list[Path]:
     return active
 
 
-def validate_functional_layout(repo: Path, domain: str) -> list[str]:
-    """Return violations of the one-header/one-source domain layout."""
+def native_layout(domain: str, original_header: str) -> tuple[str, str]:
+    parts = PurePosixPath(original_header).parts
+    include_index = parts.index("include")
+    relative_header = PurePosixPath(*parts[include_index + 2:])
+    header = PurePosixPath(
+        f"include/p101_{domain}"
+    ) / relative_header
+    source_name = relative_header.name.removeprefix("p101_").removesuffix(".h") + ".c"
+    source = PurePosixPath("src") / relative_header.parent / source_name
+    return str(source), str(header)
+
+
+def validate_functional_layout(
+    repo: Path,
+    domain: str,
+    expected_sources: set[str],
+    expected_headers: set[str],
+) -> list[str]:
+    """Return violations of the native-header/native-source layout."""
     failures: list[str] = []
-    expected_source = repo / "src" / f"{domain}.c"
-    expected_header = repo / "include" / f"p101_{domain}" / f"{domain}.h"
-    implementation_sources = sorted(
-        path
+    implementation_sources = {
+        str(path.relative_to(repo))
         for path in (repo / "src").rglob("*.c")
         if path.is_file()
-    )
-    public_headers = sorted(
-        path
+    }
+    public_headers = {
+        str(path.relative_to(repo))
         for path in (repo / "include").rglob("*.h")
         if path.is_file()
-    )
-    if implementation_sources != [expected_source]:
-        rendered = ", ".join(
-            str(path.relative_to(repo)) for path in implementation_sources
-        ) or "<none>"
+    }
+    if implementation_sources != expected_sources:
+        missing = sorted(expected_sources - implementation_sources)
+        extra = sorted(implementation_sources - expected_sources)
         failures.append(
-            f"{repo.name}: expected only src/{domain}.c; found {rendered}"
+            f"{repo.name}: native source layout drift "
+            f"(missing={missing or '<none>'}, extra={extra or '<none>'})"
         )
-    if public_headers != [expected_header]:
-        rendered = ", ".join(
-            str(path.relative_to(repo)) for path in public_headers
-        ) or "<none>"
+    if public_headers != expected_headers:
+        missing = sorted(expected_headers - public_headers)
+        extra = sorted(public_headers - expected_headers)
         failures.append(
-            f"{repo.name}: expected only include/p101_{domain}/{domain}.h; "
-            f"found {rendered}"
+            f"{repo.name}: native header layout drift "
+            f"(missing={missing or '<none>'}, extra={extra or '<none>'})"
         )
     for origin in ("posix", "posix_xsi", "posix_optional", "unix"):
         if (repo / "src" / origin).exists():
@@ -88,11 +103,8 @@ def validate_functional_layout(repo: Path, domain: str) -> list[str]:
         return failures
     config_text = config.read_text(encoding="utf-8")
     for variable, expected in (
-        (f"p101_{domain}_SOURCES", f"src/{domain}.c"),
-        (
-            f"p101_{domain}_HEADERS",
-            f"include/p101_{domain}/{domain}.h",
-        ),
+        (f"p101_{domain}_SOURCES", expected_sources),
+        (f"p101_{domain}_HEADERS", expected_headers),
     ):
         match = re.search(
             rf"set\({re.escape(variable)}\s+(.*?)\)",
@@ -100,9 +112,9 @@ def validate_functional_layout(repo: Path, domain: str) -> list[str]:
             re.DOTALL,
         )
         values = re.findall(r"[^\s()]+", match.group(1)) if match else []
-        if values != [expected]:
+        if set(values) != expected or len(values) != len(expected):
             failures.append(
-                f"{repo.name}: {variable} must contain only {expected}"
+                f"{repo.name}: {variable} does not match the native layout"
             )
     return failures
 
@@ -141,11 +153,24 @@ def main() -> int:
     for domain in DOMAINS:
         repo = WORKSPACE / "libraries" / f"lib_{domain}"
         manifest = repo / "api-manifest.tsv"
-        failures.extend(validate_functional_layout(repo, domain))
         if not manifest.is_file():
             failures.append(f"{repo.name}: missing api-manifest.tsv")
             continue
-        for row in table(manifest):
+        manifest_rows = table(manifest)
+        expected_sources: set[str] = set()
+        expected_headers: set[str] = set()
+        for row in manifest_rows:
+            expected_source, expected_header = native_layout(
+                domain, row["original_header"]
+            )
+            expected_sources.add(expected_source)
+            expected_headers.add(expected_header)
+        failures.extend(
+            validate_functional_layout(
+                repo, domain, expected_sources, expected_headers
+            )
+        )
+        for row in manifest_rows:
             name = row["function"]
             usr = row["function_usr"]
             if usr in local:
@@ -153,20 +178,17 @@ def main() -> int:
             local[usr] = domain
             if any(row[platform] != "yes" for platform in ("linux", "macos", "freebsd")):
                 failures.append(f"{name}: not admitted on all three platforms")
-            expected_current_source = (
-                f"libraries/lib_{domain}/src/{domain}.c"
-            )
-            expected_current_header = (
-                f"libraries/lib_{domain}/include/p101_{domain}/{domain}.h"
-            )
+            source, header = native_layout(domain, row["original_header"])
+            expected_current_source = f"libraries/lib_{domain}/{source}"
+            expected_current_header = f"libraries/lib_{domain}/{header}"
             if row["current_source"] != expected_current_source:
                 failures.append(
-                    f"{name}: current_source is not the domain implementation "
+                    f"{name}: current_source is not the native-shaped implementation "
                     f"{expected_current_source}"
                 )
             if row["current_header"] != expected_current_header:
                 failures.append(
-                    f"{name}: current_header is not the domain interface "
+                    f"{name}: current_header is not the native-shaped interface "
                     f"{expected_current_header}"
                 )
             for field in ("current_source", "current_header"):

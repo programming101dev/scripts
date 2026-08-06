@@ -130,62 +130,68 @@ class ArchitectureContractTests(unittest.TestCase):
 
         self.assertEqual(violations, [])
 
-    def test_functional_layout_accepts_one_domain_header_and_source(self) -> None:
+    def test_functional_layout_accepts_native_headers_and_sources(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repository = Path(directory) / "lib_demo"
-            source = repository / "src" / "demo.c"
-            header = repository / "include" / "p101_demo" / "demo.h"
+            source = repository / "src" / "unistd.c"
+            header = repository / "include" / "p101_demo" / "p101_unistd.h"
             source.parent.mkdir(parents=True)
             header.parent.mkdir(parents=True)
             source.write_text("int p101_demo(void) { return 0; }\n")
             header.write_text("int p101_demo(void);\n")
             (repository / "config.cmake").write_text(
-                "set(p101_demo_SOURCES src/demo.c)\n"
-                "set(p101_demo_HEADERS include/p101_demo/demo.h)\n"
+                "set(p101_demo_SOURCES src/unistd.c)\n"
+                "set(p101_demo_HEADERS include/p101_demo/p101_unistd.h)\n"
             )
 
             self.assertEqual(
                 FUNCTIONAL_LAYOUT_MODULE.validate_functional_layout(
-                    repository, "demo"
+                    repository,
+                    "demo",
+                    {"src/unistd.c"},
+                    {"include/p101_demo/p101_unistd.h"},
                 ),
                 [],
             )
 
-    def test_functional_layout_rejects_origin_directories_and_extra_headers(
+    def test_functional_layout_rejects_origin_directories_and_layout_drift(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repository = Path(directory) / "lib_demo"
-            source = repository / "src" / "demo.c"
+            source = repository / "src" / "unistd.c"
             stale_source = repository / "src" / "posix" / "legacy.c"
-            header = repository / "include" / "p101_demo" / "demo.h"
+            header = repository / "include" / "p101_demo" / "p101_unistd.h"
             extra_header = repository / "include" / "p101_demo" / "legacy.h"
             for path in (source, stale_source, header, extra_header):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("\n")
             (repository / "config.cmake").write_text(
-                "set(p101_demo_SOURCES src/demo.c src/posix/legacy.c)\n"
-                "set(p101_demo_HEADERS include/p101_demo/demo.h "
+                "set(p101_demo_SOURCES src/unistd.c src/posix/legacy.c)\n"
+                "set(p101_demo_HEADERS include/p101_demo/p101_unistd.h "
                 "include/p101_demo/legacy.h)\n"
             )
 
             failures = (
                 FUNCTIONAL_LAYOUT_MODULE.validate_functional_layout(
-                    repository, "demo"
+                    repository,
+                    "demo",
+                    {"src/unistd.c"},
+                    {"include/p101_demo/p101_unistd.h"},
                 )
             )
 
             self.assertTrue(
-                any("expected only src/demo.c" in failure for failure in failures)
+                any("native source layout drift" in failure for failure in failures)
             )
             self.assertTrue(
-                any("expected only include/p101_demo/demo.h" in failure for failure in failures)
+                any("native header layout drift" in failure for failure in failures)
             )
             self.assertTrue(
                 any("obsolete implementation origin" in failure for failure in failures)
             )
             self.assertTrue(
-                any("p101_demo_SOURCES must contain only" in failure for failure in failures)
+                any("p101_demo_SOURCES does not match" in failure for failure in failures)
             )
 
 

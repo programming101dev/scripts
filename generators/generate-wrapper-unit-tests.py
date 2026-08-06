@@ -937,12 +937,15 @@ def indexed_fallback_expression(
     fixture comes from the selected parameter's resolved C type.
     """
     fallback_match = re.fullmatch(
-        r"P101_FAULT_RETURN_PARSED_ARG([0-9]+)",
+        r"(?:P101_FAULT_RETURN_PARSED|P101_PARSE_PROLOGUE)_ARG([0-9]+)",
         macro_name,
     )
     if fallback_match is None:
         return None
-    if len(arguments) != 4:
+    expected_argument_count = (
+        3 if macro_name.startswith("P101_PARSE_PROLOGUE_") else 4
+    )
+    if len(arguments) != expected_argument_count:
         raise RuntimeError(
             f"{declaration.get('name', '?')} uses {macro_name} "
             "with an invalid argument count"
@@ -984,7 +987,12 @@ def fault_return_contract(
     ):
         fragment = text[begin_offset : end_offset + token_length]
         for match in re.finditer(
-            r"\bP101_[A-Z0-9_]*FAULT[A-Z0-9_]*RETURN[A-Z0-9_]*\s*\(",
+            (
+                r"\b(?:"
+                r"P101_[A-Z0-9_]*FAULT[A-Z0-9_]*RETURN[A-Z0-9_]*"
+                r"|P101_PARSE_PROLOGUE_ARG[0-9]+"
+                r")\s*\("
+            ),
             fragment,
         ):
             invocation = macro_invocation(text, begin_offset + match.start())

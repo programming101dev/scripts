@@ -1,17 +1,16 @@
 # Functional-library split migrations
 
-These scripts record the one-time migration from the retired standards-based
-libraries (`lib_posix`, `lib_posix_optional`, `lib_posix_xsi`, and `lib_unix`)
-to the functional libraries listed in `../repos.txt`.
+The migration from the retired standards-based libraries (`lib_posix`,
+`lib_posix_optional`, `lib_posix_xsi`, and `lib_unix`) is complete. Its
+one-shot migration programs were removed so they cannot recreate an obsolete
+layout.
 
-They are historical migration aids, not stack maintenance commands:
+The maintained architecture is:
 
-- `migrate-domain-libraries.py` reconstructs the functional repositories from
-  local checkouts of the retired repositories.
-- `migrate-domain-consumers.py` rewrites consumers from retired public headers
-  and link targets to functional owners.
+- functional repositories own APIs by purpose;
+- public headers mirror the native C/POSIX/Unix header names;
+- implementation sources mirror those public headers;
+- standards provenance remains in `api-manifest.tsv`.
 
-Both scripts require the retired repositories to be present locally. Fresh
-workspaces intentionally do not clone those repositories. The maintained
-contract is `../checks/check-functional-library-split.py`; run that check to validate
-the resulting repository graph.
+The original migration remains available in Git history. The executable
+contract is `../checks/check-functional-library-split.py`.
