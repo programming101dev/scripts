@@ -20,7 +20,7 @@
       "url": "https://github.com/programming101dev/lib_env.git"
     },
     {
-      "commit": "a2a9cd4ef37956c2b9087ca211116153b581f87c",
+      "commit": "91adfa01f0fbbf0cf927ed2de7c45e5d92673886",
       "path": "../libraries/lib_c",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_c.git"
@@ -98,7 +98,7 @@
       "url": "https://github.com/programming101dev/lib_identity.git"
     },
     {
-      "commit": "fae346f7a857f8b8b79fcf5dc479e9854d426775",
+      "commit": "5ab8d7dc374d2bc689221ddf6a01030e1db24e7e",
       "path": "../libraries/lib_text",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_text.git"
