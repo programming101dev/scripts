@@ -30,6 +30,18 @@ jobs:
           brew untap aws/tap || true
           brew install cmake cppcheck llvm gcovr shellcheck
           echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+          # The runner image preinstalls an older clang-format at
+          # /usr/local/bin, which tool detection can prefer over PATH order.
+          # Point that path at Homebrew LLVM so every resolution agrees.
+          sudo ln -sf "$(brew --prefix llvm)/bin/clang-format" /usr/local/bin/clang-format
+      - name: Enforce clang-format major version
+        run: |
+          required="$(tr -d '[:space:]' < scripts/clang-format-version.txt)"
+          for candidate in /usr/local/bin/clang-format "$(brew --prefix llvm)/bin/clang-format"; do
+            "$candidate" --version
+            "$candidate" --version | grep -Eq "clang-format version ${required}\." \
+              || { echo "::error::$candidate is not clang-format ${required}"; exit 1; }
+          done
       - name: Clone p101 repos
         run: cd scripts && ./p101-workspace clone
       - name: Detect compilers
@@ -74,7 +86,21 @@ jobs:
         with:
           path: scripts
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y cmake clang clang-tidy clang-format libclang-dev cppcheck gcovr libgdbm-dev libgdbm-compat-dev shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake clang clang-tidy libclang-dev cppcheck gcovr libgdbm-dev libgdbm-compat-dev shellcheck wget gnupg
+          # Ubuntu's clang-format lags the pinned major; take it from apt.llvm.org.
+          required="$(tr -d '[:space:]' < scripts/clang-format-version.txt)"
+          wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
+          sudo bash /tmp/llvm.sh "$required"
+          sudo apt-get install -y "clang-format-${required}"
+          sudo ln -sf "/usr/bin/clang-format-${required}" /usr/local/bin/clang-format
+      - name: Enforce clang-format major version
+        run: |
+          required="$(tr -d '[:space:]' < scripts/clang-format-version.txt)"
+          clang-format --version
+          clang-format --version | grep -Eq "clang-format version ${required}\." \
+            || { echo "::error::clang-format is not version ${required}"; exit 1; }
       - name: Clone p101 repos
         run: cd scripts && ./p101-workspace clone
       - name: Detect compilers
@@ -126,7 +152,14 @@ jobs:
           sync: rsync
           copyback: true
           prepare: |
-            pkg install -y bash git cmake llvm cppcheck python3 libxcrypt hs-ShellCheck
+            pkg install -y bash git cmake cppcheck python3 libxcrypt hs-ShellCheck
+            required="$(tr -d '[:space:]' < scripts/clang-format-version.txt 2>/dev/null || echo 22)"
+            if pkg install -y "llvm${required}"; then
+              ln -sf "/usr/local/llvm${required}/bin/clang-format" /usr/local/bin/clang-format
+            else
+              echo "No llvm${required} package; falling back to the llvm metaport."
+              pkg install -y llvm
+            fi
             gcovr_pkg="$(pkg search -q -x '^py[0-9]+-gcovr$' | head -n 1 || true)"
             if [ -n "$gcovr_pkg" ]; then
               pkg install -y "$gcovr_pkg"
@@ -140,10 +173,19 @@ jobs:
             status=0
             failed_phase=none
             mkdir -p ci-output
-            ./p101-workspace clone > ci-output/clone.log 2>&1 || status=$?
-            cat ci-output/clone.log
-            if [ "$status" -ne 0 ]; then
-              failed_phase=clone
+            required="$(tr -d '[:space:]' < clang-format-version.txt)"
+            clang-format --version | grep -Eq "clang-format version ${required}\." || {
+              echo "clang-format is not version ${required}" > ci-output/clang-format-version.log
+              cat ci-output/clang-format-version.log
+              status=1
+              failed_phase=tools
+            }
+            if [ "$status" -eq 0 ]; then
+              ./p101-workspace clone > ci-output/clone.log 2>&1 || status=$?
+              cat ci-output/clone.log
+              if [ "$status" -ne 0 ]; then
+                failed_phase=clone
+              fi
             fi
             if [ "$status" -eq 0 ]; then
               ./p101-workspace compilers > ci-output/compilers.log 2>&1 || status=$?
