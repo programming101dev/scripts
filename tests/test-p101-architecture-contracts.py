@@ -48,13 +48,18 @@ class ArchitectureContractTests(unittest.TestCase):
                 encoding="utf-8"
             )
         )
+        # One Clang parse serves every verdict below: the negative controls
+        # mutate the register, never the sources the facts describe.
+        cls.responsibility_facts = RESPONSIBILITY_MODULE.gather_facts(
+            cls.responsibilities
+        )
 
     def test_current_contracts(self) -> None:
         inventory_report = INVENTORY_MODULE.validate(
             copy.deepcopy(self.inventory), copy.deepcopy(self.graph)
         )
         responsibility_report = RESPONSIBILITY_MODULE.validate(
-            copy.deepcopy(self.responsibilities)
+            copy.deepcopy(self.responsibilities), self.responsibility_facts
         )
         self.assertGreater(inventory_report["repository_entries"], 100)
         self.assertGreater(responsibility_report["consumer_files"], 100)
@@ -71,7 +76,7 @@ class ArchitectureContractTests(unittest.TestCase):
         with self.assertRaisesRegex(
             RESPONSIBILITY_MODULE.ResponsibilityError, "facade responsibility grew"
         ):
-            RESPONSIBILITY_MODULE.validate(document)
+            RESPONSIBILITY_MODULE.validate(document, self.responsibility_facts)
 
     def test_owner_bypass_is_rejected(self) -> None:
         document = copy.deepcopy(self.responsibilities)
@@ -84,7 +89,7 @@ class ArchitectureContractTests(unittest.TestCase):
         with self.assertRaisesRegex(
             RESPONSIBILITY_MODULE.ResponsibilityError, "bypasses tool-subprocess"
         ):
-            RESPONSIBILITY_MODULE.validate(document)
+            RESPONSIBILITY_MODULE.validate(document, self.responsibility_facts)
 
     def test_repository_build_order_respects_library_dependencies(self) -> None:
         repositories: list[Path] = []

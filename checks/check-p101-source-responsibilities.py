@@ -61,18 +61,16 @@ def source_files(roots: Iterable[str]) -> Iterable[Path]:
                 yield path
 
 
-def validate(document: dict[str, Any]) -> dict[str, int]:
-    if document.get("schema") != "p101-source-responsibilities-v2":
-        raise ResponsibilityError("unexpected source-responsibility schema")
-    if not isinstance(document.get("does_not_prove"), str) or not document["does_not_prove"]:
-        raise ResponsibilityError("register has no does_not_prove")
-    owners = document.get("owners")
-    facades = document.get("facades")
-    if not isinstance(owners, list) or not owners:
-        raise ResponsibilityError("register has no owners")
-    if not isinstance(facades, list) or not facades:
-        raise ResponsibilityError("register has no facade ratchets")
+def gather_facts(document: dict[str, Any]) -> list[dict[str, Any]]:
+    """Acquire the semantic facts the register's roots admit.
 
+    Gathering is split from judging so callers that judge one fact set many
+    times — the negative-control tests mutate only the register — pay for the
+    Clang parse once instead of once per verdict.
+    """
+    owners = document.get("owners")
+    if not isinstance(owners, list):
+        raise ResponsibilityError("register has no owners")
     admitted_roots: set[str] = set()
     for owner in owners:
         if isinstance(owner, dict):
@@ -84,12 +82,28 @@ def validate(document: dict[str, Any]) -> dict[str, int]:
                 admitted_roots.update(root for root in roots if isinstance(root, str))
     admitted_roots.update(CONFIG_ROOTS)
     try:
-        facts = acquire(
+        return acquire(
             WORKSPACE,
             (WORKSPACE / path for path in sorted(admitted_roots)),
         )
     except CFactError as error:
         raise ResponsibilityError(str(error)) from error
+
+
+def validate(document: dict[str, Any], facts: list[dict[str, Any]] | None = None) -> dict[str, int]:
+    if document.get("schema") != "p101-source-responsibilities-v2":
+        raise ResponsibilityError("unexpected source-responsibility schema")
+    if not isinstance(document.get("does_not_prove"), str) or not document["does_not_prove"]:
+        raise ResponsibilityError("register has no does_not_prove")
+    owners = document.get("owners")
+    facades = document.get("facades")
+    if not isinstance(owners, list) or not owners:
+        raise ResponsibilityError("register has no owners")
+    if not isinstance(facades, list) or not facades:
+        raise ResponsibilityError("register has no facade ratchets")
+
+    if facts is None:
+        facts = gather_facts(document)
 
     checked_files: set[Path] = set()
     for owner in owners:
