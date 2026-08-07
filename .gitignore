@@ -203,3 +203,8 @@ flag_report/
 toolchain-report/
 **/*.xcodeproj/
 # NOTE: fuzz/corpus/ is the committed seed corpus — keep it.
+
+# Content-addressed check evidence cache written by checks/p101-check-graph.py.
+# The check graph already treats this directory as non-source; it is a local
+# cache of check logs and receipts, never a tracked input.
+target/
