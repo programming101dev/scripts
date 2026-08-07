@@ -204,3 +204,4 @@ flag_report/
 toolchain-report/
 **/*.xcodeproj/
 # NOTE: fuzz/corpus/ is the committed seed corpus — keep it.
+__pycache__/
