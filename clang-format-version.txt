@@ -9,7 +9,9 @@
 #   >=14   minimum major version (any newer release is accepted)
 #   18     exact major version (anything else is rejected)
 #
-# >=14 is the shipped default: every release from 14 through 21 was verified
-# to produce byte-identical output for this workspace's .clang-format. Tighten
-# this to an exact major once every machine and CI runner agrees on one.
->=14
+# Pinned to 22: releases 13 through 21 and release 22 disagree about compound
+# literal alignment under AlignAfterOpenBracket, so a mixed workspace
+# reformats tracked sources back and forth. Every 22.x tested (22.1.0,
+# 22.1.5, 22.1.8) produces byte-identical output, so the major alone is
+# enough; FreeBSD's quarterly 22.1.7 is accepted.
+22

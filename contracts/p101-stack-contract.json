@@ -101,9 +101,9 @@
       "sha256": "ce37f81e0fac8ce545dfcd416e8821bf2be9ce0ad4b3fc91f965660f6b9f490f"
     },
     {
-      "bytes": 737,
+      "bytes": 847,
       "path": "clang-format-version.txt",
-      "sha256": "8589eaec7d0c396634137aacad8e7adc33d26f7bb7ebc0ff09772633412807ef"
+      "sha256": "06dab604906597e8b90db34e780bf54dd5d91936d56a01c026b56460fd460700"
     },
     {
       "bytes": 1338,
