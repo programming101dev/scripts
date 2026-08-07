@@ -6,14 +6,16 @@ declaration identities, source extents, and typed fact kinds.
 
 from __future__ import annotations
 
+import concurrent.futures
+import gzip
+import hashlib
 import json
 import os
 import platform
 import shlex
 import shutil
-import concurrent.futures
-import os
 import subprocess
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Iterable
@@ -299,12 +301,152 @@ def _compile_database_include_roots(repository: Path) -> set[Path]:
     return roots
 
 
+
+SNAPSHOT_SCHEMA = "p101-facts-snapshot-v1"
+_SNAPSHOT_SKIP_DIRECTORIES = {".git", "__pycache__", ".pytest_cache", ".facts-cache", "_to_delete"}
+
+
+def _resolve_snapshot_cache(cache: Path | str | None) -> Path | None:
+    """Resolve the snapshot cache directory.
+
+    "auto" honours P101_FACTS_CACHE: unset selects scripts/.facts-cache,
+    "off" (or "0") disables restoration, any other value names the directory.
+    """
+    if cache is None:
+        return None
+    if isinstance(cache, Path):
+        return cache
+    configured = os.environ.get("P101_FACTS_CACHE", "")
+    if configured.lower() in {"0", "off", "disabled"}:
+        return None
+    if configured:
+        return Path(configured)
+    return Path(__file__).resolve().parent.parent / ".facts-cache"
+
+
+def _hash_file_into(digest: "hashlib._Hash", path: Path) -> None:
+    with path.open("rb") as stream:
+        while block := stream.read(1024 * 1024):
+            digest.update(block)
+
+
+def _tree_digest(root: Path, memo: dict[Path, str]) -> str:
+    cached = memo.get(root)
+    if cached is not None:
+        return cached
+    digest = hashlib.sha256()
+    if root.is_file():
+        _hash_file_into(digest, root)
+    else:
+        entries = []
+        for current, directories, files in os.walk(root):
+            directories[:] = sorted(
+                name
+                for name in directories
+                if name not in _SNAPSHOT_SKIP_DIRECTORIES
+                and not name.startswith("build")
+            )
+            for name in files:
+                entries.append(Path(current) / name)
+        for path in sorted(entries):
+            digest.update(str(path.relative_to(root)).encode())
+            _hash_file_into(digest, path)
+    memo[root] = value = digest.hexdigest()
+    return value
+
+
+def _snapshot_key(
+    workspace_root: Path,
+    producer: Path,
+    commands: list[tuple[list[str], Path | None]],
+) -> str:
+    """Content-address one acquisition: producer, argv, and every admitted tree.
+
+    Workspace paths named by any argv token — unit paths, -I roots, the
+    compile database — contribute their file contents. Toolchain roots
+    outside the workspace contribute their path and libclang's Index.h,
+    which changes when the toolchain does.
+    """
+    memo: dict[Path, str] = {}
+    digest = hashlib.sha256()
+    digest.update(SNAPSHOT_SCHEMA.encode())
+    digest.update(platform.system().encode())
+    producer_repository = producer.parent
+    producer_paths = [producer]
+    for marker_name in (".last-build-dir", ".last-runtime-build-dir"):
+        marker = producer_repository / marker_name
+        if marker.is_file():
+            producer_paths.append(marker)
+            build_name = marker.read_text(encoding="utf-8").strip()
+            candidate = producer_repository / build_name / "p101-c-facts"
+            if build_name and candidate.is_file():
+                producer_paths.append(candidate)
+    for path in producer_paths:
+        digest.update(str(path).encode())
+        _hash_file_into(digest, path)
+    for command, _repository in commands:
+        for token in command[1:]:
+            digest.update(token.encode())
+            text = token[len("--cflag=-I"):] if token.startswith("--cflag=-I") else token
+            if not text.startswith("/"):
+                continue
+            path = Path(text)
+            if not path.exists():
+                continue
+            try:
+                path.relative_to(workspace_root)
+            except ValueError:
+                index = path / "clang-c" / "Index.h"
+                if index.is_file():
+                    digest.update(_tree_digest(index, memo).encode())
+                continue
+            digest.update(_tree_digest(path, memo).encode())
+    return digest.hexdigest()
+
+
+def _snapshot_restore(cache_directory: Path, key: str) -> list[dict[str, object]] | None:
+    path = cache_directory / f"{key}.jsonl.gz"
+    try:
+        with gzip.open(path, "rt", encoding="utf-8") as stream:
+            header = json.loads(stream.readline())
+            if header.get("schema") != SNAPSHOT_SCHEMA or header.get("key") != key:
+                return None
+            facts = [json.loads(line) for line in stream]
+    except (OSError, ValueError):
+        return None
+    if len(facts) != header.get("fact_count"):
+        return None
+    print(
+        f"p101 facts snapshot: restored {key[:12]} ({len(facts)} facts)",
+        file=sys.stderr,
+    )
+    return facts
+
+
+def _snapshot_store(cache_directory: Path, key: str, facts: list[dict[str, object]]) -> None:
+    try:
+        cache_directory.mkdir(parents=True, exist_ok=True)
+        temporary = cache_directory / f".{key}.{os.getpid()}.tmp"
+        with gzip.open(temporary, "wt", encoding="utf-8") as stream:
+            stream.write(json.dumps({"schema": SNAPSHOT_SCHEMA, "key": key, "fact_count": len(facts)}) + "\n")
+            for fact in facts:
+                stream.write(json.dumps(fact) + "\n")
+        os.replace(temporary, cache_directory / f"{key}.jsonl.gz")
+    except OSError:
+        return
+    print(
+        f"p101 facts snapshot: stored {key[:12]} ({len(facts)} facts)",
+        file=sys.stderr,
+    )
+
+
 def acquire(
     workspace: Path,
     paths: Iterable[Path],
     *,
     compile_database: Path | None = None,
     additional_include_roots: Iterable[Path] = (),
+    cache: Path | str | None = "auto",
 ) -> list[dict[str, object]]:
     producer = workspace / "programs" / "p101-wrapper-audit" / "p101-c-facts"
     if not producer.is_file():
@@ -365,6 +507,18 @@ def acquire(
         command.extend(str(path) for path in unit_paths)
         commands.append((command, repository))
 
+    cache_directory = _resolve_snapshot_cache(cache)
+    snapshot_key = None
+    if cache_directory is not None:
+        try:
+            snapshot_key = _snapshot_key(workspace_root, producer, commands)
+        except OSError:
+            snapshot_key = None
+        if snapshot_key is not None:
+            restored = _snapshot_restore(cache_directory, snapshot_key)
+            if restored is not None:
+                return restored
+
     def run_unit(command: list[str]) -> subprocess.CompletedProcess[str]:
         try:
             return subprocess.run(
@@ -397,4 +551,6 @@ def acquire(
                 + (result.stderr.strip() or f"exit {result.returncode}")
             )
         facts.extend(decode_lines(result.stdout.splitlines()))
+    if cache_directory is not None and snapshot_key is not None:
+        _snapshot_store(cache_directory, snapshot_key, facts)
     return facts
