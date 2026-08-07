@@ -32,7 +32,7 @@
       "url": "https://github.com/programming101dev/lib_io.git"
     },
     {
-      "commit": "ff2f1fb5629fc8a380fea1791cba54ff889f6d2d",
+      "commit": "481a90a8a34c015763c7c1e5937a4a39b9c06b9f",
       "path": "../libraries/lib_filesystem",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_filesystem.git"
@@ -200,7 +200,7 @@
       "url": "https://github.com/programming101dev/p101-error-contract.git"
     },
     {
-      "commit": "af98f3ee76db7a57c6516865ee8625e2022a985b",
+      "commit": "4576b37b61d1e492196e9dbe259bf7c09decd298",
       "path": "../programs/p101-wrapper-audit",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-wrapper-audit.git"
