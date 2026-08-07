@@ -1224,6 +1224,32 @@ def is_aggregate_return(declaration: dict[str, Any]) -> bool:
     return prefix.startswith(("struct ", "union "))
 
 
+def zero_initialized_local(
+    declaration: dict[str, Any],
+    expression: str,
+) -> bool:
+    """Is this failure expression a zero-initialized static local?
+
+    A wrapper whose failure value cannot be spelled portably as a literal
+    (wctrans_t is a pointer type on some platforms and an integer type on
+    others) commits a zero-initialized static of its own return type instead.
+    That identifier is local to the wrapper, so the generated test cannot name
+    it; the test gets an equivalent zero-initialized static instead.
+
+    Only the exact idiom matches: a static VarDecl with no initializer, which
+    the standard zero-initializes (a null pointer for pointer types).
+    """
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", expression):
+        return False
+    for node in nodes(declaration):
+        if node.get("kind") != "VarDecl":
+            continue
+        if node.get("name") != expression:
+            continue
+        return node.get("storageClass") == "static" and "init" not in node
+    return False
+
+
 def result_assertion(
     declaration: dict[str, Any],
     failure: dict[str, str],
@@ -1255,6 +1281,11 @@ def result_assertion(
             for member in members
         )
         return f"        {result} expected_result = {expression};\n" + assertions
+    if zero_initialized_local(declaration, expression):
+        return (
+            f"        static {result} expected_failure;\n"
+            "        EXPECT(result == expected_failure);\n"
+        )
     return f"        EXPECT(result == ({expression}));\n"
 
 
