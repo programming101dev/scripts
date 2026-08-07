@@ -2,25 +2,25 @@
   "manifest_sha256": "db51c5099139111b97efa75ef96e2ab1651be158974fa4ada38ec9e2e2d388b4",
   "repositories": [
     {
-      "commit": "58f1cd774097c87021236da16c9210e8c6ef6463",
+      "commit": "d5c9a7c77c459161b3aec72eb6e7d615dc59e933",
       "path": "../libraries/lib_error",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_error.git"
     },
     {
-      "commit": "7679a638359e846ad43367c466cdd3c129908ab4",
+      "commit": "390f208d4223aad7834aaa8207af4b9ba9ebfc36",
       "path": "../libraries/lib_tool_event",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_tool_event.git"
     },
     {
-      "commit": "5804e8d110b2a964c0bc80f9c7358a68b41b8a94",
+      "commit": "474aa21231666287bca14683a95b2cc25f23d34b",
       "path": "../libraries/lib_env",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_env.git"
     },
     {
-      "commit": "1fc0be723eb1aee87fbe7bc4cba37e4ea67c0a19",
+      "commit": "43abb2988db6ea1661bf0aa48eb54e90234fc95b",
       "path": "../libraries/lib_c",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_c.git"
@@ -32,7 +32,7 @@
       "url": "https://github.com/programming101dev/lib_io.git"
     },
     {
-      "commit": "1623218b6417109830d10bdd5ca55ca757febf9b",
+      "commit": "ff2f1fb5629fc8a380fea1791cba54ff889f6d2d",
       "path": "../libraries/lib_filesystem",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_filesystem.git"
@@ -50,7 +50,7 @@
       "url": "https://github.com/programming101dev/lib_memory.git"
     },
     {
-      "commit": "f3a89623599496d1d1aaa434a73c7a8724b87989",
+      "commit": "84b1b693de1c36358253482e0de3d19f1d644a59",
       "path": "../libraries/lib_process",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_process.git"
