@@ -3948,6 +3948,21 @@ def native_callback_helpers(
     )
 
 
+def fault_shard_key(repo: Path, declaration: dict[str, Any]) -> str:
+    """Name the shard after the wrapper's implementing module.
+
+    Grouping by module keeps shard membership stable: adding a wrapper to
+    src/stdio.c regenerates test_fault_wrappers_stdio.c and nothing else.
+    """
+    source = Path(declaration["_p101_source"])
+    try:
+        relative = source.resolve().relative_to((repo / "src").resolve())
+        stem = "_".join(relative.with_suffix("").parts)
+    except ValueError:
+        stem = source.stem
+    return re.sub(r"[^0-9A-Za-z]+", "_", stem).strip("_") or "misc"
+
+
 def fault_source(
     library: str,
     includes: str,
@@ -4400,7 +4415,7 @@ def validate_generated_source_semantics(
         path = Path(raw) / "test_fault_wrappers.c"
         path.write_text(source, encoding="utf-8")
         try:
-            facts = acquire(WORKSPACE, (path,))
+            facts = acquire(WORKSPACE, (path,), cache=None)
         except CFactError as error:
             raise RuntimeError(
                 f"{library}: cannot validate generated fixture semantics: "
@@ -4777,7 +4792,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
             source.resolve()
             for pattern in ("*.c", "*.C", "*.cc", "*.cpp", "*.cxx")
             for source in (repo / "test").glob(pattern)
-            if source.name != "test_fault_wrappers.c"
+            if not source.name.startswith("test_fault_wrappers")
         )
         try:
             implementation_facts = acquire(
@@ -5265,74 +5280,116 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                 "resource_events": "none",
             }
         test_dir = repo / "test"
-        fault_path = test_dir / "test_fault_wrappers.c"
-        cmake_uses_fault_test = "test_fault_wrappers" in (
-            test_dir / "CMakeLists.txt"
-        ).read_text(encoding="utf-8", errors="replace")
+        cmake_text = (test_dir / "CMakeLists.txt").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        cmake_uses_fault_test = (
+            "fault_shards.cmake" in cmake_text
+            or "test_fault_wrappers" in cmake_text
+        )
+        shard_members: dict[str, list[str]] = {}
+        for name in fault_names:
+            shard_members.setdefault(
+                fault_shard_key(repo, declarations[name]), []
+            ).append(name)
+        shard_paths = {
+            key: test_dir / f"test_fault_wrappers_{key}.c"
+            for key in shard_members
+        }
+        fault_source_by_name = {
+            name: f"test/test_fault_wrappers_{key}.c"
+            for key, members in shard_members.items()
+            for name in members
+        }
         if fault_names or cmake_uses_fault_test:
-            expected_fault_source = formatted_source(
-                formatter,
-                fault_path,
-                fault_source(
+            for key in sorted(shard_members):
+                shard_path = shard_paths[key]
+                expected_fault_source = formatted_source(
+                    formatter,
+                    shard_path,
+                    fault_source(
+                        library,
+                        public_header_includes(repo),
+                        declarations,
+                        function_usrs,
+                        shard_members[key],
+                        wrapper_errors_by_usr,
+                        library_failures,
+                        native_smoke_exceptions_by_usr,
+                        portable_input_rules_by_usr,
+                    ),
+                )
+                validate_generated_source_semantics(
                     library,
-                    public_header_includes(repo),
-                    declarations,
-                    function_usrs,
-                    fault_names,
-                    wrapper_errors_by_usr,
-                    library_failures,
-                    native_smoke_exceptions_by_usr,
-                    portable_input_rules_by_usr,
-                ),
-            )
-            validate_generated_source_semantics(
-                library,
-                expected_fault_source,
-            )
-            if check:
-                actual_fault_source = (
-                    fault_path.read_text(encoding="utf-8")
-                    if fault_path.is_file()
-                    else None
+                    expected_fault_source,
                 )
-                normalized_actual = (
-                    formatted_source(
-                        formatter,
-                        fault_path,
-                        actual_fault_source,
+                if check:
+                    actual_fault_source = (
+                        shard_path.read_text(encoding="utf-8")
+                        if shard_path.is_file()
+                        else None
                     )
-                    if actual_fault_source is not None
-                    else None
-                )
-                if normalized_actual != expected_fault_source:
-                    if normalized_actual is not None:
-                        print(
-                            "".join(
-                                difflib.unified_diff(
-                                    normalized_actual.splitlines(
-                                        keepends=True
-                                    ),
-                                    expected_fault_source.splitlines(
-                                        keepends=True
-                                    ),
-                                    fromfile=f"{fault_path} (checked in)",
-                                    tofile=f"{fault_path} (generated)",
-                                )
-                            ),
-                            end="",
+                    normalized_actual = (
+                        formatted_source(
+                            formatter,
+                            shard_path,
+                            actual_fault_source,
                         )
-                    drift.append(fault_path)
-            else:
-                atomic_write_text(fault_path, expected_fault_source)
-        elif fault_path.is_file():
+                        if actual_fault_source is not None
+                        else None
+                    )
+                    if normalized_actual != expected_fault_source:
+                        if normalized_actual is not None:
+                            print(
+                                "".join(
+                                    difflib.unified_diff(
+                                        normalized_actual.splitlines(
+                                            keepends=True
+                                        ),
+                                        expected_fault_source.splitlines(
+                                            keepends=True
+                                        ),
+                                        fromfile=f"{shard_path} (checked in)",
+                                        tofile=f"{shard_path} (generated)",
+                                    )
+                                ),
+                                end="",
+                            )
+                        drift.append(shard_path)
+                else:
+                    atomic_write_text(shard_path, expected_fault_source)
+            shards_cmake_path = test_dir / "fault_shards.cmake"
+            expected_shards_cmake = (
+                "# Generated by generate-wrapper-unit-tests.py; do not edit.\n"
+                "set(P101_FAULT_SHARD_TESTS\n"
+                + "".join(
+                    f"    test_fault_wrappers_{key}\n"
+                    for key in sorted(shard_members)
+                )
+                + ")\n"
+            )
+            actual_shards_cmake = (
+                shards_cmake_path.read_text(encoding="utf-8")
+                if shards_cmake_path.is_file()
+                else None
+            )
+            if actual_shards_cmake != expected_shards_cmake:
+                if check:
+                    drift.append(shards_cmake_path)
+                else:
+                    atomic_write_text(shards_cmake_path, expected_shards_cmake)
+        expected_shard_files = set(shard_paths.values())
+        for stale in sorted(test_dir.glob("test_fault_wrappers*.c")):
+            if stale in expected_shard_files:
+                continue
             if check:
-                drift.append(fault_path)
+                drift.append(stale)
             else:
-                fault_path.unlink()
+                stale.unlink()
         manifest = ["function\tfunction_usr\ttest_kind\ttest_source\n"]
         manifest.extend(
             f"{name}\t{function_usrs[name]}\tfault\t"
-            "test/test_fault_wrappers.c\n"
+            f"{fault_source_by_name[name]}\n"
             for name in fault_names
         )
         for name in behavior_names:

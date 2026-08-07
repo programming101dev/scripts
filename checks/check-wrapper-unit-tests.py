@@ -646,6 +646,14 @@ def main() -> int:
             encoding="utf-8",
             errors="replace",
         )
+        # Fault shards are wired through a generated include; targets that
+        # reach CMake via the shard list count as built.
+        shards_path = repo / "test" / "fault_shards.cmake"
+        if "fault_shards.cmake" in cmake and shards_path.is_file():
+            cmake += "\n" + shards_path.read_text(
+                encoding="utf-8",
+                errors="replace",
+            )
         for row in manifest:
             source_value = row.get("test_source", "")
             source_stem = Path(source_value).stem
@@ -655,7 +663,7 @@ def main() -> int:
                     f"{source_value} is not wired into test/CMakeLists.txt"
                 )
         if any(row.get("test_kind") == "fault" for row in manifest):
-            if not cmake_has_token(cmake, "test_fault_wrappers"):
+            if not cmake_has_token(cmake, "P101_FAULT_SHARD_TESTS") and not cmake_has_token(cmake, "test_fault_wrappers"):
                 failures.append(f"{library}: fault tests are not built by CMake")
         if any(row.get("test_kind") == "behavior" for row in manifest):
             if not cmake_has_token(cmake, "test_behavior"):
