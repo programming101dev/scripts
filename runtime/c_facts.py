@@ -16,6 +16,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Iterable
@@ -537,9 +538,12 @@ def acquire(
                 file=sys.stderr,
             )
 
-    def run_unit(command: list[str]) -> subprocess.CompletedProcess[str]:
+    def run_unit(
+        command: list[str],
+    ) -> tuple[subprocess.CompletedProcess[str], float]:
+        started = time.monotonic()
         try:
-            return subprocess.run(
+            completed = subprocess.run(
                 command,
                 cwd=workspace,
                 capture_output=True,
@@ -550,6 +554,7 @@ def acquire(
             raise CFactError(
                 f"cannot acquire semantic C facts: {error}"
             ) from error
+        return completed, time.monotonic() - started
 
     # Units are independent producer invocations over disjoint trees; run
     # the ones without a snapshot across cores and keep the facts in unit
@@ -560,7 +565,9 @@ def acquire(
             results = list(
                 pool.map(run_unit, [commands[index][0] for index in pending])
             )
-        for index, result in zip(pending, results):
+        durations: list[tuple[float, int]] = []
+        for index, (result, seconds) in zip(pending, results):
+            durations.append((seconds, index))
             repository = commands[index][1]
             if result.returncode != 0:
                 context = (
@@ -577,6 +584,22 @@ def acquire(
             key = unit_keys[index]
             if cache_directory is not None and key is not None:
                 _snapshot_store(cache_directory, key, decoded)
+        for seconds, index in sorted(durations, reverse=True)[:5]:
+            repository = commands[index][1]
+            name = (
+                str(repository.relative_to(workspace_root))
+                if repository is not None
+                else "shared scope"
+            )
+            scanned = " ".join(
+                Path(argument).name
+                for argument in commands[index][0][1:]
+                if argument.startswith("/")
+            )
+            print(
+                f"p101 facts unit: {seconds:5.1f}s {name} [{scanned}]",
+                file=sys.stderr,
+            )
     for unit in unit_facts:
         facts.extend(unit or [])
     return facts
