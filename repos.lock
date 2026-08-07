@@ -20,7 +20,7 @@
       "url": "https://github.com/programming101dev/lib_env.git"
     },
     {
-      "commit": "43abb2988db6ea1661bf0aa48eb54e90234fc95b",
+      "commit": "9f946a818a5c7784bf0635643c7d460851eadac3",
       "path": "../libraries/lib_c",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_c.git"
@@ -50,7 +50,7 @@
       "url": "https://github.com/programming101dev/lib_memory.git"
     },
     {
-      "commit": "84b1b693de1c36358253482e0de3d19f1d644a59",
+      "commit": "d1be79e3e16530d91220f12421051b174a8f14c5",
       "path": "../libraries/lib_process",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_process.git"
