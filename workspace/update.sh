@@ -44,6 +44,7 @@ skip_install=false
 interactive=false
 skip_self_update=false
 latest=false
+format=false
 
 # Files and helper scripts expected in the current directory
 # CACHE_ROOT / FLAGS_VERSION_FILE are re-pointed for the --standard profile
@@ -51,6 +52,7 @@ latest=false
 CACHE_ROOT="../.flags"
 FLAGS_VERSION_FILE="../.flags/version.txt"
 CURRENT_VERSION_FILE="./version.txt"
+FORMAT_RECEIPT="${TMPDIR:-/tmp}/p101-format-workspace.json"
 SUPPORTED_C_COMPILERS="supported_c_compilers.txt"
 SUPPORTED_CXX_COMPILERS="supported_cxx_compilers.txt"
 flag_c_list_file="$SUPPORTED_C_COMPILERS"
@@ -119,6 +121,9 @@ Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clan
                        already handled the scripts repository once.
   --latest             Follow moving upstream branches instead of repos.lock.
                        Refresh repos.lock explicitly before strict acceptance.
+  --format             Apply clang-format to every tracked workspace source
+                       before building, so the format-check gate cannot fail
+                       on formatting alone. Modifies tracked files.
 
 Examples:
   ./update.sh -c clang -x clang++
@@ -229,6 +234,7 @@ LONG_SKIP_INSTALL=0
 LONG_INTERACTIVE=0
 LONG_SKIP_SELF_UPDATE=0
 LONG_LATEST=0
+LONG_FORMAT=0
 declare -a _argv=()
 for _a in "$@"; do
   if [[ "$_a" == "--dry-run" ]]; then
@@ -249,6 +255,8 @@ for _a in "$@"; do
     LONG_SKIP_SELF_UPDATE=1
   elif [[ "$_a" == "--latest" ]]; then
     LONG_LATEST=1
+  elif [[ "$_a" == "--format" ]]; then
+    LONG_FORMAT=1
   else
     _argv+=("$_a")
   fi
@@ -286,6 +294,7 @@ shift $((OPTIND-1))
 [[ $LONG_INTERACTIVE -eq 1 ]] && interactive=true
 [[ $LONG_SKIP_SELF_UPDATE -eq 1 ]] && skip_self_update=true
 [[ $LONG_LATEST -eq 1 ]] && latest=true
+[[ $LONG_FORMAT -eq 1 ]] && format=true
 
 if $no_flags && $standard; then
   die "--no-flags and --standard are mutually exclusive (one means no flags, the other a fixed standard set)."
@@ -604,6 +613,17 @@ run_or_echo "$LINK_COMPILERS_SH"
 # Symlink the shared cmake/ helpers into each repo so the slimmed CMakeLists
 # finds them (single source of truth in scripts/cmake/).
 run_or_echo "$LINK_CMAKE_SH"
+
+# ----------------- format all repos -----------------
+# Opt-in. clang-format -i over every tracked, non-vendored workspace source, so
+# the per-repo format-check gate (a dependency of every build target) cannot
+# fail on formatting alone. This modifies tracked files, which is why the
+# default build never does it.
+if $format; then
+  run_or_echo ./checks/format-workspace.py \
+    --formatter "$CLANG_FORMAT_PATH" \
+    --receipt "$FORMAT_RECEIPT"
+fi
 
 # ----------------- build all repos -----------------
 build_repo_args=(

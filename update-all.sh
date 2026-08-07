@@ -25,6 +25,7 @@ standard=0
 skip_install=0
 interactive=0
 latest=0
+format=0
 
 c_list_file="supported_c_compilers.txt"
 cxx_list_file="supported_cxx_compilers.txt"
@@ -49,7 +50,11 @@ usage() {
   --skip-install    Build every pair but do not run repo install.sh scripts
   --interactive     Pause, pull the pushed fix, and retry the failed phase
   --latest          Follow moving upstream branches instead of repos.lock;
-                    refresh the lock before strict acceptance"
+                    refresh the lock before strict acceptance
+  --format          Apply clang-format to every tracked workspace source
+                    once, before the first pair builds, so the per-repo
+                    format-check gate cannot fail on formatting alone.
+                    Modifies tracked files."
     if [ -f "$c_list_file" ]; then
         printf '\nCompiler pairs this will build (from %s):\n' "$c_list_file"
         while IFS= read -r _l || [ -n "$_l" ]; do
@@ -94,6 +99,7 @@ while [ "$#" -gt 0 ]; do
     -I|--skip-install) skip_install=1; shift ;;
     -i|--interactive) interactive=1; shift ;;
     --latest) latest=1; shift ;;
+    --format) format=1; shift ;;
     --coverage) export P101_COVERAGE=1; shift ;;
     --profile) export P101_PROFILE=1; shift ;;
     -h|--help) usage ;;
@@ -221,6 +227,11 @@ while read -r c <&3 || [ -n "$c" ]; do
   fi
   if [ "$latest" -eq 1 ]; then
     set -- "$@" --latest
+  fi
+  # Format once, on the first pair only: clang-format is idempotent, so the
+  # remaining pairs would reformat already-canonical sources for nothing.
+  if [ "$format" -eq 1 ] && [ "$pairs_run" -eq 0 ]; then
+    set -- "$@" --format
   fi
   if [ "$no_flags" -eq 1 ]; then
     set -- "$@" --no-flags
