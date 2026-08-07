@@ -1,0 +1,10 @@
+# The check graph writes its content-addressed evidence cache under this
+# directory (checks/p101-check-graph.py). Everything here is a local cache of
+# check logs and receipts, never a tracked input, and the graph already treats
+# this directory as non-source.
+#
+# The ignore lives here rather than in the repository .gitignore because that
+# file is distributed byte-for-byte from templates/template-c by
+# distribution/copy-scripts.sh, and only the scripts repository has a target/.
+*
+!.gitignore
