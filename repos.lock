@@ -32,7 +32,7 @@
       "url": "https://github.com/programming101dev/lib_io.git"
     },
     {
-      "commit": "c7efbf63f1df45c682fa75a3809ad86ca39c52f2",
+      "commit": "fca3cb2bb84bb2da4d4b2e9ae151650343e8cd97",
       "path": "../libraries/lib_filesystem",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_filesystem.git"
