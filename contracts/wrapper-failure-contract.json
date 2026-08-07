@@ -12360,7 +12360,7 @@
       "function_usr": "c:@F@p101_wctrans",
       "library": "lib_c",
       "resource_events": "none",
-      "return_expression": "0",
+      "return_expression": "no_mapping",
       "return_kind": "value",
       "runtime_canary_arguments": [],
       "writable_arguments": "unchanged"
@@ -12375,7 +12375,7 @@
       "function_usr": "c:@F@p101_wctrans_l",
       "library": "lib_text",
       "resource_events": "none",
-      "return_expression": "0",
+      "return_expression": "no_mapping",
       "return_kind": "value",
       "runtime_canary_arguments": [],
       "writable_arguments": "unchanged"

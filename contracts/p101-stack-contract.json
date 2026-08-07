@@ -171,9 +171,9 @@
       "sha256": "e1ac1e69ba5613c951a5fca678cadb1aeeb1068f33ea3fb78849b718a2598b83"
     },
     {
-      "bytes": 364003,
+      "bytes": 364021,
       "path": "contracts/wrapper-failure-contract.json",
-      "sha256": "6d73fa4070ec7fc42ddc7550f613e67c0bac0562f8be74bef8942b5587d046b6"
+      "sha256": "473e92827f41c1ea7d7f7593bd55034be8b718aba1173d06c7b8847207b61a03"
     },
     {
       "bytes": 2762,
