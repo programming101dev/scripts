@@ -233,6 +233,8 @@
       "group": "architecture",
       "required": true,
       "command": ["./tests/test-p101-architecture-contracts.py"],
+      "inputs": ["scripts/tests/test-p101-architecture-contracts.py", "scripts/checks/check-p101-test-inventory.py", "scripts/checks/check-p101-source-responsibilities.py", "scripts/checks/check-functional-library-split.py", "scripts/runtime/c_facts.py", "scripts/contracts/p101-test-inventory.json", "scripts/contracts/p101-check-graph.json", "scripts/contracts/p101-source-responsibilities.json", "scripts/repos.txt", "libraries/**", "programs/**", "templates/**", "playgrounds/**"],
+      "inputs_complete": true,
       "depends_on": ["source-responsibilities"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Stale inventory exclusions, owner bypasses, and facade growth are rejected by executable negative controls."

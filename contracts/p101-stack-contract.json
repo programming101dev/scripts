@@ -136,9 +136,9 @@
       "sha256": "98d3cd6083e06e8bf965edfe66164b7ee0dc73f5ed8cfff07edbb6ec661f89af"
     },
     {
-      "bytes": 42323,
+      "bytes": 42840,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "4515aed11de23989c62d362aed28010de646b85d3064f91e4dfdf2bc10211a10"
+      "sha256": "c13d08667562928ab43d4b6572142b60d9421396fc2c4710df59cdfa7a1034e0"
     },
     {
       "bytes": 62722,
@@ -246,9 +246,9 @@
       "sha256": "db51c5099139111b97efa75ef96e2ab1651be158974fa4ada38ec9e2e2d388b4"
     },
     {
-      "bytes": 13630,
+      "bytes": 20122,
       "path": "runtime/c_facts.py",
-      "sha256": "510e372cd808715915d5adcfd25ba91d8e192af530be67f352b69c4afa04d712"
+      "sha256": "66c8a598cbfa51ad97d2c827142b7dabaefe196ef1bc43bf3006800049edf442"
     },
     {
       "bytes": 6875,
