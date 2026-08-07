@@ -194,7 +194,7 @@
       "url": "https://github.com/programming101dev/p101-error-path-walk.git"
     },
     {
-      "commit": "c6aa34c3f1bcf9fc73d6981ecf52663a697ae6ef",
+      "commit": "6152c4ed4165f03860d1243bc21ea60178790707",
       "path": "../programs/p101-error-contract",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-error-contract.git"
