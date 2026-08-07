@@ -19,6 +19,7 @@ RECEIPT_SCHEMA = "p101-stack-contract-receipt-v1"
 DEFAULT_PATHS = (
     "repos.txt",
     "repos.lock",
+    "clang-format-version.txt",
     "flag-selection.json",
     "flag-selection.standard.json",
     "CMakeLists.txt",

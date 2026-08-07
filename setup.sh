@@ -16,6 +16,8 @@ cppcheck_name="cppcheck"
 sanitizers="address,leak,pointer_overflow,undefined"
 interactive=false
 latest=false
+format=false
+format_receipt="${TMPDIR:-/tmp}/p101-format-workspace.json"
 
 # Function to display script usage
 # detected-compiler helpers (smarter --help; harmless if lists absent)
@@ -40,6 +42,8 @@ usage()
     echo "  --profile         Opt-in: instrument the initial build for profiling (gprof)"
     echo "  --interactive     Pause, pull the pushed fix, and retry the failed phase"
     echo "  --latest          Follow moving upstream branches instead of repos.lock"
+    echo "  --format          Apply clang-format to every tracked workspace source"
+    echo "                    before building; modifies tracked files"
     _cc="$(_p101_names supported_c_compilers.txt)"; _cxx="$(_p101_names supported_cxx_compilers.txt)"
     if [ -n "$_cc" ] || [ -n "$_cxx" ]; then
         echo ""
@@ -69,6 +73,7 @@ for _a in "$@"; do
     --profile)  export P101_PROFILE=1 ;;
     --interactive) interactive=true ;;
     --latest) latest=true ;;
+    --format) format=true ;;
     *)          _setup_argv+=("$_a") ;;
   esac
 done
@@ -239,6 +244,14 @@ fi
 ./distribution/link-compilers.sh
 mkdir -p -- "$(dirname -- "$flags_version")"
 cp "$current_version" "$flags_version"
+# Opt-in. clang-format -i over every tracked, non-vendored workspace source, so
+# the per-repo format-check gate (a dependency of every build target) cannot
+# fail on formatting alone. This modifies tracked files, which is why the
+# default setup never does it.
+if $format; then
+  ./checks/format-workspace.py --formatter "$clang_format_name" --receipt "$format_receipt"
+fi
+
 build_repo_args=(-c "$CC_PATH" -x "$CXX_PATH" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers")
 if $interactive; then
   build_repo_args+=(--interactive)

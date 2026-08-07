@@ -68,6 +68,14 @@ def main() -> int:
     parser.add_argument("--receipt", type=Path, required=True)
     arguments = parser.parse_args()
 
+    version = subprocess.run(
+        [arguments.formatter, "--version"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    ).stdout.strip()
+
     tracked = [
         (repository, source)
         for repository in repositories()
@@ -108,6 +116,7 @@ def main() -> int:
     receipt = {
         "schema": "p101-format-workspace-receipt-v1",
         "formatter": arguments.formatter,
+        "formatter_version": version,
         "source_count": len(sources),
         "excluded_vendored_count": len(excluded),
         "excluded_vendored": [
@@ -118,7 +127,9 @@ def main() -> int:
         "passed": not changed,
         "does_not_prove": (
             "A clean formatting pass proves only that tracked C/C++ source bytes "
-            "match the selected clang-format and repository style files."
+            "match the recorded clang-format version and repository style "
+            "files. A different version may format the same sources "
+            "differently."
         ),
     }
     arguments.receipt.parent.mkdir(parents=True, exist_ok=True)

@@ -101,6 +101,11 @@
       "sha256": "ce37f81e0fac8ce545dfcd416e8821bf2be9ce0ad4b3fc91f965660f6b9f490f"
     },
     {
+      "bytes": 737,
+      "path": "clang-format-version.txt",
+      "sha256": "8589eaec7d0c396634137aacad8e7adc33d26f7bb7ebc0ff09772633412807ef"
+    },
+    {
       "bytes": 1338,
       "path": "cmake/P101Install.cmake",
       "sha256": "cdb614ce14222d9f31242bb4c666a1c13d4aee87da94a27a0acef8338934ca21"
@@ -276,9 +281,9 @@
       "sha256": "318c9c9c05f4db1970655d6f0772f166e68fe794d70a5d5b753b854669446707"
     },
     {
-      "bytes": 9834,
+      "bytes": 9866,
       "path": "workspace/stack-contract.py",
-      "sha256": "decd32b14b2b66a4f91b4d372d4df0b5e8bd5d24e376acff1ec2fe6c213237bc"
+      "sha256": "8c34e0c3c7446893611aba4f5316841263d9dce06d4e0f69db7a77d9cb4b14d7"
     },
     {
       "bytes": 24779,

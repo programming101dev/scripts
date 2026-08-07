@@ -1,0 +1,15 @@
+# Required clang-format version for this workspace.
+#
+# clang-format output is deterministic for a given version and .clang-format,
+# and identical across macOS, Linux, and FreeBSD — but it can change between
+# LLVM releases. A workspace where machines run different versions reformats
+# tracked sources back and forth on every commit.
+#
+# One non-comment line, either form:
+#   >=14   minimum major version (any newer release is accepted)
+#   18     exact major version (anything else is rejected)
+#
+# >=14 is the shipped default: every release from 14 through 21 was verified
+# to produce byte-identical output for this workspace's .clang-format. Tighten
+# this to an exact major once every machine and CI runner agrees on one.
+>=14

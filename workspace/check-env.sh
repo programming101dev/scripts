@@ -179,6 +179,40 @@ if [[ -n "$cxx_compiler" ]] && have "$cxx_compiler"; then
   fi
 fi
 
+# clang-format output is stable for a given version, but can change between
+# LLVM releases. When machines in the same workspace run different versions,
+# every commit reformats tracked sources back and forth. Bind the version here
+# so the wrong binary fails fast instead of churning the tree.
+CLANG_FORMAT_VERSION_FILE="./clang-format-version.txt"
+if have "$clang_format_name"; then
+  _cf_version="$("$clang_format_name" --version 2>/dev/null || true)"
+  _cf_major="$(printf '%s' "$_cf_version" | sed -n 's/.*version \([0-9][0-9]*\).*/\1/p')"
+  if [[ -z "$_cf_major" ]]; then
+    echo "broken: $clang_format_name (cannot read a version from '--version')"
+    missing=$((missing+1))
+  elif [[ -f "$CLANG_FORMAT_VERSION_FILE" ]]; then
+    _cf_want="$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$CLANG_FORMAT_VERSION_FILE" | head -n 1 | tr -d '[:space:]')"
+    case "$_cf_want" in
+      '')
+        : # no requirement declared
+        ;;
+      '>='*)
+        if (( _cf_major < ${_cf_want#>=} )); then
+          echo "broken: $clang_format_name is version $_cf_major; $CLANG_FORMAT_VERSION_FILE requires $_cf_want"
+          missing=$((missing+1))
+        fi
+        ;;
+      *)
+        if [[ "$_cf_major" != "$_cf_want" ]]; then
+          echo "broken: $clang_format_name is version $_cf_major; $CLANG_FORMAT_VERSION_FILE requires exactly $_cf_want"
+          echo "        mismatched formatters reformat tracked sources on every commit"
+          missing=$((missing+1))
+        fi
+        ;;
+    esac
+  fi
+fi
+
 # lib_c_facts embeds libclang. A Clang driver alone does not provide the
 # public clang-c API headers on package-managed Linux systems, so detect this
 # before update-all spends time compiling the repositories that precede it.
