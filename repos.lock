@@ -158,7 +158,7 @@
       "url": "https://github.com/programming101dev/lib_host.git"
     },
     {
-      "commit": "69e65c15e1e2a2b30294a86cb619776bc95d42d7",
+      "commit": "fcff51a7826d20be4bd16b0674f011accc424185",
       "path": "../libraries/lib_fsm",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_fsm.git"
@@ -206,7 +206,7 @@
       "url": "https://github.com/programming101dev/p101-wrapper-audit.git"
     },
     {
-      "commit": "047618739e73b53c7209d8665ddab5955478a2da",
+      "commit": "3f932decd4f489a0d7bed75fd1691e281a2e50b1",
       "path": "../programs/p101-doctor",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-doctor.git"
@@ -218,7 +218,7 @@
       "url": "https://github.com/programming101dev/p101-module-map.git"
     },
     {
-      "commit": "5d640bbbb4bd639b490ae9a19289969bcb4bf57c",
+      "commit": "3d7427998fa179b0a6fe0add03043876c358d625",
       "path": "../programs/p101-mutation-check",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-mutation-check.git"
@@ -248,7 +248,7 @@
       "url": "https://github.com/programming101dev/template-cpp.git"
     },
     {
-      "commit": "15ec8308ae397e806b29087eaaa6724a8c69f705",
+      "commit": "b46df8f11b6d50f589e7488a5371eb7c4b898ad4",
       "path": "../examples/c-examples",
       "type": "c",
       "url": "https://github.com/programming101dev/c-examples.git"

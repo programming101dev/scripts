@@ -233,7 +233,7 @@
     {
       "bytes": 9510,
       "path": "repos.lock",
-      "sha256": "7ac3e62b2b24a6d3ce0443cc210bd37f2b3dae6d781129eb73fe894d8864c558"
+      "sha256": "43820551ca5995a767eb0bb5361baa3b863d63f57be668824fa20fbb6136edff"
     },
     {
       "bytes": 3743,
@@ -281,9 +281,9 @@
       "sha256": "decd32b14b2b66a4f91b4d372d4df0b5e8bd5d24e376acff1ec2fe6c213237bc"
     },
     {
-      "bytes": 23920,
+      "bytes": 24779,
       "path": "workspace/update.sh",
-      "sha256": "d1339f6e8ba5a2b5619719d1ac6186feea658ea14b51c4406637899dd7738944"
+      "sha256": "2ccd91c8c8d63ac52148a4c9ccdcf751fc77c7d7ca7f3f4f7799ab47c70351ac"
     }
   ],
   "does_not_prove": "This contract binds the declared stack policy bytes. It does not prove that the policy is complete, correct, or sufficient for an undeclared platform.",
