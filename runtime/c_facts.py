@@ -355,19 +355,7 @@ def _tree_digest(root: Path, memo: dict[Path, str]) -> str:
     return value
 
 
-def _snapshot_key(
-    workspace_root: Path,
-    producer: Path,
-    commands: list[tuple[list[str], Path | None]],
-) -> str:
-    """Content-address one acquisition: producer, argv, and every admitted tree.
-
-    Workspace paths named by any argv token — unit paths, -I roots, the
-    compile database — contribute their file contents. Toolchain roots
-    outside the workspace contribute their path and libclang's Index.h,
-    which changes when the toolchain does.
-    """
-    memo: dict[Path, str] = {}
+def _producer_identity(producer: Path) -> bytes:
     digest = hashlib.sha256()
     digest.update(SNAPSHOT_SCHEMA.encode())
     digest.update(platform.system().encode())
@@ -384,23 +372,43 @@ def _snapshot_key(
     for path in producer_paths:
         digest.update(str(path).encode())
         _hash_file_into(digest, path)
-    for command, _repository in commands:
-        for token in command[1:]:
-            digest.update(token.encode())
-            text = token[len("--cflag=-I"):] if token.startswith("--cflag=-I") else token
-            if not text.startswith("/"):
-                continue
-            path = Path(text)
-            if not path.exists():
-                continue
-            try:
-                path.relative_to(workspace_root)
-            except ValueError:
-                index = path / "clang-c" / "Index.h"
-                if index.is_file():
-                    digest.update(_tree_digest(index, memo).encode())
-                continue
-            digest.update(_tree_digest(path, memo).encode())
+    return digest.digest()
+
+
+def _unit_snapshot_key(
+    workspace_root: Path,
+    producer_identity: bytes,
+    command: list[str],
+    memo: dict[Path, str],
+) -> str:
+    """Content-address one analysis unit: producer, argv, and the trees it names.
+
+    Keys are per unit so an edit invalidates only the repository it touches;
+    the other units restore. Workspace paths named by any argv token — unit
+    paths, -I roots, the compile database — contribute their file contents.
+    Toolchain roots outside the workspace contribute their path and
+    libclang's Index.h, which changes when the toolchain does. Shared -I
+    roots appear in every unit's argv, so a header edit still invalidates
+    every unit that can see it.
+    """
+    digest = hashlib.sha256()
+    digest.update(producer_identity)
+    for token in command[1:]:
+        digest.update(token.encode())
+        text = token[len("--cflag=-I"):] if token.startswith("--cflag=-I") else token
+        if not text.startswith("/"):
+            continue
+        path = Path(text)
+        if not path.exists():
+            continue
+        try:
+            path.relative_to(workspace_root)
+        except ValueError:
+            index = path / "clang-c" / "Index.h"
+            if index.is_file():
+                digest.update(_tree_digest(index, memo).encode())
+            continue
+        digest.update(_tree_digest(path, memo).encode())
     return digest.hexdigest()
 
 
@@ -416,10 +424,6 @@ def _snapshot_restore(cache_directory: Path, key: str) -> list[dict[str, object]
         return None
     if len(facts) != header.get("fact_count"):
         return None
-    print(
-        f"p101 facts snapshot: restored {key[:12]} ({len(facts)} facts)",
-        file=sys.stderr,
-    )
     return facts
 
 
@@ -434,10 +438,6 @@ def _snapshot_store(cache_directory: Path, key: str, facts: list[dict[str, objec
         os.replace(temporary, cache_directory / f"{key}.jsonl.gz")
     except OSError:
         return
-    print(
-        f"p101 facts snapshot: stored {key[:12]} ({len(facts)} facts)",
-        file=sys.stderr,
-    )
 
 
 def acquire(
@@ -508,16 +508,34 @@ def acquire(
         commands.append((command, repository))
 
     cache_directory = _resolve_snapshot_cache(cache)
-    snapshot_key = None
+    unit_keys: list[str | None] = [None] * len(commands)
+    unit_facts: list[list[dict[str, object]] | None] = [None] * len(commands)
     if cache_directory is not None:
         try:
-            snapshot_key = _snapshot_key(workspace_root, producer, commands)
+            producer_identity = _producer_identity(producer)
         except OSError:
-            snapshot_key = None
-        if snapshot_key is not None:
-            restored = _snapshot_restore(cache_directory, snapshot_key)
-            if restored is not None:
-                return restored
+            producer_identity = None
+        if producer_identity is not None:
+            memo: dict[Path, str] = {}
+            for index, (command, _repository) in enumerate(commands):
+                try:
+                    key = _unit_snapshot_key(
+                        workspace_root, producer_identity, command, memo
+                    )
+                except OSError:
+                    continue
+                unit_keys[index] = key
+                unit_facts[index] = _snapshot_restore(cache_directory, key)
+
+    pending = [index for index in range(len(commands)) if unit_facts[index] is None]
+    if cache_directory is not None:
+        restored_count = len(commands) - len(pending)
+        if restored_count or pending:
+            print(
+                f"p101 facts snapshot: restored {restored_count} of "
+                f"{len(commands)} units, parsing {len(pending)}",
+                file=sys.stderr,
+            )
 
     def run_unit(command: list[str]) -> subprocess.CompletedProcess[str]:
         try:
@@ -534,23 +552,31 @@ def acquire(
             ) from error
 
     # Units are independent producer invocations over disjoint trees; run
-    # them across cores and keep the facts in unit order so callers see the
-    # exact stream the sequential loop produced.
-    workers = max(1, min(len(commands), os.cpu_count() or 1))
-    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-        results = list(pool.map(run_unit, [command for command, _ in commands]))
-    for (command, repository), result in zip(commands, results):
-        if result.returncode != 0:
-            context = (
-                str(repository.relative_to(workspace_root))
-                if repository is not None
-                else "shared scope"
+    # the ones without a snapshot across cores and keep the facts in unit
+    # order so callers see the exact stream the sequential loop produced.
+    if pending:
+        workers = max(1, min(len(pending), os.cpu_count() or 1))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+            results = list(
+                pool.map(run_unit, [commands[index][0] for index in pending])
             )
-            raise CFactError(
-                f"semantic C-fact acquisition failed for {context}: "
-                + (result.stderr.strip() or f"exit {result.returncode}")
-            )
-        facts.extend(decode_lines(result.stdout.splitlines()))
-    if cache_directory is not None and snapshot_key is not None:
-        _snapshot_store(cache_directory, snapshot_key, facts)
+        for index, result in zip(pending, results):
+            repository = commands[index][1]
+            if result.returncode != 0:
+                context = (
+                    str(repository.relative_to(workspace_root))
+                    if repository is not None
+                    else "shared scope"
+                )
+                raise CFactError(
+                    f"semantic C-fact acquisition failed for {context}: "
+                    + (result.stderr.strip() or f"exit {result.returncode}")
+                )
+            decoded = decode_lines(result.stdout.splitlines())
+            unit_facts[index] = decoded
+            key = unit_keys[index]
+            if cache_directory is not None and key is not None:
+                _snapshot_store(cache_directory, key, decoded)
+    for unit in unit_facts:
+        facts.extend(unit or [])
     return facts
