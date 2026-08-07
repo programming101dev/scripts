@@ -11,6 +11,8 @@ import os
 import platform
 import shlex
 import shutil
+import concurrent.futures
+import os
 import subprocess
 from collections import defaultdict
 from pathlib import Path
@@ -326,6 +328,7 @@ def acquire(
         else _analysis_units(workspace_root, admitted_paths)
     )
     facts: list[dict[str, object]] = []
+    commands: list[tuple[list[str], Path | None]] = []
     for repository, unit_paths in units:
         include_roots = set(shared_include_roots)
         if repository is not None:
@@ -360,8 +363,11 @@ def acquire(
         if compile_database is not None:
             command.extend(("--compile-db", str(compile_database.resolve())))
         command.extend(str(path) for path in unit_paths)
+        commands.append((command, repository))
+
+    def run_unit(command: list[str]) -> subprocess.CompletedProcess[str]:
         try:
-            result = subprocess.run(
+            return subprocess.run(
                 command,
                 cwd=workspace,
                 capture_output=True,
@@ -372,6 +378,14 @@ def acquire(
             raise CFactError(
                 f"cannot acquire semantic C facts: {error}"
             ) from error
+
+    # Units are independent producer invocations over disjoint trees; run
+    # them across cores and keep the facts in unit order so callers see the
+    # exact stream the sequential loop produced.
+    workers = max(1, min(len(commands), os.cpu_count() or 1))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(run_unit, [command for command, _ in commands]))
+    for (command, repository), result in zip(commands, results):
         if result.returncode != 0:
             context = (
                 str(repository.relative_to(workspace_root))
