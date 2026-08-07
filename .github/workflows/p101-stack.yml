@@ -36,7 +36,8 @@ jobs:
           sudo ln -sf "$(brew --prefix llvm)/bin/clang-format" /usr/local/bin/clang-format
       - name: Enforce clang-format major version
         run: |
-          required="$(tr -d '[:space:]' < scripts/clang-format-version.txt)"
+          required="$(grep -Ev '^[[:space:]]*(#|$)' scripts/clang-format-version.txt | head -n 1 | tr -d '[:space:]')"
+          required="${required#>=}"
           for candidate in /usr/local/bin/clang-format "$(brew --prefix llvm)/bin/clang-format"; do
             "$candidate" --version
             "$candidate" --version | grep -Eq "clang-format version ${required}\." \
@@ -90,14 +91,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake clang clang-tidy libclang-dev cppcheck gcovr libgdbm-dev libgdbm-compat-dev shellcheck wget gnupg
           # Ubuntu's clang-format lags the pinned major; take it from apt.llvm.org.
-          required="$(tr -d '[:space:]' < scripts/clang-format-version.txt)"
+          required="$(grep -Ev '^[[:space:]]*(#|$)' scripts/clang-format-version.txt | head -n 1 | tr -d '[:space:]')"
+          required="${required#>=}"
           wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
           sudo bash /tmp/llvm.sh "$required"
           sudo apt-get install -y "clang-format-${required}"
           sudo ln -sf "/usr/bin/clang-format-${required}" /usr/local/bin/clang-format
       - name: Enforce clang-format major version
         run: |
-          required="$(tr -d '[:space:]' < scripts/clang-format-version.txt)"
+          required="$(grep -Ev '^[[:space:]]*(#|$)' scripts/clang-format-version.txt | head -n 1 | tr -d '[:space:]')"
+          required="${required#>=}"
           clang-format --version
           clang-format --version | grep -Eq "clang-format version ${required}\." \
             || { echo "::error::clang-format is not version ${required}"; exit 1; }
@@ -153,7 +156,8 @@ jobs:
           copyback: true
           prepare: |
             pkg install -y bash git cmake cppcheck python3 libxcrypt hs-ShellCheck
-            required="$(tr -d '[:space:]' < scripts/clang-format-version.txt 2>/dev/null || echo 22)"
+            required="$(grep -Ev '^[[:space:]]*(#|$)' scripts/clang-format-version.txt | head -n 1 | tr -d '[:space:]')"
+            required="${required#>=}"
             if pkg install -y "llvm${required}"; then
               ln -sf "/usr/local/llvm${required}/bin/clang-format" /usr/local/bin/clang-format
             else
@@ -173,7 +177,8 @@ jobs:
             status=0
             failed_phase=none
             mkdir -p ci-output
-            required="$(tr -d '[:space:]' < clang-format-version.txt)"
+            required="$(grep -Ev '^[[:space:]]*(#|$)' clang-format-version.txt | head -n 1 | tr -d '[:space:]')"
+            required="${required#>=}"
             clang-format --version | grep -Eq "clang-format version ${required}\." || {
               echo "clang-format is not version ${required}" > ci-output/clang-format-version.log
               cat ci-output/clang-format-version.log
