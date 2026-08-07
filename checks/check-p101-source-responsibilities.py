@@ -80,12 +80,37 @@ def gather_facts(document: dict[str, Any]) -> list[dict[str, Any]]:
                 admitted_roots.add(owner_root)
             if isinstance(roots, list):
                 admitted_roots.update(root for root in roots if isinstance(root, str))
-    admitted_roots.update(CONFIG_ROOTS)
-    try:
-        return acquire(
-            WORKSPACE,
-            (WORKSPACE / path for path in sorted(admitted_roots)),
+    admitted_paths = {WORKSPACE / path for path in admitted_roots}
+    # The dependency-edge check filters every fact through
+    # is_repository_production_path, so test, fuzz, and build trees under the
+    # config roots can never be judged. Admit only the production paths of
+    # each configured repository instead of the whole tree: the generated
+    # fault-wrapper test files dwarf the sources they test, and parsing them
+    # here bought nothing.
+    for root_name in CONFIG_ROOTS:
+        root = WORKSPACE / root_name
+        if not root.exists():
+            continue
+        configs = (
+            [root / "config.cmake"]
+            if root_name == "playgrounds"
+            else sorted(root.glob("*/config.cmake"))
         )
+        for config in configs:
+            if not config.is_file():
+                continue
+            repository = config.parent
+            for name in ("src", "include"):
+                candidate = repository / name
+                if candidate.is_dir():
+                    admitted_paths.add(candidate)
+            admitted_paths.update(
+                path
+                for path in repository.iterdir()
+                if path.is_file() and path.suffix in SOURCE_SUFFIXES
+            )
+    try:
+        return acquire(WORKSPACE, sorted(admitted_paths))
     except CFactError as error:
         raise ResponsibilityError(str(error)) from error
 
