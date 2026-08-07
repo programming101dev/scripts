@@ -32,7 +32,7 @@
       "url": "https://github.com/programming101dev/lib_io.git"
     },
     {
-      "commit": "3c2fe0c13197ac6c6ff70bd84591e32abc2c0269",
+      "commit": "d3ce9d44306be9a330e0e126ac7ef75a22303b20",
       "path": "../libraries/lib_filesystem",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_filesystem.git"
@@ -200,7 +200,7 @@
       "url": "https://github.com/programming101dev/p101-error-contract.git"
     },
     {
-      "commit": "4576b37b61d1e492196e9dbe259bf7c09decd298",
+      "commit": "5c06bdf0dc1fedd3d05d85ac225f3a3ed586de0c",
       "path": "../programs/p101-wrapper-audit",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-wrapper-audit.git"
@@ -230,7 +230,7 @@
       "url": "https://github.com/programming101dev/playgrounds.git"
     },
     {
-      "commit": "650c62282f008d1143ecbaa0977534e35fa64d25",
+      "commit": "53c78376717572d56f06e8746fa45615cfbf050b",
       "path": "../templates/template-c",
       "type": "c",
       "url": "https://github.com/programming101dev/template-c.git"
@@ -242,7 +242,7 @@
       "url": "https://github.com/programming101dev/template-c-program.git"
     },
     {
-      "commit": "54ca10245734df9af77e7938356134776df75ac3",
+      "commit": "a3ccb52f488a45e1cd7fe11d0d4c4bb992fcfaba",
       "path": "../templates/template-cxx",
       "type": "cxx",
       "url": "https://github.com/programming101dev/template-cpp.git"
