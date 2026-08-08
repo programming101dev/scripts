@@ -38,17 +38,17 @@ class BoundaryTests(unittest.TestCase):
             )
         self.assertGreater(report["matrix_cases"], 0)
 
-    def test_fact_decoder_requires_v6(self) -> None:
-        file_record = "P101FACT\t6\tFILE\ttest.c\ttest\t0\t0"
+    def test_fact_decoder_requires_v7(self) -> None:
+        file_record = "P101FACT\t7\tFILE\ttest.c\ttest\t0\t0"
         decoded_file = MODULE.c_facts.decode_lines([file_record])
         self.assertEqual(decoded_file[0]["kind"], "FILE")
         valid = (
-            "P101FACT\t6\tFUNCTION\ttest.c\ttest\t0\t1\tfunction\t1\t0"
+            "P101FACT\t7\tFUNCTION\ttest.c\ttest\t0\t1\tfunction\t1\t0"
             "\tc:@F@function\t0\t1"
         )
         self.assertEqual(len(MODULE.c_facts.decode_lines([valid])), 1)
-        invalid = valid.replace("P101FACT\t6\t", "P101FACT\t5\t", 1)
-        with self.assertRaisesRegex(MODULE.c_facts.CFactError, "v6"):
+        invalid = valid.replace("P101FACT\t7\t", "P101FACT\t6\t", 1)
+        with self.assertRaisesRegex(MODULE.c_facts.CFactError, "v7"):
             MODULE.c_facts.decode_lines([invalid])
 
     def test_duplicate_owner_is_rejected(self) -> None:

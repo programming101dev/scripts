@@ -102,8 +102,8 @@ class QualityContractTests(unittest.TestCase):
                 / "error.h"
             )
             facts.write_text(
-                f"P101FACT\t6\tENUM\t{source}\terror\t1\t50\tp101_error_type\tc:@E@p101_error_type\n"
-                f"P101FACT\t6\tENUMERATOR\t{source}\terror\t1\t52\tP101_ERROR_NONE\tp101_error_type\tc:@E@p101_error_type@P101_ERROR_NONE\tc:@E@p101_error_type\n",
+                f"P101FACT\t7\tENUM\t{source}\terror\t1\t50\tp101_error_type\tc:@E@p101_error_type\n"
+                f"P101FACT\t7\tENUMERATOR\t{source}\terror\t1\t52\tP101_ERROR_NONE\tp101_error_type\tc:@E@p101_error_type@P101_ERROR_NONE\tc:@E@p101_error_type\n",
                 encoding="utf-8",
             )
             observed = MODULE.discover_public_enums(facts_root)

@@ -17,6 +17,10 @@ from p101_lessons import (
     load_catalog,
 )
 
+DOCTOR_SCHEMA = "p101-doctor-v3"
+DOCTOR_RESULT_WORDS = ("clean", "findings", "trouble")
+DOCTOR_STATUS_KINDS = {"exit": "code", "status": "status", "signal": "signal"}
+
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create a self-contained HTML summary for a p101 check directory.")
@@ -60,19 +64,13 @@ def rel_link(root: Path, path: Path, label: str | None = None) -> str:
     return f'<a href="{esc(rel)}">{esc(text)}</a>'
 
 
-def status_class(status: object) -> str:
-    try:
-        value = int(status)
-    except (TypeError, ValueError):
-        return "unknown"
-    if value == 0:
-        return "pass"
-    if value == 1:
-        return "findings"
-    return "trouble"
-
-
 def status_word(status: object) -> str:
+    # p101-doctor writes each check as an object: {"kind": ..., "result": ...}.
+    if isinstance(status, dict):
+        result = status.get("result")
+        if result in DOCTOR_RESULT_WORDS:
+            return str(result)
+        return "unknown"
     try:
         value = int(status)
     except (TypeError, ValueError):
@@ -82,6 +80,26 @@ def status_word(status: object) -> str:
     if value == 1:
         return "findings"
     return "trouble"
+
+
+def status_class(status: object) -> str:
+    word = status_word(status)
+    if word == "clean":
+        return "pass"
+    if word in ("findings", "trouble"):
+        return word
+    return "unknown"
+
+
+def status_detail(status: object) -> str:
+    """Render the numeric part of a doctor status: exit code, wait status, or signal."""
+    if isinstance(status, dict):
+        kind = str(status.get("kind", ""))
+        number = status.get(DOCTOR_STATUS_KINDS.get(kind, ""))
+        if isinstance(number, int):
+            return f"{kind} {number}"
+        return kind or "unrecognized"
+    return str(status)
 
 
 def lesson_cell(finding: dict[str, Any]) -> str:
@@ -99,6 +117,14 @@ def lesson_cell(finding: dict[str, Any]) -> str:
 
 
 def doctor_status_table(doctor: dict[str, Any]) -> str:
+    if not doctor:
+        return "<p>No doctor status JSON was available.</p>"
+    schema = doctor.get("schema")
+    if schema != DOCTOR_SCHEMA:
+        return (
+            f'<p class="unknown">Unsupported doctor status schema: expected <code>{esc(DOCTOR_SCHEMA)}</code>, '
+            f"found <code>{esc(schema)}</code>. Re-run <code>p101 doctor</code> with a current build.</p>"
+        )
     statuses = doctor.get("statuses")
     if not isinstance(statuses, dict) or not statuses:
         return "<p>No doctor status JSON was available.</p>"
@@ -109,7 +135,7 @@ def doctor_status_table(doctor: dict[str, Any]) -> str:
         "<tbody>",
     ]
     for name, value in statuses.items():
-        rows.append(f'<tr><td><code>{esc(name)}</code></td><td class="{status_class(value)}">{esc(status_word(value))} ({esc(value)})</td></tr>')
+        rows.append(f'<tr><td><code>{esc(name)}</code></td><td class="{status_class(value)}">{esc(status_word(value))} ({esc(status_detail(value))})</td></tr>')
     rows.append("</tbody></table>")
     return "\n".join(rows)
 

@@ -79,8 +79,8 @@ def _decode(line: str, number: int) -> dict[str, object] | None:
     if not line.startswith("P101FACT\t"):
         return None
     fields = [_unescape(value) for value in line.split("\t")]
-    if len(fields) < 7 or fields[1] != "6":
-        raise CFactError(f"malformed P101FACT v6 record at output line {number}")
+    if len(fields) < 7 or fields[1] != "7":
+        raise CFactError(f"malformed P101FACT v7 record at output line {number}")
     base: dict[str, object] = {
         "kind": fields[2],
         "path": fields[3],
@@ -111,8 +111,12 @@ def _decode(line: str, number: int) -> dict[str, object] | None:
             start=int(fields[14]),
             end=int(fields[15]),
         )
-    elif fields[2] == "INCLUDE" and len(fields) == 9:
-        base.update(value=fields[7], is_local=fields[8] == "1")
+    elif fields[2] == "INCLUDE" and len(fields) == 10:
+        base.update(
+            value=fields[7],
+            is_local=fields[8] == "1",
+            resolved=fields[9],
+        )
     elif fields[2] in {"TYPE", "ENUM"} and len(fields) == 9:
         base.update(value=fields[7], usr=fields[8])
     elif fields[2] == "ENUMERATOR" and len(fields) == 11:
@@ -141,7 +145,7 @@ def _decode(line: str, number: int) -> dict[str, object] | None:
         )
     else:
         raise CFactError(
-            f"malformed {fields[2]} P101FACT v6 record at output line {number}"
+            f"malformed {fields[2]} P101FACT v7 record at output line {number}"
         )
     return base
 

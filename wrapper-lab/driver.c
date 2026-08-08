@@ -534,12 +534,14 @@ static bool run_positioned_short_io(const struct p101_env *env,
 
 static bool io_count_is_expected(const char *call_name, ssize_t actual,
                                  size_t full_count) {
-  const char *mode = getenv("P101_FAULT_MODE");
-  const char *target = getenv("P101_FAULT_NAME");
-  const char *amount_text = getenv("P101_FAULT_AMOUNT");
+  const char *mode_text = getenv(P101_ENV_FAULT_MODE_ENV);
+  const char *target = getenv(P101_ENV_FAULT_NAME_ENV);
+  const char *amount_text = getenv(P101_ENV_FAULT_AMOUNT_ENV);
+  p101_env_fault_mode mode;
 
-  if (mode != NULL && target != NULL && amount_text != NULL &&
-      strcmp(mode, "short") == 0 && strcmp(target, call_name) == 0) {
+  if (mode_text != NULL && target != NULL && amount_text != NULL &&
+      p101_env_fault_mode_from_name(mode_text, &mode) &&
+      mode == P101_ENV_FAULT_MODE_SHORT && strcmp(target, call_name) == 0) {
     char *end = NULL;
     unsigned long amount = strtoul(amount_text, &end, 10);
     return end != amount_text && *end == '\0' && actual >= 0 &&
