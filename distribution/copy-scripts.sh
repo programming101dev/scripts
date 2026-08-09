@@ -208,6 +208,14 @@ while IFS= read -r line || [ -n "$line" ]; do
   fi
 
   for s in $SYNC_SCRIPTS; do
+    # Consolidated category repositories run the canonical test harness plus
+    # component suites moved from retired repositories. Their test.sh is an
+    # intentional repository-owned conductor; every other helper stays shared.
+    case "$dest:$s" in
+      ../programs/p101-audit:test.sh|../programs/p101-test:test.sh)
+        [ "$VERBOSE" -eq 1 ] && printf 'Repository-owned: %s/%s\n' "$dest" "$s"
+        continue ;;
+    esac
     sync_one "$src" "$destdir" "$dest" "$s" x
   done
   for s in $SYNC_FILES; do

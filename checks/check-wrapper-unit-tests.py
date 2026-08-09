@@ -164,6 +164,7 @@ def main() -> int:
             if platform_record.get("status") not in {
                 "documented",
                 "no-manual",
+                "runtime-observed",
             }:
                 failures.append(
                     f"errno:{function}: invalid {required_platform} status"
@@ -184,7 +185,9 @@ def main() -> int:
                 and bool(posix.get("effective_errors", []))
             )
             expected_source_kind = (
-                "platform-manual"
+                "platform-runtime"
+                if platform_record.get("status") == "runtime-observed"
+                else "platform-manual"
                 if (
                     platform_record.get("status") == "documented"
                     and not platform_lacks_explicit_faults
@@ -211,7 +214,8 @@ def main() -> int:
                 )
             expected_source = (
                 platform_record.get("source")
-                if expected_source_kind == "platform-manual"
+                if expected_source_kind
+                in {"platform-manual", "platform-runtime"}
                 else posix.get("source")
             )
             if platform_record.get("effective_source") != expected_source:
@@ -308,6 +312,20 @@ def main() -> int:
             == "platform-manual"
             for binding in native_bindings
         )
+        runtime_functions = sum(
+            record["platforms"][required_platform][
+                "effective_source_kind"
+            ]
+            == "platform-runtime"
+            for record in errno_functions.values()
+        )
+        runtime_wrappers = sum(
+            errno_functions[binding["function"]]["platforms"][
+                required_platform
+            ]["effective_source_kind"]
+            == "platform-runtime"
+            for binding in native_bindings
+        )
         expected_coverage = {
             "authoritative_sources": sorted(
                 {
@@ -318,11 +336,15 @@ def main() -> int:
                 }
             ),
             "manual_override_functions": manual_functions,
-            "posix_fallback_functions": len(errno_functions)
-            - manual_functions,
+            "runtime_observation_functions": runtime_functions,
+            "posix_fallback_functions": (
+                len(errno_functions) - manual_functions - runtime_functions
+            ),
             "manual_override_wrappers": manual_wrappers,
-            "posix_fallback_wrappers": len(native_bindings)
-            - manual_wrappers,
+            "runtime_observation_wrappers": runtime_wrappers,
+            "posix_fallback_wrappers": (
+                len(native_bindings) - manual_wrappers - runtime_wrappers
+            ),
         }
         if platform_coverage.get(required_platform) != expected_coverage:
             failures.append(
@@ -731,7 +753,16 @@ def main() -> int:
             == "platform-manual"
             for binding in native_bindings
         )
-        fallback_count = len(native_bindings) - manual_count
+        runtime_count = sum(
+            errno_functions[binding["function"]]["platforms"][
+                reported_platform
+            ]["effective_source_kind"]
+            == "platform-runtime"
+            for binding in native_bindings
+        )
+        fallback_count = (
+            len(native_bindings) - manual_count - runtime_count
+        )
         projected_cases = sum(
             len(
                 injected_fault_cases(
@@ -789,6 +820,7 @@ def main() -> int:
         )
         print(
             f"{reported_platform}: {manual_count} wrapper manual overrides, "
+            f"{runtime_count} runtime observations, "
             f"{fallback_count} POSIX fallbacks; "
             f"documented fault outcomes {documented_cases}/"
             f"{documented_cases} across "

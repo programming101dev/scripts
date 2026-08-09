@@ -2,7 +2,7 @@
 # Run the p101 source-contract tools over every active wrapper library.
 #
 # Admitted inputs: active TUs from each library compile_commands.json, scanned
-# headers, and an optional checked-in .p101-wrapper-audit-allow file.
+# headers, and an optional checked-in .audit-wrappers-allow file.
 # Outputs: per-library wrapper-boundary, error-contract, and module-map
 # reports.
 # Blind spot: inactive platform sources and external library consumers are not
@@ -70,10 +70,10 @@ summary="$out_dir/summary.md"
 find_built_tool() { p101_find_built_tool "$1" "$2"; }
 find_compile_database() { p101_find_compile_database "$1"; }
 
-wrapper_audit="$programs_dir/p101-wrapper-audit/p101-wrapper-audit"
+wrapper_audit="$programs_dir/p101-audit/audit-wrappers"
 facts_cache_tool="$PWD/checks/p101-facts-cache.py"
-error_contract="$(find_built_tool "$programs_dir/p101-error-contract" p101-error-contract || true)"
-module_map="$(find_built_tool "$programs_dir/p101-module-map" p101-module-map || true)"
+error_contract="$(find_built_tool "$programs_dir/p101-audit" audit-errors || true)"
+module_map="$(find_built_tool "$programs_dir/p101-audit" audit-modules || true)"
 
 if [ ! -x "$wrapper_audit" ] || [ -z "$error_contract" ] || [ -z "$module_map" ]; then
   echo "Required p101 audit tools are not built. Build/update the programs first." >&2
@@ -115,11 +115,11 @@ run_library_audit() {
   fi
 
   wrapper_args=(--compile-db "$compile_db" --compile-db-only --facts-output "$repo_out/source-facts.tsv" --input-manifest "$repo_out/source-inputs.json" --instrumentation-output "$repo_out/instrumentation.json")
-  if [ -f "$repo/.p101-wrapper-audit-allow" ]; then
-    wrapper_args+=(--allow-file "$repo/.p101-wrapper-audit-allow")
+  if [ -f "$repo/.audit-wrappers-allow" ]; then
+    wrapper_args+=(--allow-file "$repo/.audit-wrappers-allow")
   fi
-  if [ -f "$repo/.p101-wrapper-audit-allow.$(uname -s)" ]; then
-    wrapper_args+=(--allow-file "$repo/.p101-wrapper-audit-allow.$(uname -s)")
+  if [ -f "$repo/.audit-wrappers-allow.$(uname -s)" ]; then
+    wrapper_args+=(--allow-file "$repo/.audit-wrappers-allow.$(uname -s)")
   fi
 
   wrapper_status="PASS"
@@ -147,14 +147,14 @@ run_library_audit() {
     fi
   fi
 
-  if ! (CDPATH='' cd "$repo" && "$error_contract" -j -i "$repo_out/source-facts.tsv" src include) > "$repo_out/error-contract.json" 2> "$repo_out/error-contract.stderr.txt"; then
+  if ! (CDPATH='' cd "$repo" && "$error_contract" -d:json -i "$repo_out/source-facts.tsv" src include) > "$repo_out/error-contract.json" 2> "$repo_out/error-contract.stderr.txt"; then
     error_status="FAIL"
   fi
 
   if ! (CDPATH='' cd "$repo" && "$module_map" -L -i "$repo_out/source-facts.tsv" -o "$repo_out/module-map.md" src include) > "$repo_out/module-map.stdout.txt" 2> "$repo_out/module-map.stderr.txt"; then
     module_status="FAIL"
   fi
-  if ! (CDPATH='' cd "$repo" && "$module_map" -j -L -i "$repo_out/source-facts.tsv" -o "$repo_out/module-map.json" src include) >> "$repo_out/module-map.stdout.txt" 2>> "$repo_out/module-map.stderr.txt"; then
+  if ! (CDPATH='' cd "$repo" && "$module_map" -d:json -L -i "$repo_out/source-facts.tsv" -o "$repo_out/module-map.json" src include) >> "$repo_out/module-map.stdout.txt" 2>> "$repo_out/module-map.stderr.txt"; then
     module_status="FAIL"
   fi
 

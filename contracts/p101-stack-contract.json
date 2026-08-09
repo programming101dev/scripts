@@ -36,14 +36,14 @@
       "sha256": "2ea1d796818e2e5abc4f1a0da537b902e2f6a55b0801f68789727df5ca4032c7"
     },
     {
-      "bytes": 13297,
+      "bytes": 13583,
       "path": "../playgrounds/lessons/manifest.json",
-      "sha256": "9e75e638c1f873d2d947556c94e7d6be7329043ed1118aa9b3bae908511f361a"
+      "sha256": "0175726fd72bcba77f41fc3a8d9ef882795b88a4d5490c8f64747283c7e8dd88"
     },
     {
-      "bytes": 72233,
+      "bytes": 73698,
       "path": "CMakeLists.txt",
-      "sha256": "8d17bedcec212f276abd400a97aecf0cdfc9d33c1be16ef8606ae1893e7cef29"
+      "sha256": "4ff38be3165e9ead85fdbc276cf0487ed09db1ba19c462196ab3d9b13a46ad21"
     },
     {
       "bytes": 13627,
@@ -61,9 +61,9 @@
       "sha256": "b9c31b37610864cc513b690bab734e2eaaf9dc60a217916139ad388dd320c101"
     },
     {
-      "bytes": 31245,
+      "bytes": 31236,
       "path": "checks/check-p101-quality-contract.py",
-      "sha256": "9c0f50b98f2e19cc7738d46f6e2e5afabd2bd3786415fe474ee12adbdeef727c"
+      "sha256": "9226ab7c70a86be5796acfe88f40f62ed776c2299cf9394feea172527149c543"
     },
     {
       "bytes": 22709,
@@ -81,9 +81,9 @@
       "sha256": "c6db1c3f1ab596c31550d0463438fd8119be2c787e353037b70bce76dff8b855"
     },
     {
-      "bytes": 34806,
+      "bytes": 36031,
       "path": "checks/check-wrapper-unit-tests.py",
-      "sha256": "5ae79df26314742d8f3480a2a747eda399399a01ea88f75f735650f4f23a16e4"
+      "sha256": "b4058dad172fb1765c80ef94ebae71eebd5909ec7a16cbb12a4e9ca786f3f4ff"
     },
     {
       "bytes": 56211,
@@ -91,9 +91,9 @@
       "sha256": "e4be6551e1bf8212922337a4fb8ed17756fcdb9819407f9e0df438c2e9767589"
     },
     {
-      "bytes": 7550,
+      "bytes": 7548,
       "path": "checks/p101-semantic-snapshot.py",
-      "sha256": "5a72931814ca63856b7fafd54e7edd75f80913b584c2dbda38a8dee6a8c9bc6e"
+      "sha256": "04d3398a9d8d8e9ac67e07de66e8fbde0c6757620e74bdc3180d5cb5cf66360d"
     },
     {
       "bytes": 14845,
@@ -136,14 +136,14 @@
       "sha256": "4406162c416a52b268d92af9dca630f805999af3b0b5bf463a202cb9afc2e394"
     },
     {
-      "bytes": 17071,
+      "bytes": 17057,
       "path": "contracts/p101-boundaries.json",
-      "sha256": "98d3cd6083e06e8bf965edfe66164b7ee0dc73f5ed8cfff07edbb6ec661f89af"
+      "sha256": "15517de986d872ea2ce7b2da54a1197e3118746fd326ee0698ad3617178f699c"
     },
     {
-      "bytes": 53493,
+      "bytes": 54202,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "1b7f2e3ba1835698d3f72f37ec49542d0a13442f87449b4f5503a2173939fdfc"
+      "sha256": "e2f49dc9af569cf22716263888c5abeb479e82c64360ce68f2f9315dee0be2ad"
     },
     {
       "bytes": 62722,
@@ -156,14 +156,14 @@
       "sha256": "0dfc17712b7896ef4fd8ab862d455f99f3158a6bcf09bc970279e50209b78a3b"
     },
     {
-      "bytes": 19515,
+      "bytes": 20430,
       "path": "contracts/p101-quality-contract.json",
-      "sha256": "d28796ee7af08cc7e70d594c4d1f6a0bd45c4fae07f86093b4d897d11007d435"
+      "sha256": "bb169a54b83a118617deb72e202114da0ca5bafe6d2f1b11231ab38f69611b2c"
     },
     {
-      "bytes": 2316,
+      "bytes": 2304,
       "path": "contracts/p101-source-responsibilities.json",
-      "sha256": "622cc57149f8a2e0317d2cc80227d5867a48778cad24dbb0b45b1a9baeff6fb1"
+      "sha256": "d451ef7a190fac6e1e45954ab35a2f6ef31ef56b9567984f8635e17708204681"
     },
     {
       "bytes": 2653,
@@ -201,9 +201,9 @@
       "sha256": "5c4b0f9573ae7265f7876a0237b45e1698cd0fb15cc75cf7b82eeb52f8c9e2ac"
     },
     {
-      "bytes": 2830205,
+      "bytes": 2830891,
       "path": "contracts/wrapper-platform-faults.json",
-      "sha256": "0ae25a657f02d3a22f33f92b1596b8e6146e127d6097ff0c8709a8957de67f54"
+      "sha256": "19440e96c0f3210c594661a663669f6daaf4c21193af4117e6fc58a8a5c52bfb"
     },
     {
       "bytes": 10792,
@@ -211,9 +211,9 @@
       "sha256": "2b49e18ff463e14b3c052b61895693a64c8386819545412697b5998e28c3cab1"
     },
     {
-      "bytes": 6439,
+      "bytes": 6434,
       "path": "docs/p101-tool-design-contract.md",
-      "sha256": "183bd0db024aa278bd0388e216a2d0e7b9ac5cdd85ffb06bf017abe341ccfd8e"
+      "sha256": "154a60da95a17701cde42282b9d9d61cf8f8d1a029061d4ae4b33bff91e2d794"
     },
     {
       "bytes": 159166,
@@ -231,29 +231,29 @@
       "sha256": "669b80c8415d1651f3de0df75c1ea5864f919c01a9ca5daf3216da7d8d12ee7c"
     },
     {
-      "bytes": 226998,
+      "bytes": 228275,
       "path": "generators/generate-wrapper-unit-tests.py",
-      "sha256": "0fd39263e07b77f737cf7ed49a52047b05a46c21c5ade12261c959e23eb40748"
+      "sha256": "857c77cb05af57962be96ee89d165ad7da5115b33227c3e81ef5bcf47ccde190"
     },
     {
-      "bytes": 39289,
+      "bytes": 41876,
       "path": "generators/refresh-wrapper-platform-faults.py",
-      "sha256": "2ba24cdbec5472c7908dda5e010506c2e757b1d8d7bc7ba98421e2a6264c0a5c"
+      "sha256": "78428e6736c0be00eaf9efcbc0e59b1795c5e78a6560e137a31ddee882c27f0b"
     },
     {
-      "bytes": 9510,
+      "bytes": 8647,
       "path": "repos.lock",
-      "sha256": "93a669a25741cc65dbb63b11f8d614133916542ddab50afcd4c08d2984182421"
+      "sha256": "abb93f7bed5f7adf8393c0e396dd7d469245f13907b08220c0a61f787e8c748f"
     },
     {
-      "bytes": 3743,
+      "bytes": 3368,
       "path": "repos.txt",
-      "sha256": "db51c5099139111b97efa75ef96e2ab1651be158974fa4ada38ec9e2e2d388b4"
+      "sha256": "b819e766d175258be6f81aa2f25520a661e64705c7dc4f610a76bff889e978df"
     },
     {
-      "bytes": 22578,
+      "bytes": 25392,
       "path": "runtime/c_facts.py",
-      "sha256": "757db09d7f38c4994f070faae3358e6b930a7c0b5e747d46c8d201abc760fdee"
+      "sha256": "cc5d3c201dc1e70146862675430191ab1222ee16063636e260846fae8c55872a"
     },
     {
       "bytes": 1383,
@@ -261,9 +261,9 @@
       "sha256": "e67d5dbf89b421bf23a91fa8091fd04d66b3e612767ff93899d29fdde3ba0ece"
     },
     {
-      "bytes": 6875,
+      "bytes": 7149,
       "path": "runtime/wrapper_fault_contract.py",
-      "sha256": "86590b4f73611651f8b682aa6d2dce3dc3fbd6fbd7bc4f0ef6d8ce6f2c4334f3"
+      "sha256": "ce42aa409485ba74b04a14bd7b4c39dc7e02574bb2f8599104969690fe76f8a7"
     },
     {
       "bytes": 2704,

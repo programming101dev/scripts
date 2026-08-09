@@ -119,17 +119,6 @@ while IFS= read -r manifest_line || [[ -n "$manifest_line" ]]; do
   append_repository_scripts "$workspace/scripts/$repository_path"
 done < "$repos_file"
 
-# p101 is a tracked shell entry point without a .sh suffix.
-if [[ -f "$workspace/scripts/p101" ]]; then
-  scripts_repository_root="$(git -C "$workspace/scripts" rev-parse --show-toplevel 2>/dev/null || true)"
-  if { [[ "$scripts_repository_root" == "$workspace/scripts" ]] \
-       && git -C "$workspace/scripts" ls-files --error-unmatch p101 >/dev/null 2>&1; } \
-     || { [[ -z "$scripts_repository_root" ]] \
-          && [[ -f "$workspace/scripts/repos.txt" ]] \
-          && [[ -f "$workspace/scripts/check-after-update-all.sh" ]]; }; then
-    scripts+=("$workspace/scripts/p101")
-  fi
-fi
 if [[ "$discovery_failures" -gt 0 ]]; then
   echo "Shell-script discovery failed: $discovery_failures problem(s)." >&2
   exit 1

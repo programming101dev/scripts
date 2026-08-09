@@ -559,6 +559,35 @@ if (_SAN_OK AND _FLAG_DIRS_USED)
         endif ()
     endforeach ()
 elseif (_REQ_SAN_LIST AND NOT _SAN_OK)
+    # Platform policy may prevent us from enabling an otherwise supported
+    # sanitizer combination (notably GNU sanitizers on macOS).  It must not,
+    # however, turn an unknown or unprobed explicit request into a silent
+    # success.  Validate every requested cache entry before applying the
+    # platform-wide disablement.
+    foreach (_s IN LISTS _REQ_SAN_LIST)
+        string(STRIP "${_s}" _s)
+        if (_s STREQUAL "")
+            continue()
+        endif ()
+        string(TOLOWER "${_s}" _san)
+        set(_file "${_FLAG_DIRS_USED}/${_san}_sanitizer_flags.txt")
+        _p101_read_flags("${_file}" _sanflags)
+        if (NOT _sanflags)
+            if (P101_ALLOW_MISSING_SANITIZERS)
+                message(WARNING
+                        "Requested sanitizer '${_san}' has no usable probed flags in "
+                        "${_FLAG_DIRS_USED}; P101_ALLOW_MISSING_SANITIZERS is ON, "
+                        "so this sanitizer will not be enabled.")
+            else ()
+                message(FATAL_ERROR
+                        "Requested sanitizer '${_san}' has no usable probed flags in "
+                        "${_FLAG_DIRS_USED}. Re-probe the flag cache with update.sh, "
+                        "remove the unsupported sanitizer from SANITIZER_LIST, or set "
+                        "P101_ALLOW_MISSING_SANITIZERS=ON only for an explicit "
+                        "bring-up build.")
+            endif ()
+        endif ()
+    endforeach ()
     message(STATUS
             "Requested sanitizers are disabled by the supported platform policy "
             "for ${_COMPILER_ID} on this host.")

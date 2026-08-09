@@ -60,10 +60,10 @@ last_build_tool() {
   p101_find_built_tool "$1" "$2"
 }
 
-observe="$(find_tool P101_OBSERVE \
-  "$(last_build_tool ../programs/p101-observe p101-observe)" \
-  ../programs/p101-observe/build-clang-22/p101-observe \
-  ../programs/p101-observe/build-clang/p101-observe p101-observe)"
+observe="$(find_tool P101_INSPECT_CAPTURE \
+  "$(last_build_tool ../programs/p101-inspect inspect-capture)" \
+  ../programs/p101-inspect/build-clang-22/inspect-capture \
+  ../programs/p101-inspect/build-clang/inspect-capture inspect-capture)"
 model_tool="$(find_tool P101_EVENT_MODEL \
   "$(last_build_tool ../libraries/lib_tool_event p101-event-model)" \
   ../libraries/lib_tool_event/build-clang-22/p101-event-model \

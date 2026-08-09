@@ -18,7 +18,7 @@ PLATFORM_KEYS = {
 def load_contract(path: Path) -> dict[str, Any]:
     """Load the checked-in contract and reject an incompatible schema."""
     contract = json.loads(path.read_text(encoding="utf-8"))
-    if contract.get("schema") != "p101-wrapper-platform-faults-v2":
+    if contract.get("schema") != "p101-wrapper-platform-faults-v3":
         raise ValueError("unsupported wrapper platform-fault contract")
     return contract
 
@@ -44,7 +44,8 @@ def has_explicit_platform_faults(
     platform_record = record.get("platforms", {}).get(platform_key)
     if (
         platform_record is None
-        or platform_record.get("status") != "documented"
+        or platform_record.get("status")
+        not in {"documented", "runtime-observed"}
     ):
         return False
     if platform_record.get("errors", []):
@@ -104,11 +105,13 @@ def effective_fault_selection(
     )
     if (
         platform_record is not None
-        and platform_record.get("status") == "documented"
+        and platform_record.get("status")
+        in {"documented", "runtime-observed"}
     ):
         posix = record["posix"]
         platform_lacks_explicit_faults = (
-            not has_explicit_platform_faults(
+            platform_record.get("status") == "documented"
+            and not has_explicit_platform_faults(
                 contract,
                 function,
                 platform_key,
@@ -143,8 +146,12 @@ def effective_fault_selection(
         return (
             platform_errors,
             "errno",
-            "platform-manual",
-            platform_record.get("source"),
+            platform_record.get(
+                "effective_source_kind",
+                "platform-manual",
+            ),
+            platform_record.get("effective_source")
+            or platform_record.get("source"),
             "exhaustive-symbolic",
         )
     posix = record["posix"]

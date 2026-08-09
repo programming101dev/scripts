@@ -61,13 +61,13 @@ then
     exit 2
 fi
 
-observe_repository=$script_root/../programs/p101-observe
+observe_repository=$script_root/../programs/p101-inspect
 event_repository=$script_root/../libraries/lib_tool_event
-observe=$(find_tool P101_OBSERVE \
-    "$(last_build_tool "$observe_repository" p101-observe)" \
-    "$observe_repository/build-clang-22/p101-observe" \
-    "$observe_repository/build-clang/p101-observe" \
-    p101-observe || true)
+observe=$(find_tool P101_INSPECT_CAPTURE \
+    "$(last_build_tool "$observe_repository" inspect-capture)" \
+    "$observe_repository/build-clang-22/inspect-capture" \
+    "$observe_repository/build-clang/inspect-capture" \
+    inspect-capture || true)
 verifier=$(find_tool P101_TOOL_RECEIPT \
     "$(last_build_tool "$event_repository" p101-tool-receipt)" \
     "$event_repository/build-clang-22/p101-tool-receipt" \
@@ -75,7 +75,7 @@ verifier=$(find_tool P101_TOOL_RECEIPT \
     p101-tool-receipt || true)
 if [ -z "$observe" ] || [ -z "$verifier" ]
 then
-    printf 'Required tools are unavailable: p101-observe=%s p101-tool-receipt=%s\n' \
+    printf 'Required tools are unavailable: inspect-capture=%s p101-tool-receipt=%s\n' \
         "${observe:-missing}" "${verifier:-missing}" >&2
     exit 2
 fi
@@ -85,7 +85,7 @@ mkdir -p "$output"
 "$verifier" verify "$output/capture/tool-receipt.json"
 
 cp "$output/capture/tool-receipt.json" "$output/tampered-receipt.json"
-sed 's/"p101-observe"/"p101-Observe"/' \
+sed 's/"inspect-capture"/"inspect-Capture"/' \
     "$output/tampered-receipt.json" >"$output/tampered-receipt.next"
 mv "$output/tampered-receipt.next" "$output/tampered-receipt.json"
 if "$verifier" verify "$output/tampered-receipt.json" \

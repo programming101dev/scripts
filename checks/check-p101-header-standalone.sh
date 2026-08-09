@@ -61,6 +61,12 @@ flags=(-std=c17 -fsyntax-only -Wall -Wextra -Werror -D_POSIX_C_SOURCE=200809L -D
 case "$(uname -s)" in
   Darwin)
     flags+=(-D_DARWIN_C_SOURCE)
+    if command -v xcrun >/dev/null 2>&1; then
+      sdk_path="$(xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
+      if [ -n "$sdk_path" ] && [ -d "$sdk_path" ]; then
+        flags+=(-isysroot "$sdk_path")
+      fi
+    fi
     ;;
   *)
     :

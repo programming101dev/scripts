@@ -6,7 +6,7 @@
 #   2. strict-build wrapper libraries and tools/templates from repos.txt;
 #   3. prove fresh template instances are self-contained;
 #   4. run the tool playground tour, including observe/resource/trace/report and
-#      error-path walking through p101-doctor.
+#      error-path walking through audit-doctor.
 
 set -euo pipefail
 unset CDPATH
@@ -25,7 +25,6 @@ skip_repo_build=0
 skip_install=0
 skip_templates=0
 skip_playground=0
-skip_p101_check=0
 skip_corpus=0
 skip_lab=0
 template_no_tests=0
@@ -40,7 +39,7 @@ usage() {
 Usage: ./check-p101-stack.sh [options]
 
 Runs the p101 acceptance stack: repo builds, standalone template
-instantiation/build, and the p101-tool-playground tour including p101-doctor.
+instantiation/build, and the p101-tool-playground tour including audit-doctor.
 
 Options:
   -c <cc>          C compiler. Default: clang.
@@ -57,7 +56,6 @@ Options:
   --skip-install        Build repos but do not run each repo's install.sh.
   --skip-templates      Do not run check-templates-standalone.sh.
   --skip-playground     Do not run p101-tool-playground/tour.sh.
-  --skip-p101-check     Do not run the p101 check golden-path smoke.
   --skip-corpus         Do not run the p101-tool-playground corpus smoke.
   --skip-lab            Do not run the p101-tool-playground lab-book smoke.
   --template-no-tests   Build fresh template instances but skip their tests.
@@ -85,7 +83,6 @@ while [ "$#" -gt 0 ]; do
     --skip-install) skip_install=1; shift ;;
     --skip-templates) skip_templates=1; shift ;;
     --skip-playground) skip_playground=1; shift ;;
-    --skip-p101-check) skip_p101_check=1; shift ;;
     --skip-corpus) skip_corpus=1; shift ;;
     --skip-lab) skip_lab=1; shift ;;
     --template-no-tests) template_no_tests=1; shift ;;
@@ -98,28 +95,6 @@ done
 
 resolve_compiler() {
   p101_resolve_compiler "$1" compiler_paths.txt
-}
-
-playground_program() {
-  build_dir=""
-  marker="../playgrounds/.last-build-dir"
-  if [ ! -f "$marker" ]; then
-    marker="../playgrounds/.last-runtime-build-dir"
-  fi
-  if [ -f "$marker" ]; then
-    IFS= read -r build_dir < "$marker"
-    if [ -x "../playgrounds/$build_dir/p101-tool-playground" ]; then
-      printf './%s/p101-tool-playground\n' "$build_dir"
-      return 0
-    fi
-  fi
-  for build_dir in build-clang-22 build-clang build-gcc; do
-    if [ -x "../playgrounds/$build_dir/p101-tool-playground" ]; then
-      printf './%s/p101-tool-playground\n' "$build_dir"
-      return 0
-    fi
-  done
-  return 1
 }
 
 cc="$(resolve_compiler "$cc")"
@@ -177,45 +152,11 @@ run_logged() {
   fi
 }
 
-run_logged_expect() {
-  title="$1"
-  log="$2"
-  expected="$3"
-  shift 3
-
-  say "==> $title"
-  {
-    printf '$'
-    for arg in "$@"; do
-      printf ' %s' "$arg"
-    done
-    printf '\n\n'
-  } > "$log"
-
-  set +e
-  "$@" >> "$log" 2>&1
-  rc=$?
-  set -e
-
-  for ok in $expected; do
-    if [ "$rc" -eq "$ok" ]; then
-      say "    PASS (exit $rc)"
-      return 0
-    fi
-  done
-
-  say "    FAIL (exit $rc; see $log)"
-  say "    --- failure log ---"
-  cat "$log" || true
-  say "    --- end failure log ---"
-  return "$rc"
-}
-
 say "p101 stack check output: $out_dir"
 
-run_logged "finding-to-lesson curriculum completeness" "$log_dir/p101-lessons.log" ./p101 lessons check
+run_logged "finding-to-lesson curriculum completeness" "$log_dir/p101-lessons.log" ./runtime/p101_lessons.py check
 run_logged "executable lesson acceptance (quick)" "$log_dir/p101-lessons-acceptance.log" \
-  ./p101 lessons verify --quick -o "$out_dir/lesson-acceptance"
+  ./runtime/p101_lessons.py verify --quick -o "$out_dir/lesson-acceptance"
 
 if [ "$skip_repo_build" -eq 0 ]; then
   build_args=(-c "$cc" -x "$cxx" -f "$clang_format" -t "$clang_tidy" -k "$cppcheck")
@@ -261,20 +202,10 @@ else
   say "    SKIP"
 fi
 
-if [ "$skip_p101_check" -eq 0 ]; then
-  p101_check_out="$out_dir/p101-check"
-  reset_child_dir "$p101_check_out"
-  playground_binary="$(playground_program)" || { say "    FAIL (no built p101-tool-playground found)"; exit 2; }
-  run_logged_expect "p101 check full-source smoke" "$log_dir/p101-check.log" "0 1" ./p101 check --skip-quality -p ../playgrounds -s src -n "$fault_count" -o "$p101_check_out" -- "$playground_binary" -s tour
-else
-  say "==> p101 check full-source smoke"
-  say "    SKIP"
-fi
-
 if [ "$skip_corpus" -eq 0 ]; then
   corpus_out="$out_dir/p101-corpus"
   reset_child_dir "$corpus_out"
-  run_logged "p101-tool-playground corpus smoke" "$log_dir/p101-corpus.log" ./p101 corpus --quick -o "$corpus_out"
+  run_logged "p101-tool-playground corpus smoke" "$log_dir/p101-corpus.log" ../playgrounds/corpus.sh --quick -o "$corpus_out"
 else
   say "==> p101-tool-playground corpus smoke"
   say "    SKIP"
@@ -283,7 +214,7 @@ fi
 if [ "$skip_lab" -eq 0 ]; then
   lab_out="$out_dir/p101-lab"
   reset_child_dir "$lab_out"
-  run_logged "p101-tool-playground lab-book smoke" "$log_dir/p101-lab.log" ./p101 lab --quick --strict-corpus -o "$lab_out"
+  run_logged "p101-tool-playground lab-book smoke" "$log_dir/p101-lab.log" ../playgrounds/lab.sh --quick --strict-corpus -o "$lab_out"
 else
   say "==> p101-tool-playground lab-book smoke"
   say "    SKIP"

@@ -196,6 +196,15 @@ def test_platform_precedence() -> None:
                         "effective_errors": ["EACCES", "EINTR"],
                         "source": None,
                     },
+                    "macos": {
+                        "status": "runtime-observed",
+                        "errors": ["ENOSYS"],
+                        "references": [],
+                        "effective_errors": ["ENOSYS"],
+                        "effective_source_kind": "platform-runtime",
+                        "effective_source": "native-smoke://open",
+                        "source": "native-smoke://open",
+                    },
                 },
             },
             "voidish": {
@@ -241,6 +250,16 @@ def test_platform_precedence() -> None:
     check(kind == "posix-fallback", "fallback source kind is wrong")
     check(source == "posix://open", "fallback source is wrong")
     check(coverage == "exhaustive-symbolic", "fallback coverage is wrong")
+    errors, domain, kind, source, coverage = effective_fault_selection(
+        contract,
+        "open",
+        "macos",
+    )
+    check(errors == ["ENOSYS"], "runtime-observed errno was not selected")
+    check(domain == "errno", "runtime-observed errno domain was lost")
+    check(kind == "platform-runtime", "runtime source kind is wrong")
+    check(source == "native-smoke://open", "runtime source is wrong")
+    check(coverage == "exhaustive-symbolic", "runtime coverage is wrong")
     check(
         injected_fault_cases(contract, "voidish", "linux") == ["EIO"],
         "empty documented set must retain one instrumentation smoke case",

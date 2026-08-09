@@ -775,6 +775,23 @@ def argument_expression(
         return "arguments"
     if "va_list" in qualified or "va_list" in desugared:
         return "arguments"
+    if (
+        declaration is not None
+        and any(
+            child.get("kind") == "FormatAttr"
+            for child in declaration.get("inner", [])
+        )
+        and "*" in qualified
+        and re.search(r"\bconst\b", qualified)
+        and re.search(r"\bchar\s*\*", qualified)
+    ):
+        # Clang's JSON AST preserves the semantic FormatAttr but omits its
+        # parameter indexes.  A non-null literal with no conversions is valid
+        # for every const-char input of the admitted formatted APIs (including
+        # the source operand of sscanf and strftime formats).  Keeping it
+        # non-empty also satisfies GCC's -Wformat-zero-length without relying
+        # on a parameter name.
+        return '"x"'
     if "*" in qualified or "[" in qualified:
         return "NULL"
     if qualified in PORTABLE_ZERO_TYPEDEFS:
@@ -1316,11 +1333,11 @@ def writable_fixture(
         return [], "arguments", []
     qualified = parameter.get("type", {}).get("qualType", "")
     if "*" not in qualified or "(*" in qualified:
-        return [], argument_expression(parameter), []
+        return [], argument_expression(parameter, declaration), []
     pointee, _separator, _tail = qualified.rpartition("*")
     pointee = re.sub(r"\brestrict\b", "", pointee).strip()
     if re.search(r"\bconst\b", pointee):
-        return [], argument_expression(parameter), []
+        return [], argument_expression(parameter, declaration), []
     name = f"argument_{index}"
     if pointee == "void":
         declarations = [
@@ -1627,6 +1644,18 @@ def native_contract_fixture(
         parameter.get("type", {}).get("qualType", "")
     )
     fixture = f"native_argument_{index}"
+
+    two_timespec_parameters = {
+        ("c:@F@p101_futimens", 3),
+        ("c:@F@p101_utimensat", 4),
+    }
+    if (function_usr, index) in two_timespec_parameters:
+        # C adjusts `const struct timespec times[2]` to a pointer in the AST.
+        # The public API identity and parameter position retain the semantic
+        # two-element extent that the native smoke fixture must provide.
+        return [
+            f"            struct timespec {fixture}[2] = {{{{0}}, {{0}}}};"
+        ], fixture, [], []
 
     temporary_name_apis = {
         "c:@F@p101_mkdtemp",

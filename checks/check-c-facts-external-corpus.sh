@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reproducible external stress corpus for lib_c_facts/p101-c-facts.
+# Reproducible external stress corpus for lib_c_facts/audit-facts.
 
 set -euo pipefail
 unset CDPATH
@@ -21,14 +21,14 @@ usage() {
   cat <<'USAGE'
 Usage: ./check-c-facts-external-corpus.sh [options]
 
-Fetch pinned external C/C++ sources and stress p101-c-facts over five cohorts:
+Fetch pinned external C/C++ sources and stress audit-facts over five cohorts:
 10 mature C projects, 10 mature C++ projects, 10 intentionally poor C cases,
 10 intentionally poor C++ cases, and 10 IOCCC entries.
 
 Options:
   -o, --output DIR       artifact directory (default: a temporary directory)
   --cache DIR            persistent source cache
-  --facts-tool PATH      p101-c-facts executable or launcher
+  --facts-tool PATH      audit-facts executable or launcher
   --clang PATH           Clang driver used to derive builtin/system context
   --cohort NAME          run only one cohort
   --case NAME            run only one case
@@ -164,14 +164,14 @@ if [ "$validate_only" -eq 1 ]; then
 fi
 
 if [ -z "$facts_tool" ]; then
-  facts_tool="../programs/p101-wrapper-audit/p101-c-facts"
+  facts_tool="../programs/p101-audit/audit-facts"
 fi
 case "$facts_tool" in
   /*) ;;
   *) facts_tool="$(CDPATH='' cd -P "$(dirname -- "$facts_tool")" && pwd -P)/$(basename -- "$facts_tool")" ;;
 esac
 if [ ! -x "$facts_tool" ]; then
-  echo "p101-c-facts is not executable: $facts_tool" >&2
+  echo "audit-facts is not executable: $facts_tool" >&2
   exit 2
 fi
 if [ -z "$facts_clang" ]; then
@@ -188,7 +188,7 @@ if [ "$(uname -s)" = "Darwin" ] && command -v xcrun >/dev/null 2>&1; then
 fi
 
 if [ -z "$out_dir" ]; then
-  out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-c-facts-external.XXXXXX")"
+  out_dir="$(mktemp -d "${TMPDIR:-/tmp}/audit-facts-external.XXXXXX")"
 fi
 out_dir="$(mkdir -p "$out_dir" && CDPATH='' cd -P "$out_dir" && pwd -P)"
 cache_dir="$(mkdir -p "$cache_dir/repos" && CDPATH='' cd -P "$cache_dir" && pwd -P)"
@@ -197,7 +197,7 @@ summary="$out_dir/summary.md"
 
 printf 'status\tcohort\tcase_id\trepository\trevision\tsources\tsource_macros\ttool_status\tfacts\tfiles\tincludes\tfunctions\tcalls\ttypes\temitted_macros\tnotes\n' > "$results"
 cat > "$summary" <<'EOF'
-# p101-c-facts external corpus
+# audit-facts external corpus
 
 Every case must emit facts without crashing. Missing generated/build context
 is retained as an explicit partial result rather than hidden.

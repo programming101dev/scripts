@@ -50,6 +50,28 @@ PLATFORM_ERROR_OVERRIDES = {
     },
 }
 
+# Platform manuals remain authoritative when they describe an interface, but
+# an exported interface can still be a runtime stub whose only observable
+# outcome is absent from both that platform's manuals and POSIX.  Keep those
+# native-smoke observations explicit rather than teaching the generated tests
+# to skip an undeclared result.
+PLATFORM_RUNTIME_OBSERVATIONS = {
+    ("macos", "mlockall"): {
+        "errors": ["ENOSYS"],
+        "source": "p101-native-smoke://macos/libsystem",
+        "reason": (
+            "Darwin exports mlockall but the native runtime reports ENOSYS."
+        ),
+    },
+    ("macos", "munlockall"): {
+        "errors": ["ENOSYS"],
+        "source": "p101-native-smoke://macos/libsystem",
+        "reason": (
+            "Darwin exports munlockall but the native runtime reports ENOSYS."
+        ),
+    },
+}
+
 
 def atomic_write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -871,7 +893,10 @@ def explicit_platform_errors(
         return set()
     function_record = records_by_function[function]
     platform_record = function_record["platforms"].get(platform_name)
-    if platform_record is None or platform_record["status"] != "documented":
+    if platform_record is None or platform_record["status"] not in {
+        "documented",
+        "runtime-observed",
+    }:
         return set()
     effective = set(platform_record["errors"])
     for reference in platform_record.get("references", []):
@@ -1023,6 +1048,20 @@ def main() -> int:
                 args.platform
             ] = refreshed
 
+    for (platform_name, function), observation in (
+        PLATFORM_RUNTIME_OBSERVATIONS.items()
+    ):
+        if function not in records_by_function:
+            continue
+        records_by_function[function]["platforms"][platform_name] = {
+            "status": "runtime-observed",
+            "source": observation["source"],
+            "source_path": None,
+            "errors": observation["errors"],
+            "references": [],
+            "reviewed_observation": observation["reason"],
+        }
+
     for function in functions:
         posix = records_by_function[function]["posix"]
         posix["effective_errors"] = sorted(
@@ -1065,7 +1104,11 @@ def main() -> int:
                 and "reviewed_override" not in platform_value
                 and bool(posix["effective_errors"])
             )
-            if (
+            if platform_value["status"] == "runtime-observed":
+                platform_value["effective_source_kind"] = "platform-runtime"
+                platform_value["effective_source"] = platform_value["source"]
+                platform_value["effective_source_path"] = None
+            elif (
                 platform_value["status"] == "documented"
                 and not platform_requires_posix_fallback
             ):
@@ -1113,6 +1156,18 @@ def main() -> int:
             == "platform-manual"
             for function in native_wrapper_functions
         )
+        runtime_functions = sum(
+            record["platforms"][platform_name]["effective_source_kind"]
+            == "platform-runtime"
+            for record in records_by_function.values()
+        )
+        runtime_wrapper_count = sum(
+            records_by_function[function]["platforms"][platform_name][
+                "effective_source_kind"
+            ]
+            == "platform-runtime"
+            for function in native_wrapper_functions
+        )
         sources = sorted(
             {
                 record["platforms"][platform_name]["source"]
@@ -1123,10 +1178,17 @@ def main() -> int:
         platform_coverage[platform_name] = {
             "authoritative_sources": sources,
             "manual_override_functions": manual_functions,
-            "posix_fallback_functions": len(functions) - manual_functions,
+            "runtime_observation_functions": runtime_functions,
+            "posix_fallback_functions": (
+                len(functions) - manual_functions - runtime_functions
+            ),
             "manual_override_wrappers": manual_wrapper_count,
-            "posix_fallback_wrappers": len(native_wrapper_functions)
-            - manual_wrapper_count,
+            "runtime_observation_wrappers": runtime_wrapper_count,
+            "posix_fallback_wrappers": (
+                len(native_wrapper_functions)
+                - manual_wrapper_count
+                - runtime_wrapper_count
+            ),
         }
     system_faults: dict[str, Any] = {}
     for function, specification in sorted(SYSTEM_FAULT_CODES.items()):
@@ -1185,7 +1247,7 @@ def main() -> int:
             "platforms": platform_values,
         }
     contract = {
-        "schema": "p101-wrapper-platform-faults-v2",
+        "schema": "p101-wrapper-platform-faults-v3",
         "standard": {
             "name": "POSIX.1-2024",
             "function_index": POSIX_INDEX_URL,
@@ -1193,7 +1255,10 @@ def main() -> int:
         },
         "platform_precedence": (
             "A documented platform manual replaces the POSIX set on that "
-            "platform; POSIX is the fallback when no platform manual exists."
+            "platform; POSIX is the fallback when no platform manual exists; "
+            "a reviewed native-runtime observation replaces either when an "
+            "exported platform interface reports an otherwise undocumented "
+            "stub outcome."
         ),
         "platform_coverage": platform_coverage,
         "errno_names": sorted(errno_names),

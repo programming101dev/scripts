@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# p101-check.sh — one-command student feedback workflow.
+# student-workflow.sh — one-command student feedback workflow.
 
 set -u
 set -o pipefail
 
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 workspace_dir="$(CDPATH='' cd -- "$script_dir/../.." && pwd)"
-invoke_cwd="${P101_DISPATCH_CWD:-$(pwd)}"
+invoke_cwd="${P101_INVOCATION_CWD:-$(pwd)}"
 
 out_dir=""
 source_path="."
@@ -20,23 +20,23 @@ skip_bundle=0
 
 usage() {
   cat <<'USAGE'
-Usage: p101 check [options] [<source-path>] -- <command> [args...]
-       p101 check [options] <command> [args...]
+Usage: student-workflow.sh [options] [<source-path>] -- <command> [args...]
+       student-workflow.sh [options] <command> [args...]
 
 Run the golden-path p101 teaching workflow:
   1. project quality gate via ./check.sh when present;
-  2. p101-doctor source/module preflight;
+  2. audit-doctor source/module preflight;
   3. one capture and one shared-model runtime analysis;
   4. systematic error-path walking;
   5. optional coverage receipt;
   6. one top-level HTML report and bug bundle.
 
 Options:
-  -o <dir>          Output directory. Default: ./p101-check-<pid>
-  -s <path>         Source path passed to p101-doctor. Default: .
+  -o <dir>          Output directory. Default: ./student-workflow-<pid>
+  -s <path>         Source path passed to audit-doctor. Default: .
   -p <dir>          Project directory for check.sh/coverage-report.sh. Default: caller cwd.
-  -n <count>        Fault-injection cases for p101-error-path-walk. Default: 16
-  -x                Skip static source-contract checks inside p101-doctor.
+  -n <count>        Fault-injection cases for test-faults. Default: 16
+  -x                Skip static source-contract checks inside audit-doctor.
   --skip-quality    Do not run ./check.sh before doctor.
   --coverage        Also run ./coverage-report.sh --no-open when available.
   --skip-html       Do not render HTML reports.
@@ -46,9 +46,9 @@ Options:
 Tool locations may be overridden with the usual P101_* environment variables.
 
 Examples:
-  p101 check -s src -- ./build-clang/my-program input.txt
-  p101 check ./src -- ./build-clang/my-program
-  p101 check --skip-quality -n 32 -- ./my-program
+  ./runtime/student-workflow.sh -s src -- ./build-clang/my-program input.txt
+  ./runtime/student-workflow.sh ./src -- ./build-clang/my-program
+  ./runtime/student-workflow.sh --skip-quality -n 32 -- ./my-program
 USAGE
 }
 
@@ -162,15 +162,15 @@ if [ "$#" -eq 0 ]; then
 fi
 
 project_dir="$(CDPATH='' cd -P "$project_dir" && pwd -P)" || {
-  echo "p101 check: project directory does not exist: $project_dir" >&2
+  echo "student workflow: project directory does not exist: $project_dir" >&2
   exit 2
 }
-# p101 check becomes the boundary for its nested capture and fault-walk tools.
+# student workflow becomes the boundary for its nested capture and fault-walk tools.
 # Relative command paths belong to the selected project, not to the directory
-# from which the top-level dispatcher found this script.
-export P101_DISPATCH_CWD="$project_dir"
+# from which the top-level workflow found this script.
+export P101_INVOCATION_CWD="$project_dir"
 if [ -z "$out_dir" ]; then
-  out_dir="$(mktemp -d "$project_dir/p101-check.XXXXXX")"
+  out_dir="$(mktemp -d "$project_dir/student-workflow.XXXXXX")"
   generated_out_dir=1
 else
   generated_out_dir=0
@@ -181,7 +181,7 @@ case "$out_dir" in
 esac
 
 if [ "$generated_out_dir" -eq 0 ] && [ -e "$out_dir" ]; then
-  echo "p101 check: output path already exists: $out_dir" >&2
+  echo "student workflow: output path already exists: $out_dir" >&2
   exit 2
 fi
 
@@ -190,13 +190,13 @@ out_dir="$(CDPATH='' cd -P "$out_dir" && pwd -P)"
 log_dir="$out_dir/logs"
 summary="$out_dir/summary.md"
 
-doctor_tool="$(find_tool P101_DOCTOR "$(last_build_tool "$workspace_dir/programs/p101-doctor" p101-doctor)" "$workspace_dir/programs/p101-doctor/build-clang-22/p101-doctor" "$workspace_dir/programs/p101-doctor/build-clang/p101-doctor" p101-doctor)" || { echo "p101 check: p101-doctor not found" >&2; exit 2; }
-wrapper_tool="$(find_tool P101_WRAPPER_AUDIT "$workspace_dir/programs/p101-wrapper-audit/p101-wrapper-audit" p101-wrapper-audit)" || { echo "p101 check: p101-wrapper-audit not found" >&2; exit 2; }
-error_contract_tool="$(find_tool P101_ERROR_CONTRACT "$workspace_dir/programs/p101-error-contract/build-clang-22/p101-error-contract" "$workspace_dir/programs/p101-error-contract/build-clang/p101-error-contract" "$(last_build_tool "$workspace_dir/programs/p101-error-contract" p101-error-contract)" p101-error-contract)" || { echo "p101 check: p101-error-contract not found" >&2; exit 2; }
-module_tool="$(find_tool P101_MODULE_MAP "$workspace_dir/programs/p101-module-map/build-clang-22/p101-module-map" "$workspace_dir/programs/p101-module-map/build-clang/p101-module-map" "$(last_build_tool "$workspace_dir/programs/p101-module-map" p101-module-map)" p101-module-map)" || { echo "p101 check: p101-module-map not found" >&2; exit 2; }
-observe_tool="$(find_tool P101_OBSERVE "$workspace_dir/programs/p101-observe/build-clang-22/p101-observe" "$workspace_dir/programs/p101-observe/build-clang/p101-observe" "$(last_build_tool "$workspace_dir/programs/p101-observe" p101-observe)" p101-observe)" || { echo "p101 check: p101-observe not found" >&2; exit 2; }
-walk_tool="$(find_tool P101_ERROR_PATH_WALK "$workspace_dir/programs/p101-error-path-walk/build-clang-22/p101-error-path-walk" "$workspace_dir/programs/p101-error-path-walk/build-clang/p101-error-path-walk" "$(last_build_tool "$workspace_dir/programs/p101-error-path-walk" p101-error-path-walk)" p101-error-path-walk)" || { echo "p101 check: p101-error-path-walk not found" >&2; exit 2; }
-model_tool="$(find_tool P101_EVENT_MODEL "$workspace_dir/libraries/lib_tool_event/build-clang-22/p101-event-model" "$workspace_dir/libraries/lib_tool_event/build-clang/p101-event-model" "$(last_build_tool "$workspace_dir/libraries/lib_tool_event" p101-event-model)" p101-event-model)" || { echo "p101 check: p101-event-model not found" >&2; exit 2; }
+doctor_tool="$(find_tool P101_AUDIT_DOCTOR "$(last_build_tool "$workspace_dir/programs/p101-audit" audit-doctor)" "$workspace_dir/programs/p101-audit/build-clang-22/audit-doctor" "$workspace_dir/programs/p101-audit/build-clang/audit-doctor" audit-doctor)" || { echo "student workflow: audit-doctor not found" >&2; exit 2; }
+wrapper_tool="$(find_tool P101_AUDIT_WRAPPERS "$workspace_dir/programs/p101-audit/audit-wrappers" audit-wrappers)" || { echo "student workflow: audit-wrappers not found" >&2; exit 2; }
+error_contract_tool="$(find_tool P101_AUDIT_ERRORS "$workspace_dir/programs/p101-audit/build-clang-22/audit-errors" "$workspace_dir/programs/p101-audit/build-clang/audit-errors" "$(last_build_tool "$workspace_dir/programs/p101-audit" audit-errors)" audit-errors)" || { echo "student workflow: audit-errors not found" >&2; exit 2; }
+module_tool="$(find_tool P101_AUDIT_MODULES "$workspace_dir/programs/p101-audit/build-clang-22/audit-modules" "$workspace_dir/programs/p101-audit/build-clang/audit-modules" "$(last_build_tool "$workspace_dir/programs/p101-audit" audit-modules)" audit-modules)" || { echo "student workflow: audit-modules not found" >&2; exit 2; }
+observe_tool="$(find_tool P101_INSPECT_CAPTURE "$workspace_dir/programs/p101-inspect/build-clang-22/inspect-capture" "$workspace_dir/programs/p101-inspect/build-clang/inspect-capture" "$(last_build_tool "$workspace_dir/programs/p101-inspect" inspect-capture)" inspect-capture)" || { echo "student workflow: inspect-capture not found" >&2; exit 2; }
+walk_tool="$(find_tool P101_TEST_FAULTS "$workspace_dir/programs/p101-test/build-clang-22/test-faults" "$workspace_dir/programs/p101-test/build-clang/test-faults" "$(last_build_tool "$workspace_dir/programs/p101-test" test-faults)" test-faults)" || { echo "student workflow: test-faults not found" >&2; exit 2; }
+model_tool="$(find_tool P101_EVENT_MODEL "$workspace_dir/libraries/lib_tool_event/build-clang-22/p101-event-model" "$workspace_dir/libraries/lib_tool_event/build-clang/p101-event-model" "$(last_build_tool "$workspace_dir/libraries/lib_tool_event" p101-event-model)" p101-event-model)" || { echo "student workflow: p101-event-model not found" >&2; exit 2; }
 
 quality_status=0
 quality_state="SKIP"
@@ -211,7 +211,7 @@ html_state="PASS"
 bundle_status=0
 bundle_state="PASS"
 
-printf 'p101 check output: %s\n' "$out_dir"
+printf 'student workflow output: %s\n' "$out_dir"
 
 if [ "$skip_quality" -eq 0 ] && [ -x "$project_dir/check.sh" ]; then
   (cd "$project_dir" && run_logged "project quality gate" "$log_dir/quality-check.log" ./check.sh)
@@ -233,7 +233,7 @@ if [ "$skip_wrapper" -eq 1 ]; then
 fi
 doctor_args+=(-- "$@")
 
-(cd "$project_dir" && run_logged "p101 doctor" "$log_dir/doctor.log" "$doctor_tool" "${doctor_args[@]}")
+(cd "$project_dir" && run_logged "source audit" "$log_dir/doctor.log" "$doctor_tool" "${doctor_args[@]}")
 doctor_status=$?
 
 (cd "$project_dir" && run_logged "p101 runtime capture and analysis" "$log_dir/runtime.log" "$script_dir/p101-run.py" -o "$out_dir/runtime" --observe-tool "$observe_tool" --model-tool "$model_tool" -- "$@")
@@ -305,7 +305,7 @@ else
 fi
 
 cat > "$summary" <<EOF
-# p101 check
+# student workflow
 
 Project: \`${project_dir}\`
 
@@ -340,7 +340,7 @@ Command: \`$(quote_command "$@")\`
 
 ## How to read this
 
-\`p101 check\` is a teaching workflow, not an OS-level tracer. It can only grade
+\`student workflow\` is a teaching workflow, not an OS-level tracer. It can only grade
 what the p101 wrappers, the selected run, and the available project scripts make
 visible. Use wrapper-audit findings first: direct libc calls can hide resource
 activity from the runtime tools.
@@ -348,13 +348,13 @@ EOF
 
 # Re-render now that summary.md exists.
 if [ "$skip_html" -eq 0 ]; then
-  python3 "$script_dir/p101-check-report.py" "$out_dir" -o "$out_dir/index.html" > "$log_dir/check-html.log" 2>&1
+  python3 "$script_dir/student-workflow-report.py" "$out_dir" -o "$out_dir/index.html" > "$log_dir/check-html.log" 2>&1
   report_status=$?
   html_status=$((html_status + report_status))
 fi
 
-printf 'p101 check report: %s\n' "$out_dir/index.html"
-printf 'p101 check summary: %s\n' "$summary"
+printf 'student workflow report: %s\n' "$out_dir/index.html"
+printf 'student workflow summary: %s\n' "$summary"
 
 if [ "$doctor_status" -eq 2 ] || [ "$runtime_status" -eq 2 ] || [ "$walk_status" -eq 2 ] || [ "$lesson_status" -ne 0 ] || [ "$html_status" -ne 0 ] || [ "$bundle_status" -ne 0 ]; then
   exit 2

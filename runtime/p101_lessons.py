@@ -468,11 +468,21 @@ def _case_has_repair_oracle(case: dict[str, Any]) -> bool:
     )
 
 
+def _native_finding_symbol(finding_id: str) -> str:
+    return "P101_TOOL_FINDING_" + finding_id.removeprefix("P101-").replace("-", "_")
+
+
 def _validate_acceptance_contract(catalog: Catalog) -> None:
     profile_by_id = catalog.by_profile_id
     for profile in catalog.profiles:
         text = _evidence_text(catalog.workspace, profile.evidence_paths)
-        missing = sorted(set(profile.finding_ids) - set(DIAGNOSTIC_PATTERN.findall(text)))
+        literal_ids = set(DIAGNOSTIC_PATTERN.findall(text))
+        missing = sorted(
+            finding_id
+            for finding_id in profile.finding_ids
+            if finding_id not in literal_ids
+            and _native_finding_symbol(finding_id) not in text
+        )
         if missing:
             raise LessonCatalogError(
                 f"{catalog.path}: {profile.profile_id} evidence does not name: "
@@ -701,7 +711,7 @@ def _acceptance_for_lesson(
             "prerequisites": list(lesson.prerequisites),
             "native_evidence": "playground-case",
             "native_reference": lesson.case_name,
-            "broken_command": f"p101 corpus --case {lesson.case_name}",
+            "broken_command": f"playgrounds/corpus.sh --case {lesson.case_name}",
             "repair_command": lesson.verification,
             "repair_oracle": (
                 "finding-disappears"
@@ -1028,8 +1038,7 @@ def _run_case(
 ) -> dict[str, Any]:
     destination = output / (("repaired-" if repaired else "broken-") + case_name)
     command = [
-        str(catalog.workspace / "scripts" / "p101"),
-        "lab" if repaired else "corpus",
+        str(catalog.workspace / "playgrounds" / ("lab.sh" if repaired else "corpus.sh")),
         "--case",
         case_name,
         "--skip-html",
@@ -1647,7 +1656,7 @@ def command_progress(args: argparse.Namespace) -> int:
 def parse_arguments(argv: list[str]) -> argparse.Namespace:
     default_catalog = Path(__file__).resolve().parents[2] / "playgrounds" / "lessons" / "manifest.json"
     parser = argparse.ArgumentParser(
-        prog="p101 lessons",
+        prog="p101_lessons.py",
         description="Resolve diagnostics to lessons and verify curriculum completeness.",
     )
     parser.add_argument("--catalog", type=Path, default=default_catalog)

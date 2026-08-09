@@ -175,7 +175,7 @@ def discover_public_enums(
 
 
 def acquire_public_enum_facts(output_directory: Path) -> Path:
-    tool = WORKSPACE / "programs" / "p101-wrapper-audit" / "p101-c-facts"
+    tool = WORKSPACE / "programs" / "p101-audit" / "audit-facts"
     if not tool.is_file():
         raise QualityContractError(f"lib_c_facts front end is absent: {tool}")
     include_roots = sorted(

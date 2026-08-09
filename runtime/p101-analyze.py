@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Replay p101 analysis over an immutable p101-observe capture."""
+"""Replay p101 analysis over an immutable inspect-capture capture."""
 
 from __future__ import annotations
 
@@ -106,8 +106,8 @@ def parse_capture_receipt(
         lines = receipt_path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeError) as error:
         raise CaptureInvalid(f"cannot read receipt: {error}") from error
-    if not lines or lines[0] != "p101-observe receipt":
-        raise CaptureInvalid("receipt header is not 'p101-observe receipt'")
+    if not lines or lines[0] != "inspect-capture receipt":
+        raise CaptureInvalid("receipt header is not 'inspect-capture receipt'")
 
     scalar: dict[str, str] = {}
     artifacts: dict[str, Fingerprint] = {}
@@ -462,13 +462,13 @@ def overall_result(results: Iterable[RunResult]) -> int:
 
 def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="p101 analyze",
+        prog="p101-analyze.py",
         description=(
-            "Verify a p101-observe capture, build one shared run model, and "
+            "Verify a inspect-capture capture, build one shared run model, and "
             "apply the runtime policy modules. The capture is never modified."
         ),
     )
-    parser.add_argument("capture_dir", help="p101-observe run directory")
+    parser.add_argument("capture_dir", help="inspect-capture run directory")
     parser.add_argument(
         "-o",
         "--output",
@@ -526,7 +526,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_arguments(sys.argv[1:] if argv is None else argv)
     script_dir = Path(__file__).resolve().parent
     workspace = script_dir.parent.parent
-    invocation_dir = Path(os.environ.get("P101_DISPATCH_CWD", os.getcwd()))
+    invocation_dir = Path(os.environ.get("P101_INVOCATION_CWD", os.getcwd()))
     capture_dir = invocation_path(args.capture_dir, invocation_dir)
     output_dir = (
         invocation_path(args.output, invocation_dir)

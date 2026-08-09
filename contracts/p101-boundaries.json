@@ -19,8 +19,8 @@
         "Analysis failure is returned through p101_error before policy evaluation."
       ],
       "collaborators": [
-        "p101-module-map owns module-design policy",
-        "p101-error-contract owns error-contract policy"
+        "p101-audit owns module-design policy",
+        "p101-audit owns error-contract policy"
       ],
       "tests": {
         "clean": {

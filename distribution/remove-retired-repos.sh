@@ -185,7 +185,9 @@ fi
 
 if [[ "${#eligible_repositories[@]}" -gt 0 ]] && ! $assume_yes; then
   printf 'The following clean, fully-pushed retired repositories will be removed:\n'
-  printf '  %s\n' "${eligible_repositories[@]}"
+  for repository in "${eligible_repositories[@]}"; do
+    printf '  %s\n' "$repository"
+  done
   printf 'Type REMOVE to continue: '
   IFS= read -r answer
   if [[ "$answer" != "REMOVE" ]]; then

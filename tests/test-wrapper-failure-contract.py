@@ -589,6 +589,23 @@ def test_fixture_roles_do_not_depend_on_parameter_names(generator) -> None:
         generator.argument_expression(text_parameter) == "NULL",
         "text fault fixture depends on a format/path variable name",
     )
+    formatted_declaration = {
+        "name": "p101_formatted_renamed",
+        "inner": [
+            {"kind": "ParmVarDecl", **env_parameter},
+            {"kind": "ParmVarDecl", **error_parameter},
+            {"kind": "ParmVarDecl", **text_parameter},
+            {"kind": "FormatAttr"},
+        ],
+    }
+    check(
+        generator.argument_expression(
+            text_parameter,
+            formatted_declaration,
+        )
+        == '"x"',
+        "formatted-text fixture ignores the semantic format attribute",
+    )
     declaration = {
         "name": "p101_parse_renamed",
         "inner": [
@@ -628,6 +645,23 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
     check(
         callback_fixture[1] == "native_path_error_callback",
         "callback fixture depends on its parameter name",
+    )
+
+    times = {
+        "name": "renamed_times",
+        "type": {"qualType": "const struct timespec *"},
+    }
+    times_fixture = generator.native_contract_fixture(
+        "p101_futimens",
+        "c:@F@p101_futimens",
+        times,
+        3,
+    )
+    check(times_fixture is not None, "timespec[2] fixture was not recognized")
+    check(
+        "struct timespec native_argument_3[2]" in times_fixture[0][0]
+        and times_fixture[1] == "native_argument_3",
+        "adjusted array fixture lost the public two-element extent",
     )
 
     vector = {

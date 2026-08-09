@@ -4,14 +4,10 @@
 # still runs. Refresh these coarse values from check-repository-tests.sh's
 # summary when a suite's cost changes materially.
 *|1
-p101-doctor|110
-p101-error-contract|14
-p101-observe|12
-p101-error-path-walk|11
-p101-wrapper-audit|5
-p101-module-map|4
+p101-audit|133
+p101-inspect|12
+p101-test|13
 lib_tool_event|4
 lib_process|3
 lib_c_facts|2
 lib_convert|2
-p101-mutation-check|2

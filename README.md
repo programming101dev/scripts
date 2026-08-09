@@ -27,14 +27,13 @@ cd scripts
 Ensure the public entry points are executable:
 
 ```bash
-chmod +x p101 p101-workspace setup.sh update-all.sh check-after-update-all.sh
+chmod +x p101-workspace setup.sh update-all.sh check-after-update-all.sh
 ```
 
 ## Command layout
 
-The repository keeps five public commands at its root:
+The repository keeps four public commands at its root:
 
-- `p101` is the student/tool dispatcher.
 - `p101-workspace` is the maintainer dispatcher.
 - `setup.sh` performs first-time workspace setup.
 - `update-all.sh` refreshes and builds the compiler matrix.
@@ -47,22 +46,22 @@ The implementation is grouped by responsibility:
 - `generators/` contains flag, wrapper-test, and source-data generators.
 - `workspace/` contains configure/build and local toolchain mechanics.
 - `distribution/` contains repository refresh and shared-file distribution.
-- `runtime/` contains the implementation behind the `p101` dispatcher.
+- `runtime/` contains narrow capture/replay, lesson, and student-workflow scripts.
 - `contracts/` contains machine-readable manifests and policies.
 - `shared/library/` contains the canonical library-only install helpers.
 
-This boundary is intentional: callers should prefer `p101` or
-`p101-workspace`; direct paths into these directories are for maintainers,
-tests, and CI. The C/C++ repositories still carry their own root build scripts
-because templates must remain usable after being copied outside this workspace.
+This boundary is intentional: maintainers use `p101-workspace`, while students
+invoke the owning category executable or runtime script directly. The C/C++
+repositories still carry their own root build scripts because templates must
+remain usable after being copied outside this workspace.
 
-The `p101` dispatcher also exposes the governed advanced checks:
+Governed advanced checks are direct scripts:
 
-- `p101 fault-campaign` derives every admitted synthetic mode and documented
+- `runtime/p101-fault-campaign.py` derives every admitted synthetic mode and documented
   errno/system code from the current host platform's wrapper contract;
-- `p101 interleaving-walk` explores bounded synchronization reorderings;
-- `p101 api-diff` compares public-API manifests;
-- `p101 fuzz [repository]` runs that repository's declared fuzz contract.
+- `runtime/p101-interleaving-walk.py` explores bounded synchronization reorderings;
+- `runtime/p101-api-diff.py` compares public-API manifests;
+- each repository's `fuzz.sh` runs that repository's declared fuzz contract.
 
 ## **Prerequisites**
 
@@ -189,7 +188,7 @@ Before publishing coordinated changes, run the GitHub Actions preflight on
 macOS:
 
 ```bash
-./p101 ci-preflight
+./github-actions/preflight.sh
 ```
 
 The preflight requires clean committed worktrees, builds the moving local
@@ -394,40 +393,36 @@ To replay the source-contract audit over every active wrapper library:
 ```
 
 This uses each library's compile database, its optional checked-in
-`.p101-wrapper-audit-allow` boundary ledger, `p101-error-contract`, and
-`p101-module-map -L`. The boundary pass records a P101FACT v7 snapshot and
+`.audit-wrappers-allow` boundary ledger, `audit-errors`, and
+`audit-modules -L` from `programs/p101-audit`. The boundary pass records a P101FACT v7 snapshot and
 admitted-input manifest; both downstream C policy tools reuse that snapshot.
 Runtime wrapper feature coverage is enforced by each split library's generated
 wrapper tests and `unit-test-manifest.tsv`. Reports are written under one
 artifact directory.
 
-For the student-facing tool workflow, use the dispatcher:
+There is deliberately no `p101` dispatcher. CMake and each repository's
+`check.sh` own compilation, formatting, analyzers, unit tests, and fuzzing;
+`check-after-update-all.sh` owns the governed workspace acceptance graph. The
+remaining policy programs are grouped by responsibility under
+`programs/p101-audit`, `programs/p101-test`, and `programs/p101-inspect`.
+
+Capture and analysis remain separate so the same evidence can be replayed with
+a newer build of the tools. Invoke the owning program or runtime script
+directly:
 
 ```bash
-./p101 check -s src -- ./build-clang/my-program input.txt
-```
-
-`p101 check` writes one report directory with the project quality gate
-(`check.sh` when present), wrapper audit, module map, observed resource/call
-logs, correlated findings, error-path walking, optional coverage, a
-self-contained `index.html`, and a bug bundle.
-
-Capture and analysis are separate so the same evidence can be replayed with a
-newer build of the tools:
-
-```bash
-./p101 observe -o /tmp/student-run -- ./student-program
-./p101 analyze /tmp/student-run
-./p101 analyze -o /tmp/student-run.analysis-2 /tmp/student-run
+../programs/p101-inspect/build-clang/inspect-capture -o /tmp/student-run -- ./student-program
+./runtime/p101-analyze.py /tmp/student-run
+./runtime/p101-analyze.py -o /tmp/student-run.analysis-2 /tmp/student-run
 ```
 
 For the common one-shot workflow, compose the two explicit stages:
 
 ```bash
-./p101 run -o /tmp/student-run-with-analysis -- ./student-program
+./runtime/p101-run.py -o /tmp/student-run-with-analysis -- ./student-program
 ```
 
-`p101 analyze` admits a `p101-observe` capture whose
+The analysis script admits an inspect capture whose
 `p101-run-receipt-v1` receipt names event protocol v5 and whose bounded
 artifact fingerprints still match. It verifies the capture before and after
 analysis, builds one policy-free model from one private fingerprint-checked
@@ -449,15 +444,15 @@ graph of call and resource facts. Verify it directly or make a lesson/CI
 expectation executable:
 
 ```bash
-./p101 verify /tmp/student-run.analysis
-./p101 verify -e p101-expectations.txt /tmp/student-run.analysis
-./p101 compare previous.analysis current.analysis
-./p101 check /tmp/student-run.analysis --rules resource-clean
-./p101 explain /tmp/student-run.analysis P101-FD-001
-./p101 resource /tmp/student-run.analysis
-./p101 sync-check /tmp/student-run.analysis
-./p101 trace /tmp/student-run.analysis
-./p101 report /tmp/student-run.analysis
+./runtime/p101-model.py verify /tmp/student-run.analysis
+./runtime/p101-model.py verify -e p101-expectations.txt /tmp/student-run.analysis
+./runtime/p101-model.py compare previous.analysis current.analysis
+./runtime/p101-model.py check /tmp/student-run.analysis --rules resource-clean
+./runtime/p101-model.py explain /tmp/student-run.analysis P101-FD-001
+./runtime/p101-view.py resource /tmp/student-run.analysis
+./runtime/p101-view.py sync /tmp/student-run.analysis
+./runtime/p101-view.py trace /tmp/student-run.analysis
+./runtime/p101-view.py report /tmp/student-run.analysis
 ```
 
 The model contract and expectation language are documented in
@@ -467,18 +462,18 @@ documented in [`docs/rule-packs.md`](docs/rule-packs.md).
 To run the checked playground lesson corpus:
 
 ```bash
-./p101 corpus --quick
-./p101 corpus
+../playgrounds/corpus.sh --quick
+../playgrounds/corpus.sh
 ```
 
 To turn that corpus into a student-facing lab series:
 
 ```bash
-./p101 lab --quick
-./p101 lab
+../playgrounds/lab.sh --quick
+../playgrounds/lab.sh
 ```
 
-`p101 lab` writes a self-contained `index.html`, a Markdown lab outline, the
+The lab runner writes a self-contained `index.html`, a Markdown lab outline, the
 checked corpus reports, and the command logs. Each lab has an issue ID, lesson,
 fix checklist, and progress state. Students can fix one issue at a time and
 re-run the command to watch labs move from `OPEN` to `FIXED`. Use
@@ -490,24 +485,24 @@ catalog. Runtime JSON and HTML reports carry a primary lesson plus any related
 labs; static findings can be resolved with the same dispatcher:
 
 ```bash
-./p101 lesson P101-FD-001
-./p101 lesson run P101-FD-001
-./p101 lesson verify P101-FD-001 /path/to/report.json
-./p101 lessons guide /path/to/check-output
-./p101 lessons check
-./p101 lessons verify --quick
-./p101 lessons coverage
-./p101 lessons progress /path/to/student-receipts
+./runtime/p101_lessons.py show P101-FD-001
+./runtime/p101_lessons.py run P101-FD-001
+./runtime/p101_lessons.py verify-one P101-FD-001 /path/to/report.json
+./runtime/p101_lessons.py guide /path/to/check-output
+./runtime/p101_lessons.py check
+./runtime/p101_lessons.py verify --quick
+./runtime/p101_lessons.py coverage
+./runtime/p101_lessons.py progress /path/to/student-receipts
 ```
 
-`p101 lessons check` scans the diagnostic IDs emitted by the tools and fails if
+The lesson check scans the diagnostic IDs emitted by the tools and fails if
 any non-fallback ID lacks a real lesson file, prerequisites, native acceptance
-evidence, and a replayable repair oracle. `p101 lessons verify` materializes a
+evidence, and a replayable repair oracle. `runtime/p101_lessons.py verify` materializes a
 broken/repaired protocol pair for every ID; `--quick` runs representative
 native evidence and `--full` runs every owning suite and playground issue case.
 Native checks use up to four isolated workers by default; pass `--jobs 1` for
 serial execution or a different bounded worker count for the host.
-`p101 lessons coverage` exposes evidence level and platform support. The
+`runtime/p101_lessons.py coverage` exposes evidence level and platform support. The
 mapping is curriculum policy in
 `playgrounds/lessons/manifest.json`; the tools continue to own the evidence and
 diagnostic IDs. The boundary and completeness claim are documented in
@@ -516,9 +511,9 @@ diagnostic IDs. The boundary and completeness claim are documented in
 For lower-level student/instructor tooling around observed runs:
 
 ```bash
-./p101 html-report /path/to/p101-observe-output
-./p101 bug-bundle /path/to/p101-observe-output
-./p101 cohort submission-*/correlated-report.json
+./runtime/p101-html-report.py /path/to/inspect-output
+./runtime/p101-bug-bundle.sh /path/to/inspect-output
+./runtime/p101-cohort-summary.py submission-*/correlated-report.json
 ```
 
 The p101 tools follow a lightweight design contract: bounded inputs, explicit
@@ -530,7 +525,6 @@ To check that each `p101-*` README exposes the minimum contract surface, run:
 
 ```bash
 ./checks/check-p101-tool-contracts.sh
-./p101 contracts
 ```
 
 To replay the broader p101 tool audit — README contract checks, strict
@@ -538,14 +532,13 @@ wrapper-audit checks over the C tools, and module-map design reports — run:
 
 ```bash
 ./checks/check-p101-tool-audit.sh
-./p101 tool-audit
 ```
 
 By default, module-map design notes fail the audit. Use
 `--allow-module-notes` only for an exploratory report that should not enforce
 the current module-splitting rules. Each C tool is parsed once; module-map
 reuses the recorded P101FACT v7 snapshot, and a checked-in
-`.p101-wrapper-audit-allow` file is treated as a scoped, stale-checked boundary
+`.audit-wrappers-allow` file is treated as a scoped, stale-checked boundary
 ledger.
 
 ## Wrapper caveat: `setjmp`
@@ -614,12 +607,11 @@ To run the broader p101 stack ratchet, use:
 
 ```bash
 ./checks/check-p101-stack.sh -c clang -x clang++
-./p101 stack-check -c clang -x clang++
 ```
 
 That script builds repos from `repos.txt`, runs the standalone template check,
-then runs the `p101-tool-playground` tour, a `p101 check` golden-path smoke, and
-the quick playground corpus and lab-book smoke. During development, you can use
+then runs the `p101-tool-playground` tour and the quick playground corpus and
+lab-book smoke. During development, you can use
 `--skip-repo-build` for a quicker smoke of the template and playground pieces.
 Use `--skip-install` when you want a non-interactive build-only stack check
 that does not run each repo's `install.sh`.
@@ -696,14 +688,17 @@ POSIX set when it explicitly documents errors or error references. A page that
 is silent about failures does not erase the portable POSIX set; the POSIX set
 remains the fail-closed fallback.
 References such as “the errors specified for socket() and malloc()” are
-resolved transitively and retained in the JSON. Every platform record names its
-`effective_source_kind` (`platform-manual` or `posix-fallback`) and exact
+resolved transitively and retained in the JSON. Reviewed native-runtime
+observations cover exported platform stubs whose actual failure is absent from
+both the platform manuals and POSIX; these remain explicit evidence rather than
+test skips. Every platform record names its `effective_source_kind`
+(`platform-manual`, `platform-runtime`, or `posix-fallback`) and exact
 `effective_source`. Archive- and SDK-backed manuals also retain a separate
 `effective_source_path`; this avoids manufacturing invalid URLs by appending an
 internal manual path to an archive URL. A test receipt therefore never leaves
 the selected authority or page implicit. The top-level `platform_coverage`
-summary reports manual overrides and POSIX fallbacks for both the complete
-function catalogue and the active wrapper inventory.
+summary reports manual overrides, runtime observations, and POSIX fallbacks for
+both the complete function catalogue and the active wrapper inventory.
 
 The checked-in catalogue is refreshed from the Open Group function index and
 `<errno.h>` page, kernel.org Linux man-pages, the active Xcode SDK manuals, and

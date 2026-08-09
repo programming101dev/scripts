@@ -1006,7 +1006,7 @@ def compare(before_dir: Path, after_dir: Path) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="p101")
+    parser = argparse.ArgumentParser(prog="p101-model.py")
     subparsers = parser.add_subparsers(dest="command", required=True)
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("analysis_dir")

@@ -184,7 +184,41 @@ def _repository_scan_paths(repository: Path) -> tuple[Path, ...]:
         for path in repository.iterdir()
         if path.is_file() and path.suffix in SOURCE_SUFFIXES
     )
+    components = repository / "components"
+    if components.is_dir():
+        paths.extend(
+            path
+            for component in components.iterdir()
+            if component.is_dir()
+            for name in SOURCE_DIRECTORY_NAMES
+            for path in (component / name,)
+            if path.is_dir()
+        )
     return tuple(sorted(paths)) or (repository,)
+
+
+def _analysis_scope(repository: Path, path: Path) -> Path:
+    """Keep consolidated components in independent include-name scopes."""
+    components = repository / "components"
+    try:
+        relative = path.resolve().relative_to(components.resolve())
+    except ValueError:
+        return repository
+    if not relative.parts:
+        return repository
+    return components / relative.parts[0]
+
+
+def _is_standalone_header_input(path: Path) -> bool:
+    """Return whether a path needs parsing outside a compile database.
+
+    Compilation databases describe translation units, not public headers.
+    Passing a header beside a source while selecting a database can therefore
+    silently omit declarations that are not reached by that source's selected
+    command. Keep explicit headers and conventional include trees as their own
+    semantic analysis unit.
+    """
+    return path.suffix == ".h" or (path.is_dir() and path.name == "include")
 
 
 def _analysis_units(
@@ -204,11 +238,10 @@ def _analysis_units(
         repository = _repository_root(workspace, admitted_path)
         if repository is not None:
             if admitted_path == repository:
-                grouped[repository].update(
-                    _repository_scan_paths(repository)
-                )
+                for scan_path in _repository_scan_paths(repository):
+                    grouped[_analysis_scope(repository, scan_path)].add(scan_path)
             else:
-                grouped[repository].add(admitted_path)
+                grouped[_analysis_scope(repository, admitted_path)].add(admitted_path)
             continue
         child_repositories = (
             [
@@ -221,7 +254,9 @@ def _analysis_units(
         )
         if child_repositories:
             for child in child_repositories:
-                grouped[child.resolve()].update(_repository_scan_paths(child))
+                child = child.resolve()
+                for scan_path in _repository_scan_paths(child):
+                    grouped[_analysis_scope(child, scan_path)].add(scan_path)
         else:
             grouped[None].add(admitted_path)
     return tuple(
@@ -373,7 +408,7 @@ def _producer_identity(producer: Path) -> bytes:
         if marker.is_file():
             producer_paths.append(marker)
             build_name = marker.read_text(encoding="utf-8").strip()
-            candidate = producer_repository / build_name / "p101-c-facts"
+            candidate = producer_repository / build_name / "audit-facts"
             if build_name and candidate.is_file():
                 producer_paths.append(candidate)
     for path in producer_paths:
@@ -455,7 +490,7 @@ def acquire(
     additional_include_roots: Iterable[Path] = (),
     cache: Path | str | None = "auto",
 ) -> list[dict[str, object]]:
-    producer = workspace / "programs" / "p101-wrapper-audit" / "p101-c-facts"
+    producer = workspace / "programs" / "p101-audit" / "audit-facts"
     if not producer.is_file():
         raise CFactError(f"semantic fact producer is absent: {producer}")
     admitted_paths = [path.resolve() for path in paths]
@@ -479,40 +514,67 @@ def acquire(
     facts: list[dict[str, object]] = []
     commands: list[tuple[list[str], Path | None]] = []
     for repository, unit_paths in units:
-        include_roots = set(shared_include_roots)
-        if repository is not None:
-            include_roots.update(
-                _compile_database_include_roots(repository)
+        # Workspace policy scans admit the paths named by the caller, not
+        # merely the translation units selected by a repository's latest
+        # build. A compilation database commonly omits public headers and
+        # separate test trees. Use its include roots below, but only let an
+        # explicit compile_database argument narrow analysis to its units.
+        unit_compile_database = compile_database
+
+        partitions: list[tuple[tuple[Path, ...], Path | None]] = [
+            (unit_paths, unit_compile_database)
+        ]
+        if unit_compile_database is not None:
+            header_paths = tuple(
+                path for path in unit_paths if _is_standalone_header_input(path)
             )
-            local_include = repository / "include"
-            unity = repository / "test" / "unity"
-            if local_include.is_dir():
-                include_roots.add(local_include.resolve())
-            if unity.is_dir():
-                include_roots.add(unity.resolve())
-        else:
-            for admitted_path in unit_paths:
-                for parent in admitted_path.parents:
-                    unity = parent / "test" / "unity"
-                    if unity.is_dir():
-                        include_roots.add(unity.resolve())
-                    if parent == workspace_root:
-                        break
-        command = [str(producer)]
-        system = platform.system()
-        if system == "Darwin":
-            command.append("--cflag=-D_DARWIN_C_SOURCE")
-        elif system == "Linux":
-            command.append("--cflag=-D_GNU_SOURCE")
-        elif system == "FreeBSD":
-            command.extend(
-                ("--cflag=-D_BSD_SOURCE", "--cflag=-D__BSD_VISIBLE")
+            source_paths = tuple(
+                path for path in unit_paths if not _is_standalone_header_input(path)
             )
-        command.extend(f"--cflag=-I{path}" for path in sorted(include_roots))
-        if compile_database is not None:
-            command.extend(("--compile-db", str(compile_database.resolve())))
-        command.extend(str(path) for path in unit_paths)
-        commands.append((command, repository))
+            partitions = []
+            if source_paths:
+                partitions.append((source_paths, unit_compile_database))
+            if header_paths:
+                partitions.append((header_paths, None))
+
+        for partition_paths, partition_database in partitions:
+            include_roots = set(shared_include_roots)
+            if repository is not None:
+                if partition_database is None:
+                    include_roots.update(
+                        _compile_database_include_roots(repository)
+                    )
+                local_include = repository / "include"
+                unity = repository / "test" / "unity"
+                if local_include.is_dir():
+                    include_roots.add(local_include.resolve())
+                if unity.is_dir():
+                    include_roots.add(unity.resolve())
+            else:
+                for admitted_path in partition_paths:
+                    for parent in admitted_path.parents:
+                        unity = parent / "test" / "unity"
+                        if unity.is_dir():
+                            include_roots.add(unity.resolve())
+                        if parent == workspace_root:
+                            break
+            command = [str(producer)]
+            system = platform.system()
+            if system == "Darwin":
+                command.append("--cflag=-D_DARWIN_C_SOURCE")
+            elif system == "Linux":
+                command.append("--cflag=-D_GNU_SOURCE")
+            elif system == "FreeBSD":
+                command.extend(
+                    ("--cflag=-D_BSD_SOURCE", "--cflag=-D__BSD_VISIBLE")
+                )
+            command.extend(f"--cflag=-I{path}" for path in sorted(include_roots))
+            if partition_database is not None:
+                command.extend(
+                    ("--compile-db", str(partition_database.resolve()))
+                )
+            command.extend(str(path) for path in partition_paths)
+            commands.append((command, repository))
 
     cache_directory = _resolve_snapshot_cache(cache)
     unit_keys: list[str | None] = [None] * len(commands)

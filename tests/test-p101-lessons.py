@@ -86,7 +86,7 @@ def make_catalog_fixture(root: Path) -> tuple[Path, dict[str, object]]:
                 "track": "core",
                 "prerequisites": [],
                 "finding_ids": ["P101-TEST-001"],
-                "verification": "p101 doctor",
+                "verification": "programs/p101-audit/audit-doctor",
                 "acceptance_profile": "example",
             }
         ],
@@ -103,10 +103,10 @@ class LessonCatalogTests(unittest.TestCase):
         cls.catalog_path = cls.workspace / "playgrounds" / "lessons" / "manifest.json"
         cls.catalog = p101_lessons.load_catalog(cls.catalog_path)
 
-    def test_dispatcher_preserves_callers_working_directory(self) -> None:
+    def test_lesson_cli_runs_from_an_arbitrary_working_directory(self) -> None:
         with tempfile.TemporaryDirectory(prefix="p101-lesson-cwd.") as temporary:
             completed = subprocess.run(
-                [str(SCRIPTS_ROOT / "p101"), "lessons", "list"],
+                [str(SCRIPTS_ROOT / "runtime" / "p101_lessons.py"), "list"],
                 cwd=temporary,
                 check=False,
                 text=True,
@@ -143,7 +143,7 @@ class LessonCatalogTests(unittest.TestCase):
     def test_tool_finding_has_concept_lesson(self) -> None:
         lesson = self.catalog.by_finding_id["P101-ERR-004"][0]
         self.assertEqual(lesson.lesson_id, "P101-LESSON-ERROR-CONTRACTS")
-        self.assertTrue(lesson.verification.startswith("p101 doctor"))
+        self.assertTrue(lesson.verification.startswith("programs/p101-audit/audit-doctor"))
 
     def test_every_diagnostic_has_native_and_repair_evidence(self) -> None:
         coverage = p101_lessons.coverage_document(self.catalog)
@@ -321,10 +321,7 @@ class LessonCatalogTests(unittest.TestCase):
                 self.catalog, workspace
             )
             self.assertEqual(missing, {"P101-NEW-999"})
-            self.assertEqual(
-                stale_ignored,
-                {"P101-WRAP-000"},
-            )
+            self.assertEqual(stale_ignored, set())
 
     def test_annotation_preserves_evidence_and_adds_mapping_summary(self) -> None:
         document = {
@@ -372,30 +369,19 @@ class LessonCatalogTests(unittest.TestCase):
                 }
             },
         }
-        for filename in ("p101-html-report.py", "p101-check-report.py"):
-            path = SCRIPTS_ROOT / "runtime" / filename
-            spec = importlib.util.spec_from_file_location(
-                "p101_lesson_test_" + filename.replace("-", "_"), path
-            )
-            self.assertIsNotNone(spec)
-            self.assertIsNotNone(spec.loader)
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[spec.name] = module
-            spec.loader.exec_module(module)
-            cell = module.lesson_cell(finding)
-            self.assertIn("Descriptor leak", cell)
-            self.assertIn("https://example.test/fd-leak", cell)
-            if filename == "p101-check-report.py":
-                with tempfile.TemporaryDirectory() as directory:
-                    doctor = Path(directory) / "doctor"
-                    doctor.mkdir()
-                    (doctor / "module-map.json").write_text(
-                        json.dumps({"findings": [{"id": "P101-MOD-002"}]}),
-                        encoding="utf-8",
-                    )
-                    rows = module.lesson_rows(Path(directory))
-                self.assertIn("P101-MOD-002", rows)
-                self.assertIn("module-boundaries.md", rows)
+        filename = "p101-html-report.py"
+        path = SCRIPTS_ROOT / "runtime" / filename
+        spec = importlib.util.spec_from_file_location(
+            "p101_lesson_test_" + filename.replace("-", "_"), path
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        cell = module.lesson_cell(finding)
+        self.assertIn("Descriptor leak", cell)
+        self.assertIn("https://example.test/fd-leak", cell)
 
     def test_cohort_summary_groups_findings_by_lesson(self) -> None:
         path = SCRIPTS_ROOT / "runtime" / "p101-cohort-summary.py"
@@ -587,6 +573,14 @@ class LessonCatalogTests(unittest.TestCase):
             evidence.write_text("no diagnostic here", encoding="utf-8")
             with self.assertRaises(p101_lessons.LessonCatalogError):
                 p101_lessons.load_catalog(path)
+
+    def test_catalog_accepts_generated_typed_finding_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path, _ = make_catalog_fixture(Path(directory))
+            evidence = path.parent.parent.parent / "programs/p101-example/evidence.txt"
+            evidence.write_text("P101_TOOL_FINDING_TEST_001\n", encoding="utf-8")
+            catalog = p101_lessons.load_catalog(path)
+        self.assertIn("P101-TEST-001", catalog.by_finding_id)
 
     def test_low_level_input_and_evidence_helpers(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -970,7 +964,7 @@ class LessonCatalogTests(unittest.TestCase):
                 p101_lessons.command_guide(
                     Namespace(**common, paths=[ignored], markdown=False)
                 ),
-                0,
+                1,
             )
             self.assertEqual(
                 p101_lessons.command_guide(

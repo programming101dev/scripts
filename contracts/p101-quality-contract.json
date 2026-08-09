@@ -385,6 +385,27 @@
       "type_usr": "c:@EA@p101_tool_event_resource_kind"
     },
     {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/diagnostic.h",
+      "type": "p101_tool_diagnostic_severity",
+      "owner": "lib_tool_event",
+      "reason": "diagnostic presentation severity, not an operation outcome",
+      "type_usr": "c:@EA@p101_tool_diagnostic_severity"
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/diagnostic.h",
+      "type": "p101_tool_diagnostic_format",
+      "owner": "lib_tool_event",
+      "reason": "diagnostic output encoding selection, not an operation outcome",
+      "type_usr": "c:@EA@p101_tool_diagnostic_format"
+    },
+    {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/lesson_catalog.h",
+      "type": "p101_tool_finding",
+      "owner": "lib_tool_event",
+      "reason": "generated stable finding identifier catalog, not an operation outcome",
+      "type_usr": "c:@EA@p101_tool_finding"
+    },
+    {
       "source": "libraries/lib_tool_event/include/p101_tool_event/model_types.h",
       "type": "p101_tool_model_node_domain",
       "owner": "lib_tool_event",
@@ -425,7 +446,7 @@
       "source": "scripts/contracts/wrapper-platform-faults.json",
       "evidence": {
         "kind": "json-schema",
-        "value": "p101-wrapper-platform-faults-v2"
+        "value": "p101-wrapper-platform-faults-v3"
       },
       "oracle": "wrapper-unit-tests"
     },

@@ -32,10 +32,9 @@ foreach(library IN LISTS P101_LIBRARIES)
             PATHS ${P101_PUBLIC_LINK_DIRS_LIST}
             NO_DEFAULT_PATH)
     if(NOT P101_LIBRARY)
-        find_library(P101_LIBRARY NAMES ${library})
-    endif()
-    if(NOT P101_LIBRARY)
-        message(FATAL_ERROR "Could not find ${library}")
+        message(FATAL_ERROR
+                "Could not find workspace build of ${library}; run update-all.sh "
+                "for this compiler before the lifecycle check")
     endif()
     list(APPEND P101_RESOLVED_LIBRARIES "${P101_LIBRARY}")
 endforeach()
@@ -56,6 +55,8 @@ endif()
 target_link_libraries(p101-wrapper-lifecycle-driver PRIVATE
         ${P101_RESOLVED_LIBRARIES}
         pthread)
+set_target_properties(p101-wrapper-lifecycle-driver PROPERTIES
+        BUILD_RPATH "${P101_PUBLIC_LINK_DIRS_LIST}")
 if(P101_SANITIZER_LINK_FLAGS)
     target_link_options(p101-wrapper-lifecycle-driver PRIVATE
             ${P101_SANITIZER_LINK_FLAGS})

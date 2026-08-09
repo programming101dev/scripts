@@ -159,28 +159,47 @@ class QualityContractTests(unittest.TestCase):
         by_repository = {
             repository: set(paths) for repository, paths in units
         }
-        doctor = (
-            SCRIPTS_ROOT.parent / "programs" / "p101-doctor"
-        ).resolve()
-        error_contract = (
-            SCRIPTS_ROOT.parent / "programs" / "p101-error-contract"
-        ).resolve()
-        self.assertIn(doctor, by_repository)
+        audit = (SCRIPTS_ROOT.parent / "programs" / "p101-audit").resolve()
+        self.assertIn(audit, by_repository)
+        self.assertIn(audit / "src", by_repository[audit])
+        self.assertIn(audit / "include", by_repository[audit])
+        error_contract = audit / "components" / "error-contract"
         self.assertIn(error_contract, by_repository)
-        self.assertIn(doctor / "src", by_repository[doctor])
-        self.assertIn(doctor / "include", by_repository[doctor])
-        self.assertNotIn(
+        self.assertIn(
             error_contract / "include",
-            by_repository[doctor],
+            by_repository[error_contract],
         )
         direct_units = MODULE.c_facts._analysis_units(  # pylint: disable=protected-access
             SCRIPTS_ROOT.parent,
-            [doctor],
+            [audit],
         )
-        self.assertEqual(direct_units[0][0], doctor)
-        self.assertIn(doctor / "src", direct_units[0][1])
-        self.assertIn(doctor / "test", direct_units[0][1])
-        self.assertNotIn(doctor, direct_units[0][1])
+        direct_by_scope = {
+            scope: set(paths) for scope, paths in direct_units
+        }
+        self.assertIn(audit, direct_by_scope)
+        doctor = audit / "components" / "doctor"
+        self.assertIn(doctor, direct_by_scope)
+        self.assertIn(doctor / "src", direct_by_scope[doctor])
+        self.assertIn(doctor / "test", direct_by_scope[doctor])
+        self.assertNotIn(doctor, direct_by_scope[doctor])
+
+    def test_public_headers_are_standalone_semantic_inputs(self) -> None:
+        root = SCRIPTS_ROOT.parent / "libraries" / "lib_c_facts"
+        self.assertTrue(
+            MODULE.c_facts._is_standalone_header_input(  # pylint: disable=protected-access
+                root / "include" / "p101_c_facts" / "compile_command.h"
+            )
+        )
+        self.assertTrue(
+            MODULE.c_facts._is_standalone_header_input(  # pylint: disable=protected-access
+                root / "include"
+            )
+        )
+        self.assertFalse(
+            MODULE.c_facts._is_standalone_header_input(  # pylint: disable=protected-access
+                root / "test" / "test_analysis.c"
+            )
+        )
 
     def test_semantic_scans_import_compile_database_include_roots(self) -> None:
         with tempfile.TemporaryDirectory(

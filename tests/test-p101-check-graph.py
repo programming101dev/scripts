@@ -211,7 +211,7 @@ class CheckGraphTests(unittest.TestCase):
         ]
         nodes[0]["inputs"] = ["libraries/lib_env/**"]
         nodes[0]["inputs_complete"] = True
-        nodes[2]["inputs"] = ["programs/p101-observe/**"]
+        nodes[2]["inputs"] = ["programs/p101-inspect/**"]
         nodes[2]["inputs_complete"] = True
         impacted = MODULE.impact_closure(
             ["libraries/lib_env/src/env.c"],

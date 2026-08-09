@@ -38941,18 +38941,19 @@
         },
         "macos": {
           "effective_errors": [
-            "EAGAIN",
-            "EINVAL",
-            "ENOMEM",
-            "EPERM"
+            "ENOSYS"
           ],
-          "effective_source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/mlockall.html",
-          "effective_source_kind": "posix-fallback",
+          "effective_source": "p101-native-smoke://macos/libsystem",
+          "effective_source_kind": "platform-runtime",
           "effective_source_path": null,
-          "errors": [],
-          "source": null,
+          "errors": [
+            "ENOSYS"
+          ],
+          "references": [],
+          "reviewed_observation": "Darwin exports mlockall but the native runtime reports ENOSYS.",
+          "source": "p101-native-smoke://macos/libsystem",
           "source_path": null,
-          "status": "no-manual"
+          "status": "runtime-observed"
         }
       },
       "posix": {
@@ -40934,14 +40935,20 @@
           "status": "documented"
         },
         "macos": {
-          "effective_errors": [],
-          "effective_source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/munlockall.html",
-          "effective_source_kind": "posix-fallback",
+          "effective_errors": [
+            "ENOSYS"
+          ],
+          "effective_source": "p101-native-smoke://macos/libsystem",
+          "effective_source_kind": "platform-runtime",
           "effective_source_path": null,
-          "errors": [],
-          "source": null,
+          "errors": [
+            "ENOSYS"
+          ],
+          "references": [],
+          "reviewed_observation": "Darwin exports munlockall but the native runtime reports ENOSYS.",
+          "source": "p101-native-smoke://macos/libsystem",
           "source_path": null,
-          "status": "no-manual"
+          "status": "runtime-observed"
         }
       },
       "posix": {
@@ -77586,7 +77593,9 @@
       "manual_override_functions": 1079,
       "manual_override_wrappers": 869,
       "posix_fallback_functions": 227,
-      "posix_fallback_wrappers": 125
+      "posix_fallback_wrappers": 125,
+      "runtime_observation_functions": 0,
+      "runtime_observation_wrappers": 0
     },
     "linux": {
       "authoritative_sources": [
@@ -77595,20 +77604,25 @@
       "manual_override_functions": 959,
       "manual_override_wrappers": 785,
       "posix_fallback_functions": 347,
-      "posix_fallback_wrappers": 209
+      "posix_fallback_wrappers": 209,
+      "runtime_observation_functions": 0,
+      "runtime_observation_wrappers": 0
     },
     "macos": {
       "authoritative_sources": [
+        "p101-native-smoke://macos/libsystem",
         "xcode-sdk://macosx-26.5/usr/share/man"
       ],
       "manual_override_functions": 984,
       "manual_override_wrappers": 859,
-      "posix_fallback_functions": 322,
-      "posix_fallback_wrappers": 135
+      "posix_fallback_functions": 320,
+      "posix_fallback_wrappers": 133,
+      "runtime_observation_functions": 2,
+      "runtime_observation_wrappers": 2
     }
   },
-  "platform_precedence": "A documented platform manual with explicit errors or error references replaces the POSIX set on that platform; a silent manual does not erase POSIX-documented failures.",
-  "schema": "p101-wrapper-platform-faults-v2",
+  "platform_precedence": "A documented platform manual replaces the POSIX set on that platform; POSIX is the fallback when no platform manual exists; a reviewed native-runtime observation replaces either when an exported platform interface reports an otherwise undocumented stub outcome.",
+  "schema": "p101-wrapper-platform-faults-v3",
   "standard": {
     "errno_header": "https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/errno.h.html",
     "function_index": "https://pubs.opengroup.org/onlinepubs/9799919799/idx/functions.html",

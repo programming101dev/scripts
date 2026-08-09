@@ -71,7 +71,7 @@ def main() -> int:
         parser.error("--require-platform requires --merge-receipts")
 
     workspace = args.workspace.resolve()
-    audit = workspace / "programs" / "p101-wrapper-audit" / "p101-wrapper-audit"
+    audit = workspace / "programs" / "p101-audit" / "audit-wrappers"
     facts_cache_tool = workspace / "scripts" / "checks" / "p101-facts-cache.py"
     contract = json.loads(args.contract.read_text(encoding="utf-8"))
     if contract.get("schema") != "p101-instrumentation-contract-v3":
@@ -148,11 +148,11 @@ def main() -> int:
                 ]
                 if args.facts_cache is not None:
                     command.extend(["--facts-output", str(facts)])
-                allow = repo / ".p101-wrapper-audit-allow"
+                allow = repo / ".audit-wrappers-allow"
                 if allow.is_file():
                     command.extend(["--allow-file", str(allow)])
                 platform_allow = repo / (
-                    ".p101-wrapper-audit-allow." + platform.system()
+                    ".audit-wrappers-allow." + platform.system()
                 )
                 if platform_allow.is_file():
                     command.extend(["--allow-file", str(platform_allow)])

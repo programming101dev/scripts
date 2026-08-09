@@ -146,7 +146,7 @@ class AnalyzeTests(unittest.TestCase):
         for name, text in contents.items():
             (self.capture / name).write_text(text, encoding="utf-8")
         lines = [
-            "p101-observe receipt",
+            "inspect-capture receipt",
             "schema=p101-run-receipt-v1",
             "run_id=test-run",
             "event_schema=p101-tool-event-format-v5",

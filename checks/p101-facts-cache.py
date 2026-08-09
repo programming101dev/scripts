@@ -29,7 +29,7 @@ if os.fspath(SCRIPTS_ROOT / "runtime") not in sys.path:
 
 from semantic_usage import record_usage  # noqa: E402
 
-SCHEMA = "p101-c-facts-cache-v1"
+SCHEMA = "p101-facts-cache-v1"
 IGNORED_DIRECTORIES = {".git", ".pytest_cache", "__pycache__"}
 
 
@@ -87,7 +87,7 @@ def producer_files(producer: Path) -> list[Path]:
         build_name = marker.read_text(encoding="utf-8").strip()
         if not build_name:
             continue
-        for executable_name in (producer.name, "p101-c-facts"):
+        for executable_name in (producer.name, "audit-facts"):
             executable = repository / build_name / executable_name
             if executable.is_file():
                 files.append(executable)

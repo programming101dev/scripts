@@ -28,7 +28,7 @@ def model_module() -> ModuleType:
 
 def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="p101 view",
+        prog="p101-view.py",
         description="Render a focused view from a verified p101 analysis.",
     )
     parser.add_argument(

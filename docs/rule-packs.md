@@ -4,10 +4,10 @@ Rule packs turn the facts in a completed p101 analysis into a small,
 course-specific policy gate:
 
 ```bash
-./p101 check /tmp/student-run.analysis --rules resource-clean
-./p101 check /tmp/student-run.analysis \
+./runtime/p101-model.py check /tmp/student-run.analysis --rules resource-clean
+./runtime/p101-model.py check /tmp/student-run.analysis \
     --rules resource-clean --rules concurrency
-./p101 check /tmp/student-run.analysis --rules secure-c --json
+./runtime/p101-model.py check /tmp/student-run.analysis --rules secure-c --json
 ```
 
 The built-in packs are `resource-clean`, `concurrency`, and `secure-c`.

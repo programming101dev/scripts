@@ -29,6 +29,24 @@ SEMANTICS_CONTRACT = SCRIPT_ROOT / "contracts" / "wrapper-fault-semantics.json"
 WORKSPACE = SCRIPT_ROOT.parent
 
 
+def built_tool(repository: Path, name: str) -> Path:
+    candidates: list[Path] = []
+    for marker_name in (".last-runtime-build-dir", ".last-build-dir"):
+        marker = repository / marker_name
+        if marker.is_file():
+            build_dir = marker.read_text(encoding="utf-8").strip()
+            if build_dir:
+                candidates.append(repository / build_dir / name)
+    candidates.extend(
+        repository / build_dir / name
+        for build_dir in ("build-clang-22", "build-clang", "build-gcc")
+    )
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate
+    raise ValueError(f"{name} is not built in {repository}")
+
+
 @dataclass(frozen=True)
 class Scenario:
     wrapper: str
@@ -321,8 +339,15 @@ def main() -> int:
         print(f"p101 fault campaign: {error}", file=sys.stderr)
         return 2
 
+    try:
+        fault_runner = built_tool(WORKSPACE / "programs" / "p101-test", "test-faults")
+        capture_tool = built_tool(WORKSPACE / "programs" / "p101-inspect", "inspect-capture")
+        model_tool = built_tool(WORKSPACE / "libraries" / "lib_tool_event", "p101-event-model")
+    except ValueError as error:
+        print(f"p101 fault campaign: {error}", file=sys.stderr)
+        return 2
+
     args.output.mkdir(parents=True, exist_ok=True)
-    p101 = SCRIPT_ROOT / "p101"
     results: list[dict[str, object]] = []
     overall = 0
     for index, scenario in enumerate(scenarios, start=1):
@@ -333,8 +358,15 @@ def main() -> int:
         if code_value is None:
             code_value = symbolic_values[scenario.code_name]
         command = [
-            str(p101),
-            "walk",
+            str(fault_runner),
+            "-U",
+            str(SCRIPT_ROOT / "runtime" / "p101-run.py"),
+            "-O",
+            str(capture_tool),
+            "-Y",
+            str(SCRIPT_ROOT / "runtime" / "p101-analyze.py"),
+            "-B",
+            str(model_tool),
             "-n",
             str(args.max_fault_index),
             "-F",

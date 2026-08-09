@@ -26,7 +26,7 @@
       "id": "tool-subprocess",
       "owner": "libraries/lib_util",
       "marker_usrs": ["c:@F@p101_tool_run_capture"],
-      "consumer_roots": ["programs/p101-observe", "programs/p101-error-path-walk", "programs/p101-doctor"],
+      "consumer_roots": ["programs/p101-inspect", "programs/p101-test", "programs/p101-audit"],
       "forbidden_call_usrs": ["c:@F@system", "c:@F@popen", "c:@F@fork", "c:@F@execvp"]
     }
   ],

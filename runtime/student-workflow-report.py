@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render a p101 check directory as one student-facing HTML file."""
+"""Render a student workflow directory as one student-facing HTML file."""
 
 from __future__ import annotations
 
@@ -17,14 +17,14 @@ from p101_lessons import (
     load_catalog,
 )
 
-DOCTOR_SCHEMA = "p101-doctor-v3"
+DOCTOR_SCHEMA = "audit-doctor-v3"
 DOCTOR_RESULT_WORDS = ("clean", "findings", "trouble")
 DOCTOR_STATUS_KINDS = {"exit": "code", "status": "status", "signal": "signal"}
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Create a self-contained HTML summary for a p101 check directory.")
-    parser.add_argument("check_dir", type=Path, help="p101-check report directory")
+    parser = argparse.ArgumentParser(description="Create a self-contained HTML summary for a student workflow directory.")
+    parser.add_argument("check_dir", type=Path, help="student-workflow report directory")
     parser.add_argument("-o", "--output", type=Path, help="HTML output path; default: <check-dir>/index.html")
     return parser.parse_args(argv)
 
@@ -65,7 +65,7 @@ def rel_link(root: Path, path: Path, label: str | None = None) -> str:
 
 
 def status_word(status: object) -> str:
-    # p101-doctor writes each check as an object: {"kind": ..., "result": ...}.
+    # audit-doctor writes each check as an object: {"kind": ..., "result": ...}.
     if isinstance(status, dict):
         result = status.get("result")
         if result in DOCTOR_RESULT_WORDS:
@@ -256,7 +256,7 @@ def render(check_dir: Path) -> str:
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>p101 check — {esc(check_dir.name)}</title>
+  <title>student workflow — {esc(check_dir.name)}</title>
   <style>
     body {{ font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.45; margin: 2rem; color: #1f2933; }}
     h1, h2, h3 {{ color: #102a43; }}
@@ -274,7 +274,7 @@ def render(check_dir: Path) -> str:
   </style>
 </head>
 <body>
-  <h1>p101 check: {esc(check_dir.name)}</h1>
+  <h1>student workflow: {esc(check_dir.name)}</h1>
   <p>This is the one-page course feedback report: quality receipts, wrapper use, module shape, observed resources, call tracing, and fault-injected error paths.</p>
 
   <section class="card">
@@ -335,20 +335,20 @@ def main(argv: list[str]) -> int:
     args = parse_args(argv)
     check_dir = args.check_dir.resolve()
     if not check_dir.is_dir():
-        print(f"p101-check-report: not a directory: {check_dir}", file=sys.stderr)
+        print(f"student-workflow-report: not a directory: {check_dir}", file=sys.stderr)
         return 2
     output = args.output or (check_dir / "index.html")
     if output.is_symlink():
-        print(f"p101-check-report: refusing to write through symlink: {output}", file=sys.stderr)
+        print(f"student-workflow-report: refusing to write through symlink: {output}", file=sys.stderr)
         return 2
     if output.exists() and not output.is_file():
-        print(f"p101-check-report: output exists and is not a regular file: {output}", file=sys.stderr)
+        print(f"student-workflow-report: output exists and is not a regular file: {output}", file=sys.stderr)
         return 2
     try:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(render(check_dir), encoding="utf-8")
     except (OSError, ValueError) as exc:
-        print(f"p101-check-report: {exc}", file=sys.stderr)
+        print(f"student-workflow-report: {exc}", file=sys.stderr)
         return 2
     print(output)
     return 0

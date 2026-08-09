@@ -15,6 +15,24 @@ EXIT_FINDINGS = 1
 EXIT_TROUBLE = 2
 
 
+def built_tool(repository: Path, name: str) -> Path:
+    markers = (repository / ".last-runtime-build-dir", repository / ".last-build-dir")
+    candidates: list[Path] = []
+    for marker in markers:
+        if marker.is_file():
+            build_dir = marker.read_text(encoding="utf-8").strip()
+            if build_dir:
+                candidates.append(repository / build_dir / name)
+    candidates.extend(
+        repository / build_dir / name
+        for build_dir in ("build-clang-22", "build-clang", "build-gcc")
+    )
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate
+    raise FileNotFoundError(f"{name} is not built in {repository}")
+
+
 def normalized_status(returncode: int) -> int:
     return (
         returncode
@@ -25,7 +43,7 @@ def normalized_status(returncode: int) -> int:
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="p101 run",
+        prog="p101-run.py",
         description="capture one command, then build and analyze one shared run model",
     )
     parser.add_argument("-o", "--output", type=Path)
@@ -46,7 +64,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
     script_dir = Path(__file__).resolve().parent
-    invocation_dir = Path(os.environ.get("P101_DISPATCH_CWD", Path.cwd())).resolve()
+    invocation_dir = Path(os.environ.get("P101_INVOCATION_CWD", Path.cwd())).resolve()
     output = args.output
     if output is None:
         output = Path(
@@ -64,7 +82,12 @@ def main(argv: list[str]) -> int:
     analysis = output / "analysis"
 
     if args.observe_tool is None:
-        observe_command = [str(script_dir.parent / "p101"), "observe"]
+        inspect_repository = script_dir.parent.parent / "programs" / "p101-inspect"
+        try:
+            observe_command = [str(built_tool(inspect_repository, "inspect-capture"))]
+        except FileNotFoundError as error:
+            print(f"p101 run: {error}", file=sys.stderr)
+            return EXIT_TROUBLE
     else:
         observe_command = [str(args.observe_tool)]
     if args.log_arguments:

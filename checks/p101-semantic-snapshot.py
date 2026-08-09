@@ -18,7 +18,7 @@ from typing import Any
 
 RECEIPT_SCHEMA = "p101-semantic-snapshot-receipt-v1"
 RUNTIME_SCHEMA = "p101-facts-snapshot-v1"
-RAW_SCHEMA = "p101-c-facts-cache-v1"
+RAW_SCHEMA = "p101-facts-cache-v1"
 USAGE_SCHEMA = "p101-semantic-usage-v1"
 DOES_NOT_PROVE = (
     "This receipt proves the identity and integrity of materialized semantic "

@@ -37,11 +37,11 @@ Options:
   -p <dir>              Programs directory. Default: ../programs
   -o <dir>              Artifact directory. Default: /tmp/p101-tool-audit-<pid>
   --facts-cache <dir>   Publish content-addressed Clang fact evidence.
-  --allow-module-notes  Report p101-module-map design notes without failing.
+  --allow-module-notes  Report audit-modules design notes without failing.
   --skip-contracts      Skip README/tool-contract checks.
-  --skip-wrapper        Skip strict p101-wrapper-audit checks.
-  --skip-error-contract Skip p101-error-contract checks.
-  --skip-module-map     Skip p101-module-map design-note reports.
+  --skip-wrapper        Skip strict audit-wrappers checks.
+  --skip-error-contract Skip audit-errors checks.
+  --skip-module-map     Skip audit-modules design-note reports.
   -h, --help            Show this help.
 USAGE
 }
@@ -71,14 +71,14 @@ mkdir -p "$log_dir"
 summary="$out_dir/summary.md"
 programs_dir="$(CDPATH='' cd "$programs_dir" && pwd)"
 workspace_dir="$(CDPATH='' cd "$programs_dir/.." && pwd)"
-wrapper_audit="$programs_dir/p101-wrapper-audit/p101-wrapper-audit"
+wrapper_audit="$programs_dir/p101-audit/audit-wrappers"
 facts_cache_tool="$workspace_dir/scripts/checks/p101-facts-cache.py"
 
 find_built_tool() { p101_find_built_tool "$1" "$2"; }
 find_compile_database() { p101_find_compile_database "$1"; }
 
-error_contract="$(find_built_tool "$programs_dir/p101-error-contract" p101-error-contract || true)"
-module_map="$(find_built_tool "$programs_dir/p101-module-map" p101-module-map || true)"
+error_contract="$(find_built_tool "$programs_dir/p101-audit" audit-errors || true)"
+module_map="$(find_built_tool "$programs_dir/p101-audit" audit-modules || true)"
 
 say() {
   printf '%s\n' "$*"
@@ -166,10 +166,20 @@ tool_paths() {
   fi
 }
 
-metric_value() {
+summary_counter() {
   name="$1"
   file="$2"
-  awk -F': *' -v key="$name" '$1 == key { print $2; exit }' "$file"
+  awk -v key="$name" '
+    /^[^:]+: outcome=/ {
+      for(field_index = 1; field_index <= NF; field_index++) {
+        split($field_index, field, "=")
+        if(field[1] == key) {
+          print field[2]
+          exit
+        }
+      }
+    }
+  ' "$file"
 }
 
 write_module_notes() {
@@ -188,6 +198,14 @@ printf '# fixture\n\n## Teaching notes\n\n- teaching finding\n\n## Other\n\nigno
 write_module_notes "$notes_fixture" "$notes_fixture_output"
 if [ "$(grep -c 'finding$' "$notes_fixture_output" || true)" -ne 2 ]; then
   echo "Internal error: module-note parser does not recognize both supported headings." >&2
+  exit 2
+fi
+
+counter_fixture="$out_dir/shared-report-counter-fixture.txt"
+printf 'audit-wrappers: outcome=clean exit_status=0 findings=0 missed_wrappers=0 external_calls=0\n' > "$counter_fixture"
+if [ "$(summary_counter missed_wrappers "$counter_fixture")" != "0" ] \
+  || [ "$(summary_counter external_calls "$counter_fixture")" != "0" ]; then
+  echo "Internal error: shared report counter parser rejected a valid summary." >&2
   exit 2
 fi
 
@@ -215,8 +233,8 @@ fi
 
 if [ "$skip_wrapper" -eq 0 ]; then
   if [ ! -x "$wrapper_audit" ]; then
-    say "FAIL: p101-wrapper-audit executable not found: $wrapper_audit"
-    printf '| FAIL | p101-wrapper-audit availability | missing executable |\n' >> "$summary"
+    say "FAIL: audit-wrappers executable not found: $wrapper_audit"
+    printf '| FAIL | audit-wrappers availability | missing executable |\n' >> "$summary"
     failed=1
   else
     wrapper_tools_checked=0
@@ -231,8 +249,8 @@ if [ "$skip_wrapper" -eq 0 ]; then
       log="$log_dir/${name}-wrapper-audit.log"
       facts="$out_dir/${name}-source-facts.tsv"
       inputs="$out_dir/${name}-source-inputs.json"
-      allow_file="$tool_dir/.p101-wrapper-audit-allow"
-      platform_allow_file="$tool_dir/.p101-wrapper-audit-allow.$(uname -s)"
+      allow_file="$tool_dir/.audit-wrappers-allow"
+      platform_allow_file="$tool_dir/.audit-wrappers-allow.$(uname -s)"
       compile_db="$(find_compile_database "$tool_dir" || true)"
       paths=()
       while IFS= read -r path; do
@@ -284,8 +302,8 @@ if [ "$skip_wrapper" -eq 0 ]; then
             failed=1
           fi
         fi
-        missed="$(metric_value missed_wrappers "$log")"
-        external="$(metric_value external_calls "$log")"
+        missed="$(summary_counter missed_wrappers "$log")"
+        external="$(summary_counter external_calls "$log")"
         if [ -z "$missed" ] || [ -z "$external" ]; then
           say "    FAIL: $name wrapper-audit metrics are missing"
           printf '| FAIL | strict wrapper audit metrics: %s | [log](./logs/%s) |\n' "$name" "$(basename "$log")" >> "$summary"
@@ -313,8 +331,8 @@ fi
 
 if [ "$skip_error_contract" -eq 0 ]; then
   if [ ! -x "$error_contract" ]; then
-    say "FAIL: p101-error-contract executable not found: $error_contract"
-    printf '| FAIL | p101-error-contract availability | missing executable |\n' >> "$summary"
+    say "FAIL: audit-errors executable not found: $error_contract"
+    printf '| FAIL | audit-errors availability | missing executable |\n' >> "$summary"
     failed=1
   else
     error_tools_checked=0
@@ -360,8 +378,8 @@ fi
 
 if [ "$skip_module_map" -eq 0 ]; then
   if [ ! -x "$module_map" ]; then
-    say "FAIL: p101-module-map executable not found: $module_map"
-    printf '| FAIL | p101-module-map availability | missing executable |\n' >> "$summary"
+    say "FAIL: audit-modules executable not found: $module_map"
+    printf '| FAIL | audit-modules availability | missing executable |\n' >> "$summary"
     failed=1
   else
     module_note_total=0

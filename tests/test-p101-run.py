@@ -52,7 +52,7 @@ done
             environment = os.environ.copy()
             environment.update(
                 {
-                    "P101_DISPATCH_CWD": str(invocation_dir),
+                    "P101_INVOCATION_CWD": str(invocation_dir),
                     "P101_TEST_CWD": str(cwd_file),
                 }
             )
