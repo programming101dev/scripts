@@ -9,6 +9,7 @@
 
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+workspace_root="$(CDPATH='' cd -- .. && pwd -P)"
 
 cc="clang"
 cxx="clang++"
@@ -60,6 +61,41 @@ log_dir="$out_dir/logs"
 mkdir -p "$log_dir"
 
 failed=0
+
+append_native_path() {
+  current=$1
+  path=$2
+  printf -v quoted_path '%q' "$path"
+  if [ -n "$current" ]; then
+    printf '%s %s' "$current" "$quoted_path"
+  else
+    printf '%s' "$quoted_path"
+  fi
+}
+
+workspace_include_dirs=""
+for library_dir in "$workspace_root"/libraries/lib_*; do
+  [ -d "$library_dir/include" ] || continue
+  workspace_include_dirs="$(append_native_path "$workspace_include_dirs" "$library_dir/include")"
+done
+
+workspace_link_dirs() {
+  compiler_name="$(basename "$1")"
+  case "$compiler_name" in
+    clang++) compiler_name=clang ;;
+    clang++-*) compiler_name="clang-${compiler_name#clang++-}" ;;
+    g++) compiler_name=gcc ;;
+    g++-*) compiler_name="gcc-${compiler_name#g++-}" ;;
+  esac
+
+  link_dirs=""
+  for library_dir in "$workspace_root"/libraries/lib_*; do
+    build_dir="$library_dir/build-$compiler_name"
+    [ -d "$build_dir" ] || continue
+    link_dirs="$(append_native_path "$link_dirs" "$build_dir")"
+  done
+  printf '%s' "$link_dirs"
+}
 
 cleanup() {
   if [ "$automatic_out_dir" -eq 1 ] && [ "$failed" -eq 0 ] && [ "$keep" -eq 0 ]; then
@@ -213,13 +249,15 @@ copy_and_check() {
     build_log="$log_dir/${template}-build.log"
 
     if [ "$lang" = "cxx" ]; then
+      dependency_link_dirs="$(workspace_link_dirs "$cxx")"
       run_logged "configure/build fresh $template instance" "$build_log" \
-        bash -c 'cd "$1" && ./change-compiler.sh -c "$2" -b build-standalone-check && ./build.sh -q' \
-        sh "$dest" "$cxx"
+        bash -c 'cd "$1" && ./change-compiler.sh -c "$2" -b build-standalone-check -- "-DP101_PUBLIC_INCLUDE_DIRS=$3" "-DP101_PUBLIC_LINK_DIRS=$4" && ./build.sh -q' \
+        sh "$dest" "$cxx" "$workspace_include_dirs" "$dependency_link_dirs"
     else
+      dependency_link_dirs="$(workspace_link_dirs "$cc")"
       run_logged "configure/build fresh $template instance" "$build_log" \
-        bash -c 'cd "$1" && ./change-compiler.sh -c "$2" -b build-standalone-check && ./build.sh -q' \
-        sh "$dest" "$cc"
+        bash -c 'cd "$1" && ./change-compiler.sh -c "$2" -b build-standalone-check -- "-DP101_PUBLIC_INCLUDE_DIRS=$3" "-DP101_PUBLIC_LINK_DIRS=$4" && ./build.sh -q' \
+        sh "$dest" "$cc" "$workspace_include_dirs" "$dependency_link_dirs"
     fi
   fi
 

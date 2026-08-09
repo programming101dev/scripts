@@ -1,5 +1,5 @@
 {
-  "default_outcome": "success",
+  "default_outcome": "success-or-declared-platform-error",
   "exceptions": [
     {
       "allowed_error_codes": [
@@ -101,6 +101,14 @@
       "function_usr": "c:@F@p101_catopen"
     },
     {
+      "error_code": "P101_FSM_ERROR_UNKNOWN_TRANSITION",
+      "error_domain": "user",
+      "outcome": "error",
+      "rationale": "The default bad-transition handler exists specifically to turn an unknown transition into a typed refusal; the native smoke verifies that deterministic policy boundary.",
+      "result_kind": "void",
+      "function_usr": "c:@F@p101_fsm_info_default_bad_change_state_handler"
+    },
+    {
       "error_code": "EINVAL",
       "error_domain": "errno",
       "outcome": "error",
@@ -157,5 +165,5 @@
       "function_usr": "c:@F@p101_sigsuspend"
     }
   ],
-  "schema": "p101-wrapper-native-smoke-contract-v2"
+  "schema": "p101-wrapper-native-smoke-contract-v3"
 }

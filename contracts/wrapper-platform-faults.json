@@ -78792,9 +78792,30 @@
       "provenance": "",
       "role": "traced-api"
     },
+    "p101_c_mutation_kind_from_name": {
+      "function": null,
+      "function_usr": "c:@F@p101_c_mutation_kind_from_name",
+      "library": "lib_c_facts",
+      "provenance": "",
+      "role": "traced-api"
+    },
     "p101_c_mutation_kind_name": {
       "function": null,
       "function_usr": "c:@F@p101_c_mutation_kind_name",
+      "library": "lib_c_facts",
+      "provenance": "",
+      "role": "traced-api"
+    },
+    "p101_c_note_kind_from_name": {
+      "function": null,
+      "function_usr": "c:@F@p101_c_note_kind_from_name",
+      "library": "lib_c_facts",
+      "provenance": "",
+      "role": "traced-api"
+    },
+    "p101_c_note_kind_name": {
+      "function": null,
+      "function_usr": "c:@F@p101_c_note_kind_name",
       "library": "lib_c_facts",
       "provenance": "",
       "role": "traced-api"

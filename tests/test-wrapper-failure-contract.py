@@ -886,6 +886,29 @@ def test_native_fixtures_use_types_and_api_positions(generator) -> None:
         "interface fixture does not discover and release a real interface",
     )
 
+    terminal_descriptor = generator.native_contract_fixture(
+        "renamed_terminal_operation",
+        "c:@F@p101_tcsetattr",
+        {
+            "name": "renamed_descriptor",
+            "type": {"qualType": "int"},
+        },
+        2,
+    )
+    check(
+        terminal_descriptor is not None
+        and terminal_descriptor[1] == "native_argument_2"
+        and any("posix_openpt" in line for line in terminal_descriptor[0])
+        and any("grantpt" in line for line in terminal_descriptor[0])
+        and any("unlockpt" in line for line in terminal_descriptor[0])
+        and all(
+            "if(grantpt(" not in line and "if(unlockpt(" not in line
+            for line in terminal_descriptor[0]
+        )
+        and len(terminal_descriptor[3]) == 2,
+        "terminal descriptor fixture is not an isolated private pseudo-terminal",
+    )
+
 
 def test_native_smoke_outcomes_are_asserted(generator) -> None:
     declaration = {
@@ -927,8 +950,10 @@ def test_native_smoke_outcomes_are_asserted(generator) -> None:
         failure,
     )
     check(
-        "if(p101_error_has_error(native_err))" in success_source,
-        "native smoke does not require success by default",
+        "native_error_declared" in success_source
+        and "p101_error_is_errno(native_err, errors[native_error_index])"
+        in success_source,
+        "native smoke does not admit documented platform failures by default",
     )
     check(
         "bool               native_passed = true;" in success_source
@@ -1017,6 +1042,150 @@ def test_native_resource_fixtures_are_live_and_cleanup_is_checked(generator) -> 
         and any("shmctl(native_result, IPC_RMID" in line for line in shmget[3])
         and any("native_passed = false" in line for line in shmget[3]),
         "shared-memory native smoke does not prove caller-owned cleanup",
+    )
+
+
+def test_native_custom_api_fixtures_are_semantically_valid(generator) -> None:
+    mkdtemp = generator.native_contract_fixture(
+        "p101_mkdtemp",
+        "c:@F@p101_mkdtemp",
+        {"type": {"qualType": "char *"}},
+        2,
+    )
+    check(
+        mkdtemp is not None
+        and "XXXXXX" in mkdtemp[0][0]
+        and any("rmdir" in line for line in mkdtemp[3]),
+        "mkdtemp native fixture is not a valid caller-cleaned template",
+    )
+
+    batch_capacity = generator.native_contract_fixture(
+        "p101_fsm_effect_batch_create",
+        "c:@F@p101_fsm_effect_batch_create",
+        {"type": {"qualType": "size_t"}},
+        2,
+    )
+    check(
+        batch_capacity is not None and batch_capacity[1] == "1U",
+        "FSM effect-batch smoke still supplies an invalid capacity",
+    )
+
+    transition_table = generator.native_contract_fixture(
+        "p101_fsm_info_create",
+        "c:@F@p101_fsm_info_create",
+        {"type": {"qualType": "const struct p101_fsm_transition *"}},
+        5,
+    )
+    check(
+        transition_table is not None
+        and any("P101_FSM_INIT" in line for line in transition_table[0])
+        and any("p101_fsm_info_destroy" in line for line in transition_table[3]),
+        "FSM constructor smoke does not use a live transition table",
+    )
+
+    pipe_arguments = generator.native_contract_fixture(
+        "p101_tool_read_pipe_open",
+        "c:@F@p101_tool_read_pipe_open",
+        {"type": {"qualType": "char *const *"}},
+        2,
+    )
+    check(
+        pipe_arguments is not None
+        and any('"/bin/sh"' in line for line in pipe_arguments[0]),
+        "tool pipe smoke does not use an executable command",
+    )
+
+    random_state = generator.native_contract_fixture(
+        "p101_initstate",
+        "c:@F@p101_initstate",
+        {"type": {"qualType": "char *"}},
+        3,
+    )
+    random_state_size = generator.native_contract_fixture(
+        "p101_initstate",
+        "c:@F@p101_initstate",
+        {"type": {"qualType": "size_t"}},
+        4,
+    )
+    check(
+        random_state is not None
+        and "[256]" in random_state[0][0]
+        and random_state_size is not None
+        and random_state_size[1] == "256U",
+        "initstate smoke does not supply a usable state buffer",
+    )
+
+    character_class = generator.native_contract_fixture(
+        "p101_wctype_l",
+        "c:@F@p101_wctype_l",
+        {"type": {"qualType": "const char *"}},
+        2,
+    )
+    check(
+        character_class is not None and character_class[1] == '"alpha"',
+        "wctype_l smoke does not use a standard character class",
+    )
+
+    semantic_scalar_cases = [
+        ("p101_log", "c:@F@p101_log", "double", 2, "1.0"),
+        ("p101_cpow", "c:@F@p101_cpow", "double _Complex", 3, "1.0"),
+        ("p101_div", "c:@F@p101_div", "int", 3, "1"),
+        ("p101_remainder", "c:@F@p101_remainder", "double", 3, "1.0"),
+        ("p101_setlocale", "c:@F@p101_setlocale", "int", 2, "LC_ALL"),
+        ("p101_timespec_get", "c:@F@p101_timespec_get", "int", 3, "TIME_UTC"),
+        ("p101_getdomainname", "c:@F@p101_getdomainname", "size_t", 3, "sizeof(native_argument_2)"),
+        ("p101_swprintf", "c:@F@p101_swprintf", "size_t", 3, "PATH_MAX"),
+        ("p101_dlopen", "c:@F@p101_dlopen", "int", 3, "RTLD_LAZY"),
+    ]
+    for name, usr, parameter_type, index, expected in semantic_scalar_cases:
+        fixture = generator.native_contract_fixture(
+            name,
+            usr,
+            {"type": {"qualType": parameter_type}},
+            index,
+        )
+        check(
+            fixture is not None and fixture[1] == expected,
+            f"{name} smoke does not use its semantic scalar contract",
+        )
+
+    freopen_path = generator.native_contract_fixture(
+        "p101_freopen",
+        "c:@F@p101_freopen",
+        {"type": {"qualType": "const char *"}},
+        2,
+    )
+    check(
+        freopen_path is not None
+        and freopen_path[1] == '"/dev/null"'
+        and any("fclose(native_result)" in line for line in freopen_path[3]),
+        "freopen smoke does not clean the stream returned by freopen",
+    )
+
+    dbm_path = generator.native_contract_fixture(
+        "p101_dbm_open",
+        "c:@F@p101_dbm_open",
+        {"type": {"qualType": "const char *"}},
+        2,
+    )
+    check(
+        dbm_path is not None
+        and any("dbm-open" in line for line in dbm_path[0])
+        and any("dbm_close(native_result)" in line for line in dbm_path[3]),
+        "dbm_open smoke does not create and clean a private database",
+    )
+
+    dlclose_handle = generator.native_contract_fixture(
+        "p101_dlclose",
+        "c:@F@p101_dlclose",
+        {"type": {"qualType": "void *"}},
+        2,
+    )
+    check(
+        dlclose_handle is not None
+        and any("dlopen(NULL, RTLD_LAZY)" in line for line in dlclose_handle[0])
+        and any("native_result != 0" in line for line in dlclose_handle[3]),
+        "dlclose smoke does not operate on a live caller-owned handle",
     )
 
 
@@ -1248,12 +1417,13 @@ def test_native_smoke_contract() -> None:
     )
     check(
         contract.get("schema")
-        == "p101-wrapper-native-smoke-contract-v2",
+        == "p101-wrapper-native-smoke-contract-v3",
         "native-smoke contract schema drifted",
     )
     check(
-        contract.get("default_outcome") == "success",
-        "native smokes do not require success by default",
+        contract.get("default_outcome")
+        == "success-or-declared-platform-error",
+        "native-smoke default is not tied to documented platform outcomes",
     )
     exceptions = contract.get("exceptions", [])
     check(bool(exceptions), "native-smoke exception catalog is empty")
@@ -1282,7 +1452,7 @@ def test_native_smoke_contract() -> None:
             )
             result_kind = record.get("result_kind")
             check(
-                result_kind in {"equals", "text"},
+                result_kind in {"equals", "text", "void"},
                 f"{name}: error outcome lacks an exact result assertion",
             )
             if result_kind == "equals":
@@ -1290,7 +1460,7 @@ def test_native_smoke_contract() -> None:
                     bool(record.get("result_expression")),
                     f"{name}: equality result lacks an expression",
                 )
-            else:
+            elif result_kind == "text":
                 check(
                     isinstance(record.get("result_text"), str),
                     f"{name}: text result lacks exact text",
@@ -1568,6 +1738,9 @@ def main() -> int:
         lambda: test_native_fixtures_use_types_and_api_positions(generator),
         lambda: test_native_smoke_outcomes_are_asserted(generator),
         lambda: test_native_resource_fixtures_are_live_and_cleanup_is_checked(
+            generator
+        ),
+        lambda: test_native_custom_api_fixtures_are_semantically_valid(
             generator
         ),
         lambda: test_native_fixture_recovery_never_discards_cleanup_status(

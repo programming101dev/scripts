@@ -19,7 +19,7 @@
   "blind_spots": [
     "Third-party and direct libc calls do not emit p101 events.",
     "Argument and result text is required only for wrappers explicitly listed by this contract.",
-    "An isolated native smoke proves the declared success or reviewed failure outcome for one deterministic fixture; it does not prove every native result or side effect.",
+    "An isolated native smoke proves bounded execution and either success, a platform-documented fault, or an explicitly reviewed deterministic outcome for one fixture; only explicit outcomes are native-success evidence.",
     "Native and wrapper behavior is compared only by lifecycle scenarios with deterministic fixtures."
   ]
 }

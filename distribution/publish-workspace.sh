@@ -12,7 +12,6 @@ set -euo pipefail
 
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
-commit_message=""
 dry_run=0
 push_args=(--yes)
 
@@ -24,32 +23,20 @@ Usage: ./distribution/publish-workspace.sh [options]
 Publish managed repositories, refresh the workspace lock and stack contract,
 and publish the scripts repository, in that order.
 
-  -m, --message TEXT  First commit every dirty managed repository with TEXT.
-                      Without this, dirty repositories stop publication.
   -n, --dry-run       Show what would happen; change nothing remote.
   --skip-preflight    Pass through to push-repos.sh.
-  --sweep-locks       Remove stale .git lock files older than one minute
-                      before starting. Only safe when no git command runs.
   -h, --help          Show this help.
 EOF
 }
 
-sweep_locks=0
 while (($# > 0)); do
     case "$1" in
-        -m | --message)
-            commit_message="${2:?--message needs text}"
-            shift
-            ;;
         -n | --dry-run)
             dry_run=1
             push_args+=(--dry-run)
             ;;
         --skip-preflight)
             push_args+=(--skip-preflight)
-            ;;
-        --sweep-locks)
-            sweep_locks=1
             ;;
         -h | --help)
             usage
@@ -64,36 +51,24 @@ while (($# > 0)); do
     shift
 done
 
-workspace="$(cd .. && pwd -P)"
-
-if ((sweep_locks)); then
-    find "$workspace" -path '*/.git/*' -name '*.lock' -mmin +1 -print -delete
-fi
-
+# repos.txt holds url|path|type rows; the path is relative to this directory.
+# Parsing it as a whole line silently matched nothing, so every dirty
+# repository slipped past the check below and push-repos.sh refused instead.
 repositories=()
-while IFS= read -r line; do
-    line="${line%%#*}"
-    line="$(printf '%s' "$line" | tr -d '[:space:]')"
-    [[ -n "$line" ]] || continue
-    repositories+=("$workspace/$line")
-done < repos.txt
+while IFS='|' read -r url relative_path _kind <&3; do
+    [[ "${url:-}" != \#* ]] || continue
+    relative_path="$(printf '%s' "${relative_path:-}" | tr -d '[:space:]')"
+    [[ -n "$relative_path" ]] || continue
+    repositories+=("$relative_path")
+done 3< repos.txt
 
 blocked=0
 for repository in "${repositories[@]}"; do
     [[ -d "$repository/.git" ]] || continue
     if [[ -n "$(git -C "$repository" status --porcelain)" ]]; then
-        if [[ -n "$commit_message" ]]; then
-            printf '== committing %s\n' "${repository#"$workspace"/}"
-            if ((dry_run)); then
-                git -C "$repository" status --short
-            else
-                git -C "$repository" add -A
-                git -C "$repository" commit -m "$commit_message"
-            fi
-        else
-            printf 'DIRTY: %s (commit it, or rerun with -m)\n' "${repository#"$workspace"/}" >&2
-            blocked=1
-        fi
+        printf 'DIRTY: %s (review and commit it before publication)\n' "$repository" >&2
+        git -C "$repository" status --short >&2
+        blocked=1
     fi
 done
 if ((blocked)); then

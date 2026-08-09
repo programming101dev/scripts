@@ -142,6 +142,20 @@ NATIVE_CALLBACKS = {
     "void *(*)(void *)": "native_thread_callback",
 }
 NATIVE_CALLBACK_DEFINITIONS = {
+    "native_fsm_state_callback": """
+static void native_fsm_state_callback(const struct p101_env *env,
+                                      struct p101_error *err,
+                                      void *argument,
+                                      struct p101_fsm_effect_sink *sink,
+                                      struct p101_fsm_decision *decision)
+{
+    (void)env;
+    (void)err;
+    (void)argument;
+    (void)sink;
+    p101_fsm_decide_exit(decision);
+}
+""",
     "native_path_error_callback": """
 static int native_path_error_callback(const char *path, int error_code)
 {
@@ -1613,6 +1627,450 @@ def native_contract_fixture(
         parameter.get("type", {}).get("qualType", "")
     )
     fixture = f"native_argument_{index}"
+
+    temporary_name_apis = {
+        "c:@F@p101_mkdtemp",
+        "c:@F@p101_mkstemp",
+    }
+    if index == 2 and function_usr in temporary_name_apis:
+        declarations = [
+            f'            char {fixture}[] = "/tmp/p101-wrapper-XXXXXX";'
+        ]
+        if function_usr == "c:@F@p101_mkdtemp":
+            cleanup = [
+                "            if(native_result != NULL)",
+                "            {",
+                f"                P101_NATIVE_CLEANUP_ERRNO(rmdir({fixture}));",
+                "            }",
+            ]
+        else:
+            cleanup = [
+                "            if(native_result >= 0)",
+                "            {",
+                "                P101_NATIVE_CLEANUP_ERRNO(close(native_result));",
+                f"                P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});",
+                "            }",
+            ]
+        return declarations, fixture, [], cleanup
+
+    if function_usr == "c:@F@p101_initstate":
+        if index == 3:
+            return [
+                f"            char {fixture}[256] = {{0}};"
+            ], fixture, [], []
+        if index == 4:
+            return [], "256U", [], []
+
+    if function_usr == "c:@F@p101_wctype_l" and index == 2:
+        return [], '"alpha"', [], []
+
+    positive_unary_apis = {
+        "c:@F@p101_acosh",
+        "c:@F@p101_acoshf",
+        "c:@F@p101_acoshl",
+        "c:@F@p101_clog",
+        "c:@F@p101_clogf",
+        "c:@F@p101_clogl",
+        "c:@F@p101_ilogb",
+        "c:@F@p101_ilogbf",
+        "c:@F@p101_ilogbl",
+        "c:@F@p101_log",
+        "c:@F@p101_log10",
+        "c:@F@p101_log10f",
+        "c:@F@p101_log10l",
+        "c:@F@p101_log2",
+        "c:@F@p101_log2f",
+        "c:@F@p101_log2l",
+        "c:@F@p101_logb",
+        "c:@F@p101_logbf",
+        "c:@F@p101_logbl",
+        "c:@F@p101_logf",
+        "c:@F@p101_logl",
+        "c:@F@p101_tgamma",
+        "c:@F@p101_tgammaf",
+        "c:@F@p101_tgammal",
+        "c:@F@p101_y0",
+        "c:@F@p101_y1",
+    }
+    if function_usr in positive_unary_apis and index == 2:
+        return [], "1.0", [], []
+
+    if function_usr == "c:@F@p101_yn" and index == 3:
+        return [], "1.0", [], []
+
+    if function_usr in {
+        "c:@F@p101_cpow",
+        "c:@F@p101_cpowf",
+        "c:@F@p101_cpowl",
+    } and index in {2, 3}:
+        return [], "1.0", [], []
+
+    if function_usr in {
+        "c:@F@p101_div",
+        "c:@F@p101_imaxdiv",
+        "c:@F@p101_ldiv",
+        "c:@F@p101_lldiv",
+    } and index == 3:
+        return [], "1", [], []
+
+    if function_usr in {
+        "c:@F@p101_remainder",
+        "c:@F@p101_remainderf",
+        "c:@F@p101_remainderl",
+        "c:@F@p101_remquo",
+        "c:@F@p101_remquof",
+        "c:@F@p101_remquol",
+    } and index == 3:
+        return [], "1.0", [], []
+
+    if function_usr == "c:@F@p101_setlocale":
+        if index == 2:
+            return [], "LC_ALL", [], []
+        if index == 3:
+            return [], '"C"', [], []
+
+    if function_usr == "c:@F@p101_timespec_get" and index == 3:
+        return [], "TIME_UTC", [], []
+
+    if function_usr == "c:@F@p101_wctype" and index == 2:
+        return [], '"alpha"', [], []
+
+    if function_usr in {
+        "c:@F@p101_swprintf",
+        "c:@F@p101_vswprintf",
+    } and index == 3:
+        return [], "PATH_MAX", [], []
+
+    if function_usr == "c:@F@p101_getdomainname" and index == 3:
+        return [], "sizeof(native_argument_2)", [], []
+
+    if function_usr == "c:@F@p101_freopen":
+        if index == 2:
+            cleanup = [
+                "            if(native_result != NULL)",
+                "            {",
+                "                P101_NATIVE_CLEANUP_ERRNO(fclose(native_result));",
+                "            }",
+            ]
+            return [], '"/dev/null"', [], cleanup
+        if index == 3:
+            return [], '"r"', [], []
+
+    if function_usr == "c:@F@p101_dbm_open":
+        if index == 2:
+            declarations = [
+                f"            char {fixture}[96];",
+                f"            char {fixture}_db[96];",
+                f"            char {fixture}_dir[96];",
+                f"            char {fixture}_pag[96];",
+                f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture},",
+                '                "/tmp/p101-wrapper-dbm-open-%ld");',
+                f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture}_db,",
+                '                "/tmp/p101-wrapper-dbm-open-%ld.db");',
+                f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture}_dir,",
+                '                "/tmp/p101-wrapper-dbm-open-%ld.dir");',
+                f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture}_pag,",
+                '                "/tmp/p101-wrapper-dbm-open-%ld.pag");',
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});",
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_db);",
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_dir);",
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_pag);",
+            ]
+            cleanup = [
+                "            if(native_result != NULL)",
+                "            {",
+                "                dbm_close(native_result);",
+                "            }",
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});",
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_db);",
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_dir);",
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture}_pag);",
+            ]
+            return declarations, fixture, [], cleanup
+        if index == 3:
+            return [], "O_RDWR | O_CREAT", [], []
+        if index == 4:
+            return [], "0600", [], []
+
+    if function_usr == "c:@F@p101_dlopen":
+        if index == 2:
+            cleanup = [
+                "            if(native_result != NULL)",
+                "            {",
+                "                P101_NATIVE_CLEANUP_STATUS(dlclose(native_result));",
+                "            }",
+            ]
+            return [], "NULL", [], cleanup
+        if index == 3:
+            return [], "RTLD_LAZY", [], []
+
+    if function_usr == "c:@F@p101_dlclose" and index == 2:
+        declarations = [
+            f"            void *{fixture};",
+            f"            {fixture} = dlopen(NULL, RTLD_LAZY);",
+            f"            if({fixture} == NULL)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+        ]
+        cleanup = [
+            "            if(native_result != 0)",
+            "            {",
+            f"                P101_NATIVE_CLEANUP_STATUS(dlclose({fixture}));",
+            "            }",
+        ]
+        return declarations, fixture, [], cleanup
+
+    if function_usr == "c:@F@p101_dlsym":
+        if index == 2:
+            return [], "RTLD_DEFAULT", [], []
+        if index == 3:
+            return [], '"malloc"', [], []
+
+    if function_usr == "c:@F@p101_fsm_effect_batch_create" and index in {2, 3}:
+        return [], "1U", [], []
+
+    if function_usr == "c:@F@p101_fsm_effect_batch_finish_step":
+        if index == 2:
+            declarations = [
+                f"            struct p101_fsm_effect_batch *{fixture};",
+                f"            {fixture} = p101_fsm_effect_batch_create(",
+                "                native_env, native_err, 1U, 16U);",
+                f"            if({fixture} == NULL)",
+                "            {",
+                "                native_child_status = 77;",
+                "                goto native_child_done_;",
+                "            }",
+            ]
+            cleanup = [
+                f"            p101_fsm_effect_batch_destroy(native_env, &{fixture});"
+            ]
+            return declarations, fixture, [], cleanup
+        if index == 4:
+            declarations = [
+                f"            struct p101_fsm_effect_batch *{fixture}_batch;",
+                f"            struct p101_fsm_effect_sink {fixture};",
+                f"            {fixture}_batch = p101_fsm_effect_batch_create(",
+                "                native_env, native_err, 1U, 16U);",
+                f"            if({fixture}_batch == NULL)",
+                "            {",
+                "                native_child_status = 77;",
+                "                goto native_child_done_;",
+                "            }",
+                f"            p101_fsm_effect_batch_sink({fixture}_batch, &{fixture});",
+            ]
+            cleanup = [
+                "            p101_fsm_effect_batch_destroy(",
+                f"                native_env, &{fixture}_batch);",
+            ]
+            return declarations, f"&{fixture}", [], cleanup
+
+    if function_usr == "c:@F@p101_fsm_info_create":
+        if index == 5:
+            declarations = [
+                f"            struct p101_fsm_transition {fixture}[1] = {{",
+                "                {P101_FSM_INIT,",
+                "                 P101_FSM_USER_START,",
+                "                 native_fsm_state_callback},",
+                "            };",
+            ]
+            cleanup = [
+                "            p101_fsm_info_destroy(",
+                "                native_env, native_err, &native_result);",
+            ]
+            return declarations, fixture, [], cleanup
+        if index == 6:
+            return [], "1U", [], []
+
+    if function_usr == "c:@F@p101_tool_run_redirect" and index in {2, 3}:
+        stream_name = "stdout" if index == 2 else "stderr"
+        declarations = [
+            f"            char {fixture}[PATH_MAX];",
+            f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture},",
+            f'                "/tmp/p101-wrapper-{stream_name}-%ld");',
+            f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});",
+        ]
+        cleanup = [
+            f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});"
+        ]
+        return declarations, fixture, [], cleanup
+
+    if function_usr == "c:@F@p101_tool_read_pipe_open":
+        if index == 2:
+            declarations = [
+                f"            char *{fixture}[4] = {{",
+                '                (char *)"/bin/sh",',
+                '                (char *)"-c",',
+                '                (char *)"true",',
+                "                NULL,",
+                "            };",
+            ]
+            return declarations, fixture, [], []
+        if index == 5:
+            declarations = [
+                f"            struct p101_tool_read_pipe {fixture} = {{NULL, -1}};"
+            ]
+            cleanup = [
+                "            if(native_result)",
+                "            {",
+                "                int native_pipe_close_status;",
+                "",
+                "                native_pipe_close_status = p101_tool_read_pipe_close(",
+                f"                    native_env, native_err, &{fixture});",
+                "                (void)native_pipe_close_status;",
+                "            }",
+            ]
+            return declarations, f"&{fixture}", [], cleanup
+
+    if (
+        function_usr == "c:@F@p101_tool_read_pipe_close"
+        and index == 2
+    ):
+        declarations = [
+            f"            struct p101_tool_read_pipe {fixture} = {{NULL, -1}};",
+            f"            char *{fixture}_argv[4] = {{",
+            '                (char *)"/bin/sh",',
+            '                (char *)"-c",',
+            '                (char *)"true",',
+            "                NULL,",
+            "            };",
+            f"            bool {fixture}_opened;",
+            f"            {fixture}_opened = p101_tool_read_pipe_open(",
+            f"                native_env, native_err, {fixture}_argv,",
+            f'                "native pipe", false, &{fixture});',
+            f"            if(!{fixture}_opened)",
+            "            {",
+            "                native_child_status = 77;",
+            "                goto native_child_done_;",
+            "            }",
+        ]
+        return declarations, f"&{fixture}", [], []
+
+    terminal_master_fd_apis = {
+        "c:@F@p101_grantpt",
+        "c:@F@p101_ptsname",
+        "c:@F@p101_unlockpt",
+    }
+    if index == 2 and function_usr in terminal_master_fd_apis:
+        setup = [
+            f"            int {fixture};",
+            f"            {fixture} = posix_openpt(O_RDWR | O_NOCTTY);",
+            f"            if({fixture} < 0)",
+            "            {",
+            "                native_child_status = 77;",
+            "                goto native_child_done_;",
+            "            }",
+        ]
+        if function_usr in {
+            "c:@F@p101_ptsname",
+            "c:@F@p101_unlockpt",
+        }:
+            setup[1:1] = [f"            int {fixture}_status;"]
+            setup.extend(
+                [
+                    f"            {fixture}_status = grantpt({fixture});",
+                    f"            if({fixture}_status != 0)",
+                    "            {",
+                    f"                P101_NATIVE_CLEANUP_ERRNO(close({fixture}));",
+                    "                native_child_status = 77;",
+                    "                goto native_child_done_;",
+                    "            }",
+                ]
+            )
+        return setup, fixture, [], [
+            f"            P101_NATIVE_CLEANUP_ERRNO(close({fixture}));"
+        ]
+
+    terminal_slave_fd_apis = {
+        "c:@F@p101_isatty",
+        "c:@F@p101_tcdrain",
+        "c:@F@p101_tcflow",
+        "c:@F@p101_tcflush",
+        "c:@F@p101_tcgetattr",
+        "c:@F@p101_tcgetpgrp",
+        "c:@F@p101_tcgetsid",
+        "c:@F@p101_tcsendbreak",
+        "c:@F@p101_tcsetattr",
+        "c:@F@p101_tcsetpgrp",
+        "c:@F@p101_ttyname_r",
+    }
+    if index == 2 and function_usr in terminal_slave_fd_apis:
+        master = f"{fixture}_master"
+        slave_name = f"{fixture}_slave_name"
+        return [
+            f"            int {master};",
+            f"            char *{slave_name};",
+            f"            int {fixture};",
+            f"            int {fixture}_status;",
+            f"            pid_t {fixture}_session;",
+            f"            {master} = posix_openpt(O_RDWR | O_NOCTTY);",
+            f"            if({master} < 0)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+            f"            {fixture}_status = grantpt({master});",
+            f"            if({fixture}_status != 0)",
+            "            {",
+            f"                P101_NATIVE_CLEANUP_ERRNO(close({master}));",
+            "                _Exit(77);",
+            "            }",
+            f"            {fixture}_status = unlockpt({master});",
+            f"            if({fixture}_status != 0)",
+            "            {",
+            f"                P101_NATIVE_CLEANUP_ERRNO(close({master}));",
+            "                _Exit(77);",
+            "            }",
+            f"            {slave_name} = ptsname({master});",
+            f"            if({slave_name} == NULL)",
+            "            {",
+            f"                P101_NATIVE_CLEANUP_ERRNO(close({master}));",
+            "                _Exit(77);",
+            "            }",
+            f"            {fixture}_session = setsid();",
+            f"            if({fixture}_session < 0)",
+            "            {",
+            f"                P101_NATIVE_CLEANUP_ERRNO(close({master}));",
+            "                native_child_status = 77;",
+            "                goto native_child_done_;",
+            "            }",
+            f"            {fixture} = open({slave_name}, O_RDWR);",
+            f"            if({fixture} < 0)",
+            "            {",
+            f"                P101_NATIVE_CLEANUP_ERRNO(close({master}));",
+            "                _Exit(77);",
+            "            }",
+        ], fixture, [], [
+            f"            P101_NATIVE_CLEANUP_ERRNO(close({fixture}));",
+            f"            P101_NATIVE_CLEANUP_ERRNO(close({master}));",
+        ]
+
+    terminal_constant_arguments = {
+        ("c:@F@p101_tcflow", 3): "TCOON",
+        ("c:@F@p101_tcflush", 3): "TCIOFLUSH",
+        ("c:@F@p101_tcsetattr", 3): "TCSANOW",
+        ("c:@F@p101_ttyname_r", 4): "PATH_MAX",
+    }
+    if (function_usr, index) in terminal_constant_arguments:
+        return [], terminal_constant_arguments[(function_usr, index)], [], []
+
+    if function_usr == "c:@F@p101_tcsetpgrp" and index == 3:
+        return [
+            f"            pid_t {fixture};",
+            f"            {fixture} = getpgrp();",
+        ], fixture, [], []
+
+    if function_usr == "c:@F@p101_tcsetattr" and index == 4:
+        return [
+            f"            struct termios {fixture};",
+            f"            int {fixture}_status;",
+        ], f"&{fixture}", [
+            f"            {fixture}_status = tcgetattr(native_argument_2, &{fixture});",
+            f"            if({fixture}_status != 0)",
+            "            {",
+            "                native_child_status = 77;",
+            "                goto native_child_done_;",
+            "            }",
+        ], []
 
     decimal_text_apis = {
         "c:@F@p101_parse_char",
@@ -3462,9 +3920,26 @@ def fault_test(
                     f"            memset({expression}, 0, "
                     f"sizeof({expression}));"
                 )
-    if needs_native_stream and function_usr != "c:@F@p101_fclose":
+    if needs_native_stream and function_usr not in {
+        "c:@F@p101_fclose",
+        "c:@F@p101_freopen",
+    }:
         native_cleanup.append(
             "            P101_NATIVE_CLEANUP_ERRNO(fclose(native_stream));"
+        )
+    if function_usr == "c:@F@p101_getwchar":
+        native_fixture_declarations.append(
+            "            wint_t native_getwchar_pushback;"
+        )
+        native_setup.extend(
+            [
+                "            clearerr(stdin);",
+                "            native_getwchar_pushback = ungetwc(L'x', stdin);",
+                "            if(native_getwchar_pushback == WEOF)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ]
         )
     if function_usr in {"c:@F@p101_pause", "c:@F@p101_sigsuspend"}:
         native_setup.extend(
@@ -3706,8 +4181,32 @@ def fault_test(
             f"{name}: native cleanup ignores a reportable result: "
             + ", ".join(line.strip() for line in unchecked_cleanup)
         )
-    native_outcome = native_outcome or {"outcome": "success"}
-    if native_outcome["outcome"] == "success":
+    if native_outcome is None:
+        native_assertion = (
+            "            if(p101_error_has_error(native_err))\n"
+            "            {\n"
+            "                bool native_error_declared = false;\n"
+            "\n"
+            "                for(size_t native_error_index = 0U;\n"
+            "                    native_error_index < sizeof(errors) / sizeof(errors[0]);\n"
+            "                    native_error_index++)\n"
+            "                {\n"
+            "                    if(p101_error_is_errno(native_err, errors[native_error_index]))\n"
+            "                    {\n"
+            "                        native_error_declared = true;\n"
+            "                    }\n"
+            "                }\n"
+            "                if(!native_error_declared)\n"
+            "                {\n"
+            '                    fprintf(stderr, "native smoke produced an '
+            f'undeclared platform failure: {name}: %s\\n", '
+            "p101_error_get_message(native_err));\n"
+            "                    native_passed = false;\n"
+            "                }\n"
+            "                p101_error_reset(native_err);\n"
+            "            }\n"
+        )
+    elif native_outcome["outcome"] == "success":
         native_assertion = (
             "            if(p101_error_has_error(native_err))\n"
             "            {\n"
@@ -3764,6 +4263,8 @@ def fault_test(
                 "                native_passed = false;\n"
                 "            }\n"
             )
+        elif result_kind == "void":
+            pass
         elif result_kind is not None:
             raise RuntimeError(
                 f"{name}: unsupported native result assertion {result_kind!r}"
@@ -3895,7 +4396,12 @@ native_child_done_:
                         WTERMSIG(native_status));
             }}
             EXPECT(WIFEXITED(native_status));
-            if(WIFEXITED(native_status))
+            if(WIFEXITED(native_status) && WEXITSTATUS(native_status) == 77)
+            {{
+                fprintf(stderr,
+                        "native smoke fixture unavailable: {name}\\n");
+            }}
+            else if(WIFEXITED(native_status))
             {{
                 if(WEXITSTATUS(native_status) != EXIT_SUCCESS)
                 {{
@@ -3942,6 +4448,8 @@ def native_callback_helpers(
         helpers.add("native_signal_callback")
     if "c:@F@p101_pthread_cond_wait" in admitted_usrs:
         helpers.add("native_condition_signal_thread")
+    if "c:@F@p101_fsm_info_create" in admitted_usrs:
+        helpers.add("native_fsm_state_callback")
     return "\n".join(
         NATIVE_CALLBACK_DEFINITIONS[helper].strip()
         for helper in sorted(helpers)
@@ -4009,6 +4517,8 @@ int main(void)
         names,
     )
     native_includes = "#include <fcntl.h>\n"
+    if "RTLD_" in tests or "dlopen(" in tests or "dlclose(" in tests:
+        native_includes += "#include <dlfcn.h>\n"
     native_unlink_helper = ""
     native_format_helper = ""
     if "P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT" in tests:
@@ -4120,7 +4630,10 @@ static int native_child_status = EXIT_SUCCESS;
 #define P101_NATIVE_CLEANUP_ERRNO(expression)                                    \\
     do                                                                           \\
     {{                                                                            \\
-        if((expression) != 0)                                                    \\
+        int p101_cleanup_status_;                                                \\
+                                                                                 \\
+        p101_cleanup_status_ = (expression);                                     \\
+        if(p101_cleanup_status_ != 0)                                            \\
         {{                                                                        \\
             fprintf(stderr,                                                      \\
                     "native cleanup failed: %s: %s\\n",                          \\
@@ -4539,12 +5052,16 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         )
     if (
         native_smoke_contract.get("schema")
-        != "p101-wrapper-native-smoke-contract-v2"
+        != "p101-wrapper-native-smoke-contract-v3"
     ):
         raise RuntimeError("unsupported wrapper native-smoke contract")
-    if native_smoke_contract.get("default_outcome") != "success":
+    if (
+        native_smoke_contract.get("default_outcome")
+        != "success-or-declared-platform-error"
+    ):
         raise RuntimeError(
-            "wrapper native-smoke contract must default to success"
+            "wrapper native-smoke contract must default to a declared "
+            "platform outcome"
         )
     native_smoke_exceptions = native_smoke_contract.get("exceptions", {})
     if not isinstance(native_smoke_exceptions, list):
@@ -4683,7 +5200,12 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
             raise RuntimeError(
                 f"{name}: conditional native outcome lacks exact errors"
             )
-        if outcome.get("result_kind") not in {None, "equals", "text"}:
+        if outcome.get("result_kind") not in {
+            None,
+            "equals",
+            "text",
+            "void",
+        }:
             raise RuntimeError(
                 f"{name}: invalid native-smoke result assertion"
             )

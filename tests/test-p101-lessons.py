@@ -390,11 +390,11 @@ class LessonCatalogTests(unittest.TestCase):
                     doctor = Path(directory) / "doctor"
                     doctor.mkdir()
                     (doctor / "module-map.json").write_text(
-                        json.dumps({"findings": [{"id": "P101-MOD-001"}]}),
+                        json.dumps({"findings": [{"id": "P101-MOD-002"}]}),
                         encoding="utf-8",
                     )
                     rows = module.lesson_rows(Path(directory))
-                self.assertIn("P101-MOD-001", rows)
+                self.assertIn("P101-MOD-002", rows)
                 self.assertIn("module-boundaries.md", rows)
 
     def test_cohort_summary_groups_findings_by_lesson(self) -> None:

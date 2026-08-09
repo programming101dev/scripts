@@ -15,6 +15,7 @@ cohort_filter=""
 case_filter=""
 offline=0
 validate_only=0
+verify_facts_file=""
 
 usage() {
   cat <<'USAGE'
@@ -33,6 +34,7 @@ Options:
   --case NAME            run only one case
   --offline              never fetch; require every pinned revision in cache
   --validate-only        validate the manifest without fetching or parsing
+  --verify-facts FILE    validate and summarize one producer output file
   -h, --help             show this help
 
 Every case must emit semantic facts and must not crash. Parser status 2 is
@@ -51,6 +53,7 @@ while [ "$#" -gt 0 ]; do
     --case) case_filter="${2:?}"; shift 2 ;;
     --offline) offline=1; shift ;;
     --validate-only) validate_only=1; shift ;;
+    --verify-facts) verify_facts_file="${2:?}"; shift 2 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
@@ -127,6 +130,34 @@ validate_manifest() {
 }
 
 validate_manifest
+fact_version() {
+  awk -F '\t' '$1 == "P101FACT" { print $2; exit }' "$1"
+}
+
+validate_fact_protocol() {
+  file="$1"
+  version="$(fact_version "$file")"
+  [ -n "$version" ] || {
+    echo "facts output contains no P101FACT record: $file" >&2
+    return 1
+  }
+  awk -F '\t' -v version="$version" '
+    $1 == "P101FACT" && $2 != version {
+      print "mixed P101FACT versions: expected " version ", found " $2 \
+        > "/dev/stderr"
+      failed = 1
+    }
+    END { exit failed }
+  ' "$file"
+}
+
+if [ -n "$verify_facts_file" ]; then
+  validate_fact_protocol "$verify_facts_file"
+  version="$(fact_version "$verify_facts_file")"
+  facts="$(awk -F '\t' '$1 == "P101FACT" { count++ } END { print count + 0 }' "$verify_facts_file")"
+  printf 'version=%s facts=%s\n' "$version" "$facts"
+  exit 0
+fi
 if [ "$validate_only" -eq 1 ]; then
   echo "c-facts external corpus manifest: PASS (50 cases, 10 per cohort)"
   exit 0
@@ -248,7 +279,8 @@ select_sources() {
 count_kind() {
   kind="$1"
   file="$2"
-  awk -F '\t' -v kind="$kind" '$1 == "P101FACT" && $2 == "2" && $3 == kind { count++ } END { print count + 0 }' "$file"
+  version="$(fact_version "$file")"
+  awk -F '\t' -v kind="$kind" -v version="$version" '$1 == "P101FACT" && $2 == version && $3 == kind { count++ } END { print count + 0 }' "$file"
 }
 
 sha256_file() {
@@ -336,7 +368,11 @@ run_case() {
     set -e
   fi
 
-  fact_count="$(awk -F '\t' '$1 == "P101FACT" && $2 == "2" { count++ } END { print count + 0 }' "$facts")"
+  if ! validate_fact_protocol "$facts"; then
+    status="FAIL"
+  fi
+  fact_version_value="$(fact_version "$facts")"
+  fact_count="$(awk -F '\t' -v version="$fact_version_value" '$1 == "P101FACT" && $2 == version { count++ } END { print count + 0 }' "$facts")"
   file_count="$(count_kind FILE "$facts")"
   include_count="$(count_kind INCLUDE "$facts")"
   function_count="$(count_kind FUNCTION "$facts")"

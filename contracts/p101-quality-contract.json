@@ -44,7 +44,7 @@
         "P101_ERROR_SYSTEM",
         "P101_ERROR_USER"
       ],
-      "type_usr": "c:@E@p101_error_type"
+      "type_usr": "c:@EA@p101_error_type"
     },
     {
       "source": "libraries/lib_c_facts/include/p101_c_facts/facts.h",
@@ -82,7 +82,7 @@
         "P101_TOOL_EVENT_LINE_MALFORMED",
         "P101_TOOL_EVENT_LINE_ERROR"
       ],
-      "type_usr": "c:@E@p101_tool_event_line_status"
+      "type_usr": "c:@EA@p101_tool_event_line_status"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
@@ -95,7 +95,7 @@
         "P101_TOOL_EVENT_PARSE_MALFORMED",
         "P101_TOOL_EVENT_PARSE_BAD_VERSION"
       ],
-      "type_usr": "c:@E@p101_tool_event_parse_status"
+      "type_usr": "c:@EA@p101_tool_event_parse_status"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
@@ -110,7 +110,7 @@
         "P101_TOOL_OUTCOME_UNSUPPORTED",
         "P101_TOOL_OUTCOME_TOOL_ERROR"
       ],
-      "type_usr": "c:@E@p101_tool_outcome"
+      "type_usr": "c:@EA@p101_tool_outcome"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
@@ -125,7 +125,7 @@
         "P101_TOOL_FAILURE_UNSUPPORTED_INPUT",
         "P101_TOOL_FAILURE_TOOL_ERROR"
       ],
-      "type_usr": "c:@E@p101_tool_failure_reason"
+      "type_usr": "c:@EA@p101_tool_failure_reason"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
@@ -138,7 +138,7 @@
         "P101_TOOL_RECEIPT_BAD_VERSION",
         "P101_TOOL_RECEIPT_BAD_DIGEST"
       ],
-      "type_usr": "c:@E@p101_tool_receipt_validation_status"
+      "type_usr": "c:@EA@p101_tool_receipt_validation_status"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/lifecycle.h",
@@ -153,7 +153,7 @@
         "P101_TOOL_EVENT_LIFECYCLE_FINDING_DUPLICATE_ACQUIRE",
         "P101_TOOL_EVENT_LIFECYCLE_FINDING_EXEC_INHERIT"
       ],
-      "type_usr": "c:@E@p101_tool_event_lifecycle_finding_kind"
+      "type_usr": "c:@EA@p101_tool_event_lifecycle_finding_kind"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/ownership.h",
@@ -165,7 +165,7 @@
         "P101_TOOL_EVENT_OWNERSHIP_RELEASE_STRAY",
         "P101_TOOL_EVENT_OWNERSHIP_RELEASE_DUPLICATE"
       ],
-      "type_usr": "c:@E@p101_tool_event_ownership_release_result"
+      "type_usr": "c:@EA@p101_tool_event_ownership_release_result"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/ownership.h",
@@ -177,7 +177,7 @@
         "P101_TOOL_EVENT_OWNERSHIP_REPLACE_NEW",
         "P101_TOOL_EVENT_OWNERSHIP_REPLACE_BAD"
       ],
-      "type_usr": "c:@E@p101_tool_event_ownership_replace_result"
+      "type_usr": "c:@EA@p101_tool_event_ownership_replace_result"
     },
     {
       "source": "libraries/lib_fsm/include/p101_fsm/errors.h",
@@ -195,7 +195,7 @@
         "P101_FSM_ERROR_EFFECT_CAPACITY",
         "P101_FSM_ERROR_SEQUENCE_EXHAUSTED"
       ],
-      "type_usr": "c:@E@p101_fsm_error"
+      "type_usr": "c:@EA@p101_fsm_error"
     },
     {
       "source": "libraries/lib_fsm/include/p101_fsm/fsm.h",
@@ -213,7 +213,7 @@
         "P101_FSM_REFUSAL_EFFECT_CAPACITY",
         "P101_FSM_REFUSAL_SEQUENCE_EXHAUSTED"
       ],
-      "type_usr": "c:@E@p101_fsm_refusal"
+      "type_usr": "c:@EA@p101_fsm_refusal"
     },
     {
       "source": "libraries/lib_fsm/include/p101_fsm/fsm.h",
@@ -227,7 +227,7 @@
         "P101_FSM_STEP_REFUSED",
         "P101_FSM_STEP_ERROR"
       ],
-      "type_usr": "c:@E@p101_fsm_step_status"
+      "type_usr": "c:@EA@p101_fsm_step_status"
     },
     {
       "source": "libraries/lib_fsm/include/p101_fsm/fsm.h",
@@ -240,7 +240,7 @@
         "P101_FSM_RUN_EXITED",
         "P101_FSM_RUN_REFUSED"
       ],
-      "type_usr": "c:@E@p101_fsm_run_result"
+      "type_usr": "c:@EA@p101_fsm_run_result"
     }
   ],
   "typed_outcome_exclusions": [
@@ -266,130 +266,144 @@
       "type_usr": "c:@E@p101_c_fact_kind"
     },
     {
+      "source": "libraries/lib_c_facts/include/p101_c_facts/facts.h",
+      "type": "p101_c_note_kind",
+      "owner": "lib_c_facts",
+      "reason": "analysis note classification, not an operation outcome",
+      "type_usr": "c:@E@p101_c_note_kind"
+    },
+    {
       "source": "libraries/lib_env/include/p101_env/env.h",
       "type": "p101_env_call_event",
       "owner": "lib_env",
       "reason": "call lifecycle event classification",
-      "type_usr": "c:@E@p101_env_call_event"
+      "type_usr": "c:@EA@p101_env_call_event"
     },
     {
       "source": "libraries/lib_env/include/p101_env/env.h",
       "type": "p101_env_call_log_options",
       "owner": "lib_env",
       "reason": "bitmask configuration options",
-      "type_usr": "c:@E@p101_env_call_log_options"
+      "type_usr": "c:@EA@p101_env_call_log_options"
     },
     {
       "source": "libraries/lib_env/include/p101_env/env.h",
       "type": "p101_env_fault_kind",
       "owner": "lib_env",
       "reason": "fault payload classification",
-      "type_usr": "c:@E@p101_env_fault_kind"
+      "type_usr": "c:@EA@p101_env_fault_kind"
+    },
+    {
+      "source": "libraries/lib_env/include/p101_env/env.h",
+      "type": "p101_env_fault_mode",
+      "owner": "lib_env",
+      "reason": "user-facing fault mode vocabulary naming a kind/phase/disposition triple",
+      "type_usr": "c:@EA@p101_env_fault_mode"
     },
     {
       "source": "libraries/lib_env/include/p101_env/env.h",
       "type": "p101_env_fault_phase",
       "owner": "lib_env",
       "reason": "fault timing classification",
-      "type_usr": "c:@E@p101_env_fault_phase"
+      "type_usr": "c:@EA@p101_env_fault_phase"
     },
     {
       "source": "libraries/lib_env/include/p101_env/env.h",
       "type": "p101_env_fault_disposition",
       "owner": "lib_env",
       "reason": "fault retry-policy classification",
-      "type_usr": "c:@E@p101_env_fault_disposition"
+      "type_usr": "c:@EA@p101_env_fault_disposition"
     },
     {
       "source": "libraries/lib_env/include/p101_env/env.h",
       "type": "p101_env_fd_event",
       "owner": "lib_env",
       "reason": "descriptor lifecycle event classification",
-      "type_usr": "c:@E@p101_env_fd_event"
+      "type_usr": "c:@EA@p101_env_fd_event"
     },
     {
       "source": "libraries/lib_env/include/p101_env/env.h",
       "type": "p101_env_alloc_event",
       "owner": "lib_env",
       "reason": "allocation lifecycle event classification",
-      "type_usr": "c:@E@p101_env_alloc_event"
+      "type_usr": "c:@EA@p101_env_alloc_event"
     },
     {
       "source": "libraries/lib_env/include/p101_env/env.h",
       "type": "p101_env_resource_kind",
       "owner": "lib_env",
       "reason": "generic resource lifecycle event classification",
-      "type_usr": "c:@E@p101_env_resource_kind"
+      "type_usr": "c:@EA@p101_env_resource_kind"
     },
     {
       "source": "libraries/lib_fsm/include/p101_fsm/fsm.h",
       "type": "p101_fsm_state",
       "owner": "lib_fsm",
       "reason": "machine state identifiers and sentinels",
-      "type_usr": "c:@E@p101_fsm_state"
+      "type_usr": "c:@EA@p101_fsm_state"
     },
     {
       "source": "libraries/lib_fsm/include/p101_fsm/fsm.h",
       "type": "p101_fsm_decision_kind",
       "owner": "lib_fsm",
       "reason": "callback command classification consumed by the step operation",
-      "type_usr": "c:@E@p101_fsm_decision_kind"
+      "type_usr": "c:@EA@p101_fsm_decision_kind"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
       "type": "p101_tool_event_record_kind",
       "owner": "lib_tool_event",
       "reason": "event record classification",
-      "type_usr": "c:@E@p101_tool_event_record_kind"
+      "type_usr": "c:@EA@p101_tool_event_record_kind"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
       "type": "p101_tool_event_fd_kind",
       "owner": "lib_tool_event",
       "reason": "descriptor event classification",
-      "type_usr": "c:@E@p101_tool_event_fd_kind"
+      "type_usr": "c:@EA@p101_tool_event_fd_kind"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
       "type": "p101_tool_event_alloc_kind",
       "owner": "lib_tool_event",
       "reason": "allocation event classification",
-      "type_usr": "c:@E@p101_tool_event_alloc_kind"
+      "type_usr": "c:@EA@p101_tool_event_alloc_kind"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
       "type": "p101_tool_event_call_kind",
       "owner": "lib_tool_event",
       "reason": "call event classification",
-      "type_usr": "c:@E@p101_tool_event_call_kind"
+      "type_usr": "c:@EA@p101_tool_event_call_kind"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
       "type": "p101_tool_event_resource_kind",
       "owner": "lib_tool_event",
       "reason": "resource event classification",
-      "type_usr": "c:@E@p101_tool_event_resource_kind"
+      "type_usr": "c:@EA@p101_tool_event_resource_kind"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/model.h",
+      "source": "libraries/lib_tool_event/include/p101_tool_event/model_types.h",
       "type": "p101_tool_model_node_domain",
       "owner": "lib_tool_event",
       "reason": "causal-model node classification",
-      "type_usr": "c:@E@p101_tool_model_node_domain"
+      "type_usr": "c:@EA@p101_tool_model_node_domain"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/model.h",
+      "source": "libraries/lib_tool_event/include/p101_tool_event/model_types.h",
       "type": "p101_tool_model_edge_kind",
       "owner": "lib_tool_event",
       "reason": "causal-model edge classification",
-      "type_usr": "c:@E@p101_tool_model_edge_kind"
+      "type_usr": "c:@EA@p101_tool_model_edge_kind"
     },
     {
       "source": "libraries/lib_tool_event/include/p101_tool_event/ownership.h",
       "type": "p101_tool_event_ownership_state",
       "owner": "lib_tool_event",
       "reason": "resource ownership state classification",
-      "type_usr": "c:@E@p101_tool_event_ownership_state"
+      "type_usr": "c:@EA@p101_tool_event_ownership_state"
     }
   ],
   "audit_responsibilities": [
@@ -422,7 +436,7 @@
       "source": "scripts/contracts/wrapper-native-smoke-contract.json",
       "evidence": {
         "kind": "json-schema",
-        "value": "p101-wrapper-native-smoke-contract-v2"
+        "value": "p101-wrapper-native-smoke-contract-v3"
       },
       "oracle": "wrapper-failure-contract"
     },

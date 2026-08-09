@@ -59,6 +59,7 @@
       "wrapper-fault-semantics-tests",
       "wrapper-fault-semantics",
       "wrapper-unit-tests",
+      "header-standalone",
       "library-audit",
       "instrumentation",
       "wrapper-conformance-output-tests",
@@ -638,6 +639,18 @@
       "depends_on": ["wrapper-failure-contract", "wrapper-fault-semantics"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "Every public wrapper has exactly one compiled test, and every documented Linux, macOS, and FreeBSD fault has exact generated error-object, return-value, errno, output, and resource-effect assertions."
+    },
+    {
+      "id": "header-standalone",
+      "title": "workspace header self-sufficiency",
+      "group": "library-audit",
+      "required": true,
+      "command": ["./checks/check-p101-header-standalone.sh", "-c", "{cc}", "-o", "{out}/header-standalone"],
+      "inputs": ["scripts/checks/check-p101-header-standalone.sh", "libraries/**", "programs/**"],
+      "inputs_complete": true,
+      "depends_on": ["architecture-contract-tests"],
+      "resources": {"writes": ["{out}/header-standalone"], "units": {"compiler": 1}},
+      "guarantee": "Every maintained header compiles alone, so each interface includes exactly what it uses."
     },
     {
       "id": "library-audit",

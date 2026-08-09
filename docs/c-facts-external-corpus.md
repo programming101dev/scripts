@@ -43,7 +43,7 @@ pinned Git trees, the selected source files, and the configured
 `p101-c-facts` executable. The parser-context manifest records project compile
 definitions needed to make a sampled translation unit meaningful rather than
 hiding them in the runner. Outputs are `results.tsv`, `summary.md`, and one
-directory per case containing the exact source list, raw P101FACT v6 records,
+directory per case containing the exact source list, raw P101FACT v7 records,
 and parser diagnostics.
 
 A mature-project case passes when fact acquisition emits file facts and

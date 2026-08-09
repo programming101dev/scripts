@@ -9,7 +9,20 @@ sandbox="$(mktemp -d "${TMPDIR:-/tmp}/p101-push-preflight.XXXXXX")"
 trap 'rm -rf "$sandbox"' EXIT
 mkdir -p "$sandbox/scripts/distribution" "$sandbox/libraries"
 cp distribution/push-repos.sh "$sandbox/scripts/distribution/push-repos.sh"
+cp distribution/publish-workspace.sh "$sandbox/scripts/distribution/publish-workspace.sh"
 chmod +x "$sandbox/scripts/distribution/push-repos.sh"
+chmod +x "$sandbox/scripts/distribution/publish-workspace.sh"
+
+if grep -Fq 'git add -A' distribution/release.sh ||
+   grep -Fq 'git add -A' distribution/publish-workspace.sh; then
+  echo "release path must not select source files for a commit" >&2
+  exit 1
+fi
+if grep -Eq 'find .*\.git.*-delete' distribution/release.sh \
+   distribution/publish-workspace.sh; then
+  echo "release path must not delete Git lock files" >&2
+  exit 1
+fi
 
 remote="$sandbox/lib_one.git"
 repository="$sandbox/libraries/lib_one"
@@ -78,4 +91,25 @@ chmod +x "$sandbox/scripts/preflight.sh"
 [[ "$(git --git-dir="$remote" rev-parse refs/heads/main)" == "$override" ]]
 grep -Fq 'preflight explicitly disabled' "$sandbox/override.log"
 
-printf 'PASS: managed repository pushes require a successful GitHub Actions preflight.\n'
+printf 'uncommitted\n' > "$repository/value.txt"
+set +e
+(
+  cd "$sandbox/scripts"
+  P101_PUSH_PREFLIGHT=./preflight.sh \
+    ./distribution/push-repos.sh --yes --dry-run
+) > "$sandbox/dirty-push.log" 2>&1
+dirty_push_status=$?
+(
+  cd "$sandbox/scripts"
+  ./distribution/publish-workspace.sh --dry-run
+) > "$sandbox/dirty-publish.log" 2>&1
+dirty_publish_status=$?
+set -e
+[[ "$dirty_push_status" -eq 2 ]]
+[[ "$dirty_publish_status" -eq 1 ]]
+grep -Fq 'uncommitted changes' "$sandbox/dirty-push.log"
+grep -Fq 'review and commit it before publication' "$sandbox/dirty-publish.log"
+[[ "$(git --git-dir="$remote" rev-parse refs/heads/main)" == "$override" ]]
+[[ "$(git -C "$repository" rev-parse HEAD)" == "$override" ]]
+
+printf 'PASS: publication requires clean, precommitted repositories and a successful preflight.\n'

@@ -209,8 +209,31 @@ Use the supported publication workflow for managed repositories:
 It runs the preflight before the first push and stops the entire publication if
 the preflight fails. `--skip-preflight` is an explicit emergency escape hatch,
 not the normal workflow. The scripts repository remains intentionally excluded
-from that program and is pushed manually, last, only after the same preflight
-has passed.
+from that program, because `repos.txt` describes the repositories scripts
+manages, not scripts itself.
+
+To release the whole workspace, including the scripts repository and the hashes
+that pin everything else, use:
+
+```bash
+./distribution/release.sh -m "what changed"
+```
+
+That is one command, and it coordinates the programs above rather than
+replacing them. It commits the scripts repository's own working tree, then
+hands off to `./distribution/publish-workspace.sh`, which commits every dirty
+managed repository, runs the preflight, pushes them, refreshes `repos.lock` and
+the stack contract against where they landed, and publishes the scripts
+repository last. The order is fixed: the refresh has to record revisions that
+are already on their remotes, and the scripts repository is what carries that
+record.
+
+Release then audits itself. It verifies the lock and the stack contract, and
+proves that every managed repository is clean, that its `HEAD` is the revision
+`repos.lock` names, and that its upstream is at that same revision. A release
+that pushed everything but left the lock naming a revision no remote has is not
+a release; it is a trap for the next machine to clone, and this is the check
+that catches it. `--dry-run` shows the whole sequence and changes nothing.
 
 The local receipt is host-specific. Native macOS can exercise the macOS stack;
 Linux can additionally run inside a Linux container; FreeBSD requires a
@@ -353,7 +376,7 @@ To replay the source-contract audit over every active wrapper library:
 
 This uses each library's compile database, its optional checked-in
 `.p101-wrapper-audit-allow` boundary ledger, `p101-error-contract`, and
-`p101-module-map -L`. The boundary pass records a P101FACT v6 snapshot and
+`p101-module-map -L`. The boundary pass records a P101FACT v7 snapshot and
 admitted-input manifest; both downstream C policy tools reuse that snapshot.
 Runtime wrapper feature coverage is enforced by each split library's generated
 wrapper tests and `unit-test-manifest.tsv`. Reports are written under one
@@ -502,7 +525,7 @@ wrapper-audit checks over the C tools, and module-map design reports — run:
 By default, module-map design notes fail the audit. Use
 `--allow-module-notes` only for an exploratory report that should not enforce
 the current module-splitting rules. Each C tool is parsed once; module-map
-reuses the recorded P101FACT v6 snapshot, and a checked-in
+reuses the recorded P101FACT v7 snapshot, and a checked-in
 `.p101-wrapper-audit-allow` file is treated as a scoped, stale-checked boundary
 ledger.
 
