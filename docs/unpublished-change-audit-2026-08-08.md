@@ -48,3 +48,48 @@ Publication must now satisfy these properties before any push:
 This classification is based on commit messages, diffs, rule contracts, and
 current workspace topology. Final `keep` status still depends on the macOS,
 Linux, and FreeBSD gates. The local archive branches are not remote backups.
+
+## Stabilization result — 2026-08-09
+
+The unpublished history was replaced by focused local commits after every
+original branch was preserved. During verification, the audit found and fixed
+five defects that were independent of formatting or warning churn:
+
+1. malformed `lib_tool_event` records could reach payload fields before their
+   arity was validated, producing a crash or use-after-free;
+2. the shared JSON decoder rejected valid uppercase hexadecimal escapes;
+3. `lib_c_facts` lacked executable conformance evidence for one public outcome;
+4. the `p101-error-path-walk` test target omitted its `p101_record` dependency;
+5. the `p101-doctor` CLI test used a whitespace expression with the wrong
+   shell semantics.
+
+The shared repository test runner was also corrected to use workspace-built
+dependencies before installed copies. This removed a stale-install boundary
+that could make template tests pass or fail against unrelated library bytes.
+
+The semantic no-embedded-call contract initially reported 197 playground
+violations. The playground now stores each call result before using it in a
+condition, argument, cast, or return; loop reevaluation and short-circuit order
+were preserved explicitly. Its unused public scenario query was removed, and
+argument defaulting no longer uses the resource-owning `_init` convention.
+The clean corpus case has a narrow, declared `module-map` exit amnesty for the
+remaining warning that its scenario catalogue is intentionally a large module.
+Runtime findings and error-contract findings are not covered by that amnesty.
+
+### Final evidence
+
+- 25/25 generator regression tests passed.
+- 43 focused repository test executables passed.
+- `lib_tool_event` strict build, unit tests, and fuzz targets passed.
+- `lib_env` parser fuzzing passed.
+- `p101-error-path-walk` and `p101-doctor` tests passed.
+- The playground strict build and unit test passed.
+- `p101 lab --quick --strict-corpus` passed: the clean case remained clean and
+  `fd-leak` still produced `P101-FD-001`.
+- `github-actions/preflight.sh` rebuilt all 46 repositories and passed the
+  complete governed acceptance graph on macOS. Receipt:
+  `/private/tmp/p101-stabilization-preflight-final-8/receipt.md`.
+
+All managed worktrees were clean at the end of the receipt. Cross-platform
+confidence still requires the authoritative Linux and FreeBSD CI jobs; this
+local preflight intentionally does not claim otherwise.
