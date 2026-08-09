@@ -26,8 +26,10 @@ from p101_check_plan import (
     GraphError,
     expand_command,
     impact_closure,
+    impact_dependency_closure,
     select_nodes,
     validate,
+    workspace_changed_paths,
 )
 from p101_check_reporting import log_result, write_profile, write_summary
 
@@ -283,12 +285,28 @@ def semantic_environment() -> dict[str, str]:
     return {
         key: value
         for key, value in sorted(os.environ.items())
-        if key in SEMANTIC_ENVIRONMENT or key.startswith("P101_")
+        if (
+            key in SEMANTIC_ENVIRONMENT or key.startswith("P101_")
+        )
+        and key
+        not in {
+            "P101_FACTS_CACHE",
+            "P101_C_FACTS_CACHE_DIR",
+            "P101_SEMANTIC_CACHE_ROOT",
+            "P101_SEMANTIC_USAGE_LOG",
+        }
     }
 
 
-def normalize_for_identity(value: str, output: Path) -> str:
-    return value.replace(os.fspath(output), "{out}")
+def normalize_for_identity(
+    value: str, output: Path, semantic_cache: str = ""
+) -> str:
+    normalized = value.replace(os.fspath(output), "{out}")
+    if semantic_cache:
+        normalized = normalized.replace(
+            semantic_cache, "{semantic_cache}"
+        )
+    return normalized
 
 
 def node_input_identity(
@@ -307,17 +325,22 @@ def node_input_identity(
     if node.get("receipts"):
         tools.append(variables.get("receipt_verifier", "p101-tool-receipt"))
     normalized_node = dict(node)
+    semantic_cache = variables.get("semantic_cache", "")
     normalized_node["command"] = [
-        normalize_for_identity(value, output) for value in command
+        normalize_for_identity(value, output, semantic_cache)
+        for value in command
     ]
     payload = {
         "schema": "p101-check-node-input-v1",
         "node": normalized_node,
-        "command": [normalize_for_identity(value, output) for value in command],
+        "command": [
+            normalize_for_identity(value, output, semantic_cache)
+            for value in command
+        ],
         "variables": {
-            key: normalize_for_identity(value, output)
+            key: normalize_for_identity(value, output, semantic_cache)
             for key, value in sorted(variables.items())
-            if key != "out"
+            if key not in {"out", "semantic_cache"}
             and (key != "receipt_verifier" or bool(node.get("receipts")))
         },
         "workspace": workspace,
@@ -408,6 +431,7 @@ def expanded_writes(
                 f"node {node['id']} cache output is outside the run directory: {path}"
             )
         paths.append(path)
+    paths.append(output / "semantic-usage" / f"{node['id']}.jsonl")
     return paths
 
 
@@ -657,6 +681,7 @@ def execute_node(
     declared_outputs: list[Path],
     declared_receipts: list[Path],
     receipt_verifier: str,
+    environment: dict[str, str],
 ) -> dict[str, Any]:
     log_path = output / "logs" / f"{node['id']}.log"
     attempts = 0
@@ -674,6 +699,11 @@ def execute_node(
                     remove_owned_output(path, output)
             except (OSError, GraphError) as error:
                 cleanup_error = error
+        usage_log = output / "semantic-usage" / f"{node['id']}.jsonl"
+        usage_log.parent.mkdir(parents=True, exist_ok=True)
+        usage_log.write_text("", encoding="utf-8")
+        node_environment = environment.copy()
+        node_environment["P101_SEMANTIC_USAGE_LOG"] = os.fspath(usage_log)
         with log_path.open("a" if attempts > 1 else "w", encoding="utf-8") as log:
             if attempts > 1:
                 log.write(f"\n# retry {attempts}\n")
@@ -693,7 +723,7 @@ def execute_node(
                         stdout=log,
                         stderr=subprocess.STDOUT,
                         check=False,
-                        env=os.environ.copy(),
+                        env=node_environment,
                         timeout=timeout_seconds,
                     )
                 except subprocess.TimeoutExpired:
@@ -724,7 +754,7 @@ def execute_node(
                             stdout=log,
                             stderr=subprocess.STDOUT,
                             check=False,
-                            env=os.environ.copy(),
+                            env=node_environment,
                         )
                         if verified.returncode != 0:
                             result = subprocess.CompletedProcess(
@@ -987,6 +1017,25 @@ def run_graph(
     variables["receipt_verifier"] = os.environ.get(
         "P101_TOOL_RECEIPT", shutil.which("p101-tool-receipt") or ""
     )
+    semantic_cache = (
+        output / "semantic-facts-cold"
+        if measurement
+        else (
+            cache_directory.resolve() / "semantic-facts"
+            if cache_directory is not None
+            else SCRIPTS_ROOT / "target" / "semantic-facts"
+        )
+    )
+    semantic_cache.mkdir(parents=True, exist_ok=True)
+    variables["semantic_cache"] = os.fspath(semantic_cache)
+    execution_environment = os.environ.copy()
+    execution_environment["P101_FACTS_CACHE"] = os.fspath(semantic_cache)
+    execution_environment["P101_C_FACTS_CACHE_DIR"] = os.fspath(
+        semantic_cache
+    )
+    execution_environment["P101_SEMANTIC_CACHE_ROOT"] = os.fspath(
+        semantic_cache
+    )
     log_directory = output / "logs"
     log_directory.mkdir(parents=True, exist_ok=True)
     records: list[dict[str, Any]] = []
@@ -995,6 +1044,7 @@ def run_graph(
     order_by_id = {node["id"]: index for index, node in enumerate(all_nodes)}
     by_id = {node["id"]: node for node in all_nodes}
     identity_ids = {node["id"] for node in selected} | required_previous
+    selected_ids = {node["id"] for node in selected}
     commands = {
         identifier: expand_command(by_id[identifier]["command"], variables)
         for identifier in identity_ids
@@ -1015,6 +1065,17 @@ def run_graph(
 
     identities: dict[str, str] = {}
 
+    def effective_dependencies(node: dict[str, Any]) -> list[str]:
+        dependencies = list(node.get("depends_on", []))
+        if node.get("wait_for_selected", False):
+            dependencies.extend(
+                identifier
+                for identifier in selected_ids
+                if identifier != node["id"]
+                and identifier not in dependencies
+            )
+        return dependencies
+
     def identity_for(identifier: str) -> str:
         if identifier not in identities:
             identities[identifier] = node_input_identity(
@@ -1025,9 +1086,10 @@ def run_graph(
                 identity_scope(by_id[identifier]),
                 {
                     dependency: identity_for(dependency)
-                    for dependency in by_id[identifier].get(
-                        "depends_on", []
+                    for dependency in effective_dependencies(
+                        by_id[identifier]
                     )
+                    if dependency in identity_ids
                 },
             )
         return identities[identifier]
@@ -1166,7 +1228,7 @@ def run_graph(
         while pending or running:
             progress = False
             for identifier, node in list(pending.items()):
-                dependencies = node.get("depends_on", [])
+                dependencies = effective_dependencies(node)
                 if any(dependency not in statuses for dependency in dependencies):
                     continue
                 failed_dependencies = [
@@ -1270,6 +1332,7 @@ def run_graph(
                     expanded_writes(node, variables, output),
                     expanded_receipts(node, variables, output),
                     variables["receipt_verifier"],
+                    execution_environment,
                 )
                 running[future] = (
                     node,
@@ -1390,6 +1453,14 @@ def main() -> int:
         default=[],
         help="run the conservative impact closure for a workspace-relative path",
     )
+    run_parser.add_argument(
+        "--affected",
+        action="store_true",
+        help=(
+            "discover committed-ahead, staged, unstaged, and untracked "
+            "workspace paths and run their conservative impact closure"
+        ),
+    )
     arguments = parser.parse_args()
 
     document = json.loads(arguments.graph.read_text(encoding="utf-8"))
@@ -1412,20 +1483,60 @@ def main() -> int:
         raise GraphError("--measure requires fresh execution and cannot resume")
 
     variables = parse_variables(arguments.var)
-    if arguments.changed and (arguments.only or arguments.start):
-        raise GraphError("--changed cannot be combined with --only or --from")
+    if (arguments.changed or arguments.affected) and (
+        arguments.only or arguments.start
+    ):
+        raise GraphError(
+            "--changed/--affected cannot be combined with --only or --from"
+        )
+    if arguments.changed and arguments.affected:
+        raise GraphError("--changed and --affected are mutually exclusive")
+    discovered_changes = (
+        workspace_changed_paths(
+            SCRIPTS_ROOT.parent.resolve(), active_repository_roots()
+        )
+        if arguments.affected
+        else set(arguments.changed)
+    )
+    if arguments.affected:
+        if not discovered_changes:
+            print("p101 affected checks: no local workspace changes")
+            return 0
+        print(
+            f"p101 affected checks: {len(discovered_changes)} changed path(s)",
+            flush=True,
+        )
+        for path in sorted(discovered_changes):
+            print(f"  {path}", flush=True)
     impacted = (
-        impact_closure(arguments.changed, ordered)
-        if arguments.changed
+        impact_closure(
+            discovered_changes,
+            ordered,
+            propagate_dependencies=not document.get(
+                "require_complete_inputs", False
+            ),
+        )
+        if discovered_changes
         else set()
     )
     requested = set(arguments.only) | impacted
-    base_selected = select_nodes(
-        ordered, requested, set(arguments.skip_group), None
-    )
-    selected = select_nodes(
-        ordered, requested, set(arguments.skip_group), arguments.start
-    )
+    if discovered_changes and document.get("require_complete_inputs", False):
+        by_id = {node["id"]: node for node in ordered}
+        selected_ids = impact_dependency_closure(requested, by_id)
+        base_selected = [
+            node
+            for node in ordered
+            if node["id"] in selected_ids
+            and node["group"] not in set(arguments.skip_group)
+        ]
+        selected = base_selected
+    else:
+        base_selected = select_nodes(
+            ordered, requested, set(arguments.skip_group), None
+        )
+        selected = select_nodes(
+            ordered, requested, set(arguments.skip_group), arguments.start
+        )
     if not selected:
         raise GraphError("selection contains no check nodes")
     output = arguments.out.resolve()

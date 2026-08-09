@@ -46,9 +46,9 @@
       "sha256": "8d17bedcec212f276abd400a97aecf0cdfc9d33c1be16ef8606ae1893e7cef29"
     },
     {
-      "bytes": 13369,
+      "bytes": 13627,
       "path": "check-after-update-all.sh",
-      "sha256": "b0a28d1db3adc43268def997bc954c4c1aee0a6ecd4178106301d03dd93b7e66"
+      "sha256": "70ae3f6fc9033708f50dbd71274baeeac9b231af4bedef5ffaee49797f97a700"
     },
     {
       "bytes": 4872,
@@ -86,14 +86,19 @@
       "sha256": "5ae79df26314742d8f3480a2a747eda399399a01ea88f75f735650f4f23a16e4"
     },
     {
-      "bytes": 52267,
+      "bytes": 56211,
       "path": "checks/p101-check-graph.py",
-      "sha256": "0bcf765c138ff92934dc2041ffe80a812b7b7db1339abdb02c3ab3dd5a9152a5"
+      "sha256": "e4be6551e1bf8212922337a4fb8ed17756fcdb9819407f9e0df438c2e9767589"
     },
     {
-      "bytes": 10324,
+      "bytes": 7550,
+      "path": "checks/p101-semantic-snapshot.py",
+      "sha256": "5a72931814ca63856b7fafd54e7edd75f80913b584c2dbda38a8dee6a8c9bc6e"
+    },
+    {
+      "bytes": 14845,
       "path": "checks/p101_check_plan.py",
-      "sha256": "6507dd04465a7a9a66d07af2824ecc6acb0bcc2450b4343bf5463324368e9fd5"
+      "sha256": "589370239e7c6d1a54f5199032a3ad7af4b62c894be0418d2cd5f0efeb183875"
     },
     {
       "bytes": 3984,
@@ -136,9 +141,9 @@
       "sha256": "98d3cd6083e06e8bf965edfe66164b7ee0dc73f5ed8cfff07edbb6ec661f89af"
     },
     {
-      "bytes": 43510,
+      "bytes": 53493,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "ee10039d10767fd166fd03a3ecb007f21c7c3de51f3436b6daea21e6a4b8b978"
+      "sha256": "1b7f2e3ba1835698d3f72f37ec49542d0a13442f87449b4f5503a2173939fdfc"
     },
     {
       "bytes": 62722,
@@ -246,9 +251,14 @@
       "sha256": "db51c5099139111b97efa75ef96e2ab1651be158974fa4ada38ec9e2e2d388b4"
     },
     {
-      "bytes": 22164,
+      "bytes": 22578,
       "path": "runtime/c_facts.py",
-      "sha256": "014e733b0e204345c1e1a34b11c54a36e9f0f8537d249960a8d77808ffc96368"
+      "sha256": "757db09d7f38c4994f070faae3358e6b930a7c0b5e747d46c8d201abc760fdee"
+    },
+    {
+      "bytes": 1383,
+      "path": "runtime/semantic_usage.py",
+      "sha256": "e67d5dbf89b421bf23a91fa8091fd04d66b3e612767ff93899d29fdde3ba0ece"
     },
     {
       "bytes": 6875,
@@ -281,9 +291,9 @@
       "sha256": "318c9c9c05f4db1970655d6f0772f166e68fe794d70a5d5b753b854669446707"
     },
     {
-      "bytes": 9866,
+      "bytes": 9939,
       "path": "workspace/stack-contract.py",
-      "sha256": "8c34e0c3c7446893611aba4f5316841263d9dce06d4e0f69db7a77d9cb4b14d7"
+      "sha256": "11fffe2ca3793178ff38eecdabf658371d7c12d50e181ad68485d0f5e28ce5a7"
     },
     {
       "bytes": 24779,

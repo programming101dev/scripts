@@ -38,6 +38,8 @@ DEFAULT_PATHS = (
     "checks/check-wrapper-lifecycles.py",
     "checks/check-wrapper-unit-tests.py",
     "checks/p101-check-graph.py",
+    "checks/p101-semantic-snapshot.py",
+    "runtime/semantic_usage.py",
     "checks/p101_check_plan.py",
     "checks/p101_check_reporting.py",
     "contracts/p101-curriculum-domains.tsv",

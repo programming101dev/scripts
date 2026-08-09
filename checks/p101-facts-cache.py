@@ -23,6 +23,12 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
+SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
+if os.fspath(SCRIPTS_ROOT / "runtime") not in sys.path:
+    sys.path.insert(0, os.fspath(SCRIPTS_ROOT / "runtime"))
+
+from semantic_usage import record_usage  # noqa: E402
+
 SCHEMA = "p101-c-facts-cache-v1"
 IGNORED_DIRECTORIES = {".git", ".pytest_cache", "__pycache__"}
 
@@ -387,6 +393,7 @@ def store(args: argparse.Namespace, key: str, inputs: list[dict[str, str]]) -> i
             if temporary.exists():
                 shutil.rmtree(temporary)
     print(f"p101 C-facts cache STORE {args.namespace} {key[:12]}")
+    record_usage(args.cache, "compile-database-facts", key)
     return 0
 
 
@@ -425,6 +432,7 @@ def restore(args: argparse.Namespace, key: str) -> int:
             finally:
                 temporary.unlink(missing_ok=True)
     print(f"p101 C-facts cache HIT {args.namespace} {key[:12]}")
+    record_usage(args.cache, "compile-database-facts", key)
     return 0
 
 

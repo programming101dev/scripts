@@ -4,11 +4,92 @@
 from __future__ import annotations
 
 import fnmatch
+import os
+import subprocess
+from pathlib import Path
 from typing import Any, Iterable
 
 
 class GraphError(ValueError):
     """The graph is malformed or cannot be selected as requested."""
+
+
+def _git_paths(repository: Path, arguments: list[str]) -> set[Path]:
+    completed = subprocess.run(
+        ["git", "-C", os.fspath(repository), *arguments, "-z"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if completed.returncode != 0:
+        diagnostic = completed.stderr.decode(
+            "utf-8", errors="replace"
+        ).strip()
+        raise GraphError(
+            f"cannot discover changes in {repository}: "
+            f"{diagnostic or f'exit {completed.returncode}'}"
+        )
+    return {
+        Path(os.fsdecode(value))
+        for value in completed.stdout.split(b"\0")
+        if value
+    }
+
+
+def workspace_changed_paths(
+    workspace: Path, repositories: Iterable[Path]
+) -> set[str]:
+    """Return committed-ahead, staged, unstaged, and untracked paths.
+
+    Each repository is compared with its configured upstream. A repository
+    without an upstream is admitted conservatively as a whole rather than
+    being mistaken for an unchanged tree.
+    """
+    workspace = workspace.resolve()
+    changed: set[str] = set()
+    for repository in sorted(
+        {path.resolve() for path in repositories}, key=os.fspath
+    ):
+        try:
+            prefix = repository.relative_to(workspace)
+        except ValueError as error:
+            raise GraphError(
+                f"repository escapes workspace: {repository}"
+            ) from error
+        upstream = subprocess.run(
+            [
+                "git",
+                "-C",
+                os.fspath(repository),
+                "rev-parse",
+                "--verify",
+                "--symbolic-full-name",
+                "@{u}",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+        )
+        if upstream.returncode != 0:
+            changed.add(prefix.as_posix())
+            continue
+        paths = _git_paths(
+            repository,
+            ["diff", "--name-only", f"{upstream.stdout.strip()}...HEAD"],
+        )
+        paths.update(
+            _git_paths(repository, ["diff", "--name-only", "HEAD"])
+        )
+        paths.update(
+            _git_paths(
+                repository,
+                ["ls-files", "--others", "--exclude-standard"],
+            )
+        )
+        for path in paths:
+            changed.add((prefix / path).as_posix())
+    return changed
 
 
 def require_text(row: dict[str, Any], key: str, context: str) -> str:
@@ -42,6 +123,9 @@ def validate(document: dict[str, Any]) -> list[dict[str, Any]]:
     nodes = document.get("nodes")
     if not isinstance(nodes, list) or not nodes:
         raise GraphError("graph has no nodes")
+    require_complete_inputs = document.get("require_complete_inputs", False)
+    if not isinstance(require_complete_inputs, bool):
+        raise GraphError("require_complete_inputs must be boolean")
 
     identifiers: set[str] = set()
     for raw in nodes:
@@ -68,6 +152,26 @@ def validate(document: dict[str, Any]) -> list[dict[str, Any]]:
             not isinstance(value, str) or not value for value in dependencies
         ):
             raise GraphError(f"{context} has invalid dependencies")
+        impact_dependencies = raw.get("impact_dependencies", [])
+        if (
+            not isinstance(impact_dependencies, list)
+            or any(
+                not isinstance(value, str) or not value
+                for value in impact_dependencies
+            )
+            or not set(impact_dependencies).issubset(dependencies)
+        ):
+            raise GraphError(
+                f"{context} has invalid impact dependencies"
+            )
+        if "affected" in raw and not isinstance(raw["affected"], bool):
+            raise GraphError(f"{context} affected policy must be boolean")
+        if "wait_for_selected" in raw and not isinstance(
+            raw["wait_for_selected"], bool
+        ):
+            raise GraphError(
+                f"{context} wait_for_selected policy must be boolean"
+            )
         resources = raw.get("resources")
         if (
             not isinstance(resources, dict)
@@ -124,6 +228,10 @@ def validate(document: dict[str, Any]) -> list[dict[str, Any]]:
         if raw.get("inputs_complete") is True and inputs is None:
             raise GraphError(
                 f"{context} claims complete inputs without declaring them"
+            )
+        if require_complete_inputs and raw.get("inputs_complete") is not True:
+            raise GraphError(
+                f"{context} lacks a complete admitted-input declaration"
             )
 
     for node in nodes:
@@ -190,11 +298,30 @@ def dependency_closure(
     return selected
 
 
+def impact_dependency_closure(
+    identifiers: Iterable[str], by_id: dict[str, dict[str, Any]]
+) -> set[str]:
+    """Add only dependencies whose artifacts an affected node consumes."""
+    selected = set(identifiers)
+    pending = list(selected)
+    while pending:
+        identifier = pending.pop()
+        if identifier not in by_id:
+            raise GraphError(f"unknown selected node: {identifier}")
+        for dependency in by_id[identifier].get("impact_dependencies", []):
+            if dependency not in selected:
+                selected.add(dependency)
+                pending.append(dependency)
+    return selected
+
+
 def impact_closure(
     changed_paths: Iterable[str],
     nodes: list[dict[str, Any]],
+    *,
+    propagate_dependencies: bool = True,
 ) -> set[str]:
-    """Return directly affected nodes and every downstream consumer.
+    """Return nodes admitting changed paths and, optionally, downstream nodes.
 
     Nodes without an explicit input declaration are selected conservatively.
     This makes incomplete migration slower, never unsoundly green.
@@ -209,6 +336,8 @@ def impact_closure(
     by_id = {node["id"]: node for node in nodes}
     impacted: set[str] = set()
     for node in nodes:
+        if node.get("affected") is False:
+            continue
         patterns = node.get("inputs")
         if (
             node.get("inputs_complete") is not True
@@ -230,16 +359,17 @@ def impact_closure(
         ):
             impacted.add(node["id"])
 
-    changed_set = set(impacted)
-    while changed_set:
-        dependency = changed_set.pop()
-        for node in nodes:
-            if (
-                dependency in node.get("depends_on", [])
-                and node["id"] not in impacted
-            ):
-                impacted.add(node["id"])
-                changed_set.add(node["id"])
+    if propagate_dependencies:
+        changed_set = set(impacted)
+        while changed_set:
+            dependency = changed_set.pop()
+            for node in nodes:
+                if (
+                    dependency in node.get("depends_on", [])
+                    and node["id"] not in impacted
+                ):
+                    impacted.add(node["id"])
+                    changed_set.add(node["id"])
     return impacted & by_id.keys()
 
 

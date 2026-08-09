@@ -51,8 +51,20 @@ class CheckGraphTests(unittest.TestCase):
     def test_current_graph(self) -> None:
         ordered = MODULE.validate(copy.deepcopy(self.document))
         self.assertGreaterEqual(len(ordered), 30)
+        self.assertTrue(self.document["require_complete_inputs"])
+        self.assertTrue(
+            all(node.get("inputs_complete") is True for node in ordered)
+        )
         self.assertNotIn(
             "/tmp",
+            {
+                path
+                for node in ordered
+                for path in node.get("resources", {}).get("writes", [])
+            },
+        )
+        self.assertNotIn(
+            "{semantic_cache}",
             {
                 path
                 for node in ordered
@@ -63,6 +75,38 @@ class CheckGraphTests(unittest.TestCase):
             [node["id"] for node in ordered].index("boundaries"),
             [node["id"] for node in ordered].index("tool-audit"),
         )
+        terminal = next(
+            node for node in ordered if node["id"] == "semantic-snapshot"
+        )
+        self.assertTrue(terminal["wait_for_selected"])
+        referenced = {
+            dependency
+            for node in ordered
+            if node["id"] != "semantic-snapshot"
+            for dependency in node.get("depends_on", [])
+        }
+        leaves = {
+            node["id"]
+            for node in ordered
+            if node["id"] != "semantic-snapshot"
+            and node["id"] not in referenced
+        }
+        self.assertEqual(set(terminal["depends_on"]), leaves)
+
+    def test_library_edit_selects_a_narrow_complete_impact_set(self) -> None:
+        ordered = MODULE.validate(copy.deepcopy(self.document))
+        directly_impacted = MODULE.impact_closure(
+            ["libraries/lib_io/src/io.c"],
+            ordered,
+            propagate_dependencies=False,
+        )
+        selected = MODULE.impact_dependency_closure(
+            directly_impacted, {node["id"]: node for node in ordered}
+        )
+        self.assertIn("wrapper-unit-tests", selected)
+        self.assertIn("repository-tests", selected)
+        self.assertNotIn("workspace-lock", selected)
+        self.assertLess(len(selected), len(ordered) // 3)
 
     def test_post_update_wrapper_normalizes_internal_graph_failure(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -151,7 +195,13 @@ class CheckGraphTests(unittest.TestCase):
                 },
                 output,
             )
-            self.assertEqual(paths, [output / "owned"])
+            self.assertEqual(
+                paths,
+                [
+                    output / "owned",
+                    output / "semantic-usage" / "temporary.jsonl",
+                ],
+            )
 
     def test_impact_selection_is_conservative_and_flows_downstream(self) -> None:
         nodes = [
@@ -169,11 +219,212 @@ class CheckGraphTests(unittest.TestCase):
         )
         self.assertEqual(impacted, {"scoped", "unknown", "consumer"})
 
+    def test_complete_impact_uses_only_artifact_dependencies(self) -> None:
+        nodes = [
+            self.node("ordering-only", "pass"),
+            self.node("artifact", "pass"),
+            self.node(
+                "consumer",
+                "pass",
+                dependencies=["ordering-only", "artifact"],
+            ),
+        ]
+        nodes[2]["impact_dependencies"] = ["artifact"]
+        selected = MODULE.impact_dependency_closure(
+            {"consumer"}, {node["id"]: node for node in nodes}
+        )
+        self.assertEqual(selected, {"consumer", "artifact"})
+
+    def test_affected_false_excludes_global_release_guard(self) -> None:
+        node = self.node("release-guard", "pass")
+        node["inputs"] = ["**"]
+        node["inputs_complete"] = True
+        node["affected"] = False
+        self.assertEqual(
+            MODULE.impact_closure(
+                ["libraries/lib_demo/src/demo.c"],
+                [node],
+                propagate_dependencies=False,
+            ),
+            set(),
+        )
+
+    def test_subset_run_skips_identity_for_unselected_ordering_dependency(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            guard = self.node("release-guard", "raise SystemExit(9)")
+            consumer = self.node(
+                "consumer", "print('selected')", dependencies=["release-guard"]
+            )
+            document = self.make_document([guard, consumer], jobs=1)
+            status = MODULE.run_graph(
+                document,
+                [consumer],
+                root,
+                {"out": str(root)},
+                False,
+                all_nodes=[guard, consumer],
+            )
+            self.assertEqual(status, 0)
+            receipt = json.loads(
+                (root / "receipt.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                [record["id"] for record in receipt["records"]], ["consumer"]
+            )
+
+    def test_affected_discovery_includes_ahead_and_worktree_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            repository = workspace / "libraries" / "lib_demo"
+            remote = Path(directory) / "remote.git"
+            repository.mkdir(parents=True)
+            subprocess.run(
+                ["git", "init", "--bare", str(remote)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
+            subprocess.run(
+                ["git", "init", "-b", "main"],
+                cwd=repository,
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "test@example.invalid"],
+                cwd=repository,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "p101 test"],
+                cwd=repository,
+                check=True,
+            )
+            tracked = repository / "tracked.c"
+            tracked.write_text("int tracked;\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "add", "tracked.c"], cwd=repository, check=True
+            )
+            subprocess.run(
+                ["git", "commit", "-m", "initial"],
+                cwd=repository,
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
+            subprocess.run(
+                ["git", "remote", "add", "origin", str(remote)],
+                cwd=repository,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "push", "-u", "origin", "main"],
+                cwd=repository,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+            ahead = repository / "ahead.c"
+            ahead.write_text("int ahead;\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "add", "ahead.c"], cwd=repository, check=True
+            )
+            subprocess.run(
+                ["git", "commit", "-m", "ahead"],
+                cwd=repository,
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
+            tracked.write_text("int tracked = 1;\n", encoding="utf-8")
+            (repository / "untracked.c").write_text(
+                "int untracked;\n", encoding="utf-8"
+            )
+
+            changed = MODULE.workspace_changed_paths(
+                workspace, [repository]
+            )
+            self.assertEqual(
+                changed,
+                {
+                    "libraries/lib_demo/ahead.c",
+                    "libraries/lib_demo/tracked.c",
+                    "libraries/lib_demo/untracked.c",
+                },
+            )
+
     def test_invalid_input_scope_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)
         document["nodes"][0]["inputs"] = ["../outside"]
         with self.assertRaisesRegex(MODULE.GraphError, "invalid inputs"):
             MODULE.validate(document)
+
+    def test_required_complete_input_declaration_is_enforced(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["nodes"][0].pop("inputs_complete")
+        with self.assertRaisesRegex(
+            MODULE.GraphError, "lacks a complete admitted-input declaration"
+        ):
+            MODULE.validate(document)
+
+    def test_nodes_share_one_location_independent_semantic_store(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            node = self.node(
+                "semantic-cache",
+                "import os; "
+                "assert os.environ['P101_FACTS_CACHE'] == "
+                "os.environ['P101_C_FACTS_CACHE_DIR']",
+            )
+            document = self.make_document([node], jobs=1)
+            identities: list[str] = []
+            for index in range(2):
+                output = root / f"output-{index}"
+                status = MODULE.run_graph(
+                    document,
+                    [node],
+                    output,
+                    {},
+                    False,
+                    cache_directory=root / f"cache-{index}",
+                    use_cache=False,
+                )
+                self.assertEqual(status, 0)
+                receipt = json.loads(
+                    (output / "receipt.json").read_text(encoding="utf-8")
+                )
+                identities.append(receipt["records"][0]["input_identity"])
+                self.assertTrue(
+                    (root / f"cache-{index}" / "semantic-facts").is_dir()
+                )
+            self.assertEqual(identities[0], identities[1])
+
+    def test_terminal_node_waits_for_every_selected_check(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            marker = root / "producer-finished"
+            producer = self.node(
+                "producer",
+                "from pathlib import Path; import time; "
+                "time.sleep(0.1); "
+                f"Path({str(marker)!r}).write_text('done')",
+            )
+            terminal = self.node(
+                "terminal",
+                "from pathlib import Path; "
+                f"assert Path({str(marker)!r}).read_text() == 'done'",
+            )
+            terminal["wait_for_selected"] = True
+            document = self.make_document([producer, terminal], jobs=2)
+            status = MODULE.run_graph(
+                document,
+                [producer, terminal],
+                root,
+                {"out": str(root)},
+                False,
+            )
+            self.assertEqual(status, 0)
 
     @staticmethod
     def node(
@@ -434,11 +685,12 @@ class CheckGraphTests(unittest.TestCase):
                 output = output.resolve()
                 artifact = output / "artifact.txt"
                 code = (
-                    "from pathlib import Path; "
+                    "import os; from pathlib import Path; "
                     f"counter=Path({str(counter)!r}); "
                     "value=int(counter.read_text())+1 if counter.exists() else 1; "
                     "counter.write_text(str(value)); "
-                    f"Path({str(artifact)!r}).write_text('evidence')"
+                    f"Path({str(artifact)!r}).write_text('evidence'); "
+                    "Path(os.environ['P101_SEMANTIC_USAGE_LOG']).write_text('usage\\n')"
                 )
                 node = self.node(
                     "cached", code, writes=["{out}/artifact.txt"]
@@ -456,6 +708,10 @@ class CheckGraphTests(unittest.TestCase):
                 )
                 self.assertEqual(status, 0)
                 self.assertEqual(artifact.read_text(), "evidence")
+                self.assertEqual(
+                    (output / "semantic-usage" / "cached.jsonl").read_text(),
+                    "usage\n",
+                )
                 return json.loads((output / "receipt.json").read_text())
 
             first = run(root / "one")

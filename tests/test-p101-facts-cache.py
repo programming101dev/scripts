@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -202,6 +203,28 @@ class FactsCacheTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(restored.returncode, 0, restored.stderr)
+
+    def test_governed_store_records_the_used_content_key(self) -> None:
+        usage = self.root / "semantic-usage.jsonl"
+        environment = os.environ.copy()
+        environment["P101_SEMANTIC_CACHE_ROOT"] = str(self.cache)
+        environment["P101_SEMANTIC_USAGE_LOG"] = str(usage)
+        stored = subprocess.run(
+            self.command("store", f"facts={self.facts}"),
+            text=True,
+            capture_output=True,
+            check=False,
+            env=environment,
+        )
+        self.assertEqual(stored.returncode, 0, stored.stderr)
+        records = [
+            json.loads(line)
+            for line in usage.read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["schema"], "p101-semantic-usage-v1")
+        self.assertEqual(records[0]["kind"], "compile-database-facts")
+        self.assertEqual(len(records[0]["key"]), 64)
 
 
 if __name__ == "__main__":

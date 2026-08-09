@@ -21,6 +21,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Iterable
 
+from semantic_usage import record_usage
+
 
 class CFactError(RuntimeError):
     """The semantic fact producer or its versioned output was invalid."""
@@ -606,4 +608,13 @@ def acquire(
             )
     for unit in unit_facts:
         facts.extend(unit or [])
+    if cache_directory is not None:
+        for key in unit_keys:
+            if key is not None:
+                try:
+                    record_usage(cache_directory, "runtime-facts", key)
+                except OSError as error:
+                    raise CFactError(
+                        f"cannot record semantic fact usage: {error}"
+                    ) from error
     return facts

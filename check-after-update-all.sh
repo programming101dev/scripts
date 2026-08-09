@@ -52,6 +52,7 @@ interactive=0
 from_node=""
 only_node=""
 changed_paths=()
+affected=0
 jobs=""
 cache_dir=""
 no_cache=0
@@ -96,6 +97,8 @@ Options:
   --from <node>         Resume at the named node after validating omitted prerequisites.
   --only <node>         Run only the named graph node and its dependencies.
   --changed <path>      Run the conservative impact closure for a workspace-relative path.
+  --affected            Discover all committed-ahead, staged, unstaged, and
+                        untracked workspace paths, then run their impact closure.
   --jobs <count>        Maximum concurrent graph nodes. Default: graph policy.
   --cache-dir <dir>     Exact local evidence cache. Default: scripts/target.
   --no-cache            Execute every selected functional node.
@@ -130,6 +133,7 @@ while [ "$#" -gt 0 ]; do
     --from) from_node="${2:?}"; shift 2 ;;
     --only) only_node="${2:?}"; shift 2 ;;
     --changed) changed_paths+=("${2:?}"); shift 2 ;;
+    --affected) affected=1; shift ;;
     --jobs) jobs="${2:?}"; shift 2 ;;
     --cache-dir) cache_dir="${2:?}"; shift 2 ;;
     --no-cache) no_cache=1; shift ;;
@@ -227,6 +231,7 @@ run_checks() {
       graph_args+=(--changed "$changed_path")
     done
   fi
+  [ "$affected" -eq 0 ] || graph_args+=(--affected)
   [ -z "$jobs" ] || graph_args+=(--jobs "$jobs")
   [ -z "$cache_dir" ] || graph_args+=(--cache-dir "$cache_dir")
   [ "$no_cache" -eq 0 ] || graph_args+=(--no-cache)

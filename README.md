@@ -266,19 +266,27 @@ Use `./checks/p101-check-graph.py list` to inspect the graph,
 `./check-after-update-all.sh --only boundaries` for one node and its
 dependencies, or `--resume` to reuse a node only when its prior receipt has the
 same command, graph declaration, tool identity, semantic environment, complete
-admitted-input identity, dependency identities, and declared outputs. Nodes
-whose input declaration is not yet marked complete invalidate conservatively
-from the whole workspace; a narrow cache key is never inferred from an
-incomplete declaration. Restored cache entries are subject to the same identity
-and output checks. `--changed <path>` selects every node that admits the path,
-every downstream consumer, and conservatively every node without a complete
-input declaration. `--from <node>` requires that receipt and validates every
+admitted-input identity, dependency identities, and declared outputs. Every
+governed node must declare its complete admitted-input set; graph validation
+rejects a node that does not. Restored cache entries are subject to the same
+identity and output checks. `--changed <path>` selects every node whose
+complete input contract admits the path, plus any explicitly declared artifact
+prerequisites. Transitive consumption is therefore part of the node's admitted
+inputs instead of being inferred from quality-gate ordering. `--from <node>`
+requires that receipt and validates every
 omitted prerequisite; it is not an unchecked skip. `--measure` disables reuse
 and runs sequentially so timings are comparable. This is wall-clock
 child-command profiling, not CPU sampling inside those commands. Performance
 claims can be checked with `checks/compare-check-performance.py`, which requires
 at least five result- and identity-matched samples in each population. With
 `--interactive`, a failure pauses and retries exactly that node after the fix.
+
+For the ordinary development loop, `./check-after-update-all.sh --affected`
+discovers committed-ahead, staged, unstaged, and untracked paths in every
+managed repository and applies that same impact closure automatically. A
+repository without an upstream is selected conservatively as a whole. A clean
+workspace performs no affected checks. The no-argument command remains the
+authoritative complete gate.
 
 The graph runs `clang-format` by default before computing downstream source
 identities. If first-party tracked bytes change, the formatting node fails with
@@ -328,8 +336,19 @@ coarse costs in `contracts/repository-test-costs.tsv` longest-first, while its
 terminal and Markdown results remain in `repos.txt` order. Use `-j 1` for a
 serial diagnostic run or `-j N`/`P101_JOBS=N` to choose another bound.
 
-The governed graph shares a content-addressed C-fact acquisition cache between
-the library audit, instrumentation audit, tool audit, and workspace API audit.
+The governed graph shares one content-addressed semantic store between Python
+policy checks, the library audit, instrumentation audit, tool audit, and
+workspace API audit. Runtime and compile-database fact producers retain
+separate entry formats inside that store, but every entry is immutable. Each
+governed check records the exact content keys it used in a private per-run
+ledger; the terminal `semantic-snapshot-receipt.json` validates and seals only
+that union, excluding stale unreferenced cache entries. Ledgers are ordinary
+node outputs, so exact check-cache restoration also restores their provenance.
+Entries remain repository/scoped units rather than one monolithic blob, so one
+source edit invalidates only semantic units that admitted it. This is the
+deliberate tradeoff: one evidence identity and one reuse boundary without
+workspace-wide invalidation.
+
 The key admits the selected fact producer (including its native executable),
 compile database, platform, selected source trees, and all sibling public
 headers. Cache entries contain evidence only; each consumer still applies its
