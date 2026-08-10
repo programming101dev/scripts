@@ -1715,6 +1715,9 @@ def native_contract_fixture(
         "c:@F@p101_logbl",
         "c:@F@p101_logf",
         "c:@F@p101_logl",
+        "c:@F@p101_lgamma",
+        "c:@F@p101_lgammaf",
+        "c:@F@p101_lgammal",
         "c:@F@p101_tgamma",
         "c:@F@p101_tgammaf",
         "c:@F@p101_tgammal",
@@ -1722,6 +1725,13 @@ def native_contract_fixture(
         "c:@F@p101_y1",
     }
     if function_usr in positive_unary_apis and index == 2:
+        return [], "1.0", [], []
+
+    if function_usr in {
+        "c:@F@p101_fmod",
+        "c:@F@p101_fmodf",
+        "c:@F@p101_fmodl",
+    } and index == 3:
         return [], "1.0", [], []
 
     if function_usr == "c:@F@p101_yn" and index == 3:
@@ -1770,8 +1780,197 @@ def native_contract_fixture(
     } and index == 3:
         return [], "PATH_MAX", [], []
 
+    if function_usr == "c:@F@p101_wcsftime" and index == 3:
+        return [], "PATH_MAX", [], []
+
+    if function_usr in {
+        "c:@F@p101_aio_read",
+        "c:@F@p101_aio_write",
+    } and index == 2:
+        return [
+            f"            struct aiocb {fixture} = {{.aio_fildes = -1}};",
+        ], f"&{fixture}", [], []
+
+    if function_usr == "c:@F@p101_aio_suspend" and index == 3:
+        return [], "-1", [], []
+
+    if function_usr == "c:@F@p101_lio_listio" and index == 2:
+        return [], "-1", [], []
+
+    if function_usr == "c:@F@p101_mprotect":
+        if index == 2:
+            return [
+                f"            long {fixture}_page_size;",
+                f"            size_t {fixture}_size;",
+                f"            FILE *{fixture}_stream;",
+                f"            int {fixture}_fd;",
+                f"            int {fixture}_truncate_status;",
+                f"            void *{fixture};",
+                f"            {fixture}_page_size = sysconf(_SC_PAGESIZE);",
+                f"            if({fixture}_page_size <= 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+                f"            {fixture}_size = (size_t){fixture}_page_size;",
+                f"            {fixture}_stream = tmpfile();",
+                f"            if({fixture}_stream == NULL)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+                f"            {fixture}_fd = fileno({fixture}_stream);",
+                f"            {fixture}_truncate_status = ftruncate(",
+                f"                {fixture}_fd, (off_t){fixture}_size);",
+                f"            if({fixture}_truncate_status != 0)",
+                "            {",
+                f"                P101_NATIVE_CLEANUP_ERRNO(fclose({fixture}_stream));",
+                "                _Exit(77);",
+                "            }",
+                f"            {fixture} = mmap(NULL, {fixture}_size,",
+                "                PROT_READ | PROT_WRITE,",
+                f"                MAP_SHARED, {fixture}_fd, 0);",
+                f"            if({fixture} == MAP_FAILED)",
+                "            {",
+                f"                P101_NATIVE_CLEANUP_ERRNO(fclose({fixture}_stream));",
+                "                _Exit(77);",
+                "            }",
+            ], fixture, [], [
+                "            P101_NATIVE_CLEANUP_ERRNO(",
+                f"                munmap({fixture}, {fixture}_size));",
+                f"            P101_NATIVE_CLEANUP_ERRNO(fclose({fixture}_stream));",
+            ]
+        if index == 3:
+            return [], "native_argument_2_size", [], []
+        if index == 4:
+            return [], "PROT_READ", [], []
+
     if function_usr == "c:@F@p101_getdomainname" and index == 3:
         return [], "sizeof(native_argument_2)", [], []
+
+    if function_usr == "c:@F@p101_fchmodat":
+        if index == 3:
+            return [
+                f'            char {fixture}[] = "/tmp/p101-wrapper-fchmodat-XXXXXX";',
+                f"            int {fixture}_fd;",
+                f"            {fixture}_fd = mkstemp({fixture});",
+                f"            if({fixture}_fd < 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+                f"            P101_NATIVE_CLEANUP_ERRNO(close({fixture}_fd));",
+            ], fixture, [], [
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});"
+            ]
+        if index == 4:
+            return [], "0600", [], []
+
+    if function_usr == "c:@F@p101_fstatat" and index == 3:
+        return [], '"."', [], []
+
+    if function_usr == "c:@F@p101_renameat" and index in {3, 5}:
+        role = "source" if index == 3 else "destination"
+        declarations = [
+            f'            char {fixture}[] = "/tmp/p101-wrapper-rename-{role}-XXXXXX";',
+            f"            int {fixture}_fd;",
+            f"            {fixture}_fd = mkstemp({fixture});",
+            f"            if({fixture}_fd < 0)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+            f"            P101_NATIVE_CLEANUP_ERRNO(close({fixture}_fd));",
+        ]
+        if index == 5:
+            declarations.append(
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});"
+            )
+        cleanup = [
+            f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});"
+        ]
+        return declarations, fixture, [], cleanup
+
+    if function_usr == "c:@F@p101_readlinkat":
+        if index == 3:
+            return [
+                f"            char {fixture}[PATH_MAX];",
+                f"            int {fixture}_status;",
+                f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture},",
+                '                "/tmp/p101-wrapper-readlinkat-%ld");',
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});",
+                f'            {fixture}_status = symlink("p101", {fixture});',
+                f"            if({fixture}_status != 0)",
+                "            {",
+                "                _Exit(77);",
+                "            }",
+            ], fixture, [], [
+                f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});"
+            ]
+        if index == 5:
+            return [], "sizeof(native_argument_4)", [], []
+
+    if function_usr == "c:@F@p101_unlinkat" and index == 3:
+        return [
+            f'            char {fixture}[] = "/tmp/p101-wrapper-unlinkat-XXXXXX";',
+            f"            int {fixture}_fd;",
+            f"            {fixture}_fd = mkstemp({fixture});",
+            f"            if({fixture}_fd < 0)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+            f"            P101_NATIVE_CLEANUP_ERRNO(close({fixture}_fd));",
+        ], fixture, [], [
+            f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});"
+        ]
+
+    directory_fd_at_parameters = {
+        ("c:@F@p101_faccessat", 2),
+        ("c:@F@p101_fchmodat", 2),
+        ("c:@F@p101_fchownat", 2),
+        ("c:@F@p101_fstatat", 2),
+        ("c:@F@p101_mkdirat", 2),
+        ("c:@F@p101_readlinkat", 2),
+        ("c:@F@p101_renameat", 2),
+        ("c:@F@p101_renameat", 4),
+        ("c:@F@p101_symlinkat", 3),
+        ("c:@F@p101_unlinkat", 2),
+        ("c:@F@p101_utimensat", 2),
+    }
+    if (function_usr, index) in directory_fd_at_parameters:
+        return [], "AT_FDCWD", [], []
+
+    directory_descriptor_apis = {
+        "c:@F@p101_fchdir",
+        "c:@F@p101_fstatvfs",
+    }
+    if function_usr in directory_descriptor_apis and index == 2:
+        return [
+            f"            int {fixture};",
+            f"            {fixture} = open(\".\", O_RDONLY);",
+            f"            if({fixture} < 0)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+        ], fixture, [], [
+            f"            P101_NATIVE_CLEANUP_ERRNO(close({fixture}));"
+        ]
+
+    if function_usr == "c:@F@p101_mkdirat" and index == 3:
+        return [
+            f"            char {fixture}[PATH_MAX];",
+            f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture},",
+            '                "/tmp/p101-wrapper-mkdirat-%ld");',
+            f"            P101_NATIVE_CLEANUP_RMDIR_IF_PRESENT({fixture});",
+        ], fixture, [], [
+            f"            P101_NATIVE_CLEANUP_RMDIR_IF_PRESENT({fixture});"
+        ]
+
+    if function_usr == "c:@F@p101_symlinkat" and index == 4:
+        return [
+            f"            char {fixture}[PATH_MAX];",
+            f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture},",
+            '                "/tmp/p101-wrapper-symlinkat-%ld");',
+            f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});",
+        ], fixture, [], [
+            f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});"
+        ]
 
     if function_usr == "c:@F@p101_freopen":
         if index == 2:
@@ -4325,6 +4524,26 @@ def fault_test(
             "                p101_error_reset(native_err);\n"
             "            }\n"
         )
+        if native_outcome.get("result_kind") == "nonzero":
+            native_assertion = (
+                "            if(p101_error_has_error(native_err) &&\n"
+                f"               {allowed_assertion})\n"
+                "            {\n"
+                '                fprintf(stderr, "native smoke produced an '
+                f'undeclared conditional failure: {name}\\n");\n'
+                "                native_passed = false;\n"
+                "            }\n"
+                "            if(p101_error_has_error(native_err))\n"
+                "            {\n"
+                "                if(native_result == 0)\n"
+                "                {\n"
+                '                    fprintf(stderr, "native smoke returned an '
+                f'undeclared conditional result: {name}\\n");\n'
+                "                    native_passed = false;\n"
+                "                }\n"
+                "                p101_error_reset(native_err);\n"
+                "            }\n"
+            )
     source = f"""/* P101_TEST_CASE({name}) */
 static void test_{name}(struct p101_env *env, struct p101_error *err{fault_test_signature_suffix(declaration)})
 {{
@@ -4549,6 +4768,7 @@ int main(void)
     if "RTLD_" in tests or "dlopen(" in tests or "dlclose(" in tests:
         native_includes += "#include <dlfcn.h>\n"
     native_unlink_helper = ""
+    native_rmdir_block = ""
     native_format_helper = ""
     if "P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT" in tests:
         native_unlink_helper = """static bool native_unlink_if_present(const char *path)
@@ -4578,6 +4798,48 @@ int main(void)
     }
     return result;
 }
+
+"""
+    if "P101_NATIVE_CLEANUP_RMDIR_IF_PRESENT" in tests:
+        native_rmdir_block = """static bool native_rmdir_if_present(const char *path)
+{
+    bool        result;
+    int         rmdir_status;
+    int         rmdir_error;
+    const char *message;
+    int         written;
+
+    errno        = 0;
+    rmdir_status = rmdir(path);
+    rmdir_error  = errno;
+    if(rmdir_status != 0 && rmdir_error != ENOENT)
+    {
+        message = strerror(rmdir_error);
+        written = fprintf(stderr,
+                          "native cleanup failed: rmdir(%s): %s\\n",
+                          path,
+                          message);
+        (void)written;
+        result = false;
+    }
+    else
+    {
+        result = true;
+    }
+    return result;
+}
+
+#define P101_NATIVE_CLEANUP_RMDIR_IF_PRESENT(path)                               \\
+    do                                                                           \\
+    {                                                                            \\
+        bool p101_cleanup_ok_;                                                    \\
+                                                                                 \\
+        p101_cleanup_ok_ = native_rmdir_if_present(path);                         \\
+        if(!p101_cleanup_ok_)                                                     \\
+        {                                                                         \\
+            native_passed = false;                                                \\
+        }                                                                         \\
+    } while(0)
 
 """
     if "P101_NATIVE_FORMAT_PID_PATH_OR_SKIP" in tests:
@@ -4699,6 +4961,7 @@ static int native_child_status = EXIT_SUCCESS;
         }}                                                                        \\
     }} while(0)
 
+{native_rmdir_block}\
 {native_format_helper}\
 #define P101_NATIVE_FORMAT_PID_PATH_OR_SKIP(buffer, format)                       \\
     do                                                                           \\
@@ -5187,6 +5450,8 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                 "allowed_error_codes",
                 "error_result_expression",
             }
+            if "result_kind" in outcome:
+                expected_fields.add("result_kind")
         if set(outcome) != expected_fields:
             raise RuntimeError(
                 f"{name}: native-smoke exception has unknown or missing "
@@ -5232,6 +5497,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         if outcome.get("result_kind") not in {
             None,
             "equals",
+            "nonzero",
             "text",
             "void",
         }:

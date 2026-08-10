@@ -7,6 +7,7 @@
       ],
       "error_result_expression": "-1",
       "outcome": "success-or-error",
+      "result_kind": "nonzero",
       "rationale": "No portable ethers database entry is guaranteed to exist; success is accepted when the host provides one, while the documented missing-entry result is reported otherwise.",
       "function_usr": "c:@F@p101_ether_hostton"
     },
@@ -16,14 +17,15 @@
       ],
       "error_result_expression": "-1",
       "outcome": "success-or-error",
+      "result_kind": "nonzero",
       "rationale": "No portable ethers database entry is guaranteed to exist; success is accepted when the host provides one, while the documented missing-entry result is reported otherwise.",
       "function_usr": "c:@F@p101_ether_ntohost"
     },
     {
-      "error_code": "EINVAL",
+      "error_code": "EBADF",
       "error_domain": "errno",
       "outcome": "error",
-      "rationale": "The native smoke supplies a zeroed inactive AIO control block and verifies that the wrapper reports the operating system's rejection.",
+      "rationale": "The native smoke supplies an AIO control block with descriptor -1 and verifies the portable EBADF rejection without starting asynchronous work.",
       "result_expression": "-1",
       "result_kind": "equals",
       "function_usr": "c:@F@p101_aio_read"
@@ -41,16 +43,16 @@
       "error_code": "EINVAL",
       "error_domain": "errno",
       "outcome": "error",
-      "rationale": "The zero-entry list is a bounded deterministic native rejection and avoids manufacturing an asynchronous request with timing-dependent completion.",
+      "rationale": "The negative entry count is a bounded deterministic EINVAL rejection and avoids manufacturing an asynchronous request with timing-dependent completion.",
       "result_expression": "-1",
       "result_kind": "equals",
       "function_usr": "c:@F@p101_aio_suspend"
     },
     {
-      "error_code": "EINVAL",
+      "error_code": "EBADF",
       "error_domain": "errno",
       "outcome": "error",
-      "rationale": "The native smoke supplies a zeroed inactive AIO control block and verifies that the wrapper reports the operating system's rejection.",
+      "rationale": "The native smoke supplies an AIO control block with descriptor -1 and verifies the portable EBADF rejection without starting asynchronous work.",
       "result_expression": "-1",
       "result_kind": "equals",
       "function_usr": "c:@F@p101_aio_write"
@@ -112,7 +114,7 @@
       "error_code": "EINVAL",
       "error_domain": "errno",
       "outcome": "error",
-      "rationale": "The smoke uses an empty list and verifies its deterministic rejection rather than creating timing-dependent asynchronous I/O.",
+      "rationale": "The smoke uses an invalid mode and verifies its deterministic rejection rather than creating timing-dependent asynchronous I/O.",
       "result_expression": "-1",
       "result_kind": "equals",
       "function_usr": "c:@F@p101_lio_listio"

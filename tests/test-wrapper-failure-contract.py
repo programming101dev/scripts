@@ -1505,6 +1505,11 @@ def test_native_smoke_contract() -> None:
                 and bool(record.get("error_result_expression")),
                 f"{name}: conditional outcome lacks exact evidence",
             )
+            check(
+                record.get("result_kind", "equals")
+                in {"equals", "nonzero"},
+                f"{name}: conditional outcome has an invalid result assertion",
+            )
 
 
 def test_portable_input_contract() -> None:
