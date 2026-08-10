@@ -31,6 +31,11 @@ if grep -Eq 'find .*\.git.*-delete' distribution/publish-workspace.sh; then
   echo "publication path must not delete Git lock files" >&2
   exit 1
 fi
+if grep -Fq 'git push "${push_arguments[@]}" origin "$qualification_commit:$candidate_ref"' \
+  distribution/publish-workspace.sh; then
+  printf 'FAIL: scripts qualification push must support Bash 3.2 with an empty option list\n' >&2
+  exit 1
+fi
 
 remote="$sandbox/lib_one.git"
 repository="$sandbox/libraries/lib_one"

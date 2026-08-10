@@ -200,7 +200,6 @@ stage_scripts_qualification_ref()
     local current_default
     local current_candidate
     local current_local
-    local push_arguments=()
 
     git fetch --quiet --prune origin </dev/null
     remote_branch=${scripts_remote_ref#refs/heads/}
@@ -228,10 +227,14 @@ stage_scripts_qualification_ref()
             "$qualification_commit"
         return 0
     fi
+    # Bash 3.2 treats expansion of an empty array as an unbound variable under
+    # `set -u`.  Keep the zero-option path explicit because macOS still ships
+    # that shell and live publication, unlike the dry-run tests, uses it.
     if ((dry_run)); then
-        push_arguments+=(--dry-run)
+        git push --dry-run origin "$qualification_commit:$candidate_ref"
+    else
+        git push origin "$qualification_commit:$candidate_ref"
     fi
-    git push "${push_arguments[@]}" origin "$qualification_commit:$candidate_ref"
 }
 
 run_remote_qualification()
