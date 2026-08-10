@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -63,6 +65,37 @@ class StackContractTests(unittest.TestCase):
             self.assertEqual(
                 receipt["mismatches"], ["contracts/p101-boundaries.json"]
             )
+
+    def test_candidate_lock_and_contract_overrides_are_explicit(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="p101-stack-candidate.") as temporary:
+            root = Path(temporary)
+            scripts = self.create_workspace(root)
+            candidate_lock = root / "evidence" / "repos.candidate.lock"
+            candidate_contract = root / "evidence" / "candidate-contract.json"
+            candidate_lock.parent.mkdir()
+            candidate_lock.write_text("candidate lock\n", encoding="utf-8")
+            environment = {
+                "P101_STACK_REPOS_LOCK": str(candidate_lock),
+                "P101_STACK_CONTRACT": str(candidate_contract),
+            }
+            with mock.patch.dict(os.environ, environment, clear=False):
+                stack_contract.write_json(
+                    candidate_contract,
+                    stack_contract.refreshed_document(scripts),
+                )
+                (scripts / "repos.lock").write_text(
+                    "unrelated workspace lock\n", encoding="utf-8"
+                )
+                receipt = stack_contract.verify(scripts, candidate_contract)
+            self.assertTrue(receipt["passed"])
+            lock_record = next(
+                row
+                for row in json.loads(
+                    candidate_contract.read_text(encoding="utf-8")
+                )["artifacts"]
+                if row["path"] == "repos.lock"
+            )
+            self.assertEqual(lock_record["bytes"], len(b"candidate lock\n"))
 
     def test_inventory_substitution_and_path_escape_are_refused(self) -> None:
         with tempfile.TemporaryDirectory(prefix="p101-stack-contract.") as temporary:

@@ -166,9 +166,9 @@
       "sha256": "15517de986d872ea2ce7b2da54a1197e3118746fd326ee0698ad3617178f699c"
     },
     {
-      "bytes": 58171,
+      "bytes": 58469,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "0a1094dd9a83e512738427f10b3a363c9b7151e996635a5392c501d986b07ff9"
+      "sha256": "0b1a45115651718a8d5eea796f3f30e70f147cf368c054cf0949597575a429cc"
     },
     {
       "bytes": 62722,
@@ -241,9 +241,9 @@
       "sha256": "2b49e18ff463e14b3c052b61895693a64c8386819545412697b5998e28c3cab1"
     },
     {
-      "bytes": 5650,
+      "bytes": 7655,
       "path": "docs/bootstrap-architecture.md",
-      "sha256": "ebf4dc63589930c99c48a49eb7da184ae3f8144813ff0426cf9fb42e255b7824"
+      "sha256": "601efd5f147b7c39b8d802d8ca07042440fdc17e686a9705a79c4b3ab8decbf5"
     },
     {
       "bytes": 6434,
@@ -366,9 +366,9 @@
       "sha256": "318c9c9c05f4db1970655d6f0772f166e68fe794d70a5d5b753b854669446707"
     },
     {
-      "bytes": 10543,
+      "bytes": 10890,
       "path": "workspace/stack-contract.py",
-      "sha256": "460865d87945ba496a7b3e9ecb14dd0e7d24a1c2919655204412b9f397f05193"
+      "sha256": "09977e8c3f65c59b2402c5c654844a201a86f75ea5b4475ade84d832ca93523b"
     },
     {
       "bytes": 27232,

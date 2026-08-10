@@ -126,7 +126,11 @@ def admitted_path(scripts_root: Path, relative_text: str) -> Path:
 
 
 def artifact_record(scripts_root: Path, relative_text: str) -> dict[str, Any]:
-    path = admitted_path(scripts_root, relative_text)
+    repository_lock_override = os.environ.get("P101_STACK_REPOS_LOCK", "")
+    if relative_text == "repos.lock" and repository_lock_override:
+        path = Path(repository_lock_override).resolve()
+    else:
+        path = admitted_path(scripts_root, relative_text)
     try:
         mode = path.stat().st_mode
     except OSError as error:
@@ -262,7 +266,12 @@ def main() -> int:
     contract_path = (
         arguments.contract.resolve()
         if arguments.contract is not None
-        else scripts_root / "contracts/p101-stack-contract.json"
+        else Path(
+            os.environ.get(
+                "P101_STACK_CONTRACT",
+                os.fspath(scripts_root / "contracts/p101-stack-contract.json"),
+            )
+        ).resolve()
     )
     try:
         if arguments.command == "refresh":

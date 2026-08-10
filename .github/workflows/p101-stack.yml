@@ -13,12 +13,57 @@ on:
           - linux
           - macos
           - freebsd
+      candidate_id:
+        description: Immutable workspace candidate identity (publication only)
+        required: false
+        default: ''
+        type: string
+      candidate_lock_sha256:
+        description: Candidate repos.lock SHA-256 (publication only)
+        required: false
+        default: ''
+        type: string
+      candidate_stack_contract_sha256:
+        description: Candidate stack-contract SHA-256 (publication only)
+        required: false
+        default: ''
+        type: string
+      qualification_ref:
+        description: Exact temporary candidate ref (publication only)
+        required: false
+        default: ''
+        type: string
   pull_request:
   push:
     branches: [ main ]
 
 jobs:
+  request-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate candidate qualification inputs
+        env:
+          TARGET_OS: ${{ inputs.target_os }}
+          CANDIDATE_ID: ${{ inputs.candidate_id }}
+          CANDIDATE_LOCK_SHA256: ${{ inputs.candidate_lock_sha256 }}
+          CANDIDATE_STACK_CONTRACT_SHA256: ${{ inputs.candidate_stack_contract_sha256 }}
+          QUALIFICATION_REF: ${{ inputs.qualification_ref }}
+        run: |
+          supplied=0
+          [ -n "$CANDIDATE_ID" ] && supplied=$((supplied + 1))
+          [ -n "$CANDIDATE_LOCK_SHA256" ] && supplied=$((supplied + 1))
+          [ -n "$CANDIDATE_STACK_CONTRACT_SHA256" ] && supplied=$((supplied + 1))
+          [ -n "$QUALIFICATION_REF" ] && supplied=$((supplied + 1))
+          if [ "$supplied" -ne 0 ] && [ "$supplied" -ne 4 ]; then
+            echo '::error::candidate qualification inputs must be supplied together'
+            exit 2
+          fi
+          if [ "$supplied" -eq 4 ] && [ "$TARGET_OS" != all ]; then
+            echo '::error::candidate qualification must run all supported platforms'
+            exit 2
+          fi
   macos:
+    needs: request-contract
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.target_os == 'all' || inputs.target_os == 'macos' }}
     runs-on: macos-latest
     steps:
@@ -58,6 +103,28 @@ jobs:
           fi
           cat ci-output/update-all.log
           exit "$status"
+      - name: Bind macOS acceptance to workspace candidate
+        if: ${{ always() && inputs.candidate_id != '' && steps.update.outcome == 'success' }}
+        env:
+          CANDIDATE_ID: ${{ inputs.candidate_id }}
+          CANDIDATE_LOCK_SHA256: ${{ inputs.candidate_lock_sha256 }}
+          CANDIDATE_STACK_CONTRACT_SHA256: ${{ inputs.candidate_stack_contract_sha256 }}
+          QUALIFICATION_REF: ${{ inputs.qualification_ref }}
+        run: |
+          cd scripts
+          test "$GITHUB_REF" = "$QUALIFICATION_REF"
+          ./workspace/repos-lock.py platform-qualification \
+            --candidate-id "$CANDIDATE_ID" \
+            --candidate-lock-sha256 "$CANDIDATE_LOCK_SHA256" \
+            --candidate-stack-contract-sha256 "$CANDIDATE_STACK_CONTRACT_SHA256" \
+            --qualification-ref "$GITHUB_REF" \
+            --scripts-commit "$(git rev-parse HEAD)" \
+            --platform macos \
+            --github-repository "$GITHUB_REPOSITORY" \
+            --github-run-id "$GITHUB_RUN_ID" \
+            --github-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --acceptance-receipt ci-output/receipt.json \
+            --receipt ci-output/workspace-platform-qualification.json
       - name: Publish CI summary
         if: ${{ always() }}
         env:
@@ -73,6 +140,7 @@ jobs:
           if-no-files-found: warn
 
   linux:
+    needs: request-contract
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.target_os == 'all' || inputs.target_os == 'linux' }}
     runs-on: ubuntu-latest
     steps:
@@ -112,6 +180,28 @@ jobs:
           fi
           cat ci-output/update-all.log
           exit "$status"
+      - name: Bind Linux acceptance to workspace candidate
+        if: ${{ always() && inputs.candidate_id != '' && steps.update.outcome == 'success' }}
+        env:
+          CANDIDATE_ID: ${{ inputs.candidate_id }}
+          CANDIDATE_LOCK_SHA256: ${{ inputs.candidate_lock_sha256 }}
+          CANDIDATE_STACK_CONTRACT_SHA256: ${{ inputs.candidate_stack_contract_sha256 }}
+          QUALIFICATION_REF: ${{ inputs.qualification_ref }}
+        run: |
+          cd scripts
+          test "$GITHUB_REF" = "$QUALIFICATION_REF"
+          ./workspace/repos-lock.py platform-qualification \
+            --candidate-id "$CANDIDATE_ID" \
+            --candidate-lock-sha256 "$CANDIDATE_LOCK_SHA256" \
+            --candidate-stack-contract-sha256 "$CANDIDATE_STACK_CONTRACT_SHA256" \
+            --qualification-ref "$GITHUB_REF" \
+            --scripts-commit "$(git rev-parse HEAD)" \
+            --platform linux \
+            --github-repository "$GITHUB_REPOSITORY" \
+            --github-run-id "$GITHUB_RUN_ID" \
+            --github-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --acceptance-receipt ci-output/receipt.json \
+            --receipt ci-output/workspace-platform-qualification.json
       - name: Publish CI summary
         if: ${{ always() }}
         env:
@@ -127,6 +217,7 @@ jobs:
           if-no-files-found: warn
 
   freebsd:
+    needs: request-contract
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.target_os == 'all' || inputs.target_os == 'freebsd' }}
     runs-on: ubuntu-latest
     steps:
@@ -192,6 +283,32 @@ jobs:
         env:
           VM_OUTCOME: ${{ steps.freebsd-check.outcome }}
         run: cd scripts && ./github-actions/publish-ci-summary.sh ci-output FreeBSD not-run "$VM_OUTCOME"
+      - name: Bind FreeBSD acceptance to workspace candidate
+        if: ${{ always() && inputs.candidate_id != '' }}
+        env:
+          CANDIDATE_ID: ${{ inputs.candidate_id }}
+          CANDIDATE_LOCK_SHA256: ${{ inputs.candidate_lock_sha256 }}
+          CANDIDATE_STACK_CONTRACT_SHA256: ${{ inputs.candidate_stack_contract_sha256 }}
+          QUALIFICATION_REF: ${{ inputs.qualification_ref }}
+        run: |
+          cd scripts
+          if [ ! -f ci-output/freebsd-exit-code ] || [ "$(cat ci-output/freebsd-exit-code)" -ne 0 ]; then
+            echo 'FreeBSD did not pass; no candidate qualification receipt written.'
+            exit 0
+          fi
+          test "$GITHUB_REF" = "$QUALIFICATION_REF"
+          ./workspace/repos-lock.py platform-qualification \
+            --candidate-id "$CANDIDATE_ID" \
+            --candidate-lock-sha256 "$CANDIDATE_LOCK_SHA256" \
+            --candidate-stack-contract-sha256 "$CANDIDATE_STACK_CONTRACT_SHA256" \
+            --qualification-ref "$GITHUB_REF" \
+            --scripts-commit "$(git rev-parse HEAD)" \
+            --platform freebsd \
+            --github-repository "$GITHUB_REPOSITORY" \
+            --github-run-id "$GITHUB_RUN_ID" \
+            --github-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --acceptance-receipt ci-output/receipt.json \
+            --receipt ci-output/workspace-platform-qualification.json
       - name: Enforce FreeBSD result
         run: scripts/github-actions/enforce-freebsd-result.sh scripts/ci-output
       - name: Publish CI evidence
@@ -230,6 +347,44 @@ jobs:
           --require-platform macos
           --require-platform linux
           --require-platform freebsd
+      - name: Aggregate immutable workspace candidate qualification
+        if: ${{ inputs.candidate_id != '' }}
+        env:
+          CANDIDATE_ID: ${{ inputs.candidate_id }}
+          CANDIDATE_LOCK_SHA256: ${{ inputs.candidate_lock_sha256 }}
+          CANDIDATE_STACK_CONTRACT_SHA256: ${{ inputs.candidate_stack_contract_sha256 }}
+          QUALIFICATION_REF: ${{ inputs.qualification_ref }}
+        run: |
+          cd scripts
+          test "$GITHUB_REF" = "$QUALIFICATION_REF"
+          mapfile -t receipts < <(find ../instrumentation-receipts -name workspace-platform-qualification.json -type f -print | sort)
+          if [ "${#receipts[@]}" -ne 3 ]; then
+            echo "::error::expected 3 candidate-bound platform receipts; found ${#receipts[@]}"
+            exit 1
+          fi
+          arguments=()
+          for receipt in "${receipts[@]}"; do
+            arguments+=(--platform-receipt "$receipt")
+          done
+          mkdir -p ../workspace-qualification
+          ./workspace/repos-lock.py aggregate-qualification \
+            --candidate-id "$CANDIDATE_ID" \
+            --candidate-lock-sha256 "$CANDIDATE_LOCK_SHA256" \
+            --candidate-stack-contract-sha256 "$CANDIDATE_STACK_CONTRACT_SHA256" \
+            --qualification-ref "$GITHUB_REF" \
+            --scripts-commit "$(git rev-parse HEAD)" \
+            "${arguments[@]}" \
+            --require-platform linux \
+            --require-platform macos \
+            --require-platform freebsd \
+            --receipt ../workspace-qualification/workspace-qualification.json
+      - name: Publish workspace qualification receipt
+        if: ${{ inputs.candidate_id != '' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: workspace-qualification
+          path: workspace-qualification/workspace-qualification.json
+          if-no-files-found: error
       - name: Publish CI summary
         if: ${{ always() }}
         env:

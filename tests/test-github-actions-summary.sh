@@ -5,6 +5,19 @@ set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 cmp .github/workflows/p101-stack.yml github-actions/p101-stack.yml
+grep -Fq 'workspace-candidate.json' github-actions/preflight.sh
+grep -Fq -- '--acceptance-receipt' github-actions/preflight.sh
+grep -Fq 'P101_STACK_REPOS_LOCK="$candidate_lock"' github-actions/preflight.sh
+grep -Fq 'P101_STACK_CONTRACT="$candidate_stack_contract"' \
+  github-actions/preflight.sh
+grep -Fq 'candidate_lock_sha256:' github-actions/p101-stack.yml
+grep -Fq 'candidate_stack_contract_sha256:' github-actions/p101-stack.yml
+grep -Fq 'qualification_ref:' github-actions/p101-stack.yml
+grep -Fq 'platform-qualification' github-actions/p101-stack.yml
+grep -Fq 'aggregate-qualification' github-actions/p101-stack.yml
+grep -Fq 'name: workspace-qualification' github-actions/p101-stack.yml
+grep -Fq 'candidate qualification must run all supported platforms' \
+  github-actions/p101-stack.yml
 grep -Fq 'git config --global --add safe.directory "$(pwd -P)"' \
   .github/workflows/p101-stack.yml
 grep -Fq -- '--acceptance-output ci-output' .github/workflows/p101-stack.yml

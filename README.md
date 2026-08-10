@@ -241,7 +241,11 @@ macOS GitHub job, and runs the complete governed acceptance graph without its
 evidence cache. It creates an ephemeral repository lock that may contain clean
 commits ahead of their upstreams; it does not weaken or rewrite `repos.lock`.
 The evidence directory contains the candidate lock, both complete command logs,
-the governed acceptance outputs, and a short receipt.
+the governed acceptance outputs, and `workspace-candidate.json`. That candidate
+is created only after acceptance passes. It binds the exact managed-repository
+commits, scripts commit, upstream bases, target branches, candidate-lock digest,
+candidate stack-contract digest, compiler-matrix receipt, and digest-valid
+governed acceptance receipt.
 
 Use the supported publication workflow for managed repositories:
 
@@ -249,11 +253,20 @@ Use the supported publication workflow for managed repositories:
 ./distribution/push-repos.sh
 ```
 
-It runs the preflight before the first push and stops the entire publication if
-the preflight fails. `--skip-preflight` is an explicit emergency escape hatch,
-not the normal workflow. The scripts repository remains intentionally excluded
-from that program, because `repos.txt` describes the repositories scripts
-manages, not scripts itself.
+This is a lower-level mechanism for the workspace publisher. A moving-HEAD
+default-branch push without `--candidate` is refused unless the caller selects
+the explicit emergency `--skip-qualification` path; a dry run remains
+available for diagnostics. With a candidate, it pushes only the exact commit
+mappings admitted by that receipt. `--candidate-ref` stages those commits
+under the candidate's deterministic `refs/heads/p101-candidate/...` ref without
+moving a default branch. Moving default branches requires `--qualification`
+with a digest-valid Linux, macOS, and FreeBSD aggregate receipt;
+`--skip-qualification` is an explicit emergency escape hatch. The command
+fetches and checks every selected remote before the first mutation, refuses
+remote or temporary-ref drift, and treats an already-staged or published exact
+commit as a resumable success. The scripts repository remains intentionally
+excluded because `repos.txt` describes the repositories scripts manages, not
+scripts itself.
 
 To publish the whole workspace, including the scripts repository and the hashes
 that pin everything else, use:
@@ -262,19 +275,44 @@ that pin everything else, use:
 ./distribution/publish-workspace.sh
 ```
 
-The command accepts only already-reviewed commits. It rejects dirty managed or
-scripts repositories, runs the preflight, pushes managed repositories,
-refreshes and commits `repos.lock` and the stack contract against where those
-revisions landed, and publishes the scripts repository last. The order is
-fixed: the refresh has to record revisions already present on their remotes,
-and the scripts repository carries that record.
+The command accepts only already-reviewed commits. Its preflight first runs all
+deterministic distribution, generation, formatting, compiler, and acceptance
+steps. If those mechanics change tracked bytes, publication stops so the bytes
+can be reviewed and committed; an uncommitted generated result is never folded
+silently into a release. Once clean, the preflight emits one immutable candidate
+and the publisher derives the affected repository set from it. It stages exact
+managed commits on temporary qualification refs and creates a scripts
+qualification commit whose only differences are the candidate `repos.lock` and
+its derived stack contract.
+GitHub Actions checks that exact ref on Linux, macOS, and FreeBSD. Only the
+digest-valid aggregate receipt unlocks default-branch promotion. The publisher
+then promotes the exact managed commits, refreshes and commits `repos.lock` and
+the stack contract, and publishes scripts last. On success it removes only
+temporary refs that still point to the expected commits. Use `--output <dir>`
+to retain the transaction. The publication host needs an authenticated GitHub
+CLI (`gh`) to dispatch, watch, and download qualification evidence.
 
 Publication then audits itself. It verifies the lock and the stack contract, and
 proves that every managed repository is clean, that its `HEAD` is the revision
 `repos.lock` names, and that its upstream is at that same revision. A release
 that pushed everything but left the lock naming a revision no remote has is not
 a release; it is a trap for the next machine to clone, and this is the check
-that catches it. `--dry-run` shows the whole sequence and changes nothing.
+that catches it. `completion.json` binds the final scripts commit, published
+contract hashes, and qualification digest back to the candidate identity.
+`--dry-run` performs validation and exact-ref push checks but changes nothing
+remotely and does not dispatch GitHub Actions.
+
+Git hosting does not offer rollback or one atomic update spanning independent
+repositories. The transaction therefore provides fail-closed exact revisions,
+prevalidation before the first push, and safe replay after a partial push—not a
+false promise of remote atomicity. Pass `--resume <workspace-candidate.json>` to
+`publish-workspace.sh` to resume the same evidence-bound transaction; it skips
+temporary refs already staged and commits already published at their admitted
+identities, reuses the same qualification receipt when present, and continues
+the same candidate. Only the derived `repos.lock` and stack-contract completion
+commit may follow the admitted scripts revision during a resume. A failed
+platform run leaves temporary refs for diagnosis and resume; it never partially
+promotes default branches.
 
 The local receipt is host-specific. Native macOS can exercise the macOS stack;
 Linux can additionally run inside a Linux container; FreeBSD requires a

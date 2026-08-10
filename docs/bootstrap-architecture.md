@@ -51,7 +51,35 @@ GitHub Actions uses this target once. It no longer runs a second
 `check-after-update-all.sh` pass after `update-all.sh`; the compatibility script
 is the policy runner invoked from `p101_workspace_checks`. Release preflight
 also invokes the same target with a candidate repository lock and cache reuse
-disabled.
+disabled. After that target produces a clean, digest-valid receipt, preflight
+writes `workspace-candidate.json`. The candidate binds the scripts revision,
+every managed revision, each upstream base and target ref, the candidate lock,
+candidate stack contract, compiler-matrix evidence, and the governed acceptance
+receipt.
+
+Publication consumes that candidate rather than rediscovering repository state.
+It computes the affected set from the candidate's ahead-only rows, fetches and
+validates every remote, and first stages exact commits under the deterministic
+candidate ref. A synthetic scripts commit changes only `repos.lock` and its
+derived stack contract, so the workflow at that ref clones the candidate's
+exact managed commits. Linux,
+macOS, and FreeBSD each emit a receipt bound to the same candidate ID, lock,
+scripts commit, ref, and workflow run. Only the digest-valid aggregate unlocks
+default-branch promotion. A changed local `HEAD`, evidence file, candidate lock,
+temporary ref, acceptance digest, or remote base refuses the transaction.
+Already-staged and already-promoted exact commits are recognized on replay, so
+a network or platform failure is resumable with
+`publish-workspace.sh --resume <candidate>`.
+
+After all managed revisions land, scripts deterministically refreshes
+`repos.lock` and the stack contract, commits only those two completion
+artifacts, and publishes scripts last. `completion.json` binds that final
+scripts revision, the published contract hashes, and the three-platform
+qualification digest to the original candidate. Temporary refs are deleted
+only when they still identify the expected candidate commits.
+Generation and formatting still happen before candidate creation; if they
+change tracked bytes, preflight stops for review instead of committing unseen
+content.
 
 The tool-qualification receipt is an actual CMake output. If neither a host
 tool nor one of its runtime dependencies changed, CMake retains the receipt and
@@ -78,6 +106,9 @@ ceilings, not benchmark claims.
 - A warm incremental replay proves exact reuse only for the current workspace,
   toolchain, policy, and workload identity. It says nothing about a different
   checkout or machine.
+- Independent Git repositories cannot be updated or rolled back as one remote
+  transaction. The candidate gives exact, fail-closed, resumable publication;
+  it does not claim cross-repository rollback.
 
 ## Replayable evidence
 

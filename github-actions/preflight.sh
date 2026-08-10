@@ -356,6 +356,10 @@ candidate_lock="$out_dir/repos.candidate.lock"
   refresh \
   --require-clean \
   --allow-ahead
+candidate_stack_contract="$out_dir/p101-stack-contract.candidate.json"
+P101_STACK_REPOS_LOCK="$candidate_lock" \
+  ./workspace/stack-contract.py \
+    --contract "$candidate_stack_contract" refresh
 
 printf '\n==> complete governed acceptance graph\n'
 host_build="$out_dir/workspace-build"
@@ -365,8 +369,26 @@ cmake -S workspace -B "$host_build" \
   -DP101_ACCEPTANCE_OUTPUT_DIR="$out_dir/acceptance" \
   -DP101_ACCEPTANCE_NO_CACHE=ON
 P101_REPOS_LOCK="$candidate_lock" \
+P101_STACK_REPOS_LOCK="$candidate_lock" \
+P101_STACK_CONTRACT="$candidate_stack_contract" \
   cmake --build "$host_build" --target p101_acceptance --parallel \
   2>&1 | tee "$out_dir/acceptance.log"
+
+candidate_receipt="$out_dir/workspace-candidate.json"
+candidate_arguments=(
+  --lock "$candidate_lock"
+  candidate
+  --receipt "$candidate_receipt"
+  --candidate-stack-contract "$candidate_stack_contract"
+  --acceptance-receipt "$out_dir/acceptance/receipt.json"
+)
+if [[ -f "$out_dir/compiler-matrix/summary.tsv" ]]; then
+  candidate_arguments+=(
+    --evidence "$out_dir/compiler-matrix/summary.tsv"
+  )
+fi
+./workspace/repos-lock.py "${candidate_arguments[@]}" \
+  | tee "$out_dir/workspace-candidate.log"
 
 cat > "$out_dir/receipt.md" <<EOF
 # p101 GitHub Actions local preflight
@@ -376,11 +398,15 @@ cat > "$out_dir/receipt.md" <<EOF
 - C compiler: $cc
 - C++ compiler: $cxx
 - Candidate lock: repos.candidate.lock
+- Candidate stack contract: p101-stack-contract.candidate.json
+- Immutable candidate: workspace-candidate.json
 - Acceptance summary: acceptance/summary.md
 
 This receipt exercises the strict build and complete governed acceptance graph
-over the clean local candidate commits. It does not prove behavior on operating
-systems other than the host that produced it, or privileged system installation.
+over the exact clean commits bound by workspace-candidate.json. It does not
+prove behavior on operating systems other than the host that produced it,
+privileged system installation, or atomic rollback across independent Git
+repositories.
 EOF
 
 printf '\nPASS: local candidate cleared the GitHub Actions preflight.\n'

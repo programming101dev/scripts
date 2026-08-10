@@ -368,30 +368,27 @@
     },
     {
       "id": "github-preflight-tests",
-      "title": "pre-push GitHub Actions gate",
+      "title": "immutable workspace candidate and qualification receipts",
       "group": "distribution",
       "required": true,
-      "command": [
-        "./tests/test-repository-lock.py",
-        "RepositoryLockTests.test_ephemeral_lock_admits_clean_ahead_commits"
-      ],
+      "command": ["./tests/test-repository-lock.py"],
       "inputs": ["scripts/tests/test-repository-lock.py", "scripts/workspace/repos-lock.py", "scripts/repos.txt", "scripts/repos.lock"],
       "inputs_complete": true,
       "depends_on": ["github-summary-tests"],
       "resources": {"writes": ["{temporary_root}"], "units": {}},
-      "guarantee": "A temporary candidate lock can admit clean ahead-only commits without weakening the published lock contract."
+      "guarantee": "A candidate binds clean ahead-only commits to a digest-valid governed acceptance receipt, and Linux, macOS, and FreeBSD qualification receipts cannot be aggregated across different candidate IDs, locks, stack contracts, scripts commits, refs, or workflow runs."
     },
     {
       "id": "push-preflight-tests",
-      "title": "managed push preflight enforcement",
+      "title": "qualified resumable workspace publication controls",
       "group": "distribution",
       "required": true,
       "command": ["./tests/test-push-repos-preflight.sh"],
-      "inputs": ["scripts/tests/test-push-repos-preflight.sh", "scripts/distribution/push-repos.sh", "scripts/github-actions/preflight.sh", "scripts/distribution/publish-workspace.sh"],
+      "inputs": ["scripts/tests/test-push-repos-preflight.sh", "scripts/distribution/push-repos.sh", "scripts/github-actions/preflight.sh", "scripts/distribution/publish-workspace.sh", "scripts/workspace/repos-lock.py", "scripts/github-actions/p101-stack.yml"],
       "inputs_complete": true,
       "depends_on": ["github-preflight-tests"],
       "resources": {"writes": ["{temporary_root}"], "units": {}},
-      "guarantee": "The supported multi-repository push path refuses to contact push remotes until the GitHub Actions preflight succeeds, unless explicitly overridden."
+      "guarantee": "The publisher stages exact candidate refs without moving defaults, requires candidate-bound three-platform qualification before promotion, refuses local or remote drift, resumes exact partial state, publishes scripts last, and safely removes unchanged temporary refs."
     },
     {
       "id": "cmake-distribution",
