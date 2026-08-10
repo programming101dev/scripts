@@ -241,14 +241,14 @@
       "sha256": "78428e6736c0be00eaf9efcbc0e59b1795c5e78a6560e137a31ddee882c27f0b"
     },
     {
-      "bytes": 8647,
+      "bytes": 8624,
       "path": "repos.lock",
-      "sha256": "abb93f7bed5f7adf8393c0e396dd7d469245f13907b08220c0a61f787e8c748f"
+      "sha256": "61960e508ae0f7aae3bfb1c55aa0d275b5a118141c8d6343c57027370d9180c1"
     },
     {
-      "bytes": 3368,
+      "bytes": 3345,
       "path": "repos.txt",
-      "sha256": "b819e766d175258be6f81aa2f25520a661e64705c7dc4f610a76bff889e978df"
+      "sha256": "2f1dbe4ead066504e707366978c98d0aa3901359946d0f6852a520d9297fb74d"
     },
     {
       "bytes": 25392,

@@ -1,5 +1,5 @@
 {
-  "manifest_sha256": "b819e766d175258be6f81aa2f25520a661e64705c7dc4f610a76bff889e978df",
+  "manifest_sha256": "2f1dbe4ead066504e707366978c98d0aa3901359946d0f6852a520d9297fb74d",
   "repositories": [
     {
       "commit": "359bba89e6f5a2275abdca027a4fc34d9f655460",
@@ -176,28 +176,28 @@
       "url": "https://github.com/programming101dev/lib_convert.git"
     },
     {
-      "commit": "c295bf2fc3b37dcd70868a7a0ab16856daa431c8",
-      "path": "../programs/simple-port-forwarder",
+      "commit": "7e0b1587ee2cd24ebb9037428f7a0a6e982663bb",
+      "path": "../programs/p101-port-forwarder",
       "type": "c",
-      "url": "https://github.com/programming101dev/simple-port-forwarder.git"
+      "url": "https://github.com/programming101dev/p101-port-forwarder.git"
     },
     {
       "commit": "965c6e611e7d23ee7e27bf1d03961c251a806d39",
       "path": "../programs/p101-inspect",
       "type": "c",
-      "url": "https://github.com/programming101dev/p101-observe.git"
+      "url": "https://github.com/programming101dev/p101-inspect.git"
     },
     {
       "commit": "4630ea9e09e16de33491143b1c3d8b6f253167e3",
       "path": "../programs/p101-test",
       "type": "c",
-      "url": "https://github.com/programming101dev/p101-error-path-walk.git"
+      "url": "https://github.com/programming101dev/p101-test.git"
     },
     {
-      "commit": "416497022891f17df68c2a41aac0301255ffa5f1",
+      "commit": "efe0dfcb49d680f49a77b2feaa34aa14574aad3c",
       "path": "../programs/p101-audit",
       "type": "c",
-      "url": "https://github.com/programming101dev/p101-wrapper-audit.git"
+      "url": "https://github.com/programming101dev/p101-audit.git"
     },
     {
       "commit": "999b56945e1dd5557f1fb05d24085d9066d16587",

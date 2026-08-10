@@ -27,10 +27,10 @@ https://github.com/programming101dev/lib_host.git|../libraries/lib_host|c
 https://github.com/programming101dev/lib_fsm.git|../libraries/lib_fsm|c
 https://github.com/programming101dev/lib_util.git|../libraries/lib_util|c
 https://github.com/programming101dev/lib_convert.git|../libraries/lib_convert|c
-https://github.com/programming101dev/simple-port-forwarder.git|../programs/simple-port-forwarder|c
-https://github.com/programming101dev/p101-observe.git|../programs/p101-inspect|c
-https://github.com/programming101dev/p101-error-path-walk.git|../programs/p101-test|c
-https://github.com/programming101dev/p101-wrapper-audit.git|../programs/p101-audit|c
+https://github.com/programming101dev/p101-port-forwarder.git|../programs/p101-port-forwarder|c
+https://github.com/programming101dev/p101-inspect.git|../programs/p101-inspect|c
+https://github.com/programming101dev/p101-test.git|../programs/p101-test|c
+https://github.com/programming101dev/p101-audit.git|../programs/p101-audit|c
 https://github.com/programming101dev/playgrounds.git|../playgrounds|c
 https://github.com/programming101dev/template-c.git|../templates/template-c|c
 https://github.com/programming101dev/template-c-program.git|../templates/template-c-program|c
