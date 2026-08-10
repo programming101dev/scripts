@@ -431,6 +431,9 @@ if ! $finalize_only; then
   if $no_flags || $standard || $build_only; then
     check_env_args+=(--no-record)
   fi
+  if $build_only; then
+    check_env_args+=(--compiler-only)
+  fi
   run_or_echo "$CHECK_ENV_SH" "${check_env_args[@]}"
 fi
 

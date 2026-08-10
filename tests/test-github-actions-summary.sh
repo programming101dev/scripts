@@ -10,6 +10,20 @@ grep -Fq 'git config --global --add safe.directory "$(pwd -P)"' \
 grep -Fq -- '--acceptance-output ci-output' .github/workflows/p101-stack.yml
 grep -Fq -- '--matrix-output ci-output/compiler-matrix' \
   .github/workflows/p101-stack.yml
+[[ "$(grep -c 'Prepare .* once, then build compiler pairs' \
+  .github/workflows/p101-stack.yml)" -eq 3 ]]
+[[ "$(grep -c './update-all.sh -C ci_c_compilers.txt' \
+  .github/workflows/p101-stack.yml)" -eq 3 ]]
+if grep -Fq './distribution/clone-repos.sh' \
+  .github/workflows/p101-stack.yml; then
+  echo 'GitHub Actions clones repositories outside update-all preparation.' >&2
+  exit 1
+fi
+if grep -Fq './workspace/check-compilers.sh' \
+  .github/workflows/p101-stack.yml; then
+  echo 'GitHub Actions discovers compilers outside update-all preparation.' >&2
+  exit 1
+fi
 if grep -Fq -- '- name: Check after update-all' .github/workflows/p101-stack.yml; then
   echo 'GitHub Actions still runs the governed graph twice.' >&2
   exit 1

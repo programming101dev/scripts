@@ -328,6 +328,9 @@ printf 'gitdir: /definitely/missing/p101-scripts-git-dir\n' > "$sandbox/matrix/.
 grep -Fq 'source snapshot without usable Git metadata; skipping refresh' \
   "$sandbox/matrix/update-all.stdout"
 [[ "$(grep -c -- '--skip-self-update' "$sandbox/matrix/driver-arguments.txt")" -eq 3 ]]
+[[ "$(grep -c -- '--prepare-only' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
+[[ "$(grep -c -- '--build-only' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
+[[ "$(grep -c -- '--finalize-only' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
 grep -Fxq -- '--prepare-only' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--build-only' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--finalize-only' "$sandbox/matrix/driver-arguments.txt"
@@ -378,6 +381,9 @@ export P101_TEST_CMAKE_LOG="$acceptance_matrix/cmake-invocations.txt"
 )
 unset P101_TEST_CMAKE_LOG
 [[ "$(wc -l < "$acceptance_matrix/driver-invocations.txt")" -eq 4 ]]
+[[ "$(grep -c -- '--prepare-only' "$acceptance_matrix/driver-invocations.txt")" -eq 1 ]]
+[[ "$(grep -c -- '--build-only' "$acceptance_matrix/driver-invocations.txt")" -eq 2 ]]
+[[ "$(grep -c -- '--finalize-only' "$acceptance_matrix/driver-invocations.txt")" -eq 1 ]]
 grep -Fq -- '--prepare-only' "$acceptance_matrix/driver-invocations.txt"
 grep -Fq -- '--build-only' "$acceptance_matrix/driver-invocations.txt"
 grep -Fq -- '--finalize-only' "$acceptance_matrix/driver-invocations.txt"
@@ -546,6 +552,17 @@ for helper in \
 do
   ln -s ../helper "$snapshot_scripts/$helper"
 done
+rm -f "$snapshot_scripts/workspace/check-env.sh"
+cat > "$snapshot_scripts/workspace/check-env.sh" <<'EOF'
+#!/usr/bin/env bash
+if [[ -n "${P101_TEST_HELPER_LOG:-}" ]]; then
+  printf 'check-env.sh' >> "$P101_TEST_HELPER_LOG"
+  printf ' %s' "$@" >> "$P101_TEST_HELPER_LOG"
+  printf '\n' >> "$P101_TEST_HELPER_LOG"
+fi
+exit 0
+EOF
+chmod +x "$snapshot_scripts/workspace/check-env.sh"
 printf 'clang\n' > "$snapshot_scripts/supported_c_compilers.txt"
 printf 'clang++\n' > "$snapshot_scripts/supported_cxx_compilers.txt"
 printf '1\n' > "$snapshot_scripts/version.txt"
@@ -558,6 +575,11 @@ PATH="$snapshot_root/bin:$PATH" \
     --no-flags --skip-self-update --prepare-only > /dev/null
 grep -Fxq 'clone-repos.sh' "$P101_TEST_HELPER_LOG"
 grep -Fxq 'copy-scripts.sh' "$P101_TEST_HELPER_LOG"
+grep -q '^check-env.sh ' "$P101_TEST_HELPER_LOG"
+if grep -Fq -- '--compiler-only' "$P101_TEST_HELPER_LOG"; then
+  echo 'prepare-only incorrectly used the pair-only environment check' >&2
+  exit 1
+fi
 if grep -Fxq 'build-repo.sh' "$P101_TEST_HELPER_LOG"; then
   echo 'prepare-only unexpectedly built repositories' >&2
   exit 1
@@ -568,7 +590,8 @@ PATH="$snapshot_root/bin:$PATH" \
   "$snapshot_scripts/workspace/update.sh" \
     -c clang -x clang++ -f clang-format -t clang-tidy -k cppcheck \
     --no-flags --skip-self-update --skip-install --build-only > /dev/null
-grep -Fxq 'check-env.sh' "$P101_TEST_HELPER_LOG"
+grep -q '^check-env.sh ' "$P101_TEST_HELPER_LOG"
+grep -Fq -- '--compiler-only' "$P101_TEST_HELPER_LOG"
 grep -Fxq 'build-repo.sh' "$P101_TEST_HELPER_LOG"
 if grep -Eq 'clone-repos|copy-scripts|link-flags' "$P101_TEST_HELPER_LOG"; then
   echo 'build-only unexpectedly repeated workspace preparation' >&2

@@ -121,6 +121,17 @@ prints every failed pair's complete log in manifest order instead of stopping
 at the first background exit. Use `--matrix-output <dir>` to choose a stable
 evidence directory.
 
+Preparation owns every operation whose result is shared by compiler pairs:
+the scripts refresh, all managed-repository pulls, retired-repository cleanup,
+flag-cache version comparison, compiler discovery, flag generation, shared
+file distribution, and optional formatting. Those operations run exactly once
+per operating-system invocation. Pair workers only smoke-test their compilers,
+filter that compiler/target's compound sanitizer groups, and configure/build
+their lanes. GitHub Actions deliberately calls only `update-all.sh`; it does
+not clone repositories or discover compilers in separate preceding steps.
+Linux, macOS, and FreeBSD prepare independently because SDKs, linkers,
+sanitizers, and compound flag support are operating-system-specific.
+
 The final phase configures `workspace/CMakeLists.txt`. CMake builds a small,
 sanitizer-free host runtime in dependency order, then builds the C audit, test,
 and inspection programs against those exact in-tree targets. It qualifies the

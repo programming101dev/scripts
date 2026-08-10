@@ -13,10 +13,11 @@ cppcheck_name="cppcheck"
 sanitizers=""
 sanitizers_given=false
 record_sanitizers=true
+compiler_only=false
 
 usage() {
   cat <<'USAGE'
-Usage: check-env.sh [-c <C compiler>] [-x <C++ compiler>] [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [--no-record] [-h]
+Usage: check-env.sh [-c <C compiler>] [-x <C++ compiler>] [-f <clang-format>] [-t <clang-tidy>] [-k <cppcheck>] [-s <sanitizers>] [--no-record] [--compiler-only] [-h]
   -c <cc>          C compiler (e.g. gcc, clang, gcc-15); optional — when
                    omitted, only the generic tools are checked
   -x <cxx>         C++ compiler (e.g. g++, clang++, g++-15); optional
@@ -25,6 +26,9 @@ Usage: check-env.sh [-c <C compiler>] [-x <C++ compiler>] [-f <clang-format>] [-
   -k <name>        cppcheck executable name     [default: cppcheck]
   -s <list>        sanitizers (comma-separated, optional; e.g. address,undefined)
   --no-record      Validate -s without changing the durable sanitizers.txt
+  --compiler-only  Check only the named C/C++ compilers. Shared tools,
+                   libclang, formatter policy, and sanitizer names must have
+                   been checked by the one-time OS preparation phase.
   -h               show this help and exit
 Exit status: number of missing/invalid tools (0 means all good).
              64 indicates a usage error (bad/missing arguments).
@@ -39,6 +43,8 @@ filtered_args=()
 for argument in "$@"; do
   if [[ "$argument" == "--no-record" ]]; then
     record_sanitizers=false
+  elif [[ "$argument" == "--compiler-only" ]]; then
+    compiler_only=true
   else
     filtered_args+=("$argument")
   fi
@@ -151,7 +157,11 @@ append_unique() {
   done
   return 0
 }
-append_unique "cmake" "$c_compiler" "$cxx_compiler" "$clang_format_name" "$clang_tidy_name" "$cppcheck_name"
+if $compiler_only; then
+  append_unique "$c_compiler" "$cxx_compiler"
+else
+  append_unique "cmake" "$c_compiler" "$cxx_compiler" "$clang_format_name" "$clang_tidy_name" "$cppcheck_name"
+fi
 
 missing=0
 
@@ -184,7 +194,7 @@ fi
 # every commit reformats tracked sources back and forth. Bind the version here
 # so the wrong binary fails fast instead of churning the tree.
 CLANG_FORMAT_VERSION_FILE="./clang-format-version.txt"
-if have "$clang_format_name"; then
+if ! $compiler_only && have "$clang_format_name"; then
   _cf_version="$("$clang_format_name" --version 2>/dev/null || true)"
   _cf_major="$(printf '%s' "$_cf_version" | sed -n 's/.*version \([0-9][0-9]*\).*/\1/p')"
   if [[ -z "$_cf_major" ]]; then
@@ -216,7 +226,7 @@ fi
 # lib_c_facts embeds libclang. A Clang driver alone does not provide the
 # public clang-c API headers on package-managed Linux systems, so detect this
 # before update-all spends time compiling the repositories that precede it.
-if ! have_libclang_header; then
+if ! $compiler_only && ! have_libclang_header; then
   echo "missing: clang-c/Index.h ($(libclang_install_hint))"
   missing=$((missing+1))
 fi
@@ -224,7 +234,7 @@ fi
 # Validate sanitizer names: a typo (e.g. "adress") would otherwise silently
 # build with NO sanitizers, because CMake just skips a missing
 # flags/<name>_sanitizer_flags.txt.
-if $sanitizers_given && [[ -n "$sanitizers" ]]; then
+if ! $compiler_only && $sanitizers_given && [[ -n "$sanitizers" ]]; then
   _san_rest="$sanitizers,"
   while [[ -n "$_san_rest" ]]; do
     _san_name="${_san_rest%%,*}"
@@ -243,7 +253,7 @@ fi
 # Record sanitizers whenever -s was given — including an explicit -s "",
 # which truncates the file so downstream repos really do see "no
 # sanitizers" (a stale non-empty file would silently win otherwise).
-if $sanitizers_given && $record_sanitizers; then
+if ! $compiler_only && $sanitizers_given && $record_sanitizers; then
   printf '%s\n' "$sanitizers" > sanitizers.txt
 fi
 

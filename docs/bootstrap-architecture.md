@@ -27,8 +27,15 @@ would add time and a second source of bootstrap failures without strengthening
 the final judgment.
 
 `update-all.sh` selects the first declared usable compiler pair as the host
-pair, prepares shared repositories and flag caches once, then launches every
-compiler pair concurrently. Pair workers use explicit configuration lanes
+pair, prepares shared repositories and flag caches once per operating system,
+then launches every compiler pair concurrently. Repository refresh, version
+comparison, compiler discovery, flag generation, distribution, and formatting
+belong only to that serialized preparation phase. Pair workers repeat only
+compiler-specific smoke tests, target-specific compound sanitizer filtering,
+and builds. GitHub Actions does not pre-clone or pre-discover; each platform
+job enters this same boundary exactly once. Flag preparation is intentionally
+not shared between Linux, macOS, and FreeBSD because their SDK, linker, target,
+and sanitizer capabilities differ. Pair workers use explicit configuration lanes
 whose identity covers both compiler fingerprints, probed flags, instrumentation
 modes, and caller flags; they never consume the shared `.last-build-dir` marker
 for dependency resolution. Link and runtime search are closed over that exact

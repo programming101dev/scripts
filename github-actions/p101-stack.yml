@@ -43,11 +43,7 @@ jobs:
             "$candidate" --version | grep -Eq "clang-format version ${required}\." \
               || { echo "::error::$candidate is not clang-format ${required}"; exit 1; }
           done
-      - name: Clone p101 repos
-        run: cd scripts && ./distribution/clone-repos.sh
-      - name: Detect compilers
-        run: cd scripts && ./workspace/check-compilers.sh
-      - name: Update all repos
+      - name: Prepare macOS once, then build compiler pairs
         id: update
         run: |
           cd scripts
@@ -101,11 +97,7 @@ jobs:
           clang-format --version
           clang-format --version | grep -Eq "clang-format version ${required}\." \
             || { echo "::error::clang-format is not version ${required}"; exit 1; }
-      - name: Clone p101 repos
-        run: cd scripts && ./distribution/clone-repos.sh
-      - name: Detect compilers
-        run: cd scripts && ./workspace/check-compilers.sh
-      - name: Update all repos
+      - name: Prepare Linux once, then build compiler pairs
         id: update
         run: |
           cd scripts
@@ -141,7 +133,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           path: scripts
-      - name: Check in FreeBSD VM
+      - name: Prepare FreeBSD once, then build compiler pairs
         id: freebsd-check
         uses: vmactions/freebsd-vm@v1
         with:
@@ -179,20 +171,6 @@ jobs:
               status=1
               failed_phase=tools
             }
-            if [ "$status" -eq 0 ]; then
-              ./distribution/clone-repos.sh > ci-output/clone.log 2>&1 || status=$?
-              cat ci-output/clone.log
-              if [ "$status" -ne 0 ]; then
-                failed_phase=clone
-              fi
-            fi
-            if [ "$status" -eq 0 ]; then
-              ./workspace/check-compilers.sh > ci-output/compilers.log 2>&1 || status=$?
-              cat ci-output/compilers.log
-              if [ "$status" -ne 0 ]; then
-                failed_phase=compilers
-              fi
-            fi
             if [ "$status" -eq 0 ]; then
               printf 'clang\n' > ci_c_compilers.txt
               printf 'clang++\n' > ci_cxx_compilers.txt

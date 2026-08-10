@@ -241,9 +241,9 @@
       "sha256": "2b49e18ff463e14b3c052b61895693a64c8386819545412697b5998e28c3cab1"
     },
     {
-      "bytes": 5101,
+      "bytes": 5650,
       "path": "docs/bootstrap-architecture.md",
-      "sha256": "7f7f7c79dd36280cdeeb9bfe6f6eef1625414997bb7bb2e1be63abcf67b190c2"
+      "sha256": "ebf4dc63589930c99c48a49eb7da184ae3f8144813ff0426cf9fb42e255b7824"
     },
     {
       "bytes": 6434,
@@ -321,9 +321,9 @@
       "sha256": "b129021011ddd818cbd2ee2c62fe7b50a5348604f3e0092863122fdd6c3b4356"
     },
     {
-      "bytes": 25511,
+      "bytes": 26658,
       "path": "tests/test-build-repo-interactive.sh",
-      "sha256": "e8b41da897e6aea2908ea838f0dfca985719348e6cec5f4b36f4bdd85e6d4667"
+      "sha256": "bdbb97c191bbb7ef923d1d81fbb9f2b5222ea3ae73957e8cf758cc66309d4a7b"
     },
     {
       "bytes": 5740,
@@ -371,9 +371,9 @@
       "sha256": "460865d87945ba496a7b3e9ecb14dd0e7d24a1c2919655204412b9f397f05193"
     },
     {
-      "bytes": 27166,
+      "bytes": 27232,
       "path": "workspace/update.sh",
-      "sha256": "6affae7c358338307d3aef170beb40f4a0c6f99b20ff8b8e686936d31f1d299d"
+      "sha256": "79fb60bf0bf05859fd8f878303c5d6aa288aa7403d13828fe03bddeaaf04a0c3"
     }
   ],
   "does_not_prove": "This contract binds the declared stack policy bytes. It does not prove that the policy is complete, correct, or sufficient for an undeclared platform.",
