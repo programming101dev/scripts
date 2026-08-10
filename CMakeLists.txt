@@ -162,6 +162,14 @@ endif ()
 set(SANITIZER_LIST "" CACHE STRING "Comma-separated sanitizers to try to enable")
 set(P101_ALLOW_MISSING_SANITIZERS OFF CACHE BOOL
         "Permit explicitly requested sanitizers to be unavailable (bring-up only)")
+set(P101_COVERAGE_MODE "AUTO" CACHE STRING
+        "Coverage selection: AUTO honors environment/file, ON enables, OFF disables")
+set(P101_PROFILE_MODE "AUTO" CACHE STRING
+        "Profiling selection: AUTO honors environment/file, ON enables, OFF disables")
+set_property(CACHE P101_COVERAGE_MODE PROPERTY STRINGS AUTO ON OFF)
+set_property(CACHE P101_PROFILE_MODE PROPERTY STRINGS AUTO ON OFF)
+set(P101_DISABLE_INSTRUMENTATION OFF CACHE BOOL
+        "Force coverage and profiling off for clean runtime artifacts")
 
 # Extra public include/link roots
 set(P101_PUBLIC_INCLUDE_DIRS "/usr/local/include" CACHE STRING "Extra public include dirs")
@@ -504,7 +512,19 @@ endmacro()
 
 _p101_env_on(P101_COVERAGE _p101_cov_env)
 _p101_file_on("${CMAKE_CURRENT_SOURCE_DIR}/coverage.txt" _p101_cov_file)
-if (_p101_cov_env OR _p101_cov_file)
+string(TOUPPER "${P101_COVERAGE_MODE}" _p101_coverage_mode)
+if (NOT _p101_coverage_mode MATCHES "^(AUTO|ON|OFF)$")
+    message(FATAL_ERROR "P101_COVERAGE_MODE must be AUTO, ON, or OFF")
+endif ()
+set(_p101_coverage_selected FALSE)
+if (NOT P101_DISABLE_INSTRUMENTATION)
+    if (_p101_coverage_mode STREQUAL "ON" OR
+            (_p101_coverage_mode STREQUAL "AUTO" AND
+                    (_p101_cov_env OR _p101_cov_file)))
+        set(_p101_coverage_selected TRUE)
+    endif ()
+endif ()
+if (_p101_coverage_selected)
     set(_p101_covflags "")
     if (_FLAG_DIRS_USED)
         _p101_read_flags("${_FLAG_DIRS_USED}/coverage_flags.txt" _p101_covflags)
@@ -523,7 +543,19 @@ endif ()
 
 _p101_env_on(P101_PROFILE _p101_prof_env)
 _p101_file_on("${CMAKE_CURRENT_SOURCE_DIR}/profile.txt" _p101_prof_file)
-if (_p101_prof_env OR _p101_prof_file)
+string(TOUPPER "${P101_PROFILE_MODE}" _p101_profile_mode)
+if (NOT _p101_profile_mode MATCHES "^(AUTO|ON|OFF)$")
+    message(FATAL_ERROR "P101_PROFILE_MODE must be AUTO, ON, or OFF")
+endif ()
+set(_p101_profile_selected FALSE)
+if (NOT P101_DISABLE_INSTRUMENTATION)
+    if (_p101_profile_mode STREQUAL "ON" OR
+            (_p101_profile_mode STREQUAL "AUTO" AND
+                    (_p101_prof_env OR _p101_prof_file)))
+        set(_p101_profile_selected TRUE)
+    endif ()
+endif ()
+if (_p101_profile_selected)
     set(_p101_profflags "")
     if (_FLAG_DIRS_USED)
         _p101_read_flags("${_FLAG_DIRS_USED}/profile_flags.txt" _p101_profflags)
@@ -634,7 +666,16 @@ set(_P101_WORKSPACE_ROOT_CANDIDATES
 set(_P101_LOCAL_LINK_DIRS "")
 set(_P101_LOCAL_FALLBACK_LINK_DIRS "")
 set(_P101_WORKSPACE_ROOT "")
-get_filename_component(_P101_COMPILER_BASENAME "${CMAKE_C_COMPILER}" NAME)
+set(_P101_EXPLICIT_BUILD_KEY OFF)
+if (DEFINED P101_BUILD_KEY AND NOT P101_BUILD_KEY STREQUAL "")
+    if (NOT P101_BUILD_KEY MATCHES "^[A-Za-z0-9_.+-]+$")
+        message(FATAL_ERROR "P101_BUILD_KEY contains unsupported characters: ${P101_BUILD_KEY}")
+    endif ()
+    set(_P101_COMPILER_BASENAME "${P101_BUILD_KEY}")
+    set(_P101_EXPLICIT_BUILD_KEY ON)
+else ()
+    get_filename_component(_P101_COMPILER_BASENAME "${CMAKE_C_COMPILER}" NAME)
+endif ()
 foreach (_p101_root IN LISTS _P101_WORKSPACE_ROOT_CANDIDATES)
     get_filename_component(_p101_root_abs "${_p101_root}" ABSOLUTE)
     if (IS_DIRECTORY "${_p101_root_abs}/libraries")
@@ -648,11 +689,22 @@ foreach (_p101_root IN LISTS _P101_WORKSPACE_ROOT_CANDIDATES)
                 continue()
             endif ()
             if (P101_RUNTIME_ONLY)
+                if (_P101_EXPLICIT_BUILD_KEY AND IS_DIRECTORY
+                        "${_p101_library_repo}/build-${P101_BUILD_KEY}")
+                    list(APPEND _P101_LOCAL_LINK_DIRS
+                            "${_p101_library_repo}/build-${P101_BUILD_KEY}")
+                endif ()
                 # Runtime artifacts must not resolve sibling dependencies from
-                # strict sanitizer builds: that would put unresolved ASan/UBSan
-                # runtime references back into an otherwise sanitizer-free
-                # consumer. Admit only explicitly published runtime builds.
-                if (EXISTS "${_p101_library_repo}/.last-runtime-build-dir")
+                # a quality lane: that can reintroduce compiler-private
+                # sanitizer, coverage, or profiling support into an otherwise
+                # clean consumer. Admit only the exact runtime lane.
+                if (NOT _P101_EXPLICIT_BUILD_KEY AND IS_DIRECTORY
+                        "${_p101_library_repo}/build-${_P101_COMPILER_BASENAME}-runtime")
+                    list(APPEND _P101_LOCAL_LINK_DIRS
+                            "${_p101_library_repo}/build-${_P101_COMPILER_BASENAME}-runtime")
+                endif ()
+                if (NOT _P101_EXPLICIT_BUILD_KEY AND
+                        EXISTS "${_p101_library_repo}/.last-runtime-build-dir")
                     file(READ "${_p101_library_repo}/.last-runtime-build-dir"
                             _p101_last_runtime_build_dir)
                     string(STRIP "${_p101_last_runtime_build_dir}"
@@ -663,24 +715,27 @@ foreach (_p101_root IN LISTS _P101_WORKSPACE_ROOT_CANDIDATES)
                                 "${_p101_library_repo}/${_p101_last_runtime_build_dir}")
                     endif ()
                 endif ()
-                file(GLOB _p101_library_runtime_build_dirs
-                        LIST_DIRECTORIES true
-                        "${_p101_library_repo}/build*-runtime")
-                list(SORT _p101_library_runtime_build_dirs)
-                foreach (_p101_library_build_dir
-                        IN LISTS _p101_library_runtime_build_dirs)
-                    if (IS_DIRECTORY "${_p101_library_build_dir}")
-                        list(APPEND _P101_LOCAL_FALLBACK_LINK_DIRS
-                                "${_p101_library_build_dir}")
-                    endif ()
-                endforeach ()
+                if (NOT _P101_EXPLICIT_BUILD_KEY)
+                    file(GLOB _p101_library_runtime_build_dirs
+                            LIST_DIRECTORIES true
+                            "${_p101_library_repo}/build*-runtime")
+                    list(SORT _p101_library_runtime_build_dirs)
+                    foreach (_p101_library_build_dir
+                            IN LISTS _p101_library_runtime_build_dirs)
+                        if (IS_DIRECTORY "${_p101_library_build_dir}")
+                            list(APPEND _P101_LOCAL_FALLBACK_LINK_DIRS
+                                    "${_p101_library_build_dir}")
+                        endif ()
+                    endforeach ()
+                endif ()
             else ()
                 if (IS_DIRECTORY
                         "${_p101_library_repo}/build-${_P101_COMPILER_BASENAME}")
                     list(APPEND _P101_LOCAL_LINK_DIRS
                             "${_p101_library_repo}/build-${_P101_COMPILER_BASENAME}")
                 endif ()
-                if (EXISTS "${_p101_library_repo}/.last-build-dir")
+                if (NOT _P101_EXPLICIT_BUILD_KEY AND
+                        EXISTS "${_p101_library_repo}/.last-build-dir")
                     file(READ "${_p101_library_repo}/.last-build-dir"
                             _p101_last_build_dir)
                     string(STRIP "${_p101_last_build_dir}"
@@ -691,16 +746,18 @@ foreach (_p101_root IN LISTS _P101_WORKSPACE_ROOT_CANDIDATES)
                                 "${_p101_library_repo}/${_p101_last_build_dir}")
                     endif ()
                 endif ()
-                file(GLOB _p101_library_build_dirs
-                        LIST_DIRECTORIES true
-                        "${_p101_library_repo}/build*")
-                list(SORT _p101_library_build_dirs)
-                foreach (_p101_library_build_dir IN LISTS _p101_library_build_dirs)
-                    if (IS_DIRECTORY "${_p101_library_build_dir}")
-                        list(APPEND _P101_LOCAL_FALLBACK_LINK_DIRS
-                                "${_p101_library_build_dir}")
-                    endif ()
-                endforeach ()
+                if (NOT _P101_EXPLICIT_BUILD_KEY)
+                    file(GLOB _p101_library_build_dirs
+                            LIST_DIRECTORIES true
+                            "${_p101_library_repo}/build*")
+                    list(SORT _p101_library_build_dirs)
+                    foreach (_p101_library_build_dir IN LISTS _p101_library_build_dirs)
+                        if (IS_DIRECTORY "${_p101_library_build_dir}")
+                            list(APPEND _P101_LOCAL_FALLBACK_LINK_DIRS
+                                    "${_p101_library_build_dir}")
+                        endif ()
+                    endforeach ()
+                endif ()
             endif ()
             endforeach ()
         endif ()
@@ -1074,6 +1131,10 @@ if (P101_RUNTIME_ONLY)
     if (_P101_SANITIZER_COMPILE_OPTS OR _P101_SANITIZER_LINK_OPTS)
         message(FATAL_ERROR
                 "P101_RUNTIME_ONLY requires a sanitizer-free configuration.")
+    endif ()
+    if (_p101_coverage_selected OR _p101_profile_selected)
+        message(FATAL_ERROR
+                "P101_RUNTIME_ONLY requires coverage and profiling to be disabled.")
     endif ()
     message(STATUS
             "P101_RUNTIME_ONLY: building installable targets without quality-analysis targets.")

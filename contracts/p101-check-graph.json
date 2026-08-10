@@ -29,6 +29,7 @@
       "shell-scripts",
       "repository-refresh",
       "compiler-cache-tests",
+      "build-lane-tests",
       "retired-repository-cleanup",
       "interactive-build-retry",
       "github-workflow-drift",
@@ -306,6 +307,18 @@
       "guarantee": "Probed flag caches are invalidated when the compiler executable, reported version, or target changes."
     },
     {
+      "id": "build-lane-tests",
+      "title": "compiler-pair artifact lane identity",
+      "group": "distribution",
+      "required": true,
+      "command": ["./tests/test-build-lane.sh"],
+      "inputs": ["scripts/tests/test-build-lane.sh", "scripts/workspace/build-lane.sh", "scripts/workspace/compiler-fingerprint.sh", "scripts/shared/compilers.sh"],
+      "inputs_complete": true,
+      "depends_on": ["compiler-cache-tests"],
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
+      "guarantee": "Every artifact lane binds the complete C/C++ compiler pair and instrumentation configuration; runtime lanes are explicitly instrumentation-free."
+    },
+    {
       "id": "retired-repository-cleanup",
       "title": "retired repository cleanup safety",
       "group": "distribution",
@@ -313,21 +326,21 @@
       "command": ["./tests/test-remove-retired-repos.sh"],
       "inputs": ["scripts/tests/test-remove-retired-repos.sh", "scripts/distribution/remove-retired-repos.sh", "scripts/repos.txt"],
       "inputs_complete": true,
-      "depends_on": ["compiler-cache-tests"],
+      "depends_on": ["build-lane-tests"],
       "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Manifest-retired repositories are removed only when clean and fully represented by their configured upstream."
     },
     {
       "id": "interactive-build-retry",
-      "title": "interactive repository build retry",
+      "title": "parallel compiler matrix and interactive retry",
       "group": "distribution",
       "required": true,
       "command": ["./tests/test-build-repo-interactive.sh"],
-      "inputs": ["scripts/tests/test-build-repo-interactive.sh", "scripts/workspace/build-repo.sh", "scripts/workspace/update.sh", "scripts/distribution/clone-repos.sh", "scripts/distribution/refresh-repo.sh", "scripts/shared/**"],
+      "inputs": ["scripts/tests/test-build-repo-interactive.sh", "scripts/update-all.sh", "scripts/workspace/build-repo.sh", "scripts/workspace/update.sh", "scripts/distribution/clone-repos.sh", "scripts/distribution/refresh-repo.sh", "templates/template-c/build.sh", "templates/template-cxx/build.sh", "scripts/CMakeLists.txt", "scripts/shared/**"],
       "inputs_complete": true,
       "depends_on": ["retired-repository-cleanup"],
       "resources": {"writes": ["{temporary_root}"], "units": {}},
-      "guarantee": "Interactive builds retry only the failed repository phase and preserve its exit status on abort."
+      "guarantee": "Compiler pairs build concurrently in isolated artifact directories, every failure retains a complete ordered diagnostic receipt, and interactive recovery starts only after parallel workers stop."
     },
     {
       "id": "github-workflow-drift",

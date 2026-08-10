@@ -8,6 +8,8 @@ cmp .github/workflows/p101-stack.yml github-actions/p101-stack.yml
 grep -Fq 'git config --global --add safe.directory "$(pwd -P)"' \
   .github/workflows/p101-stack.yml
 grep -Fq -- '--acceptance-output ci-output' .github/workflows/p101-stack.yml
+grep -Fq -- '--matrix-output ci-output/compiler-matrix' \
+  .github/workflows/p101-stack.yml
 if grep -Fq -- '- name: Check after update-all' .github/workflows/p101-stack.yml; then
   echo 'GitHub Actions still runs the governed graph twice.' >&2
   exit 1
@@ -49,19 +51,40 @@ grep -Fq 'source.c:12:4: error: deliberately broken' "$sandbox/step-summary.md"
 cmp -s "$sandbox/output/github-step-summary.md" "$sandbox/step-summary.md"
 
 mkdir -p "$sandbox/early"
+mkdir -p "$sandbox/early/compiler-matrix"
 cat > "$sandbox/early/update-all.log" <<'EOF'
 Configuring repositories...
 /workspace/tool.c:87:5: error: 'switch' missing 'default' label
 make: stopped
 EOF
+printf 'index\tc_compiler\tcxx_compiler\tstatus\texit\telapsed_seconds\tlog\n' \
+  > "$sandbox/early/compiler-matrix/summary.tsv"
+printf '0001\tclang\tclang++\tPASS\t0\t12\t%s\n' \
+  "$sandbox/early/compiler-matrix/0001-clang.log" \
+  >> "$sandbox/early/compiler-matrix/summary.tsv"
+printf '0002\tgcc\tg++\tFAIL\t2\t15\t%s\n' \
+  "$sandbox/early/compiler-matrix/0002-gcc.log" \
+  >> "$sandbox/early/compiler-matrix/summary.tsv"
+cat > "$sandbox/early/compiler-matrix/summary.md" <<'EOF'
+# p101 compiler matrix
+
+| C compiler | C++ compiler | Result | Exit | Seconds | Log |
+| --- | --- | --- | ---: | ---: | --- |
+| clang | clang++ | PASS | 0 | 12 | `clang.log` |
+| gcc | g++ | FAIL | 2 | 15 | `gcc.log` |
+EOF
+cat > "$sandbox/early/compiler-matrix/0002-gcc.log" <<'EOF'
+/workspace/gcc-only.c:23:7: error: GCC pair failure
+EOF
 GITHUB_STEP_SUMMARY="$sandbox/early-summary.md" \
   ./github-actions/publish-ci-summary.sh \
   "$sandbox/early" FreeBSD failure skipped > "$sandbox/early-stdout"
-grep -Fq "::error title=p101%3A repository update/build::/workspace/tool.c:87:5: error: 'switch' missing 'default' label" \
+grep -Fq '::error title=p101%3A gcc %3A g++::/workspace/gcc-only.c:23:7: error: GCC pair failure' \
   "$sandbox/early-stdout"
 grep -Fq 'did not produce a summary' "$sandbox/early-summary.md"
-grep -Fq '<summary>Repository update/build failure</summary>' "$sandbox/early-summary.md"
-grep -Fq "/workspace/tool.c:87:5: error: 'switch' missing 'default' label" "$sandbox/early-summary.md"
+grep -Fq '# p101 compiler matrix' "$sandbox/early-summary.md"
+grep -Fq '<summary>Compiler pair: gcc : g++</summary>' "$sandbox/early-summary.md"
+grep -Fq '/workspace/gcc-only.c:23:7: error: GCC pair failure' "$sandbox/early-summary.md"
 
 mkdir -p "$sandbox/freebsd"
 cat > "$sandbox/freebsd/clone.log" <<'EOF'

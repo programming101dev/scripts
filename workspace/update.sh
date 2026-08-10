@@ -45,6 +45,10 @@ interactive=false
 skip_self_update=false
 latest=false
 format=false
+prepare_only=false
+build_only=false
+finalize_only=false
+defer_install=false
 
 # Files and helper scripts expected in the current directory
 # CACHE_ROOT / FLAGS_VERSION_FILE are re-pointed for the --standard profile
@@ -124,6 +128,14 @@ Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clan
   --format             Apply clang-format to every tracked workspace source
                        before building, so the format-check gate cannot fail
                        on formatting alone. Modifies tracked files.
+  --prepare-only       Refresh and prepare the shared workspace, then stop.
+                       Internal matrix phase used by update-all.sh.
+  --build-only         Build one compiler pair from an already-prepared
+                       workspace. Internal matrix phase used by update-all.sh.
+  --finalize-only      Publish the selected host-pair markers and install its
+                       existing artifacts. Internal matrix phase.
+  --defer-install      Build runtime artifacts but defer their installation
+                       until --finalize-only.
 
 Examples:
   ./update.sh -c clang -x clang++
@@ -235,6 +247,10 @@ LONG_INTERACTIVE=0
 LONG_SKIP_SELF_UPDATE=0
 LONG_LATEST=0
 LONG_FORMAT=0
+LONG_PREPARE_ONLY=0
+LONG_BUILD_ONLY=0
+LONG_FINALIZE_ONLY=0
+LONG_DEFER_INSTALL=0
 declare -a _argv=()
 for _a in "$@"; do
   if [[ "$_a" == "--dry-run" ]]; then
@@ -257,6 +273,14 @@ for _a in "$@"; do
     LONG_LATEST=1
   elif [[ "$_a" == "--format" ]]; then
     LONG_FORMAT=1
+  elif [[ "$_a" == "--prepare-only" ]]; then
+    LONG_PREPARE_ONLY=1
+  elif [[ "$_a" == "--build-only" ]]; then
+    LONG_BUILD_ONLY=1
+  elif [[ "$_a" == "--finalize-only" ]]; then
+    LONG_FINALIZE_ONLY=1
+  elif [[ "$_a" == "--defer-install" ]]; then
+    LONG_DEFER_INSTALL=1
   else
     _argv+=("$_a")
   fi
@@ -295,6 +319,21 @@ shift $((OPTIND-1))
 [[ $LONG_SKIP_SELF_UPDATE -eq 1 ]] && skip_self_update=true
 [[ $LONG_LATEST -eq 1 ]] && latest=true
 [[ $LONG_FORMAT -eq 1 ]] && format=true
+[[ $LONG_PREPARE_ONLY -eq 1 ]] && prepare_only=true
+[[ $LONG_BUILD_ONLY -eq 1 ]] && build_only=true
+[[ $LONG_FINALIZE_ONLY -eq 1 ]] && finalize_only=true
+[[ $LONG_DEFER_INSTALL -eq 1 ]] && defer_install=true
+
+mode_count=0
+$prepare_only && mode_count=$((mode_count + 1))
+$build_only && mode_count=$((mode_count + 1))
+$finalize_only && mode_count=$((mode_count + 1))
+if ((mode_count > 1)); then
+  die "--prepare-only, --build-only, and --finalize-only are mutually exclusive."
+fi
+if $defer_install && ! $build_only; then
+  die "--defer-install requires --build-only."
+fi
 
 if $no_flags && $standard; then
   die "--no-flags and --standard are mutually exclusive (one means no flags, the other a fixed standard set)."
@@ -367,7 +406,7 @@ $dry_run && note "  mode             = DRY RUN"
 # refresh-repo.sh exits 1 after a successful refresh to signal "re-run so the new
 # scripts are used" — handle that explicitly instead of a bare set -e death.
 pull_rc=0
-if $skip_self_update; then
+if $build_only || $finalize_only || $skip_self_update; then
   :
 elif ! $dry_run; then
   "$REFRESH_REPO_SH" --allow-snapshot . || pull_rc=$?
@@ -381,51 +420,45 @@ elif [[ "$pull_rc" -ne 0 ]]; then
   die "refresh-repo.sh failed (exit $pull_rc)"
 fi
 
-# ----------------- sanitizer capability/combination validation -----------------
-# Accepting -fsanitize=<name> during compilation does not prove that a target
-# has the corresponding runtime library. Require each group to compile AND
-# link, drop unsupported groups, and retain a hard error when the individually
-# usable survivors conflict with one another.
-if [[ -n "$sanitizers" ]] && ! $dry_run; then
-  sanitizers="$(
-    "$FILTER_SANITIZERS_SH" "$CC_PATH" flags "$sanitizers"
-  )"
-fi
-
 # Verify environment tools exist and are usable by downstream. Transient
 # profiles must not overwrite the user's durable sanitizer selection.
-check_env_args=(
-  -c "$CC_PATH" -x "$CXX_PATH"
-  -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH"
-  -s "$requested_sanitizers"
-)
-if $no_flags || $standard; then
-  check_env_args+=(--no-record)
+if ! $finalize_only; then
+  check_env_args=(
+    -c "$CC_PATH" -x "$CXX_PATH"
+    -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH"
+    -s "$requested_sanitizers"
+  )
+  if $no_flags || $standard || $build_only; then
+    check_env_args+=(--no-record)
+  fi
+  run_or_echo "$CHECK_ENV_SH" "${check_env_args[@]}"
 fi
-run_or_echo "$CHECK_ENV_SH" "${check_env_args[@]}"
 
 # Clone or update repos listed in repos.txt. Interactive mode applies to this
 # phase too: local edits or branch divergence must be resolved by the user, but
 # the update can then retry the same repository and continue the matrix.
-clone_args=()
-if $interactive; then
-  clone_args+=(--interactive)
-fi
-if $latest; then
-  clone_args+=(--latest)
-fi
-if ((${#clone_args[@]})); then
-  run_or_echo "$CLONE_REPOS_SH" "${clone_args[@]}"
-else
-  run_or_echo "$CLONE_REPOS_SH"
-fi
-if $interactive; then
-  run_or_echo "$REMOVE_RETIRED_REPOS_SH" --apply --yes --interactive
-else
-  run_or_echo "$REMOVE_RETIRED_REPOS_SH" --apply --yes
+if ! $build_only && ! $finalize_only; then
+  clone_args=()
+  if $interactive; then
+    clone_args+=(--interactive)
+  fi
+  if $latest; then
+    clone_args+=(--latest)
+  fi
+  if ((${#clone_args[@]})); then
+    run_or_echo "$CLONE_REPOS_SH" "${clone_args[@]}"
+  else
+    run_or_echo "$CLONE_REPOS_SH"
+  fi
+  if $interactive; then
+    run_or_echo "$REMOVE_RETIRED_REPOS_SH" --apply --yes --interactive
+  else
+    run_or_echo "$REMOVE_RETIRED_REPOS_SH" --apply --yes
+  fi
 fi
 
 # ----------------- flags cache management -----------------
+if ! $build_only && ! $finalize_only; then
 update=false
 
 if [[ ! -f "$SUPPORTED_C_COMPILERS" || ! -f "$SUPPORTED_CXX_COMPILERS" ]]; then
@@ -518,6 +551,22 @@ elif $update; then
     printf '[dry-run] cp %q %q\n' "$CURRENT_VERSION_FILE" "$FLAGS_VERSION_FILE"
   fi
 fi
+fi
+
+# ----------------- sanitizer capability/combination validation -----------------
+# Validate the exact probed flags CMake will consume, not the broader source
+# candidate list. A sanitizer umbrella can be accepted by the compiler while
+# one of its harvested sub-flags is rejected for the current target. Filtering
+# before flag probing previously admitted precisely that inconsistent state.
+if [[ -n "$sanitizers" ]] && ! $dry_run; then
+  sanitizer_cache_dir="${CACHE_ROOT}/$(basename "$CC_PATH")"
+  sanitizers="$(
+    "$FILTER_SANITIZERS_SH" "$CC_PATH" "$sanitizer_cache_dir" "$sanitizers"
+  )"
+  if [[ "$sanitizers" != "$requested_sanitizers" ]]; then
+    note "  effective sanitizers = ${sanitizers:-<none>}"
+  fi
+fi
 
 # ----------------- sanity: supported compilers lists -----------------
 in_supported() {
@@ -580,7 +629,9 @@ compiler_supported() {
 
 # In dry-run mode the lists may not have been (re)generated; don't fail on
 # a file that the real run would have produced.
-if $dry_run && [[ ! -f "$SUPPORTED_C_COMPILERS" || ! -f "$SUPPORTED_CXX_COMPILERS" ]]; then
+if $finalize_only; then
+  :
+elif $dry_run && [[ ! -f "$SUPPORTED_C_COMPILERS" || ! -f "$SUPPORTED_CXX_COMPILERS" ]]; then
   note "[dry-run] skipping supported-compiler check (lists not generated yet)"
 else
   if ! compiler_supported "$c_compiler" "$CC_PATH" "$SUPPORTED_C_COMPILERS"; then
@@ -601,6 +652,7 @@ fi
 # The shared CMakeLists is part of the build system contract, not a per-repo
 # fork. Refresh it before every build so normal update-all runs pick up fixes
 # to tool flags, rpaths, analysis gates, and platform handling immediately.
+if ! $build_only && ! $finalize_only; then
 if [[ -x ./distribution/copy-cmake.sh ]]; then
   run_or_echo ./distribution/copy-cmake.sh
 fi
@@ -624,6 +676,12 @@ if $format; then
     --formatter "$CLANG_FORMAT_PATH" \
     --receipt "$FORMAT_RECEIPT"
 fi
+fi
+
+if $prepare_only; then
+  note "Workspace preparation complete."
+  exit 0
+fi
 
 # ----------------- build all repos -----------------
 build_repo_args=(
@@ -640,6 +698,12 @@ if $skip_install; then
 fi
 if $interactive; then
   build_repo_args+=(--interactive)
+fi
+if $defer_install; then
+  build_repo_args+=(--defer-install)
+fi
+if $finalize_only; then
+  build_repo_args+=(--finalize-only)
 fi
 run_or_echo "$BUILD_REPO_SH" "${build_repo_args[@]}"
 

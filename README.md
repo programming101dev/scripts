@@ -108,6 +108,19 @@ If you want to verify that everything compiles with all of the supported compile
 ./update-all.sh
 ```
 
+The supported compiler pairs build concurrently after one serialized workspace
+preparation phase. Each pair writes to a configuration lane and an isolated
+log. A lane binds both compiler fingerprints, the probed flag-cache contents,
+sanitizers, coverage/profile modes, and relevant caller flags. Therefore a GCC
+profile build, a Clang profile build, and clean builds can all remain present
+without overwriting or loading one another's libraries. Every build directory
+contains `p101-build-lane.txt` as its inspectable ownership receipt.
+`target/update-all/<run-id>/summary.tsv` is the parseable final
+receipt; `summary.md` is the human view. If several pairs fail, the terminal
+prints every failed pair's complete log in manifest order instead of stopping
+at the first background exit. Use `--matrix-output <dir>` to choose a stable
+evidence directory.
+
 The final phase configures `workspace/CMakeLists.txt`. CMake builds a small,
 sanitizer-free host runtime in dependency order, then builds the C audit, test,
 and inspection programs against those exact in-tree targets. It qualifies the
@@ -123,23 +136,26 @@ For an iterative portability pass, add `--interactive`:
 ./update-all.sh --interactive
 ```
 
-When a repository's configure, build, or install phase fails, the script leaves
-you at that repository/compiler boundary and waits. Push the fix from another
-terminal, then press Enter; the script fast-forwards the repository with
-`git pull --ff-only` before retrying only the failed phase. A failed pull returns
-to the prompt without retrying stale code. Enter `q` to abort. Repositories that
-already passed are not rebuilt, and after the repaired repository succeeds the
-compiler matrix continues normally. The same option is available on `setup.sh`,
+Parallel workers never share stdin. They all stop first, then failed compiler
+pairs are retried interactively in manifest order. At the failing repository
+boundary, push the fix from another terminal and press Enter; the repository is
+fast-forwarded before only that failed phase is retried. A failed pull returns
+to the prompt without retrying stale code. Enter `q` to abort. Compiler pairs
+that already passed are not rebuilt. The same option is available on `setup.sh`,
 `update.sh`, and `build-repo.sh`. This is an intentional development relaxation:
 after coordinated fixes move repository revisions, refresh and commit
 `repos.lock` before expecting strict workspace acceptance to pass.
 
-For installable C/C++ libraries, the update builds have two deliberate
-artifacts. The normal build remains the strict quality receipt: it uses the
-selected sanitizers and runs the full analyzer pipeline. Before installation,
-the driver creates a lightweight `P101_RUNTIME_ONLY` build with the same
-compiler and hardening flags but without sanitizers, then installs from
-`.last-runtime-build-dir`. This prevents an installed shared library from
+For installable C/C++ repositories, the update builds have two deliberate
+artifacts. The normal lane remains the strict quality receipt: it uses the
+selected sanitizers, coverage/profile selection, and full analyzer pipeline.
+Applications resolve p101 dependencies only from that exact lane; installed
+libraries, old marker files, and other compiler lanes are forbidden fallbacks.
+The host-pair worker also creates a lightweight `P101_RUNTIME_ONLY` lane with
+the same compiler and hardening profile but without sanitizer, coverage,
+profiling, or caller-supplied compile/link instrumentation. Installation is
+deferred until every compiler pair succeeds, then the host artifacts are
+receipt-checked and installed from `.last-runtime-build-dir`. This prevents an installed shared library from
 forcing one compiler's private sanitizer runtime into consumers built by a
 different compiler. On macOS, sanitized executables also link their
 compiler-matched ASan dylib before application libraries so its interceptors

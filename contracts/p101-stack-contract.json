@@ -41,9 +41,9 @@
       "sha256": "5a246310f34e3043e20750764c2ba17186f54d1dfc47b2ed6984dc875295fa7c"
     },
     {
-      "bytes": 74861,
+      "bytes": 77837,
       "path": "CMakeLists.txt",
-      "sha256": "bb9cbd08b2ad86d0e1335c0d7f880bd5d9e6182c83120cfda8582dacfd8194a3"
+      "sha256": "e6f80c935fa45d7e1d33fdd9e0a67317bb4c4c96f17557ee10555ef449706e55"
     },
     {
       "bytes": 14216,
@@ -141,9 +141,9 @@
       "sha256": "cdb614ce14222d9f31242bb4c666a1c13d4aee87da94a27a0acef8338934ca21"
     },
     {
-      "bytes": 2607,
+      "bytes": 4070,
       "path": "cmake/P101Linking.cmake",
-      "sha256": "20fb69942f470906afcedb6e5755752e6a3962db74c23f382a522c4410813721"
+      "sha256": "759506922b7394a1af7a62acd2f5680bec9a9e37eba57deb664d1b3b035d642f"
     },
     {
       "bytes": 1570,
@@ -166,9 +166,9 @@
       "sha256": "15517de986d872ea2ce7b2da54a1197e3118746fd326ee0698ad3617178f699c"
     },
     {
-      "bytes": 57242,
+      "bytes": 58171,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "c2b64153505e7ec29f850fab025a96cd5147ed5986de168ad0f65fbbbf6ca6d7"
+      "sha256": "0a1094dd9a83e512738427f10b3a363c9b7151e996635a5392c501d986b07ff9"
     },
     {
       "bytes": 62722,
@@ -241,9 +241,9 @@
       "sha256": "2b49e18ff463e14b3c052b61895693a64c8386819545412697b5998e28c3cab1"
     },
     {
-      "bytes": 4378,
+      "bytes": 5101,
       "path": "docs/bootstrap-architecture.md",
-      "sha256": "8509fcf0e188feb16ef9ecf7243f23603c58031eee0d4f9a2cbf80bba1d23264"
+      "sha256": "7f7f7c79dd36280cdeeb9bfe6f6eef1625414997bb7bb2e1be63abcf67b190c2"
     },
     {
       "bytes": 6434,
@@ -278,7 +278,7 @@
     {
       "bytes": 8624,
       "path": "repos.lock",
-      "sha256": "bfaf84f3acedcad5b2b28380cce7b69478efe366a700b0ed8f7009cf15ffffec"
+      "sha256": "084008348c897ad49d520e55d7a1cb3103444d3940b8b50d50b6e42adf1fcf07"
     },
     {
       "bytes": 3345,
@@ -311,9 +311,9 @@
       "sha256": "7aad63eb3b4affdf59418d16574d1b5ab4beece6007186faa69f0bdec7dd66ee"
     },
     {
-      "bytes": 2122,
+      "bytes": 2493,
       "path": "shared/compilers.sh",
-      "sha256": "637ba87558d523ecf0bb1647eeb7ca412d986e8e01cafa29438e7b590f8addca"
+      "sha256": "2506deb549553563f65b79abf1eb1b521a76ed6bf756985afd60fc3726b8e70d"
     },
     {
       "bytes": 5268,
@@ -321,9 +321,9 @@
       "sha256": "b129021011ddd818cbd2ee2c62fe7b50a5348604f3e0092863122fdd6c3b4356"
     },
     {
-      "bytes": 14239,
+      "bytes": 25511,
       "path": "tests/test-build-repo-interactive.sh",
-      "sha256": "e29f0f5543f14e9a60041b63fcfa32e36865fe006419d025ce1e86d58bee8f5d"
+      "sha256": "e8b41da897e6aea2908ea838f0dfca985719348e6cec5f4b36f4bdd85e6d4667"
     },
     {
       "bytes": 5740,
@@ -331,9 +331,9 @@
       "sha256": "5a236c83e5de7643babcc600e1a8a4394804e3dad75a4fe923a3b7bfc38ec5a1"
     },
     {
-      "bytes": 10921,
+      "bytes": 20242,
       "path": "update-all.sh",
-      "sha256": "8fb18c5a0659dcaa4750c4b247f43eb87636015130399997f41cb8d5cde891de"
+      "sha256": "1c728996ec9d4043b74c67c01ec897235aa3d6f03b6c4a32689ebb0786b64ad5"
     },
     {
       "bytes": 10546,
@@ -356,9 +356,9 @@
       "sha256": "084b0d1dec135cf1b6f7b101a247ee977f01c38a602503d8b04f3709c98726e9"
     },
     {
-      "bytes": 14346,
+      "bytes": 19455,
       "path": "workspace/build-repo.sh",
-      "sha256": "eece089170522eec8d606871c244609af1fedffc7d4b39af8a8b42da9e58cc33"
+      "sha256": "416d05e697858d389f4e40480eb6e364a285bacae819e7053edec32fa6998c4f"
     },
     {
       "bytes": 2816,
@@ -371,9 +371,9 @@
       "sha256": "460865d87945ba496a7b3e9ecb14dd0e7d24a1c2919655204412b9f397f05193"
     },
     {
-      "bytes": 24871,
+      "bytes": 27166,
       "path": "workspace/update.sh",
-      "sha256": "804a06bc7e64a6758ec53e7e77580409c03b2ed2d4e142953a800cdd56df637f"
+      "sha256": "6affae7c358338307d3aef170beb40f4a0c6f99b20ff8b8e686936d31f1d299d"
     }
   ],
   "does_not_prove": "This contract binds the declared stack policy bytes. It does not prove that the policy is complete, correct, or sufficient for an undeclared platform.",

@@ -45,6 +45,36 @@ function(_p101_resolve_link_items OUT)
             continue()
         endif()
 
+        # A governed workspace lane is a closed dependency namespace. A p101
+        # target must come from the exact compiler-pair/configuration lane;
+        # falling through to /usr/local or another build directory would mix
+        # profiling, sanitizer, coverage, or compiler runtimes.
+        if(_P101_EXPLICIT_BUILD_KEY AND _L MATCHES "^p101_")
+            set(_p101_owner "lib_${_L}")
+            string(REGEX REPLACE "^lib_p101_" "lib_" _p101_owner "${_p101_owner}")
+            if(_L STREQUAL "p101_record")
+                set(_p101_owner "lib_tool_event")
+            endif()
+            set(_p101_lane_dir
+                    "${_P101_WORKSPACE_ROOT}/libraries/${_p101_owner}/build-${P101_BUILD_KEY}")
+            unset(_P101_LANE_LIB CACHE)
+            unset(_P101_LANE_LIB)
+            find_library(_P101_LANE_LIB
+                    NAMES "${_L}" "lib${_L}"
+                    PATHS "${_p101_lane_dir}"
+                    NO_DEFAULT_PATH)
+            if(NOT _P101_LANE_LIB)
+                message(FATAL_ERROR
+                        "Workspace dependency '${_L}' is missing from exact lane "
+                        "'${P101_BUILD_KEY}'. Expected it under: ${_p101_lane_dir}. "
+                        "Installed and cross-lane fallbacks are forbidden.")
+            endif()
+            list(APPEND _accum "${_P101_LANE_LIB}")
+            unset(_P101_LANE_LIB CACHE)
+            unset(_P101_LANE_LIB)
+            continue()
+        endif()
+
         if(P101_IN_TREE_DEPENDENCIES_ONLY AND _L MATCHES "^p101_")
             message(FATAL_ERROR
                     "Logical dependency '${_L}' is not an in-tree target. "

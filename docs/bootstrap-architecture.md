@@ -26,10 +26,19 @@ build policies. Repeating those policies while merely constructing the judges
 would add time and a second source of bootstrap failures without strengthening
 the final judgment.
 
-`update-all.sh` selects the first successfully completed compiler pair as the
-host pair, configures `workspace/CMakeLists.txt`, and builds
-`p101_acceptance`. `--skip-acceptance` is the explicit bring-up escape hatch;
-strict acceptance is the default.
+`update-all.sh` selects the first declared usable compiler pair as the host
+pair, prepares shared repositories and flag caches once, then launches every
+compiler pair concurrently. Pair workers use explicit configuration lanes
+whose identity covers both compiler fingerprints, probed flags, instrumentation
+modes, and caller flags; they never consume the shared `.last-build-dir` marker
+for dependency resolution. Link and runtime search are closed over that exact
+lane, so incompatible profiling and compiler runtimes can coexist. Their
+output is isolated under `target/update-all/<run-id>/`, with a deterministic
+TSV/Markdown summary and complete ordered failure logs. Only after every pair
+passes does a serialized finalization phase publish host markers and install
+host runtime artifacts. The host pair then configures `workspace/CMakeLists.txt`
+and builds `p101_acceptance`. `--skip-acceptance` is the explicit bring-up
+escape hatch; strict acceptance is the default.
 
 GitHub Actions uses this target once. It no longer runs a second
 `check-after-update-all.sh` pass after `update-all.sh`; the compatibility script

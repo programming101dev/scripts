@@ -29,6 +29,7 @@ format=0
 acceptance=1
 acceptance_output=""
 acceptance_no_cache=0
+matrix_output=""
 
 c_list_file="supported_c_compilers.txt"
 cxx_list_file="supported_cxx_compilers.txt"
@@ -65,7 +66,10 @@ usage() {
                     Default: target/workspace/<host-pair>/acceptance.
   --acceptance-no-cache
                     Execute every governed acceptance node. This is intended
-                    for release preflight; ordinary runs reuse exact receipts."
+                    for release preflight; ordinary runs reuse exact receipts.
+  --matrix-output <dir>
+                    Store isolated compiler-pair logs and the parseable matrix
+                    summary here. Default: target/update-all/<run-id>."
     if [ -f "$c_list_file" ]; then
         printf '\nCompiler pairs this will build (from %s):\n' "$c_list_file"
         while IFS= read -r _l || [ -n "$_l" ]; do
@@ -118,6 +122,11 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     --acceptance-no-cache) acceptance_no_cache=1; shift ;;
+    --matrix-output)
+      [ "$#" -ge 2 ] || { printf 'Error: --matrix-output requires an argument.\n' >&2; exit 2; }
+      matrix_output=$2
+      shift 2
+      ;;
     --coverage) export P101_COVERAGE=1; shift ;;
     --profile) export P101_PROFILE=1; shift ;;
     -h|--help) usage ;;
@@ -193,19 +202,31 @@ find_by_basename() {
   p101_find_compiler_by_basename "$1" "$2"
 }
 
-pairs_run=0
 skipped=0
-host_c=""
-host_x=""
 
 # CR for CRLF-stripping without $'\r' (not POSIX sh)
 cr=$(printf '\r')
 
-# Notes on the loop below:
-# - plain `read -r c` (default IFS) trims leading/trailing whitespace,
-#   matching the old awk-based parsing
-# - the list is read on fd 3 so the update.sh pipeline (git prompts etc.)
-#   keeps the real stdin
+# Build a stable manifest before changing the workspace. The manifest order is
+# also the reporting order, independent of which concurrent worker finishes
+# first.
+run_stamp=$(date +%Y%m%dT%H%M%S)
+if [ -z "$matrix_output" ]; then
+  matrix_output="target/update-all/${run_stamp}-$$"
+fi
+case "$matrix_output" in
+  /*) ;;
+  *) matrix_output="$(pwd -P)/$matrix_output" ;;
+esac
+mkdir -p "$matrix_output"
+rm -f -- "$matrix_output"/*.log "$matrix_output"/*.status \
+  "$matrix_output"/*.elapsed "$matrix_output/pairs.tsv" \
+  "$matrix_output/pids.txt" "$matrix_output/summary.tsv" \
+  "$matrix_output/summary.md"
+matrix_manifest="$matrix_output/pairs.tsv"
+: > "$matrix_manifest"
+pairs_run=0
+
 while read -r c <&3 || [ -n "$c" ]; do
   c=${c%"$cr"}
   # Word-split to trim ALL surrounding whitespace (a trailing "spaces + CR"
@@ -221,6 +242,13 @@ while read -r c <&3 || [ -n "$c" ]; do
 
   # entries are names or legacy full paths; pair by basename
   cbase=$(basename "$c")
+  case "$cbase" in
+    *[!A-Za-z0-9_.+-]*)
+      printf 'WARN: compiler name cannot form an isolated build key: %s; skipping.\n' "$cbase" >&2
+      skipped=$((skipped+1))
+      continue
+      ;;
+  esac
   xbase=$(derive_cxx "$cbase")
   if [ -z "$xbase" ]; then
     printf 'WARN: no C++ counterpart rule for %s; skipping.\n' "$cbase" >&2
@@ -234,25 +262,68 @@ while read -r c <&3 || [ -n "$c" ]; do
     skipped=$((skipped+1))
     continue
   fi
+  case "$xbase" in
+    *[!A-Za-z0-9_.+-]*)
+      printf 'WARN: C++ compiler name cannot form an isolated build key: %s; skipping.\n' "$xbase" >&2
+      skipped=$((skipped+1))
+      continue
+      ;;
+  esac
 
-  printf 'Updating repositories with: %s : %s\n' "$c" "$x"
-  set -- "$driver" -c "$c" -x "$x" -C "$flag_c_list_file" -X "$flag_cxx_list_file" \
+  pairs_run=$((pairs_run+1))
+  pair_id=$(printf '%04d' "$pairs_run")
+  pair_label=$(printf '%s__%s' "$cbase" "$xbase" | tr -c '[:alnum:]_.-' '_')
+  printf '%s|%s|%s|%s\n' "$pair_id" "$c" "$x" "$pair_label" >> "$matrix_manifest"
+done 3< "$c_list_file"
+
+if [ "$pairs_run" -eq 0 ]; then
+  printf 'Error: no usable C/C++ compiler pairs found (skipped: %d).\n' "$skipped" >&2
+  exit 3
+fi
+
+IFS='|' read -r _host_id host_c host_x host_label < "$matrix_manifest"
+
+run_driver() {
+  _run_c=$1
+  _run_x=$2
+  _run_phase=$3
+  _run_role=${4:-}
+  set -- "$driver" -c "$_run_c" -x "$_run_x" \
+    -C "$flag_c_list_file" -X "$flag_cxx_list_file" \
     -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" \
     --skip-self-update
-  if [ "$skip_install" -eq 1 ]; then
-    set -- "$@" --skip-install
-  fi
-  if [ "$interactive" -eq 1 ]; then
-    set -- "$@" --interactive
-  fi
-  if [ "$latest" -eq 1 ]; then
-    set -- "$@" --latest
-  fi
-  # Format once, on the first pair only: clang-format is idempotent, so the
-  # remaining pairs would reformat already-canonical sources for nothing.
-  if [ "$format" -eq 1 ] && [ "$pairs_run" -eq 0 ]; then
-    set -- "$@" --format
-  fi
+  case "$_run_phase" in
+    prepare)
+      set -- "$@" --prepare-only
+      [ "$interactive" -eq 0 ] || set -- "$@" --interactive
+      [ "$latest" -eq 0 ] || set -- "$@" --latest
+      [ "$format" -eq 0 ] || set -- "$@" --format
+      ;;
+    build)
+      set -- "$@" --build-only
+      if [ "$_run_role" = host ] && [ "$skip_install" -eq 0 ]; then
+        set -- "$@" --defer-install
+      else
+        set -- "$@" --skip-install
+      fi
+      ;;
+    retry)
+      set -- "$@" --build-only --interactive
+      if [ "$_run_role" = host ] && [ "$skip_install" -eq 0 ]; then
+        set -- "$@" --defer-install
+      else
+        set -- "$@" --skip-install
+      fi
+      ;;
+    finalize)
+      set -- "$@" --finalize-only
+      [ "$skip_install" -eq 0 ] || set -- "$@" --skip-install
+      ;;
+    *)
+      printf 'Error: internal matrix phase is invalid: %s\n' "$_run_phase" >&2
+      return 2
+      ;;
+  esac
   if [ "$no_flags" -eq 1 ]; then
     set -- "$@" --no-flags
   elif [ "$standard" -eq 1 ]; then
@@ -261,19 +332,186 @@ while read -r c <&3 || [ -n "$c" ]; do
     set -- "$@" -s "$sanitizers"
   fi
   "$@"
-  if [ "$pairs_run" -eq 0 ]; then
-    host_c=$c
-    host_x=$x
-  fi
-  pairs_run=$((pairs_run+1))
-done 3< "$c_list_file"
+}
 
-if [ "$pairs_run" -eq 0 ]; then
-  printf 'Error: no usable C/C++ compiler pairs found (skipped: %d).\n' "$skipped" >&2
-  exit 3
+printf 'Compiler matrix output: %s\n' "$matrix_output"
+printf 'Preparing shared workspace with host pair: %s : %s [%s]\n' \
+  "$host_c" "$host_x" "$host_label"
+prepare_log="$matrix_output/0000-prepare.log"
+prepare_status=0
+run_driver "$host_c" "$host_x" prepare > "$prepare_log" 2>&1 || prepare_status=$?
+if [ "$prepare_status" -ne 0 ]; then
+  printf 'update-all:prepare: error: workspace preparation failed with exit %d; log: %s [matrix-prepare-failure]\n' \
+    "$prepare_status" "$prepare_log" >&2
+  printf '%s\n' '--- workspace preparation log ---' >&2
+  cat "$prepare_log" >&2
+  printf '%s\n' '--- end workspace preparation log ---' >&2
+  exit "$prepare_status"
+fi
+printf '[PASS] workspace preparation (log: %s)\n' "$prepare_log"
+
+printf 'Starting %d compiler pair(s) in parallel.\n' "$pairs_run"
+pids_file="$matrix_output/pids.txt"
+: > "$pids_file"
+terminate_matrix() {
+  terminate_status=$1
+  while IFS= read -r terminate_pid || [ -n "$terminate_pid" ]; do
+    kill "$terminate_pid" 2>/dev/null || true
+  done < "$pids_file"
+  while IFS= read -r terminate_pid || [ -n "$terminate_pid" ]; do
+    wait "$terminate_pid" 2>/dev/null || true
+  done < "$pids_file"
+  printf 'update-all:matrix: error: compiler matrix interrupted; logs: %s [compiler-matrix-interrupted]\n' \
+    "$matrix_output" >&2
+  exit "$terminate_status"
+}
+trap 'terminate_matrix 130' INT
+trap 'terminate_matrix 143' TERM
+while IFS='|' read -r pair_id c x pair_label; do
+  pair_log="$matrix_output/${pair_id}-${pair_label}.log"
+  pair_status="$matrix_output/${pair_id}.status"
+  pair_elapsed="$matrix_output/${pair_id}.elapsed"
+  pair_role=worker
+  [ "$pair_id" != "$_host_id" ] || pair_role=host
+  printf '[START] %s : %s (log: %s)\n' "$c" "$x" "$pair_log"
+  (
+    pair_start=$(date +%s)
+    status=0
+    run_driver "$c" "$x" build "$pair_role" > "$pair_log" 2>&1 || status=$?
+    pair_end=$(date +%s)
+    elapsed=$((pair_end - pair_start))
+    printf '%s\n' "$status" > "$pair_status"
+    printf '%s\n' "$elapsed" > "$pair_elapsed"
+    if [ "$status" -eq 0 ]; then
+      printf '[PASS] %s : %s (%ss)\n' "$c" "$x" "$elapsed"
+    else
+      printf '[FAIL] %s : %s (exit %s, %ss; log: %s)\n' \
+        "$c" "$x" "$status" "$elapsed" "$pair_log" >&2
+    fi
+  ) &
+  printf '%s\n' "$!" >> "$pids_file"
+done < "$matrix_manifest"
+
+while IFS= read -r pair_pid || [ -n "$pair_pid" ]; do
+  wait "$pair_pid" || true
+done < "$pids_file"
+trap - INT TERM
+
+# A worker normally writes its own status receipt even when its build fails.
+# If it was killed or otherwise disappeared before doing so, synthesize an
+# explicit infrastructure failure instead of dying later on a missing `cat`.
+while IFS='|' read -r pair_id c x pair_label; do
+  pair_status="$matrix_output/${pair_id}.status"
+  pair_elapsed="$matrix_output/${pair_id}.elapsed"
+  pair_log="$matrix_output/${pair_id}-${pair_label}.log"
+  status_value=""
+  elapsed_value=""
+  [ ! -f "$pair_status" ] || status_value=$(cat "$pair_status")
+  [ ! -f "$pair_elapsed" ] || elapsed_value=$(cat "$pair_elapsed")
+  case "$status_value" in
+    ''|*[!0-9]*)
+      printf '%s\n' 125 > "$pair_status"
+      printf 'update-all:%s: error: compiler worker ended without a valid status receipt [compiler-worker-receipt-missing]\n' \
+        "$pair_label" >> "$pair_log"
+      ;;
+  esac
+  case "$elapsed_value" in
+    ''|*[!0-9]*) printf '%s\n' 0 > "$pair_elapsed" ;;
+  esac
+done < "$matrix_manifest"
+
+matrix_failures=0
+while IFS='|' read -r pair_id c x pair_label; do
+  status=$(cat "$matrix_output/${pair_id}.status")
+  if [ "$status" -ne 0 ]; then
+    matrix_failures=$((matrix_failures + 1))
+    pair_log="$matrix_output/${pair_id}-${pair_label}.log"
+    printf 'update-all:%s: error: compiler pair %s : %s failed with exit %s; log: %s [compiler-pair-failure]\n' \
+      "$pair_label" "$c" "$x" "$status" "$pair_log" >&2
+    printf '%s\n' "--- failure log: $c : $x ---" >&2
+    cat "$pair_log" >&2
+    printf '%s\n' "--- end failure log: $c : $x ---" >&2
+  fi
+done < "$matrix_manifest"
+
+# Parallel workers never compete for stdin. Interactive recovery begins only
+# after every worker has stopped, and retries failed pairs in manifest order.
+if [ "$matrix_failures" -gt 0 ] && [ "$interactive" -eq 1 ]; then
+  while IFS='|' read -r pair_id c x pair_label; do
+    status=$(cat "$matrix_output/${pair_id}.status")
+    [ "$status" -ne 0 ] || continue
+    pair_role=worker
+    [ "$pair_id" != "$_host_id" ] || pair_role=host
+    printf '\nRetrying failed compiler pair interactively: %s : %s\n' "$c" "$x" >&2
+    retry_start=$(date +%s)
+    retry_log="$matrix_output/${pair_id}-${pair_label}.retry.log"
+    retry_status_file="$matrix_output/${pair_id}.retry.status"
+    rm -f -- "$retry_log" "$retry_status_file"
+    retry_tee_status=0
+    (
+      retry_worker_status=0
+      run_driver "$c" "$x" retry "$pair_role" || retry_worker_status=$?
+      printf '%s\n' "$retry_worker_status" > "$retry_status_file"
+      exit "$retry_worker_status"
+    ) 2>&1 | tee "$retry_log" || retry_tee_status=$?
+    retry_status=125
+    if [ "$retry_tee_status" -eq 0 ] && [ -f "$retry_status_file" ]; then
+      retry_status=$(cat "$retry_status_file")
+      case "$retry_status" in
+        ''|*[!0-9]*) retry_status=125 ;;
+      esac
+    fi
+    if [ "$retry_status" -eq 125 ]; then
+      printf 'update-all:%s: error: interactive retry ended without a valid status receipt [compiler-retry-receipt-missing]\n' \
+        "$pair_label" | tee -a "$retry_log" >&2
+    fi
+    retry_end=$(date +%s)
+    printf '%s\n' "$retry_status" > "$matrix_output/${pair_id}.status"
+    printf '%s\n' "$((retry_end - retry_start))" > "$matrix_output/${pair_id}.elapsed"
+  done < "$matrix_manifest"
 fi
 
-printf 'Done: %d compiler pair(s) built, %d skipped.\n' "$pairs_run" "$skipped"
+summary_tsv="$matrix_output/summary.tsv"
+summary_md="$matrix_output/summary.md"
+printf 'index\tc_compiler\tcxx_compiler\tstatus\texit\telapsed_seconds\tlog\n' > "$summary_tsv"
+printf '# p101 compiler matrix\n\n| C compiler | C++ compiler | Result | Exit | Seconds | Log |\n| --- | --- | --- | ---: | ---: | --- |\n' > "$summary_md"
+matrix_failures=0
+while IFS='|' read -r pair_id c x pair_label; do
+  status=$(cat "$matrix_output/${pair_id}.status")
+  elapsed=$(cat "$matrix_output/${pair_id}.elapsed")
+  pair_log="$matrix_output/${pair_id}-${pair_label}.log"
+  retry_log="$matrix_output/${pair_id}-${pair_label}.retry.log"
+  [ ! -f "$retry_log" ] || pair_log="$retry_log"
+  result=PASS
+  if [ "$status" -ne 0 ]; then
+    result=FAIL
+    matrix_failures=$((matrix_failures + 1))
+  fi
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$pair_id" "$c" "$x" "$result" "$status" "$elapsed" "$pair_log" >> "$summary_tsv"
+  printf '| %s | %s | %s | %s | %s | `%s` |\n' \
+    "$c" "$x" "$result" "$status" "$elapsed" "$pair_log" >> "$summary_md"
+done < "$matrix_manifest"
+
+if [ "$matrix_failures" -gt 0 ]; then
+  printf 'Compiler matrix failed: %d of %d pair(s). Summary: %s\n' \
+    "$matrix_failures" "$pairs_run" "$summary_tsv" >&2
+  exit 1
+fi
+
+printf 'Finalizing host artifacts: %s : %s\n' "$host_c" "$host_x"
+finalize_log="$matrix_output/9999-finalize.log"
+finalize_status=0
+run_driver "$host_c" "$host_x" finalize > "$finalize_log" 2>&1 || finalize_status=$?
+if [ "$finalize_status" -ne 0 ]; then
+  printf 'update-all:finalize: error: host artifact finalization failed with exit %d; log: %s [matrix-finalize-failure]\n' \
+    "$finalize_status" "$finalize_log" >&2
+  cat "$finalize_log" >&2
+  exit "$finalize_status"
+fi
+
+printf 'Done: %d compiler pair(s) built in parallel, %d skipped.\n' "$pairs_run" "$skipped"
+printf 'Matrix summary: %s\n' "$summary_tsv"
 
 if [ "$acceptance" -eq 1 ]; then
   host_cc=$(p101_resolve_compiler "$host_c" compiler_paths.txt)

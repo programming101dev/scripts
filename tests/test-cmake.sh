@@ -9,8 +9,8 @@
 #                      compile -> analyze -> tidy -> cppcheck)
 #   runtime-only       consumer artifact builds without rerunning the analyzer
 #                      pipeline and rejects sanitizer-bearing configurations
-#   runtime-link       runtime-only consumers resolve sibling libraries from
-#                      .last-runtime-build-dir, never strict quality builds
+#   runtime-link       keyed runtime-only consumers resolve only the exact
+#                      compiler-pair sibling artifact, never stale fallbacks
 #   macos-asan-order   a sanitized executable records its compiler-matched ASan
 #                      runtime before user shared libraries
 #   missing-flags      no .flags/<compiler> cache -> configure MUST fail
@@ -196,17 +196,24 @@ else
   bad "exe-simple: configure failed" "$PROJ/configure.log"
 fi
 
-# ---------- case: sanitizer-free runtime artifact ----------
+# ---------- case: instrumentation-free runtime artifact ----------
 new_proj runtime-only
 write_c_config_exe "$PROJ"
+printf '1\n' > "$PROJ/coverage.txt"
+printf '1\n' > "$PROJ/profile.txt"
 printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
-configure "$PROJ" -DP101_RUNTIME_ONLY=ON -DSANITIZER_LIST=
+configure "$PROJ" -DP101_RUNTIME_ONLY=ON \
+  -DP101_DISABLE_INSTRUMENTATION=ON \
+  -DP101_COVERAGE_MODE=OFF -DP101_PROFILE_MODE=OFF \
+  -DSANITIZER_LIST=
 if (( RC == 0 )); then
   build "$PROJ"
   if (( RC == 0 )) &&
      grep -q 'P101_RUNTIME_ONLY: building installable targets' "$PROJ/configure.log" &&
-     ! grep -Eq 'clang-tidy|cppcheck|static analyzer|analyze stage' "$PROJ/build.log"; then
-    ok "runtime-only: builds primary artifact without quality-analysis targets"
+     ! grep -Eq 'Coverage selected|Profiling selected' "$PROJ/configure.log" &&
+     ! grep -Eq 'clang-tidy|cppcheck|static analyzer|analyze stage' "$PROJ/build.log" &&
+     ! grep -Eq -- '--coverage|-pg' "$PROJ/build/compile_commands.json"; then
+    ok "runtime-only: builds clean primary artifact despite repository instrumentation selectors"
   elif (( RC == 0 )); then
     bad "runtime-only: quality-analysis target ran in consumer build" "$PROJ/build.log"
   else
@@ -220,24 +227,32 @@ fi
 runtime_root="$SANDBOX/runtime-link-workspace"
 runtime_dep="$runtime_root/libraries/lib_dep"
 PROJ="$runtime_root/libraries/lib_consumer"
-quality_dep_build="$runtime_dep/build-$(basename "$c_compiler")"
-runtime_dep_build="${quality_dep_build}-runtime"
-mkdir -p "$runtime_dep/include" "$quality_dep_build" "$runtime_dep_build"
+quality_build_key="matrix-quality"
+runtime_build_key="matrix-runtime"
+quality_dep_build="$runtime_dep/build-${quality_build_key}"
+runtime_dep_build="$runtime_dep/build-${runtime_build_key}"
+decoy_runtime_build="$runtime_dep/build-decoy-runtime"
+mkdir -p "$runtime_dep/include" "$quality_dep_build" "$runtime_dep_build" \
+  "$decoy_runtime_build"
 mkdir -p "$PROJ/src" "$PROJ/include" "$PROJ/.flags/$(basename "$c_compiler")"
 cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
 ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
 printf 'BasedOnStyle: LLVM\nIndentWidth: 4\nBreakBeforeBraces: Allman\nAllowShortFunctionsOnASingleLine: None\n' > "$PROJ/.clang-format"
 printf '%s\n' "$(basename "$quality_dep_build")" > "$runtime_dep/.last-build-dir"
-printf '%s\n' "$(basename "$runtime_dep_build")" > "$runtime_dep/.last-runtime-build-dir"
-printf 'int dep_value(void)\n{\n    return 0;\n}\n' > "$runtime_dep/dep.c"
+printf '%s\n' "$(basename "$decoy_runtime_build")" > "$runtime_dep/.last-runtime-build-dir"
 case "$(uname -s)" in
   Darwin) runtime_library_name="libp101_dep.dylib" ;;
   *) runtime_library_name="libp101_dep.so" ;;
 esac
+printf 'int dep_value(void)\n{\n    return 41;\n}\n' > "$runtime_dep/dep.c"
 "$c_compiler" -shared -fPIC "$runtime_dep/dep.c" \
   -o "$quality_dep_build/$runtime_library_name"
+printf 'int dep_value(void)\n{\n    return 0;\n}\n' > "$runtime_dep/dep.c"
 "$c_compiler" -shared -fPIC "$runtime_dep/dep.c" \
   -o "$runtime_dep_build/$runtime_library_name"
+printf 'int dep_value(void)\n{\n    return 42;\n}\n' > "$runtime_dep/dep.c"
+"$c_compiler" -shared -fPIC "$runtime_dep/dep.c" \
+  -o "$decoy_runtime_build/$runtime_library_name"
 cat > "$PROJ/config.cmake" <<'EOF'
 set(PROJECT_NAME runtime_link)
 set(PROJECT_VERSION 1.0.0)
@@ -250,13 +265,16 @@ set(hello_LINK_LIBRARIES p101_dep)
 EOF
 printf 'int dep_value(void);\nint main(void)\n{\n    return dep_value();\n}\n' \
   > "$PROJ/src/main.c"
-configure "$PROJ" -DP101_RUNTIME_ONLY=ON -DSANITIZER_LIST=
+configure "$PROJ" -DP101_RUNTIME_ONLY=ON \
+  -DP101_BUILD_KEY="$runtime_build_key" -DSANITIZER_LIST=
 if (( RC == 0 )); then
   build "$PROJ"
   if (( RC == 0 )) &&
      grep -q "$runtime_dep_build/$runtime_library_name" "$PROJ/configure.log" &&
-     ! grep -q "$quality_dep_build/$runtime_library_name" "$PROJ/configure.log"; then
-    ok "runtime-link: runtime-only build excludes strict sibling artifacts"
+     ! grep -q "$quality_dep_build/$runtime_library_name" "$PROJ/configure.log" &&
+     ! grep -q "$decoy_runtime_build/$runtime_library_name" "$PROJ/configure.log" &&
+     "$PROJ/build/hello"; then
+    ok "runtime-link: exact lane wins at link and load time"
   elif (( RC == 0 )); then
     bad "runtime-link: strict sibling artifact won dependency resolution" \
       "$PROJ/configure.log"
@@ -265,6 +283,30 @@ if (( RC == 0 )); then
   fi
 else
   bad "runtime-link: configure failed" "$PROJ/configure.log"
+fi
+
+# An explicit matrix identity is a hard isolation boundary. If its sibling
+# artifact is absent, configuration must fail instead of silently consuming a
+# stale marker or a different compiler's build directory.
+PROJ="$runtime_root/libraries/lib_missing_consumer"
+mkdir -p "$PROJ/src" "$PROJ/include" "$PROJ/.flags/$(basename "$c_compiler")"
+cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
+cp "$runtime_root/libraries/lib_consumer/config.cmake" "$PROJ/config.cmake"
+cp "$runtime_root/libraries/lib_consumer/.clang-format" "$PROJ/.clang-format"
+cp "$runtime_root/libraries/lib_consumer/src/main.c" "$PROJ/src/main.c"
+ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
+configure "$PROJ" -DP101_RUNTIME_ONLY=ON \
+  -DP101_BUILD_KEY=missing-matrix-alias -DSANITIZER_LIST=
+if (( RC == 0 )); then
+  build "$PROJ"
+fi
+if (( RC != 0 )) &&
+   ! grep -q "$quality_dep_build/$runtime_library_name" "$PROJ/configure.log" &&
+   ! grep -q "$decoy_runtime_build/$runtime_library_name" "$PROJ/configure.log"; then
+  ok "runtime-link: missing keyed artifact rejects stale fallback at link"
+else
+  bad "runtime-link: missing keyed artifact consumed stale fallback" \
+    "$PROJ/build.log"
 fi
 
 # ---------- case: macOS ASan must load before user dylibs ----------

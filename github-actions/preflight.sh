@@ -330,6 +330,7 @@ P101_QUIET=1 ./update-all.sh \
   --latest \
   --skip-install \
   --skip-acceptance \
+  --matrix-output "$out_dir/compiler-matrix" \
   -C "$c_list" \
   -X "$cxx_list" \
   -f "$clang_format" \

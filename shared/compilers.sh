@@ -51,7 +51,15 @@ p101_resolve_compiler()
       fi
       p101_resolved=$(command -v "$p101_requested" 2>/dev/null || true)
       if [ -n "$p101_resolved" ] && [ -x "$p101_resolved" ]; then
-        printf '%s\n' "$p101_resolved"
+        case "$p101_resolved" in
+          /*) printf '%s\n' "$p101_resolved" ;;
+          *)
+            p101_resolved_dir=$(dirname -- "$p101_resolved")
+            p101_resolved_base=$(basename -- "$p101_resolved")
+            p101_resolved_dir=$(CDPATH='' cd -- "$p101_resolved_dir" && pwd -P) || return 1
+            printf '%s/%s\n' "$p101_resolved_dir" "$p101_resolved_base"
+            ;;
+        esac
         return 0
       fi
       ;;

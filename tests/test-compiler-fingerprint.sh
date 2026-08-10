@@ -55,6 +55,12 @@ export PATH="${sandbox}:${PATH}"
 [[ "$(p101_derive_cxx_name clang22)" == "clang++22" ]]
 printf 'test-cc=%s\n' "$compiler" > "$sandbox/compiler_paths.txt"
 [[ "$(p101_resolve_compiler test-cc "$sandbox/compiler_paths.txt")" == "$compiler" ]]
+relative_compiler_dir="$sandbox/relative-compiler"
+mkdir -p "$relative_compiler_dir"
+ln -s "$compiler" "$relative_compiler_dir/test-cc"
+relative_compiler="$(cd "$sandbox" && p101_resolve_compiler ./relative-compiler/test-cc "$sandbox/compiler_paths.txt")"
+[[ "$relative_compiler" == "$relative_compiler_dir/test-cc" ]]
+[[ "$relative_compiler" = /* ]]
 if p101_resolve_compiler p101-definitely-missing "$sandbox/compiler_paths.txt" \
   >/dev/null 2>&1
 then

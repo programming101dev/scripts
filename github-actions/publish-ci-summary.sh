@@ -11,6 +11,8 @@ check_outcome="${4:-unknown}"
 step_summary="${GITHUB_STEP_SUMMARY:-}"
 local_summary="$out_dir/github-step-summary.md"
 graph_summary="$out_dir/summary.md"
+matrix_summary="$out_dir/compiler-matrix/summary.md"
+matrix_tsv="$out_dir/compiler-matrix/summary.tsv"
 failure_limit=240
 
 mkdir -p "$out_dir"
@@ -167,6 +169,10 @@ fi
     printf 'The governed acceptance graph did not produce a summary. '
     printf 'Inspect the failed update/build step shown in this job.\n'
   fi
+  if [ -f "$matrix_summary" ]; then
+    printf '\n'
+    cat "$matrix_summary"
+  fi
 } > "$local_summary"
 
 reported_graph_failure=0
@@ -203,15 +209,33 @@ case "$update_outcome" in
         update_title="Compiler discovery failure"
         ;;
     esac
-    update_detail="The repository update or build phase failed. The complete diagnostic is in the failed GitHub Actions step."
-    if [ -f "$update_log" ]; then
-      diagnostic="$(first_diagnostic "$update_log")"
-      if [ -n "$diagnostic" ]; then
-        update_detail="$diagnostic"
-      fi
-      append_failure_log "$update_title" "$update_log"
+    reported_matrix_failure=0
+    if [ -f "$matrix_tsv" ]; then
+      while IFS=$'\t' read -r _pair_id c_compiler cxx_compiler result exit_status _elapsed_seconds pair_log; do
+        [ "$result" = FAIL ] || continue
+        reported_matrix_failure=1
+        pair_detail="Compiler pair failed with exit $exit_status."
+        if [ -f "$pair_log" ]; then
+          diagnostic="$(first_diagnostic "$pair_log")"
+          if [ -n "$diagnostic" ]; then
+            pair_detail="$diagnostic"
+          fi
+          append_failure_log "Compiler pair: $c_compiler : $cxx_compiler" "$pair_log"
+        fi
+        annotate_error "p101: $c_compiler : $cxx_compiler" "$pair_detail"
+      done < <(tail -n +2 "$matrix_tsv")
     fi
-    annotate_error "p101: repository update/build" "$update_detail"
+    if [ "$reported_matrix_failure" -eq 0 ]; then
+      update_detail="The repository update or build phase failed. The complete diagnostic is in the failed GitHub Actions step."
+      if [ -f "$update_log" ]; then
+        diagnostic="$(first_diagnostic "$update_log")"
+        if [ -n "$diagnostic" ]; then
+          update_detail="$diagnostic"
+        fi
+        append_failure_log "$update_title" "$update_log"
+      fi
+      annotate_error "p101: repository update/build" "$update_detail"
+    fi
     ;;
 esac
 
