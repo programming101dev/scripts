@@ -237,6 +237,7 @@ jobs:
             required="${required#>=}"
             if pkg install -y "llvm${required}"; then
               ln -sf "/usr/local/llvm${required}/bin/clang-format" /usr/local/bin/clang-format
+              ln -sf "/usr/local/llvm${required}/bin/clang-tidy" /usr/local/bin/clang-tidy
             else
               echo "No llvm${required} package; falling back to the llvm metaport."
               pkg install -y llvm
