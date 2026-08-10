@@ -20,31 +20,31 @@
       "url": "https://github.com/programming101dev/lib_env.git"
     },
     {
-      "commit": "b3d794813fc77bd2de27e1f7712525d716bdcb1b",
+      "commit": "62f230a40c4ace3100490eaa515a76ad8a421e7e",
       "path": "../libraries/lib_c",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_c.git"
     },
     {
-      "commit": "6fd2585d12790a1d3bb6b6fca32303e2d177e093",
+      "commit": "9170005362831665c363ba0bddfe4d368c755469",
       "path": "../libraries/lib_io",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_io.git"
     },
     {
-      "commit": "a3f38756271e7626b2653a327e9e1a21e249f263",
+      "commit": "1b811b08975a9be2dbbfcfbfe8e89c6461bb170d",
       "path": "../libraries/lib_filesystem",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_filesystem.git"
     },
     {
-      "commit": "c9fb27fab46fd48f98764ae25ff9e9547e571c4d",
+      "commit": "b566f03a45f5d839a0ea7da7fdf9ce36f4c890a5",
       "path": "../libraries/lib_c_facts",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_c_facts.git"
     },
     {
-      "commit": "8064dfe02fe636eda765d9587a8658f2a76dcb7c",
+      "commit": "c6c854d98d64f2153cb32844291eafacbfc3800c",
       "path": "../libraries/lib_memory",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_memory.git"
@@ -74,7 +74,7 @@
       "url": "https://github.com/programming101dev/lib_ipc.git"
     },
     {
-      "commit": "edd5f8f15de43f51593ed383ac0481acd67b0da2",
+      "commit": "06db9f5f94ed5ca1a8335f13333210be558482ef",
       "path": "../libraries/lib_network",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_network.git"
@@ -110,7 +110,7 @@
       "url": "https://github.com/programming101dev/lib_locale.git"
     },
     {
-      "commit": "ffba5f80f9cbd9888bac4cc131dce9aef091b114",
+      "commit": "09374f57debdc8443e1c8ca7d83139f8238ac766",
       "path": "../libraries/lib_math",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_math.git"
@@ -188,19 +188,19 @@
       "url": "https://github.com/programming101dev/p101-inspect.git"
     },
     {
-      "commit": "3e31f4c3948df1742ac12321721ac18864dae746",
+      "commit": "cd4a8341a3652ebdd9bcda4d1021b6aba2013a9e",
       "path": "../programs/p101-test",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-test.git"
     },
     {
-      "commit": "a92c8e140d302699cf1c3405a4f8df8aeb82f3af",
+      "commit": "5d88e25e3c263a907682deba30e5e4a398f338e4",
       "path": "../programs/p101-audit",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-audit.git"
     },
     {
-      "commit": "dbf52a271a65fb8d84349cac0464d0c5649b6569",
+      "commit": "b01c098ee91d3ce44c90df3b0aac130bc952d6c0",
       "path": "../playgrounds",
       "type": "c",
       "url": "https://github.com/programming101dev/playgrounds.git"
