@@ -396,7 +396,7 @@ grep -Fq -- "-DP101_ACCEPTANCE_OUTPUT_DIR=$acceptance_output_abs" \
   "$acceptance_matrix/cmake-invocations.txt"
 grep -Fq -- '-DP101_ACCEPTANCE_NO_CACHE=1' \
   "$acceptance_matrix/cmake-invocations.txt"
-grep -Fq -- '--target p101_acceptance --parallel' \
+grep -Eq -- '--target p101_acceptance --parallel [1-9][0-9]*' \
   "$acceptance_matrix/cmake-invocations.txt"
 
 # Compiler-pair workers start concurrently, keep isolated logs, and report all

@@ -8,6 +8,7 @@ cmp .github/workflows/p101-stack.yml github-actions/p101-stack.yml
 grep -Fq 'workspace-candidate.json' github-actions/preflight.sh
 grep -Fq -- '--acceptance-receipt' github-actions/preflight.sh
 grep -Fq 'P101_STACK_REPOS_LOCK="$candidate_lock"' github-actions/preflight.sh
+grep -Fq -- '--parallel "$acceptance_jobs"' github-actions/preflight.sh
 grep -Fq 'P101_STACK_CONTRACT="$candidate_stack_contract"' \
   github-actions/preflight.sh
 grep -Fq 'candidate_lock_sha256:' github-actions/p101-stack.yml

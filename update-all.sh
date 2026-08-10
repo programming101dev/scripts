@@ -159,6 +159,24 @@ abs_path() {
   esac
 }
 
+parallel_jobs() {
+  _jobs=${CMAKE_BUILD_PARALLEL_LEVEL:-}
+  case "$_jobs" in
+    ''|*[!0-9]*|0)
+      _jobs=$(getconf _NPROCESSORS_ONLN 2>/dev/null || true)
+      ;;
+  esac
+  case "$_jobs" in
+    ''|*[!0-9]*|0)
+      _jobs=$(sysctl -n hw.ncpu 2>/dev/null || true)
+      ;;
+  esac
+  case "$_jobs" in
+    ''|*[!0-9]*|0) _jobs=2 ;;
+  esac
+  printf '%s\n' "$_jobs"
+}
+
 # If update.sh decides the flag cache needs probing, pass the same compiler
 # lists this update-all invocation is using. Without this, a CI smoke that
 # asks for clang:clang++ still probes every detected compiler on a fresh runner
@@ -533,5 +551,6 @@ if [ "$acceptance" -eq 1 ]; then
     -DP101_ACCEPTANCE_OUTPUT_DIR="$acceptance_output" \
     -DP101_ACCEPTANCE_NO_CACHE="$acceptance_no_cache"
   printf 'Running strict CMake acceptance target.\n'
-  P101_QUIET=1 cmake --build "$host_build" --target p101_acceptance --parallel
+  acceptance_jobs=$(parallel_jobs)
+  P101_QUIET=1 cmake --build "$host_build" --target p101_acceptance --parallel "$acceptance_jobs"
 fi

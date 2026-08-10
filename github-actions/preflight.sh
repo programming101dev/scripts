@@ -363,6 +363,20 @@ P101_STACK_REPOS_LOCK="$candidate_lock" \
 
 printf '\n==> complete governed acceptance graph\n'
 host_build="$out_dir/workspace-build"
+acceptance_jobs="${CMAKE_BUILD_PARALLEL_LEVEL:-}"
+case "$acceptance_jobs" in
+  ''|*[!0-9]*|0)
+    acceptance_jobs="$(getconf _NPROCESSORS_ONLN 2>/dev/null || true)"
+    ;;
+esac
+case "$acceptance_jobs" in
+  ''|*[!0-9]*|0)
+    acceptance_jobs="$(sysctl -n hw.ncpu 2>/dev/null || true)"
+    ;;
+esac
+case "$acceptance_jobs" in
+  ''|*[!0-9]*|0) acceptance_jobs=2 ;;
+esac
 cmake -S workspace -B "$host_build" \
   -DCMAKE_C_COMPILER="$cc" \
   -DP101_ACCEPTANCE_CXX_COMPILER="$cxx" \
@@ -371,7 +385,7 @@ cmake -S workspace -B "$host_build" \
 P101_REPOS_LOCK="$candidate_lock" \
 P101_STACK_REPOS_LOCK="$candidate_lock" \
 P101_STACK_CONTRACT="$candidate_stack_contract" \
-  cmake --build "$host_build" --target p101_acceptance --parallel \
+  cmake --build "$host_build" --target p101_acceptance --parallel "$acceptance_jobs" \
   2>&1 | tee "$out_dir/acceptance.log"
 
 candidate_receipt="$out_dir/workspace-candidate.json"
