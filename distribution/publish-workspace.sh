@@ -9,6 +9,11 @@
 
 set -euo pipefail
 
+# Publication always operates on this scripts checkout's tracked policy files.
+# Candidate-check overrides belong to the child acceptance graph and must not
+# redirect a publication transaction through ambient process state.
+unset P101_REPOS_LOCK P101_STACK_REPOS_LOCK P101_STACK_CONTRACT
+
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 dry_run=0

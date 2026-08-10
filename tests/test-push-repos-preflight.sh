@@ -5,8 +5,18 @@
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
+unset P101_REPOS_LOCK P101_STACK_REPOS_LOCK P101_STACK_CONTRACT
+
 sandbox="$(mktemp -d "${TMPDIR:-/tmp}/p101-push-preflight.XXXXXX")"
-trap 'rm -rf "$sandbox"' EXIT
+cleanup() {
+  status=$?
+  if [[ "$status" -ne 0 && "${P101_KEEP_TEST_SANDBOX:-0}" == 1 ]]; then
+    printf 'Preserved failed test sandbox: %s\n' "$sandbox" >&2
+  else
+    rm -rf "$sandbox"
+  fi
+}
+trap cleanup EXIT
 mkdir -p "$sandbox/scripts/distribution" "$sandbox/libraries"
 cp distribution/push-repos.sh "$sandbox/scripts/distribution/push-repos.sh"
 cp distribution/publish-workspace.sh "$sandbox/scripts/distribution/publish-workspace.sh"
