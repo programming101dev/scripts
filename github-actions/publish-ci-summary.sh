@@ -133,7 +133,7 @@ if [ -f "$out_dir/freebsd-exit-code" ]; then
         update_outcome="failure"
         check_outcome="not-run"
         ;;
-      check)
+      check|acceptance)
         update_outcome="success"
         check_outcome="failure"
         ;;
@@ -142,6 +142,16 @@ if [ -f "$out_dir/freebsd-exit-code" ]; then
         ;;
     esac
   fi
+fi
+
+# update-all owns the CMake acceptance target. If it failed after producing a
+# governed graph summary, the repository/bootstrap portion succeeded and the
+# failure belongs to acceptance rather than to both displayed phases.
+if [[ "$update_outcome" =~ ^(failure|cancelled)$ ]] && [ -f "$graph_summary" ]; then
+  check_outcome="$update_outcome"
+  update_outcome="success"
+elif [ "$update_outcome" = "success" ] && [ -f "$graph_summary" ]; then
+  check_outcome="success"
 fi
 
 {
@@ -208,7 +218,10 @@ esac
 case "$check_outcome" in
   failure|cancelled)
     if [ "$reported_graph_failure" -eq 0 ]; then
-      check_log="$out_dir/check-after-update-all.log"
+      check_log="$out_dir/acceptance.log"
+      if [ ! -f "$check_log" ]; then
+        check_log="$out_dir/check-after-update-all.log"
+      fi
       check_detail="The acceptance phase failed before it produced a governed failure receipt. Inspect the failed GitHub Actions step."
       if [ -f "$check_log" ]; then
         diagnostic="$(first_diagnostic "$check_log")"

@@ -58,7 +58,7 @@ SUPPORTED_CXX_COMPILERS="supported_cxx_compilers.txt"
 flag_c_list_file="$SUPPORTED_C_COMPILERS"
 flag_cxx_list_file="$SUPPORTED_CXX_COMPILERS"
 
-PULL_SH="./distribution/pull.sh"
+REFRESH_REPO_SH="./distribution/refresh-repo.sh"
 CHECK_ENV_SH="./workspace/check-env.sh"
 CLONE_REPOS_SH="./distribution/clone-repos.sh"
 CHECK_COMPILERS_SH="./workspace/check-compilers.sh"
@@ -117,7 +117,7 @@ Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clan
                        scripts. Useful for CI and smoke checks.
   --interactive        If a repository configure, build, or install phase
                        fails, pause, pull the pushed fix, and retry that phase.
-  --skip-self-update   Do not run pull.sh. Used by update-all.sh after it has
+  --skip-self-update   Do not run refresh-repo.sh. Used by update-all.sh after it has
                        already handled the scripts repository once.
   --latest             Follow moving upstream branches instead of repos.lock.
                        Refresh repos.lock explicitly before strict acceptance.
@@ -131,7 +131,7 @@ Examples:
 USAGE
   _cc="$(_p101_names supported_c_compilers.txt)"; _cxx="$(_p101_names supported_cxx_compilers.txt)"
   if [ -n "$_cc" ] || [ -n "$_cxx" ]; then
-    printf '\nCompilers detected on this machine (./p101-workspace compilers):\n'
+    printf '\nCompilers detected on this machine (./workspace/check-compilers.sh):\n'
     printf '  C:   %s\n' "${_cc:-<none>}"
     printf '  C++: %s\n' "${_cxx:-<none>}"
     _fc="${_cc%%,*}"; _fx="$(_p101_cxx_of "$_fc")"
@@ -342,7 +342,7 @@ requested_sanitizers="$sanitizers"
 [[ -n "$cxx_compiler" ]] || { printf "Error: -x (C++ compiler) is required\n" >&2; usage; }
 
 # ----------------- sanity: required helper scripts present -----------------
-for f in "$PULL_SH" "$CHECK_ENV_SH" "$CLONE_REPOS_SH" "$CHECK_COMPILERS_SH" "$COMPILER_FINGERPRINT_SH" "$GENERATE_FLAGS_SH" "$FILTER_SANITIZERS_SH" "$LINK_FLAGS_SH" "$LINK_COMPILERS_SH" "$LINK_CMAKE_SH" "$BUILD_REPO_SH" "$REMOVE_RETIRED_REPOS_SH"; do
+for f in "$REFRESH_REPO_SH" "$CHECK_ENV_SH" "$CLONE_REPOS_SH" "$CHECK_COMPILERS_SH" "$COMPILER_FINGERPRINT_SH" "$GENERATE_FLAGS_SH" "$FILTER_SANITIZERS_SH" "$LINK_FLAGS_SH" "$LINK_COMPILERS_SH" "$LINK_CMAKE_SH" "$BUILD_REPO_SH" "$REMOVE_RETIRED_REPOS_SH"; do
   [[ -x "$f" ]] || die "required helper script missing or not executable: $f"
 done
 
@@ -364,21 +364,21 @@ note "  sanitizers       = ${sanitizers:-<none>}"
 $dry_run && note "  mode             = DRY RUN"
 
 # ----------------- repo prep -----------------
-# pull.sh exits 1 after a successful pull to signal "re-run so the new
+# refresh-repo.sh exits 1 after a successful refresh to signal "re-run so the new
 # scripts are used" — handle that explicitly instead of a bare set -e death.
 pull_rc=0
 if $skip_self_update; then
   :
 elif ! $dry_run; then
-  "$PULL_SH" --allow-snapshot || pull_rc=$?
+  "$REFRESH_REPO_SH" --allow-snapshot . || pull_rc=$?
 else
-  printf '[dry-run] %s\n' "$PULL_SH"
+  printf '[dry-run] %s --allow-snapshot .\n' "$REFRESH_REPO_SH"
 fi
 if [[ "$pull_rc" -eq 1 ]]; then
   note "The scripts repository was just updated. Please re-run this command."
   exit 1
 elif [[ "$pull_rc" -ne 0 ]]; then
-  die "pull.sh failed (exit $pull_rc)"
+  die "refresh-repo.sh failed (exit $pull_rc)"
 fi
 
 # ----------------- sanitizer capability/combination validation -----------------

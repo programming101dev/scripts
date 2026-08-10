@@ -211,10 +211,9 @@ cp ./update-all.sh "$sandbox/matrix/update-all.sh"
 mkdir -p "$sandbox/matrix/distribution" "$sandbox/matrix/workspace" \
   "$sandbox/matrix/shared"
 cp ./shared/compilers.sh "$sandbox/matrix/shared/compilers.sh"
-cp ./distribution/pull.sh "$sandbox/matrix/distribution/pull.sh"
 cp ./distribution/refresh-repo.sh "$sandbox/matrix/distribution/refresh-repo.sh"
 cp ./workspace/update.sh "$sandbox/matrix/workspace/update.sh"
-chmod +x "$sandbox/matrix/update-all.sh" "$sandbox/matrix/distribution/pull.sh" \
+chmod +x "$sandbox/matrix/update-all.sh" \
   "$sandbox/matrix/distribution/refresh-repo.sh" "$sandbox/matrix/workspace/update.sh"
 cat > "$sandbox/matrix/driver.sh" <<'EOF'
 #!/bin/sh
@@ -231,7 +230,7 @@ printf 'gitdir: /definitely/missing/p101-scripts-git-dir\n' > "$sandbox/matrix/.
   cd "$sandbox/matrix"
   ./update-all.sh -u ./driver.sh -C c.txt -X cxx.txt \
     -f clang-format -t clang-tidy -k cppcheck -s address \
-    --interactive --skip-install > update-all.stdout
+    --interactive --skip-install --skip-acceptance > update-all.stdout
 )
 grep -Fq 'source snapshot without usable Git metadata; skipping refresh' \
   "$sandbox/matrix/update-all.stdout"
@@ -239,6 +238,61 @@ grep -Fxq -- '--skip-self-update' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--interactive' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--skip-install' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- 'address' "$sandbox/matrix/driver-arguments.txt"
+
+# The strict CMake acceptance phase is the default, and it must use the first
+# compiler pair that actually completed rather than the loop variables left by
+# the last pair (or by the final failed read).
+acceptance_matrix="$sandbox/acceptance-matrix"
+mkdir -p "$acceptance_matrix/distribution" "$acceptance_matrix/workspace" \
+  "$acceptance_matrix/shared" "$acceptance_matrix/bin"
+cp ./update-all.sh "$acceptance_matrix/update-all.sh"
+cp ./shared/compilers.sh "$acceptance_matrix/shared/compilers.sh"
+cat > "$acceptance_matrix/distribution/refresh-repo.sh" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+cat > "$acceptance_matrix/driver.sh" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> driver-invocations.txt
+EOF
+cat > "$acceptance_matrix/bin/cmake" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "$P101_TEST_CMAKE_LOG"
+EOF
+cat > "$acceptance_matrix/bin/compiler" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+chmod +x "$acceptance_matrix/update-all.sh" \
+  "$acceptance_matrix/distribution/refresh-repo.sh" \
+  "$acceptance_matrix/driver.sh" "$acceptance_matrix/bin/cmake" \
+  "$acceptance_matrix/bin/compiler"
+for compiler in clang-a clang++-a clang-b clang++-b; do
+  ln -s compiler "$acceptance_matrix/bin/$compiler"
+done
+printf 'clang-a\nclang-b\n' > "$acceptance_matrix/c.txt"
+printf 'clang++-a\nclang++-b\n' > "$acceptance_matrix/cxx.txt"
+export P101_TEST_CMAKE_LOG="$acceptance_matrix/cmake-invocations.txt"
+(
+  cd "$acceptance_matrix"
+  PATH="$acceptance_matrix/bin:$PATH" ./update-all.sh \
+    -u ./driver.sh -C c.txt -X cxx.txt \
+    -f clang-format -t clang-tidy -k cppcheck \
+    --acceptance-output evidence --acceptance-no-cache > update-all.stdout
+)
+unset P101_TEST_CMAKE_LOG
+[[ "$(wc -l < "$acceptance_matrix/driver-invocations.txt")" -eq 2 ]]
+grep -Fq -- "-DCMAKE_C_COMPILER=$acceptance_matrix/bin/clang-a" \
+  "$acceptance_matrix/cmake-invocations.txt"
+grep -Fq -- "-DP101_ACCEPTANCE_CXX_COMPILER=$acceptance_matrix/bin/clang++-a" \
+  "$acceptance_matrix/cmake-invocations.txt"
+acceptance_output_abs="$(CDPATH='' cd -- "$acceptance_matrix" && pwd -P)/evidence"
+grep -Fq -- "-DP101_ACCEPTANCE_OUTPUT_DIR=$acceptance_output_abs" \
+  "$acceptance_matrix/cmake-invocations.txt"
+grep -Fq -- '-DP101_ACCEPTANCE_NO_CACHE=1' \
+  "$acceptance_matrix/cmake-invocations.txt"
+grep -Fq -- '--target p101_acceptance --parallel' \
+  "$acceptance_matrix/cmake-invocations.txt"
 
 snapshot_root="$sandbox/update-snapshot"
 snapshot_scripts="$snapshot_root/scripts"
@@ -275,7 +329,7 @@ exit 0
 EOF
 chmod +x "$snapshot_scripts/helper"
 for helper in \
-  distribution/pull.sh \
+  distribution/refresh-repo.sh \
   workspace/check-env.sh \
   distribution/clone-repos.sh \
   workspace/check-compilers.sh \

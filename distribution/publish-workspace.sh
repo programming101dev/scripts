@@ -75,25 +75,72 @@ if ((blocked)); then
     exit 1
 fi
 
+if ! git symbolic-ref --quiet --short HEAD >/dev/null; then
+    printf 'Error: the scripts repository is detached.\n' >&2
+    exit 2
+fi
+if ! git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' >/dev/null 2>&1; then
+    printf 'Error: the scripts repository has no configured upstream.\n' >&2
+    exit 2
+fi
+if [[ -n "$(git status --porcelain)" ]]; then
+    printf 'Error: the scripts repository has uncommitted changes; review and commit them before publication.\n' >&2
+    git status --short >&2
+    exit 1
+fi
+if ((dry_run == 0)) && ! git var GIT_AUTHOR_IDENT >/dev/null 2>&1; then
+    printf 'Error: git has no author identity; set user.name and user.email.\n' >&2
+    exit 2
+fi
+
 ./distribution/push-repos.sh "${push_args[@]}"
+
+if ((dry_run)); then
+    printf '(dry run) would refresh and commit the workspace lock and stack contract\n'
+    printf '(dry run) would push the scripts repository and audit the published revisions\n'
+    exit 0
+fi
 
 printf '== refreshing workspace lock and stack contract\n'
 ./workspace/repos-lock.py refresh
 ./workspace/stack-contract.py refresh
 
 if [[ -n "$(git status --porcelain -- repos.lock contracts/p101-stack-contract.json)" ]]; then
-    if ((dry_run)); then
-        printf '(dry run) would commit and push the refreshed lock and contract\n'
-    else
-        git add repos.lock contracts/p101-stack-contract.json
-        git commit -m "Refresh workspace lock and stack contract"
+    git add repos.lock contracts/p101-stack-contract.json
+    git commit -m "Refresh workspace lock and stack contract"
+fi
+
+git push
+
+printf '== auditing published workspace\n'
+./workspace/repos-lock.py verify --require-clean
+./workspace/stack-contract.py verify
+
+locked_entries="$(./workspace/repos-lock.py entries)"
+drift=0
+while IFS='|' read -r _url relative_path _kind locked_commit <&3; do
+    [[ -n "${relative_path:-}" ]] || continue
+    head_commit="$(git -C "$relative_path" rev-parse HEAD)"
+    upstream="$(git -C "$relative_path" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
+    if [[ "$head_commit" != "$locked_commit" ]]; then
+        printf 'UNPINNED: %s is at %.12s; lock says %.12s\n' \
+            "$relative_path" "$head_commit" "$locked_commit" >&2
+        drift=1
+    elif [[ -z "$upstream" || "$(git -C "$relative_path" rev-parse "$upstream")" != "$locked_commit" ]]; then
+        printf 'UNPUSHED: %s locked revision is not its upstream revision\n' \
+            "$relative_path" >&2
+        drift=1
     fi
+done 3<<< "$locked_entries"
+
+scripts_upstream="$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}')"
+if [[ -n "$(git status --porcelain)" ]] || [[ "$(git rev-parse HEAD)" != "$(git rev-parse "$scripts_upstream")" ]]; then
+    printf 'UNPUBLISHED: scripts is dirty or differs from %s\n' "$scripts_upstream" >&2
+    drift=1
+fi
+if ((drift)); then
+    printf 'Workspace publication audit failed.\n' >&2
+    exit 1
 fi
 
-if ((dry_run)); then
-    git push --dry-run
-else
-    git push
-fi
-
-printf '== workspace published\n'
+printf '== workspace published, pinned, and audited\n'

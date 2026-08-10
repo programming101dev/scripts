@@ -71,7 +71,12 @@ def main() -> int:
         parser.error("--require-platform requires --merge-receipts")
 
     workspace = args.workspace.resolve()
-    audit = workspace / "programs" / "p101-audit" / "audit-wrappers"
+    audit = Path(
+        os.environ.get(
+            "P101_AUDIT_WRAPPERS",
+            workspace / "programs" / "p101-audit" / "audit-wrappers",
+        )
+    )
     facts_cache_tool = workspace / "scripts" / "checks" / "p101-facts-cache.py"
     contract = json.loads(args.contract.read_text(encoding="utf-8"))
     if contract.get("schema") != "p101-instrumentation-contract-v3":

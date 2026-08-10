@@ -1,5 +1,12 @@
 # Human-readable configure receipt. Keep presentation out of target policy.
 
+# A workspace aggregate can contain dozens of repository subdirectories.  The
+# workspace prints one receipt of its own; repeating this repository summary for
+# every child obscures the dependency graph it is meant to explain.
+if(P101_WORKSPACE_AGGREGATE)
+    return()
+endif()
+
 message(STATUS "")
 message(STATUS "-- Configuring with:")
 if(DEFINED CMAKE_C_COMPILER)
@@ -8,10 +15,14 @@ endif()
 if(DEFINED CMAKE_CXX_COMPILER)
     message(STATUS "--   CXX              = ${CMAKE_CXX_COMPILER}")
 endif()
-message(STATUS "--   clang-format     = ${CLANG_FORMAT_NAME}")
-message(STATUS "--   clang-tidy       = ${CLANG_TIDY_NAME} (custom target over sanitized DB)")
-message(STATUS "--   cppcheck         = ${CPPCHECK_NAME} (REQUIRED)")
-message(STATUS "--   scan-build       = ${SCAN_BUILD_NAME} (optional target)")
+if(P101_RUNTIME_ONLY)
+    message(STATUS "--   mode             = runtime-only")
+else()
+    message(STATUS "--   clang-format     = ${CLANG_FORMAT_NAME}")
+    message(STATUS "--   clang-tidy       = ${CLANG_TIDY_NAME} (custom target over sanitized DB)")
+    message(STATUS "--   cppcheck         = ${CPPCHECK_NAME} (REQUIRED)")
+    message(STATUS "--   scan-build       = ${SCAN_BUILD_NAME} (optional target)")
+endif()
 message(STATUS "--   sanitizers       = ${SANITIZER_LIST}")
 message(STATUS "--   analyze fail?    = ${P101_ANALYZE_FAIL_ON_DIAGNOSTICS}")
 message(STATUS "--   CSA profile      = ${P101_CLANG_SA_PROFILE}")
@@ -20,5 +31,5 @@ message(STATUS "--   CSA fail?        = ${P101_CLANG_SA_FAIL_ON_DIAGNOSTICS}")
 if(APPLE)
     message(STATUS "--   macOS SDK        = ${MAC_SYSROOT}")
 endif()
-message(STATUS "--   build dir        = ${CMAKE_BINARY_DIR}")
+message(STATUS "--   build dir        = ${CMAKE_CURRENT_BINARY_DIR}")
 message(STATUS "")

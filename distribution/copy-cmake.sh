@@ -8,9 +8,10 @@ set -eu
 
 usage() {
   # $1 = exit status (0 for -h, non-zero for bad options)
-  printf '%s\n' "Usage: $0 [-n] [-v]
+  printf '%s\n' "Usage: $0 [-n] [-v] [-c]
   -n  dry run (show what would change, no writes)
-  -v  verbose (also report up-to-date or skipped targets)"
+  -v  verbose (also report up-to-date or skipped targets)
+  -c  check only; fail when a required copy or shared link has drifted"
   exit "${1:-0}"
 }
 
@@ -19,10 +20,12 @@ case " $* " in *" --help "*|*" -h "*) ( usage ) || true; exit 0 ;; esac
 
 DRYRUN=0
 VERBOSE=0
-while getopts "nvh" opt; do
+CHECK=0
+while getopts "nvch" opt; do
   case "$opt" in
     n) DRYRUN=1 ;;
     v) VERBOSE=1 ;;
+    c) CHECK=1; DRYRUN=1 ;;
     h) usage 0 ;;
     *) usage 2 ;;
   esac
@@ -47,7 +50,10 @@ copy_if_needed() {
   fi
 
   if [ "$DRYRUN" -eq 1 ]; then
-    if [ -f "$dest" ]; then
+    if [ "$CHECK" -eq 1 ]; then
+      printf 'FAIL: stale or missing: %s\n' "$dest" >&2
+      failures=$((failures + 1))
+    elif [ -f "$dest" ]; then
       printf '[dry-run] update: %s\n' "$dest_dir"
     else
       printf '[dry-run] create: %s\n' "$dest_dir"
@@ -125,7 +131,9 @@ done < "$REPOS_FILE"
 # The slimmed CMakeLists sources its helpers from cmake/; make sure every
 # repo has that symlink so the freshly-copied CMakeLists can find them.
 if [ -x "$SCRIPT_DIR/distribution/link-cmake.sh" ]; then
-  if [ "$DRYRUN" -eq 1 ]; then
+  if [ "$CHECK" -eq 1 ]; then
+    "$SCRIPT_DIR/distribution/link-cmake.sh" -c || failures=$((failures + 1))
+  elif [ "$DRYRUN" -eq 1 ]; then
     "$SCRIPT_DIR/distribution/link-cmake.sh" -n
   else
     "$SCRIPT_DIR/distribution/link-cmake.sh"
@@ -138,4 +146,7 @@ fi
 if [ "$failures" -gt 0 ]; then
   printf 'CMake distribution failed: %d problem(s).\n' "$failures" >&2
   exit 1
+fi
+if [ "$CHECK" -eq 1 ]; then
+  printf 'PASS: distributed CMakeLists.txt files and helper links are current.\n'
 fi

@@ -1,5 +1,5 @@
 {
-  "schema": "p101-quality-contract-v2",
+  "schema": "p101-quality-contract-v3",
   "does_not_prove": "This catalog proves that declared quality responsibilities remain owned and bound to existing executable oracles and, when checked against library-audit facts, that every lib_c_facts-discovered public enum is classified. It does not prove that non-enum responsibilities were exhaustively discovered, that an oracle is independently sufficient, or that an unexecuted platform passes.",
   "public_surfaces": [
     {
@@ -27,10 +27,29 @@
       "id": "public:tool-cli",
       "owner": "programs/p101-*",
       "contract": "scripts/docs/p101-tool-design-contract.md",
-      "checker": "scripts/checks/check-p101-tool-contracts.sh",
-      "oracle": "tool-contracts"
+      "checker": "scripts/checks/check-p101-quality-contract.py",
+      "oracle": "quality-contract"
     }
   ],
+  "tool_documentation": {
+    "root": "programs",
+    "directory_glob": "p101-*",
+    "readme": "README.md",
+    "required_concepts": [
+      {
+        "id": "limitations",
+        "patterns": ["boundar", "blind", "limit", "cannot", "can only", "not proof", "not a proof", "heuristic", "invisible", "outside", "not OS tracing"]
+      },
+      {
+        "id": "exit-status",
+        "patterns": ["exit status", "exit code", "returns 0", "non-zero", "failed", "fails"]
+      },
+      {
+        "id": "replayable-evidence",
+        "patterns": ["usage", "example", "check", "test", "smoke", "tour", "regression"]
+      }
+    ]
+  },
   "typed_outcome_sets": [
     {
       "source": "libraries/lib_error/include/p101_error/error.h",

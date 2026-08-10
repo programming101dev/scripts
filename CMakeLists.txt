@@ -63,6 +63,12 @@ project(${PROJECT_NAME}
 option(P101_RUNTIME_ONLY
         "Build installable runtime artifacts without the analyzer pipeline"
         OFF)
+option(P101_IN_TREE_DEPENDENCIES_ONLY
+        "Require every logical p101_* link dependency to be an in-tree target"
+        OFF)
+option(P101_USE_PROBED_FLAGS
+        "Load the repository's compiler-specific probed flag cache"
+        ON)
 
 # config.cmake is read before project() so it can define PROJECT_NAME and
 # PROJECT_LANGUAGE. Platform and compiler conditionals such as
@@ -113,33 +119,44 @@ endforeach ()
 # =========================
 set(ICON "🔧" CACHE STRING "Icon prefix")
 
-# Required: clang-tidy
-find_program(CLANG_TIDY_NAME NAMES clang-tidy REQUIRED DOC "clang-tidy executable used by the build")
+# Runtime-only targets are the bootstrap substrate for the C tools.  Requiring
+# the analyzers (or Python helpers used only by them) here recreates the very
+# build-tools-before-building-tools cycle this mode exists to break.
+if (NOT P101_RUNTIME_ONLY)
+    find_program(CLANG_TIDY_NAME NAMES clang-tidy REQUIRED
+            DOC "clang-tidy executable used by the build")
+    find_program(CLANG_FORMAT_NAME NAMES clang-format
+            DOC "clang-format executable used by the build")
+    find_program(SCAN_BUILD_NAME NAMES scan-build
+            DOC "scan-build executable used by the build")
 
-# Optional: clang-format and scan-build
-find_program(CLANG_FORMAT_NAME NAMES clang-format DOC "clang-format executable used by the build")
-find_program(SCAN_BUILD_NAME NAMES scan-build DOC "scan-build executable used by the build")
-
-# Enforce: cppcheck must exist and will always run
-find_program(CPPCHECK_NAME NAMES cppcheck REQUIRED DOC "cppcheck executable used by the build")
-execute_process(
-        COMMAND "${CPPCHECK_NAME}" --version
-        OUTPUT_VARIABLE _P101_CPPCHECK_VERSION_TEXT
-        ERROR_VARIABLE _P101_CPPCHECK_VERSION_ERROR
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_STRIP_TRAILING_WHITESPACE
-        RESULT_VARIABLE _P101_CPPCHECK_VERSION_RC)
-if (_P101_CPPCHECK_VERSION_RC EQUAL 0)
-    string(REGEX MATCH "[0-9]+\\.[0-9]+(\\.[0-9]+)?" _P101_CPPCHECK_VERSION "${_P101_CPPCHECK_VERSION_TEXT}")
-    if (_P101_CPPCHECK_VERSION VERSION_LESS "2.14")
-        message(WARNING "cppcheck ${_P101_CPPCHECK_VERSION} is older than the p101 known-good floor 2.14; upgrade cppcheck if older-version self-diagnostics appear.")
+    find_program(CPPCHECK_NAME NAMES cppcheck REQUIRED
+            DOC "cppcheck executable used by the build")
+    execute_process(
+            COMMAND "${CPPCHECK_NAME}" --version
+            OUTPUT_VARIABLE _P101_CPPCHECK_VERSION_TEXT
+            ERROR_VARIABLE _P101_CPPCHECK_VERSION_ERROR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE _P101_CPPCHECK_VERSION_RC)
+    if (_P101_CPPCHECK_VERSION_RC EQUAL 0)
+        string(REGEX MATCH "[0-9]+\\.[0-9]+(\\.[0-9]+)?"
+                _P101_CPPCHECK_VERSION "${_P101_CPPCHECK_VERSION_TEXT}")
+        if (_P101_CPPCHECK_VERSION VERSION_LESS "2.14")
+            message(WARNING
+                    "cppcheck ${_P101_CPPCHECK_VERSION} is older than the p101 "
+                    "known-good floor 2.14; upgrade cppcheck if older-version "
+                    "self-diagnostics appear.")
+        endif ()
+    else ()
+        message(WARNING
+                "Could not determine cppcheck version: "
+                "${_P101_CPPCHECK_VERSION_ERROR}")
     endif ()
-else ()
-    message(WARNING "Could not determine cppcheck version: ${_P101_CPPCHECK_VERSION_ERROR}")
-endif ()
 
-# Python (required for JSON-safe compile DB sanitizer + analyze-from-DB)
-find_program(PYTHON3_EXECUTABLE NAMES python3 python REQUIRED DOC "Python executable for helper scripts")
+    find_program(PYTHON3_EXECUTABLE NAMES python3 python REQUIRED
+            DOC "Python executable for helper scripts")
+endif ()
 
 # Sanitizers requested (comma-separated names) -> read matching *_sanitizer_flags.txt
 set(SANITIZER_LIST "" CACHE STRING "Comma-separated sanitizers to try to enable")
@@ -178,7 +195,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Export compile_commands.json" F
 # Surface compile_commands.json at the repo root so clangd / IDEs find it with
 # no configuration. Points at whichever build dir was configured most recently;
 # overwriting is harmless. (compile_commands.json is already in .gitignore.)
-if (CMAKE_EXPORT_COMPILE_COMMANDS)
+if (CMAKE_EXPORT_COMPILE_COMMANDS AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     file(CREATE_LINK
             "${CMAKE_BINARY_DIR}/compile_commands.json"
             "${CMAKE_SOURCE_DIR}/compile_commands.json"
@@ -276,7 +293,11 @@ else ()
 endif ()
 
 set(_FLAG_DIRS_USED "")
-if (EXISTS "${_FLAGS_ROOT}/${_CC_BASE}")
+if (NOT P101_USE_PROBED_FLAGS)
+    message(STATUS
+            "P101_USE_PROBED_FLAGS is OFF: using only the repository's "
+            "declared standard flags.")
+elseif (EXISTS "${_FLAGS_ROOT}/${_CC_BASE}")
     set(_FLAG_DIRS_USED "${_FLAGS_ROOT}/${_CC_BASE}")
 else ()
     if (DEFINED ENV{P101_ALLOW_NO_FLAGS}
@@ -620,7 +641,8 @@ foreach (_p101_root IN LISTS _P101_WORKSPACE_ROOT_CANDIDATES)
         set(_P101_WORKSPACE_ROOT "${_p101_root_abs}")
         file(GLOB _p101_library_repos LIST_DIRECTORIES true "${_p101_root_abs}/libraries/lib_*")
         list(SORT _p101_library_repos)
-        foreach (_p101_library_repo IN LISTS _p101_library_repos)
+        if (NOT P101_IN_TREE_DEPENDENCIES_ONLY)
+            foreach (_p101_library_repo IN LISTS _p101_library_repos)
             get_filename_component(_p101_library_name "${_p101_library_repo}" NAME)
             if (_p101_library_name MATCHES "^lib_(posix|posix_optional|posix_xsi|unix)$")
                 continue()
@@ -680,7 +702,8 @@ foreach (_p101_root IN LISTS _P101_WORKSPACE_ROOT_CANDIDATES)
                     endif ()
                 endforeach ()
             endif ()
-        endforeach ()
+            endforeach ()
+        endif ()
         break()
     endif ()
 endforeach ()
@@ -747,7 +770,12 @@ _p101_filter_existing_dirs(P101_PUBLIC_INCLUDE_DIRS_EXISTING ${_INC_CANDIDATES})
 _p101_filter_existing_dirs(P101_PUBLIC_LINK_DIRS_EXISTING ${_LIB_CANDIDATES})
 _p101_filter_existing_dirs(P101_INSTALL_LINK_DIRS_EXISTING ${_INSTALL_LIB_CANDIDATES})
 
-if (P101_PUBLIC_LINK_DIRS_EXISTING)
+if (P101_IN_TREE_DEPENDENCIES_ONLY)
+    # Let CMake derive the build-tree rpath exclusively from linked targets.
+    # An explicit /usr/local/lib entry here can otherwise precede an in-tree
+    # library with the same install name on macOS and silently load stale code.
+    set(CMAKE_BUILD_RPATH "")
+elseif (P101_PUBLIC_LINK_DIRS_EXISTING)
     set(CMAKE_BUILD_RPATH "${P101_PUBLIC_LINK_DIRS_EXISTING}")
 endif ()
 if (P101_INSTALL_LINK_DIRS_EXISTING)

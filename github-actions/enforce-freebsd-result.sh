@@ -51,8 +51,8 @@ case "$phase" in
   update)
     phase_log="$out_dir/update-all.log"
     ;;
-  check)
-    phase_log="$out_dir/check-after-update-all.log"
+  check|acceptance)
+    phase_log="$out_dir/update-all.log"
     ;;
   *)
     phase_log=""

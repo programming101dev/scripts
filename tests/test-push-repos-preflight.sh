@@ -13,14 +13,12 @@ cp distribution/publish-workspace.sh "$sandbox/scripts/distribution/publish-work
 chmod +x "$sandbox/scripts/distribution/push-repos.sh"
 chmod +x "$sandbox/scripts/distribution/publish-workspace.sh"
 
-if grep -Fq 'git add -A' distribution/release.sh ||
-   grep -Fq 'git add -A' distribution/publish-workspace.sh; then
-  echo "release path must not select source files for a commit" >&2
+if grep -Fq 'git add -A' distribution/publish-workspace.sh; then
+  echo "publication path must not select source files for a commit" >&2
   exit 1
 fi
-if grep -Eq 'find .*\.git.*-delete' distribution/release.sh \
-   distribution/publish-workspace.sh; then
-  echo "release path must not delete Git lock files" >&2
+if grep -Eq 'find .*\.git.*-delete' distribution/publish-workspace.sh; then
+  echo "publication path must not delete Git lock files" >&2
   exit 1
 fi
 
@@ -111,5 +109,37 @@ grep -Fq 'uncommitted changes' "$sandbox/dirty-push.log"
 grep -Fq 'review and commit it before publication' "$sandbox/dirty-publish.log"
 [[ "$(git --git-dir="$remote" rev-parse refs/heads/main)" == "$override" ]]
 [[ "$(git -C "$repository" rev-parse HEAD)" == "$override" ]]
+
+git -C "$repository" checkout -- value.txt
+mkdir -p "$sandbox/scripts/workspace"
+cat > "$sandbox/scripts/workspace/repos-lock.py" <<'EOF'
+#!/usr/bin/env bash
+touch dry-run-mutated-lock
+exit 99
+EOF
+cat > "$sandbox/scripts/workspace/stack-contract.py" <<'EOF'
+#!/usr/bin/env bash
+touch dry-run-mutated-contract
+exit 99
+EOF
+chmod +x "$sandbox/scripts/workspace/repos-lock.py"
+chmod +x "$sandbox/scripts/workspace/stack-contract.py"
+scripts_remote="$sandbox/scripts.git"
+git init --quiet --bare "$scripts_remote"
+git -C "$sandbox/scripts" init --quiet
+git -C "$sandbox/scripts" config user.name "p101 push test"
+git -C "$sandbox/scripts" config user.email "push-test@invalid.example"
+git -C "$sandbox/scripts" add .
+git -C "$sandbox/scripts" commit --quiet -m scripts
+git -C "$sandbox/scripts" branch -M main
+git -C "$sandbox/scripts" remote add origin "$scripts_remote"
+git -C "$sandbox/scripts" push --quiet -u origin main
+(
+  cd "$sandbox/scripts"
+  ./distribution/publish-workspace.sh --dry-run --skip-preflight
+) > "$sandbox/publication-dry-run.log" 2>&1
+[[ ! -e "$sandbox/scripts/dry-run-mutated-lock" ]]
+[[ ! -e "$sandbox/scripts/dry-run-mutated-contract" ]]
+grep -Fq 'would refresh and commit the workspace lock' "$sandbox/publication-dry-run.log"
 
 printf 'PASS: publication requires clean, precommitted repositories and a successful preflight.\n'

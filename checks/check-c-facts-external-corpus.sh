@@ -164,7 +164,7 @@ if [ "$validate_only" -eq 1 ]; then
 fi
 
 if [ -z "$facts_tool" ]; then
-  facts_tool="../programs/p101-audit/audit-facts"
+  facts_tool="${P101_AUDIT_FACTS:-../programs/p101-audit/audit-facts}"
 fi
 case "$facts_tool" in
   /*) ;;

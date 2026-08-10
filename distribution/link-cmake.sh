@@ -2,25 +2,28 @@
 set -euo pipefail
 
 dry_run=0
+check_only=0
 
 usage() {
   cat <<'P101_USAGE'
-Usage: ./link-cmake.sh [-n]
+Usage: ./link-cmake.sh [-n] [-c]
 
 Symlink the shared scripts/cmake helper directory into every C/C++ repo listed
 in repos.txt.
 
 Options:
   -n  dry run; report changes without writing
+  -c  check only; fail when a required link is missing or stale
   -h  help
 P101_USAGE
 }
 
 case " $* " in *" --help "*|*" -h "*) usage; exit 0 ;; esac
 
-while getopts ":nh" opt; do
+while getopts ":nch" opt; do
   case "$opt" in
     n) dry_run=1 ;;
+    c) check_only=1; dry_run=1 ;;
     h) usage; exit 0 ;;
     \?|:) usage >&2; exit 2 ;;
   esac
@@ -92,7 +95,10 @@ EOF
     local linkpath="${dir}/cmake"
     if [[ -L "${linkpath}" ]]; then
       [[ "$(readlink "${linkpath}")" == "${target}" ]] && { echo "OK: ${linkpath}"; continue; }
-      if [[ "${dry_run}" -eq 1 ]]; then
+      if [[ "${check_only}" -eq 1 ]]; then
+        echo "FAIL: stale CMake helper link: ${linkpath} -> $(readlink "${linkpath}")" >&2
+        failures=$((failures + 1))
+      elif [[ "${dry_run}" -eq 1 ]]; then
         echo "[dry-run] update: ${linkpath} -> ${target}"
       else
         ln -sfn -- "${target}" "${linkpath}"; echo "Updated: ${linkpath} -> ${target}"
@@ -102,7 +108,10 @@ EOF
       echo "      Move or remove it explicitly, then run this script again." >&2
       failures=$((failures + 1))
     else
-      if [[ "${dry_run}" -eq 1 ]]; then
+      if [[ "${check_only}" -eq 1 ]]; then
+        echo "FAIL: missing CMake helper link: ${linkpath}" >&2
+        failures=$((failures + 1))
+      elif [[ "${dry_run}" -eq 1 ]]; then
         echo "[dry-run] create: ${linkpath} -> ${target}"
       else
         ln -s -- "${target}" "${linkpath}"; echo "Created: ${linkpath} -> ${target}"

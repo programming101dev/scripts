@@ -28,6 +28,8 @@ set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 # shellcheck source=shared/compilers.sh
 . ./shared/compilers.sh
+# shellcheck source=shared/artifacts.sh
+. ./shared/artifacts.sh
 
 cc=""
 cxx=""
@@ -37,7 +39,6 @@ cxx_list_file="supported_cxx_compilers.txt"
 compiler_was_selected=0
 out_dir=""
 skip_cmake=0
-skip_tool_contracts=0
 skip_tool_audit=0
 skip_library_audit=0
 skip_stack=0
@@ -80,8 +81,6 @@ Options:
                    fuzz budget. Default: 5.
 
   --skip-cmake        Skip the shared CMakeLists regression harness.
-  --skip-tool-contracts
-                      Skip p101 tool README contract checks.
   --skip-tool-audit   Skip strict wrapper/module audits over p101 tools.
   --skip-library-audit
                       Skip wrapper/error/module audits over lib_* repos.
@@ -119,7 +118,6 @@ while [ "$#" -gt 0 ]; do
     -n) fault_count="${2:?}"; shift 2 ;;
     --fuzz-secs) fuzz_secs="${2:?}"; shift 2 ;;
     --skip-cmake) skip_cmake=1; shift ;;
-    --skip-tool-contracts) skip_tool_contracts=1; shift ;;
     --skip-tool-audit) skip_tool_audit=1; shift ;;
     --skip-library-audit) skip_library_audit=1; shift ;;
     --skip-stack) skip_stack=1; shift ;;
@@ -180,12 +178,14 @@ run_checks() {
   local run_cxx="$2"
   local run_out_dir="$3"
   local template_no_tests_arg=""
-  local playground_quality_arg=""
-  local playground_coverage_arg=""
-  local playground_fuzz_arg=""
+  local playground_skip_quality_arg="--skip-quality"
+  local playground_skip_coverage_arg="--skip-coverage"
+  local playground_skip_fuzz_arg="--skip-fuzz"
   local profile
   local summary
   local graph_status
+  local inspect_capture
+  local tool_receipt
   local -a graph_args
 
   if ! mkdir -p "$run_out_dir"; then
@@ -197,10 +197,24 @@ run_checks() {
   profile="$run_out_dir/profile.md"
   summary="$run_out_dir/summary.md"
 
-  [ "$template_no_tests" -eq 0 ] || template_no_tests_arg="--template-no-tests"
-  [ "$playground_quality" -eq 0 ] || playground_quality_arg="--playground-quality"
-  [ "$playground_coverage" -eq 0 ] || playground_coverage_arg="--playground-coverage"
-  [ "$playground_fuzz" -eq 0 ] || playground_fuzz_arg="--playground-fuzz"
+  inspect_capture="${P101_INSPECT_CAPTURE:-}"
+  tool_receipt="${P101_TOOL_RECEIPT:-}"
+  if [ -z "$inspect_capture" ]; then
+    inspect_capture="$(p101_find_built_tool ../programs/p101-inspect inspect-capture || true)"
+  fi
+  if [ -z "$tool_receipt" ]; then
+    tool_receipt="$(p101_find_built_tool ../libraries/lib_tool_event p101-tool-receipt || true)"
+  fi
+  if [ -z "$inspect_capture" ] || [ -z "$tool_receipt" ]; then
+    printf 'Required receipt tools are unavailable: inspect-capture=%s p101-tool-receipt=%s\n' \
+      "${inspect_capture:-missing}" "${tool_receipt:-missing}" >&2
+    return 2
+  fi
+
+  [ "$template_no_tests" -eq 0 ] || template_no_tests_arg="--no-tests"
+  [ "$playground_quality" -eq 0 ] || playground_skip_quality_arg=""
+  [ "$playground_coverage" -eq 0 ] || playground_skip_coverage_arg=""
+  [ "$playground_fuzz" -eq 0 ] || playground_skip_fuzz_arg=""
 
   graph_args=(
     run
@@ -210,14 +224,15 @@ run_checks() {
     --var "formatter=$formatter"
     --var "fuzz_secs=$fuzz_secs"
     --var "fault_count=$fault_count"
+    --var "inspect_capture=$inspect_capture"
+    --var "tool_receipt=$tool_receipt"
     --var "template_no_tests=$template_no_tests_arg"
-    --var "playground_quality=$playground_quality_arg"
-    --var "playground_coverage=$playground_coverage_arg"
-    --var "playground_fuzz=$playground_fuzz_arg"
+    --var "playground_skip_quality=$playground_skip_quality_arg"
+    --var "playground_skip_coverage=$playground_skip_coverage_arg"
+    --var "playground_skip_fuzz=$playground_skip_fuzz_arg"
   )
 
   [ "$skip_cmake" -eq 0 ] || graph_args+=(--skip-group cmake)
-  [ "$skip_tool_contracts" -eq 0 ] || graph_args+=(--skip-group tool-contracts)
   [ "$skip_tool_audit" -eq 0 ] || graph_args+=(--skip-group tool-audit)
   [ "$skip_library_audit" -eq 0 ] || graph_args+=(--skip-group library-audit)
   [ "$skip_stack" -eq 0 ] || graph_args+=(--skip-group stack)
@@ -331,7 +346,7 @@ if [ -z "$cxx" ]; then
   cxx="$(trim_line "$cxx_list_file")"
 fi
 if [ -z "$cc" ] || [ -z "$cxx" ]; then
-  echo "Unable to choose compilers. Run ./p101-workspace compilers first or pass -c/-x." >&2
+  echo "Unable to choose compilers. Run ./workspace/check-compilers.sh first or pass -c/-x." >&2
   exit 2
 fi
 cc="$(resolve_compiler "$cc")"

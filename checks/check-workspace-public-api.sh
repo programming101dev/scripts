@@ -26,7 +26,7 @@ done
 workspace="$(CDPATH='' cd .. && pwd -P)"
 [ -n "$out_dir" ] || out_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-workspace-api.XXXXXX")"
 out_dir="$(mkdir -p "$out_dir/facts" && CDPATH='' cd -P "$out_dir" && pwd -P)"
-audit="$workspace/programs/p101-audit/audit-wrappers"
+audit="${P101_AUDIT_WRAPPERS:-$workspace/programs/p101-audit/audit-wrappers}"
 facts_cache_tool="$workspace/scripts/checks/p101-facts-cache.py"
 scope_exclusions="$workspace/scripts/contracts/workspace-public-api-excludes.txt"
 
@@ -42,7 +42,8 @@ scope_exclusion_reason() {
 find_tool() { p101_find_built_tool "$1" "$2"; }
 find_db() { p101_find_compile_database "$1"; }
 
-module_map="$(find_tool "$workspace/programs/p101-audit" audit-modules || true)"
+module_map="${P101_AUDIT_MODULES:-}"
+[ -n "$module_map" ] || module_map="$(find_tool "$workspace/programs/p101-audit" audit-modules || true)"
 [ -x "$audit" ] && [ -x "$module_map" ] || { echo "Build audit-wrappers and audit-modules first." >&2; exit 2; }
 
 combined="$out_dir/workspace-facts.tsv"

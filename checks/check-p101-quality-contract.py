@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +28,7 @@ REQUIRED_TOP_LEVEL = {
     "schema",
     "does_not_prove",
     "public_surfaces",
+    "tool_documentation",
     "typed_outcome_sets",
     "typed_outcome_exclusions",
     "audit_responsibilities",
@@ -175,7 +178,12 @@ def discover_public_enums(
 
 
 def acquire_public_enum_facts(output_directory: Path) -> Path:
-    tool = WORKSPACE / "programs" / "p101-audit" / "audit-facts"
+    tool = Path(
+        os.environ.get(
+            "P101_AUDIT_FACTS",
+            WORKSPACE / "programs" / "p101-audit" / "audit-facts",
+        )
+    )
     if not tool.is_file():
         raise QualityContractError(f"lib_c_facts front end is absent: {tool}")
     include_roots = sorted(
@@ -334,12 +342,74 @@ def validate(
 ) -> dict[str, int]:
     if set(document) != REQUIRED_TOP_LEVEL:
         raise QualityContractError("quality contract has unexpected top-level fields")
-    if document.get("schema") != "p101-quality-contract-v2":
+    if document.get("schema") != "p101-quality-contract-v3":
         raise QualityContractError("unexpected quality-contract schema")
     require_text(document, "does_not_prove", "quality contract")
 
     graph = read_json(GRAPH_PATH, "check graph")
     oracles = graph_oracles(graph)
+
+    documentation = document.get("tool_documentation")
+    if not isinstance(documentation, dict) or set(documentation) != {
+        "root",
+        "directory_glob",
+        "readme",
+        "required_concepts",
+    }:
+        raise QualityContractError("tool documentation contract has invalid fields")
+    documentation_root = (WORKSPACE / require_text(
+        documentation, "root", "tool documentation"
+    )).resolve()
+    if not documentation_root.is_dir():
+        raise QualityContractError("tool documentation root is not a directory")
+    directory_glob = require_text(
+        documentation, "directory_glob", "tool documentation"
+    )
+    readme_name = require_text(documentation, "readme", "tool documentation")
+    concepts = documentation.get("required_concepts")
+    if not isinstance(concepts, list) or not concepts:
+        raise QualityContractError("tool documentation has no required concepts")
+    compiled_concepts: list[tuple[str, list[re.Pattern[str]]]] = []
+    for raw in concepts:
+        if not isinstance(raw, dict) or set(raw) != {"id", "patterns"}:
+            raise QualityContractError("tool documentation concept has invalid fields")
+        concept_id = require_text(raw, "id", "tool documentation concept")
+        patterns = raw.get("patterns")
+        if (
+            not isinstance(patterns, list)
+            or not patterns
+            or any(not isinstance(pattern, str) or not pattern for pattern in patterns)
+        ):
+            raise QualityContractError(
+                f"tool documentation concept {concept_id} has invalid patterns"
+            )
+        try:
+            compiled_concepts.append(
+                (concept_id, [re.compile(pattern, re.IGNORECASE) for pattern in patterns])
+            )
+        except re.error as error:
+            raise QualityContractError(
+                f"tool documentation concept {concept_id} has invalid regex: {error}"
+            ) from error
+    tool_directories = sorted(
+        path for path in documentation_root.glob(directory_glob) if path.is_dir()
+    )
+    if not tool_directories:
+        raise QualityContractError("tool documentation contract selected no tools")
+    for tool_directory in tool_directories:
+        readme = tool_directory / readme_name
+        if not readme.is_file():
+            raise QualityContractError(f"{tool_directory.name} has no {readme_name}")
+        text = readme.read_text(encoding="utf-8", errors="replace")
+        missing = [
+            concept_id
+            for concept_id, patterns in compiled_concepts
+            if not any(pattern.search(text) for pattern in patterns)
+        ]
+        if missing:
+            raise QualityContractError(
+                f"{tool_directory.name} documentation lacks: {', '.join(missing)}"
+            )
 
     surfaces = document.get("public_surfaces")
     if not isinstance(surfaces, list) or not surfaces:

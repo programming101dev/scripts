@@ -1,0 +1,7 @@
+{
+  "schema": "p101-acceptance-performance-budget-v1",
+  "maximum_full_seconds": 1800,
+  "maximum_incremental_seconds": 600,
+  "minimum_incremental_reused_nodes": 50,
+  "does_not_prove": "These generous cross-platform ceilings catch lost incrementality and pathological regressions. They are not a benchmark or a latency promise for undeclared hardware."
+}

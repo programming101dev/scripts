@@ -26,6 +26,9 @@ skip_install=0
 interactive=0
 latest=0
 format=0
+acceptance=1
+acceptance_output=""
+acceptance_no_cache=0
 
 c_list_file="supported_c_compilers.txt"
 cxx_list_file="supported_cxx_compilers.txt"
@@ -54,7 +57,15 @@ usage() {
   --format          Apply clang-format to every tracked workspace source
                     once, before the first pair builds, so the per-repo
                     format-check gate cannot fail on formatting alone.
-                    Modifies tracked files."
+                    Modifies tracked files.
+  --skip-acceptance Build the compiler matrix but do not run the strict
+                    CMake-owned host-tool qualification and workspace checks.
+  --acceptance-output <dir>
+                    Write the governed acceptance receipt and reports here.
+                    Default: target/workspace/<host-pair>/acceptance.
+  --acceptance-no-cache
+                    Execute every governed acceptance node. This is intended
+                    for release preflight; ordinary runs reuse exact receipts."
     if [ -f "$c_list_file" ]; then
         printf '\nCompiler pairs this will build (from %s):\n' "$c_list_file"
         while IFS= read -r _l || [ -n "$_l" ]; do
@@ -100,6 +111,13 @@ while [ "$#" -gt 0 ]; do
     -i|--interactive) interactive=1; shift ;;
     --latest) latest=1; shift ;;
     --format) format=1; shift ;;
+    --skip-acceptance) acceptance=0; shift ;;
+    --acceptance-output)
+      [ "$#" -ge 2 ] || { printf 'Error: --acceptance-output requires an argument.\n' >&2; exit 2; }
+      acceptance_output=$2
+      shift 2
+      ;;
+    --acceptance-no-cache) acceptance_no_cache=1; shift ;;
     --coverage) export P101_COVERAGE=1; shift ;;
     --profile) export P101_PROFILE=1; shift ;;
     -h|--help) usage ;;
@@ -155,12 +173,12 @@ esac
 # not partway through the compiler loop. A CI VM source snapshot is also a
 # valid build input even though it cannot self-update.
 pull_rc=0
-./distribution/pull.sh --allow-snapshot || pull_rc=$?
+./distribution/refresh-repo.sh --allow-snapshot . || pull_rc=$?
 if [ "$pull_rc" -eq 1 ]; then
   printf 'The scripts repository was just updated. Please re-run: %s\n' "$0" >&2
   exit 1
 elif [ "$pull_rc" -ne 0 ]; then
-  printf 'Error: pull.sh failed (exit %d).\n' "$pull_rc" >&2
+  printf 'Error: refresh-repo.sh failed (exit %d).\n' "$pull_rc" >&2
   exit "$pull_rc"
 fi
 
@@ -177,6 +195,8 @@ find_by_basename() {
 
 pairs_run=0
 skipped=0
+host_c=""
+host_x=""
 
 # CR for CRLF-stripping without $'\r' (not POSIX sh)
 cr=$(printf '\r')
@@ -241,6 +261,10 @@ while read -r c <&3 || [ -n "$c" ]; do
     set -- "$@" -s "$sanitizers"
   fi
   "$@"
+  if [ "$pairs_run" -eq 0 ]; then
+    host_c=$c
+    host_x=$x
+  fi
   pairs_run=$((pairs_run+1))
 done 3< "$c_list_file"
 
@@ -250,3 +274,26 @@ if [ "$pairs_run" -eq 0 ]; then
 fi
 
 printf 'Done: %d compiler pair(s) built, %d skipped.\n' "$pairs_run" "$skipped"
+
+if [ "$acceptance" -eq 1 ]; then
+  host_cc=$(p101_resolve_compiler "$host_c" compiler_paths.txt)
+  host_cxx=$(p101_resolve_compiler "$host_x" compiler_paths.txt)
+  host_name=$(printf '%s__%s' "$(basename "$host_c")" "$(basename "$host_x")" | tr -c '[:alnum:]_.-' '_')
+  host_build="target/workspace/$host_name"
+  if [ -z "$acceptance_output" ]; then
+    acceptance_output="$host_build/acceptance"
+  else
+    case "$acceptance_output" in
+      /*) ;;
+      *) acceptance_output="$(pwd -P)/$acceptance_output" ;;
+    esac
+  fi
+  printf 'Configuring CMake-owned host tools: %s\n' "$host_build"
+  cmake -S workspace -B "$host_build" \
+    -DCMAKE_C_COMPILER="$host_cc" \
+    -DP101_ACCEPTANCE_CXX_COMPILER="$host_cxx" \
+    -DP101_ACCEPTANCE_OUTPUT_DIR="$acceptance_output" \
+    -DP101_ACCEPTANCE_NO_CACHE="$acceptance_no_cache"
+  printf 'Running strict CMake acceptance target.\n'
+  P101_QUIET=1 cmake --build "$host_build" --target p101_acceptance --parallel
+fi

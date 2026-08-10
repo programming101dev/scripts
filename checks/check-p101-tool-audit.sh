@@ -2,7 +2,7 @@
 # check-p101-tool-audit.sh — audit the p101 tools as a teaching toolchain.
 #
 # This is a replayable local gate for the tool design work. It checks:
-#   1. README/tool-contract minimums for every p101-* tool;
+#   1. the governed quality and documentation contract;
 #   2. wrapper coverage for C p101 tools in strict mode;
 #   3. error-object contracts for C p101 tools;
 #   4. module-map design notes for C p101 tools.
@@ -71,14 +71,16 @@ mkdir -p "$log_dir"
 summary="$out_dir/summary.md"
 programs_dir="$(CDPATH='' cd "$programs_dir" && pwd)"
 workspace_dir="$(CDPATH='' cd "$programs_dir/.." && pwd)"
-wrapper_audit="$programs_dir/p101-audit/audit-wrappers"
+wrapper_audit="${P101_AUDIT_WRAPPERS:-$programs_dir/p101-audit/audit-wrappers}"
 facts_cache_tool="$workspace_dir/scripts/checks/p101-facts-cache.py"
 
 find_built_tool() { p101_find_built_tool "$1" "$2"; }
 find_compile_database() { p101_find_compile_database "$1"; }
 
-error_contract="$(find_built_tool "$programs_dir/p101-audit" audit-errors || true)"
-module_map="$(find_built_tool "$programs_dir/p101-audit" audit-modules || true)"
+error_contract="${P101_AUDIT_ERRORS:-}"
+module_map="${P101_AUDIT_MODULES:-}"
+[ -n "$error_contract" ] || error_contract="$(find_built_tool "$programs_dir/p101-audit" audit-errors || true)"
+[ -n "$module_map" ] || module_map="$(find_built_tool "$programs_dir/p101-audit" audit-modules || true)"
 
 say() {
   printf '%s\n' "$*"
@@ -222,7 +224,7 @@ say "p101 tool audit output: $out_dir"
 failed=0
 
 if [ "$skip_contracts" -eq 0 ]; then
-  if ! run_logged "p101 README/tool contract checks" "$log_dir/check-p101-tool-contracts.log" "$workspace_dir/scripts/checks/check-p101-tool-contracts.sh" -p "$programs_dir"; then
+  if ! run_logged "p101 tool documentation contract" "$log_dir/check-p101-quality-contract.log" "$workspace_dir/scripts/checks/check-p101-quality-contract.py" --allow-no-facts; then
     failed=1
   fi
 else

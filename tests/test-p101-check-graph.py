@@ -155,6 +155,7 @@ class CheckGraphTests(unittest.TestCase):
                 "stack-contract",
                 "check-graph-tests",
                 "performance-contract-tests",
+                "workspace-cmake-tests",
                 "boundaries",
                 "boundary-tests",
             ],
@@ -163,11 +164,11 @@ class CheckGraphTests(unittest.TestCase):
     def test_group_skip_and_resume(self) -> None:
         ordered = MODULE.validate(copy.deepcopy(self.document))
         selected = MODULE.select_nodes(
-            ordered, set(), {"cmake"}, "tool-contracts"
+            ordered, set(), {"cmake"}, "quality-contract"
         )
         identifiers = {node["id"] for node in selected}
         self.assertNotIn("cmake-regression", identifiers)
-        self.assertIn("tool-contracts", identifiers)
+        self.assertIn("quality-contract", identifiers)
         self.assertNotIn("boundaries", identifiers)
 
     def test_argv_expansion_drops_empty_optional_tokens(self) -> None:

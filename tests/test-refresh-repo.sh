@@ -56,18 +56,6 @@ P101_GIT_RETRY_ATTEMPTS=1 ./distribution/refresh-repo.sh "$consumer" > "$sandbox
 [[ "$(git -C "$consumer" rev-parse HEAD)" == "$published_head" ]]
 grep -Fq 'fast-forwarded from' "$sandbox/updated.out"
 
-printf 'three\n' >> "$publisher/value.txt"
-git -C "$publisher" add value.txt
-git -C "$publisher" commit --quiet -m three
-git -C "$publisher" push --quiet
-published_head="$(git -C "$publisher" rev-parse HEAD)"
-mkdir "$consumer/distribution"
-cp ./distribution/pull.sh ./distribution/refresh-repo.sh "$consumer/distribution/"
-status=0
-(cd "$sandbox" && "$consumer/distribution/pull.sh" > "$sandbox/pull.out") || status=$?
-[[ "$status" -eq 1 ]]
-[[ "$(git -C "$consumer" rev-parse HEAD)" == "$published_head" ]]
-
 printf 'four\n' >> "$publisher/value.txt"
 git -C "$publisher" add value.txt
 git -C "$publisher" commit --quiet -m four

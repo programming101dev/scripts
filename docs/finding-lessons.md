@@ -135,6 +135,7 @@ or the playground case's fixed-state oracle.
 ./runtime/p101_lessons.py guide --markdown /path/to/check-output
 ```
 
-`check-p101-stack.sh` runs the representative native acceptance set.
+The governed `templates-standalone`, `playground-tour`, and `playground-lab`
+nodes run the representative native acceptance set.
 `check-after-update-all.sh` runs every owning-tool profile and every native
 playground issue case on the current platform.

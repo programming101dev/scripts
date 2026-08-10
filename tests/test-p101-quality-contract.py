@@ -55,6 +55,16 @@ class QualityContractTests(unittest.TestCase):
         self.assertGreaterEqual(report["typed_outcome_variants"], 40)
         self.assertEqual(report["platforms"], 3)
 
+    def test_missing_tool_documentation_concept_is_rejected(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["tool_documentation"]["required_concepts"].append(
+            {"id": "impossible", "patterns": ["P101-NOT-PRESENT-ANYWHERE"]}
+        )
+        with self.assertRaisesRegex(
+            MODULE.QualityContractError, "documentation lacks: impossible"
+        ):
+            MODULE.validate(document)
+
     def test_cli_requires_public_enum_evidence_by_default(self) -> None:
         completed = subprocess.run(
             [str(SCRIPTS_ROOT / "checks" / "check-p101-quality-contract.py")],

@@ -27,17 +27,18 @@ cd scripts
 Ensure the public entry points are executable:
 
 ```bash
-chmod +x p101-workspace setup.sh update-all.sh check-after-update-all.sh
+chmod +x setup.sh update-all.sh check-after-update-all.sh
 ```
 
 ## Command layout
 
-The repository keeps four public commands at its root:
+The repository keeps three public commands at its root:
 
-- `p101-workspace` is the maintainer dispatcher.
 - `setup.sh` performs first-time workspace setup.
-- `update-all.sh` refreshes and builds the compiler matrix.
-- `check-after-update-all.sh` runs the governed acceptance graph.
+- `update-all.sh` refreshes and builds the compiler matrix, then invokes the
+  strict CMake-owned acceptance target.
+- `check-after-update-all.sh` is the compatibility entry point used by the
+  CMake acceptance target for the governed policy graph.
 
 The implementation is grouped by responsibility:
 
@@ -50,7 +51,7 @@ The implementation is grouped by responsibility:
 - `contracts/` contains machine-readable manifests and policies.
 - `shared/library/` contains the canonical library-only install helpers.
 
-This boundary is intentional: maintainers use `p101-workspace`, while students
+This boundary is intentional: maintainers use the explicit owning script, while students
 invoke the owning category executable or runtime script directly. The C/C++
 repositories still carry their own root build scripts because templates must
 remain usable after being copied outside this workspace.
@@ -67,14 +68,14 @@ Governed advanced checks are direct scripts:
 
 To ensure you have all of the required tools installed, run:
 ```bash
-./p101-workspace environment
+./workspace/check-env.sh
 ```
 
 If you are missing tools follow these [instructions](https://docs.google.com/document/d/1ZPqlPD1mie5iwJ2XAcNGz7WeA86dTLerFXs9sAuwCco/edit?usp=drive_link).
 
 To determine which compilers you have installed on your system, run:
 ```bash
-./p101-workspace compilers
+./workspace/check-compilers.sh
 ```
 
 ## **Running the setup.sh Script**
@@ -96,7 +97,7 @@ cat supported_cxx_compilers.txt
 After the system has been setup you will want to periodically update from github and rebuild:
 
 ```bash
-./p101-workspace update -c <c compiler> -x <c++ compiler>
+./workspace/update.sh -c <c compiler> -x <c++ compiler>
 ```
 
 ## **Running the update-all.sh Script**
@@ -106,6 +107,15 @@ If you want to verify that everything compiles with all of the supported compile
 ```bash
 ./update-all.sh
 ```
+
+The final phase configures `workspace/CMakeLists.txt`. CMake builds a small,
+sanitizer-free host runtime in dependency order, then builds the C audit, test,
+and inspection programs against those exact in-tree targets. It qualifies the
+tools before running workspace acceptance. No install step and no search of old
+repository build directories is involved. Use `--skip-acceptance` only when you
+explicitly want a compiler-matrix build without the default strict gate.
+The stages, trust boundary, tradeoff, blind spots, and replay commands are
+recorded in [`docs/bootstrap-architecture.md`](docs/bootstrap-architecture.md).
 
 For an iterative portability pass, add `--interactive`:
 
@@ -146,22 +156,22 @@ scripts, tests, and the shared workspace links.
 
 `repos.txt` declares repository ownership and location. `repos.lock` binds
 every declaration to one exact 40-character Git commit. Setup, update,
-`p101-workspace clone`, and GitHub Actions use the lock by default, so Linux,
+`distribution/clone-repos.sh` and GitHub Actions use the lock by default, so Linux,
 macOS, and FreeBSD evaluate the same source graph even if an upstream `main`
 branch moves while a matrix run is in progress.
 
 Inspect or verify the current workspace with:
 
 ```bash
-./p101-workspace lock verify
+./workspace/repos-lock.py verify
 ```
 
 Following moving upstream branches is an explicit development operation:
 
 ```bash
-./p101-workspace clone --latest
+./distribution/clone-repos.sh --latest
 # review, build, test, commit, and push the coordinated changes
-./p101-workspace lock refresh
+./workspace/repos-lock.py refresh
 git add repos.lock
 git commit -m "Refresh workspace repository lock"
 ```
@@ -178,11 +188,18 @@ explicit escape hatch. Strict post-update acceptance verifies the lock and
 writes `workspace-lock-receipt.json`; the governed graph receipt records its
 lock and manifest digests.
 
-After `update-all.sh` succeeds, run the post-build acceptance checks:
+`update-all.sh` runs the post-build acceptance checks by default. To replay the
+same graph directly, or to select an individual graph node, use:
 
 ```bash
 ./check-after-update-all.sh
 ```
+
+GitHub Actions does not invoke that command separately: `update-all.sh` builds
+`p101_acceptance` once and writes both the full and incremental receipts into
+the selected `--acceptance-output` directory. Use
+`--acceptance-no-cache` for release evidence that must execute every full-graph
+node; the mandatory incremental replay still verifies exact reuse afterward.
 
 Before publishing coordinated changes, run the GitHub Actions preflight on
 macOS:
@@ -211,23 +228,21 @@ not the normal workflow. The scripts repository remains intentionally excluded
 from that program, because `repos.txt` describes the repositories scripts
 manages, not scripts itself.
 
-To release the whole workspace, including the scripts repository and the hashes
+To publish the whole workspace, including the scripts repository and the hashes
 that pin everything else, use:
 
 ```bash
-./distribution/release.sh -m "what changed"
+./distribution/publish-workspace.sh
 ```
 
-That is one command, and it coordinates the programs above rather than
-replacing them. It commits the scripts repository's own working tree, then
-hands off to `./distribution/publish-workspace.sh`, which commits every dirty
-managed repository, runs the preflight, pushes them, refreshes `repos.lock` and
-the stack contract against where they landed, and publishes the scripts
-repository last. The order is fixed: the refresh has to record revisions that
-are already on their remotes, and the scripts repository is what carries that
-record.
+The command accepts only already-reviewed commits. It rejects dirty managed or
+scripts repositories, runs the preflight, pushes managed repositories,
+refreshes and commits `repos.lock` and the stack contract against where those
+revisions landed, and publishes the scripts repository last. The order is
+fixed: the refresh has to record revisions already present on their remotes,
+and the scripts repository carries that record.
 
-Release then audits itself. It verifies the lock and the stack contract, and
+Publication then audits itself. It verifies the lock and the stack contract, and
 proves that every managed repository is clean, that its `HEAD` is the revision
 `repos.lock` names, and that its upstream is at that same revision. A release
 that pushed everything but left the lock naming a revision no remote has is not
@@ -401,8 +416,11 @@ wrapper tests and `unit-test-manifest.tsv`. Reports are written under one
 artifact directory.
 
 There is deliberately no `p101` dispatcher. CMake and each repository's
-`check.sh` own compilation, formatting, analyzers, unit tests, and fuzzing;
-`check-after-update-all.sh` owns the governed workspace acceptance graph. The
+`check.sh` own compilation, formatting, analyzers, unit tests, and fuzzing.
+The workspace CMake graph owns the host runtime, the audit/test/inspect tools,
+their qualification, and the stable `p101_acceptance` target;
+`check-after-update-all.sh` remains the compatibility entry point for the
+governed policy graph while its remaining policies migrate behind that target. The
 remaining policy programs are grouped by responsibility under
 `programs/p101-audit`, `programs/p101-test`, and `programs/p101-inspect`.
 
@@ -524,7 +542,7 @@ The source/runtime ownership map and the consolidation tradeoff are recorded in
 To check that each `p101-*` README exposes the minimum contract surface, run:
 
 ```bash
-./checks/check-p101-tool-contracts.sh
+./checks/check-p101-quality-contract.py --allow-no-facts
 ```
 
 To replay the broader p101 tool audit — README contract checks, strict
@@ -554,7 +572,7 @@ wrappers for the surrounding cleanup, logging, and resource-management calls.
 `github-actions/p101-stack.yml` is a starter CI workflow for macOS, Linux, and
 FreeBSD. Copy it to `.github/workflows/` in the repo that should own the
 multi-platform gate. In this repo it is kept byte-for-byte identical to
-`.github/workflows/p101-stack.yml`; `./checks/check-github-actions-template.sh` and
+`.github/workflows/p101-stack.yml`; the governed `github-workflow-drift` node and
 `./check-after-update-all.sh` fail if the starter copy drifts from the live CI
 workflow. The workflow can be dispatched for all platforms or one target OS
 (`linux`, `macos`, or `freebsd`) when you only need to rerun a single leg.
@@ -565,7 +583,7 @@ artifact, but ordinary diagnosis should not require downloading it.
 
 `scripts/CMakeLists.txt` is the source of truth for the shared C/C++ build
 pipeline. After editing it, run `./distribution/copy-cmake.sh` and commit the copied files in
-the affected repos. `./checks/check-cmake-distribution.sh` and
+the affected repos. `./distribution/copy-cmake.sh -c` and
 `./check-after-update-all.sh` fail if any distributed copy has drifted.
 
 When a repo is checked out inside the broader `programming101dev` workspace,
@@ -603,18 +621,17 @@ It copies `template-c`, `template-c-program`, and `template-cxx` to `/tmp`,
 rejects hidden parent-workspace script dependencies, and configures, builds,
 and tests each fresh project instance.
 
-To run the broader p101 stack ratchet, use:
+The broader template and playground ratchet is owned directly by the governed
+post-update graph:
 
 ```bash
-./checks/check-p101-stack.sh -c clang -x clang++
+./check-after-update-all.sh --only templates-standalone
+./check-after-update-all.sh --only playground-tour
+./check-after-update-all.sh --only playground-lab
 ```
 
-That script builds repos from `repos.txt`, runs the standalone template check,
-then runs the `p101-tool-playground` tour and the quick playground corpus and
-lab-book smoke. During development, you can use
-`--skip-repo-build` for a quicker smoke of the template and playground pieces.
-Use `--skip-install` when you want a non-interactive build-only stack check
-that does not run each repo's `install.sh`.
+These are separate nodes so failures, caching, and receipts retain the exact
+owning operation instead of being hidden under a second orchestration layer.
 
 ## **Discovering new flags**
 

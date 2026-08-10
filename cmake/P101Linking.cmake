@@ -45,6 +45,13 @@ function(_p101_resolve_link_items OUT)
             continue()
         endif()
 
+        if(P101_IN_TREE_DEPENDENCIES_ONLY AND _L MATCHES "^p101_")
+            message(FATAL_ERROR
+                    "Logical dependency '${_L}' is not an in-tree target. "
+                    "Add its owning repository to the workspace CMake graph "
+                    "before the current repository.")
+        endif()
+
         if(IS_ABSOLUTE "${_L}" AND EXISTS "${_L}")
             list(APPEND _accum "${_L}")
             continue()

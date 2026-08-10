@@ -70,10 +70,12 @@ summary="$out_dir/summary.md"
 find_built_tool() { p101_find_built_tool "$1" "$2"; }
 find_compile_database() { p101_find_compile_database "$1"; }
 
-wrapper_audit="$programs_dir/p101-audit/audit-wrappers"
+wrapper_audit="${P101_AUDIT_WRAPPERS:-$programs_dir/p101-audit/audit-wrappers}"
 facts_cache_tool="$PWD/checks/p101-facts-cache.py"
-error_contract="$(find_built_tool "$programs_dir/p101-audit" audit-errors || true)"
-module_map="$(find_built_tool "$programs_dir/p101-audit" audit-modules || true)"
+error_contract="${P101_AUDIT_ERRORS:-}"
+module_map="${P101_AUDIT_MODULES:-}"
+[ -n "$error_contract" ] || error_contract="$(find_built_tool "$programs_dir/p101-audit" audit-errors || true)"
+[ -n "$module_map" ] || module_map="$(find_built_tool "$programs_dir/p101-audit" audit-modules || true)"
 
 if [ ! -x "$wrapper_audit" ] || [ -z "$error_contract" ] || [ -z "$module_map" ]; then
   echo "Required p101 audit tools are not built. Build/update the programs first." >&2

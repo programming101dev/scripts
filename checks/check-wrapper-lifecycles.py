@@ -124,7 +124,13 @@ def compiler_supported_link_flags(
     return supported, dropped
 
 
-def find_program(repo: Path, name: str) -> Path:
+def find_program(repo: Path, name: str, environment_name: str) -> Path:
+    configured = os.environ.get(environment_name)
+    if configured:
+        candidate = Path(configured)
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate
+        raise RuntimeError(f"{environment_name} is not an executable file: {candidate}")
     build = built_directory(repo)
     if build is not None:
         candidate = build / name
@@ -500,7 +506,11 @@ def main() -> int:
         driver, sanitizer_flags, dropped_sanitizers = configure_driver(
             args.output, args.compiler
         )
-        event_model = find_program(WORKSPACE / "libraries" / "lib_tool_event", "p101-event-model")
+        event_model = find_program(
+            WORKSPACE / "libraries" / "lib_tool_event",
+            "p101-event-model",
+            "P101_EVENT_MODEL",
+        )
     except RuntimeError as exc:
         print(f"FAIL: {exc}")
         return 2

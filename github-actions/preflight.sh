@@ -307,7 +307,9 @@ if [[ "$clean_builds" -eq 1 ]]; then
   clean_managed_build_trees
 fi
 
-./checks/check-github-actions-template.sh
+cmp .github/workflows/p101-stack.yml github-actions/p101-stack.yml
+grep -Fq 'git config --global --add safe.directory "$(pwd -P)"' \
+  .github/workflows/p101-stack.yml
 ./tests/test-github-actions-summary.sh
 
 c_list="$out_dir/ci_c_compilers.txt"
@@ -327,6 +329,7 @@ set -o pipefail
 P101_QUIET=1 ./update-all.sh \
   --latest \
   --skip-install \
+  --skip-acceptance \
   -C "$c_list" \
   -X "$cxx_list" \
   -f "$clang_format" \
@@ -354,13 +357,15 @@ candidate_lock="$out_dir/repos.candidate.lock"
   --allow-ahead
 
 printf '\n==> complete governed acceptance graph\n'
+host_build="$out_dir/workspace-build"
+cmake -S workspace -B "$host_build" \
+  -DCMAKE_C_COMPILER="$cc" \
+  -DP101_ACCEPTANCE_CXX_COMPILER="$cxx" \
+  -DP101_ACCEPTANCE_OUTPUT_DIR="$out_dir/acceptance" \
+  -DP101_ACCEPTANCE_NO_CACHE=ON
 P101_REPOS_LOCK="$candidate_lock" \
-  ./check-after-update-all.sh \
-  -c "$cc" \
-  -x "$cxx" \
-  --no-cache \
-  -o "$out_dir/acceptance" \
-  2>&1 | tee "$out_dir/check-after-update-all.log"
+  cmake --build "$host_build" --target p101_acceptance --parallel \
+  2>&1 | tee "$out_dir/acceptance.log"
 
 cat > "$out_dir/receipt.md" <<EOF
 # p101 GitHub Actions local preflight

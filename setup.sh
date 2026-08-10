@@ -47,14 +47,14 @@ usage()
     _cc="$(_p101_names supported_c_compilers.txt)"; _cxx="$(_p101_names supported_cxx_compilers.txt)"
     if [ -n "$_cc" ] || [ -n "$_cxx" ]; then
         echo ""
-        echo "Compilers detected on this machine (./p101-workspace compilers):"
+        echo "Compilers detected on this machine (./workspace/check-compilers.sh):"
         echo "  C:   ${_cc:-<none>}"
         echo "  C++: ${_cxx:-<none>}"
         _fc="${_cc%%,*}"; _fx="$(_p101_cxx_of "$_fc")"
         if [ -n "$_fc" ] && [ -n "$_fx" ]; then echo "  e.g. $0 -c $_fc -x $_fx"; fi
     else
         echo ""
-        echo "  (run ./p101-workspace compilers first to detect the compilers installed here)"
+        echo "  (run ./workspace/check-compilers.sh first to detect the compilers installed here)"
     fi
     exit 1
 }
@@ -127,16 +127,16 @@ fi
 flags_version="../.flags/version.txt"
 current_version="./version.txt"
 
-# Self-update the scripts repo first. pull.sh exits 1 after a successful pull
+# Self-update the scripts repo first. refresh-repo.sh exits 1 after a successful refresh
 # to signal "re-run so the new scripts are used" — handle that explicitly
 # instead of dying with a generic set -e failure.
 pull_rc=0
-./distribution/pull.sh --allow-snapshot || pull_rc=$?
+./distribution/refresh-repo.sh --allow-snapshot . || pull_rc=$?
 if [ "$pull_rc" -eq 1 ]; then
   echo "The scripts repository was just updated. Please re-run: $0 $*" >&2
   exit 1
 elif [ "$pull_rc" -ne 0 ]; then
-  echo "Error: pull.sh failed (exit $pull_rc)." >&2
+  echo "Error: refresh-repo.sh failed (exit $pull_rc)." >&2
   exit "$pull_rc"
 fi
 

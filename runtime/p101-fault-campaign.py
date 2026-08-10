@@ -29,8 +29,11 @@ SEMANTICS_CONTRACT = SCRIPT_ROOT / "contracts" / "wrapper-fault-semantics.json"
 WORKSPACE = SCRIPT_ROOT.parent
 
 
-def built_tool(repository: Path, name: str) -> Path:
+def built_tool(repository: Path, name: str, environment_name: str) -> Path:
     candidates: list[Path] = []
+    configured = os.environ.get(environment_name)
+    if configured:
+        candidates.append(Path(configured))
     for marker_name in (".last-runtime-build-dir", ".last-build-dir"):
         marker = repository / marker_name
         if marker.is_file():
@@ -340,9 +343,19 @@ def main() -> int:
         return 2
 
     try:
-        fault_runner = built_tool(WORKSPACE / "programs" / "p101-test", "test-faults")
-        capture_tool = built_tool(WORKSPACE / "programs" / "p101-inspect", "inspect-capture")
-        model_tool = built_tool(WORKSPACE / "libraries" / "lib_tool_event", "p101-event-model")
+        fault_runner = built_tool(
+            WORKSPACE / "programs" / "p101-test", "test-faults", "P101_TEST_FAULTS"
+        )
+        capture_tool = built_tool(
+            WORKSPACE / "programs" / "p101-inspect",
+            "inspect-capture",
+            "P101_INSPECT_CAPTURE",
+        )
+        model_tool = built_tool(
+            WORKSPACE / "libraries" / "lib_tool_event",
+            "p101-event-model",
+            "P101_EVENT_MODEL",
+        )
     except ValueError as error:
         print(f"p101 fault campaign: {error}", file=sys.stderr)
         return 2

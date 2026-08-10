@@ -56,7 +56,13 @@ def active_libraries() -> dict[str, Path]:
     }
 
 
-def find_program(repo: Path, name: str) -> Path:
+def find_program(repo: Path, name: str, environment_name: str) -> Path:
+    configured = os.environ.get(environment_name)
+    if configured:
+        candidate = Path(configured)
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate
+        raise RuntimeError(f"{environment_name} is not an executable file: {candidate}")
     marker = repo / ".last-build-dir"
     candidates: list[Path] = []
     if marker.is_file():
@@ -286,7 +292,9 @@ def main() -> int:
 
     args.output.mkdir(parents=True, exist_ok=True)
     event_model = find_program(
-        WORKSPACE / "libraries" / "lib_tool_event", "p101-event-model"
+        WORKSPACE / "libraries" / "lib_tool_event",
+        "p101-event-model",
+        "P101_EVENT_MODEL",
     )
     instrumentation_receipt = args.output / "instrumentation.json"
     instrumentation = subprocess.run(

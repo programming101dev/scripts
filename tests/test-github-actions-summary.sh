@@ -4,6 +4,15 @@
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
+cmp .github/workflows/p101-stack.yml github-actions/p101-stack.yml
+grep -Fq 'git config --global --add safe.directory "$(pwd -P)"' \
+  .github/workflows/p101-stack.yml
+grep -Fq -- '--acceptance-output ci-output' .github/workflows/p101-stack.yml
+if grep -Fq -- '- name: Check after update-all' .github/workflows/p101-stack.yml; then
+  echo 'GitHub Actions still runs the governed graph twice.' >&2
+  exit 1
+fi
+
 sandbox="$(mktemp -d "${TMPDIR:-/tmp}/p101-github-summary.XXXXXX")"
 trap 'rm -rf "$sandbox"' EXIT
 mkdir -p "$sandbox/output/logs"
