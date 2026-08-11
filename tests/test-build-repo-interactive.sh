@@ -629,11 +629,15 @@ case "$phase" in
       exit 13
     fi
     : > "started-$compiler"
-    started_count=$(find . -name 'started-*' -type f -print | wc -l | tr -d ' ')
-    [ "$started_count" -lt 3 ] || : > workers-started
     echo "complete diagnostic for $compiler"
     attempts=0
-    while [ ! -f workers-started ]; do
+    while :; do
+      started_count=0
+      for marker in started-*; do
+        [ -f "$marker" ] || continue
+        started_count=$((started_count + 1))
+      done
+      [ "$started_count" -lt 3 ] || break
       attempts=$((attempts + 1))
       [ "$attempts" -lt 10 ] || { echo "workers did not overlap"; exit 12; }
       sleep 1
@@ -679,9 +683,20 @@ grep -Fq -- '--- failure log: clang-c : clang++-c ---' \
   "$parallel_matrix/matrix.stderr"
 [[ ! -e "$parallel_matrix/evidence/old.log" ]]
 [[ ! -e "$parallel_matrix/evidence/old.status" ]]
-grep -Fq $'0001\tclang-a\tclang++-a\tPASS\t0' "$parallel_matrix/evidence/summary.tsv"
-grep -Fq $'0002\tclang-b\tclang++-b\tFAIL\t7' "$parallel_matrix/evidence/summary.tsv"
-grep -Fq $'0003\tclang-c\tclang++-c\tFAIL\t9' "$parallel_matrix/evidence/summary.tsv"
+require_summary_row() {
+  local expected="$1"
+
+  if ! grep -Fq "$expected" "$parallel_matrix/evidence/summary.tsv"; then
+    printf 'Expected compiler-matrix summary row was absent: %s\n' "$expected" >&2
+    printf '%s\n' '--- actual compiler-matrix summary ---' >&2
+    cat "$parallel_matrix/evidence/summary.tsv" >&2
+    printf '%s\n' '--- end compiler-matrix summary ---' >&2
+    return 1
+  fi
+}
+require_summary_row $'0001\tclang-a\tclang++-a\tPASS\t0'
+require_summary_row $'0002\tclang-b\tclang++-b\tFAIL\t7'
+require_summary_row $'0003\tclang-c\tclang++-c\tFAIL\t9'
 
 parallel_retry_status=0
 (
