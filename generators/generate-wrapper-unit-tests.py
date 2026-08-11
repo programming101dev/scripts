@@ -1645,6 +1645,62 @@ def native_contract_fixture(
     )
     fixture = f"native_argument_{index}"
 
+    if function_usr == "c:@F@p101_calloc" and index in {2, 3}:
+        return [], "1U", [], []
+
+    if function_usr == "c:@F@p101_malloc" and index == 2:
+        return [], "1U", [], []
+
+    if function_usr == "c:@F@p101_realloc" and index == 3:
+        return [], "1U", [], []
+
+    if function_usr == "c:@F@p101_realloc" and index == 2:
+        return [], "NULL", [], []
+
+    if function_usr == "c:@F@p101_remove" and index == 2:
+        return [
+            f"            char {fixture}[96];",
+            f"            int {fixture}_fd;",
+            f"            P101_NATIVE_FORMAT_PID_PATH_OR_SKIP({fixture},",
+            '                "/tmp/p101-wrapper-remove-%ld");',
+            f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});",
+            f"            {fixture}_fd = open({fixture}, O_WRONLY | O_CREAT | O_EXCL, 0600);",
+            f"            if({fixture}_fd < 0)",
+            "            {",
+            "                _Exit(77);",
+            "            }",
+            f"            P101_NATIVE_CLEANUP_ERRNO(close({fixture}_fd));",
+        ], fixture, [], [
+            f"            P101_NATIVE_CLEANUP_UNLINK_IF_PRESENT({fixture});"
+        ]
+
+    if function_usr == "c:@F@p101_ftw" and index == 2:
+        return [], '"."', [], []
+
+    if function_usr == "c:@F@p101_fmtmsg":
+        arguments = {
+            2: "MM_PRINT",
+            3: '"p101:wrapper"',
+            4: "MM_INFO",
+            5: '"wrapper smoke"',
+            6: "MM_NULLACT",
+            7: "MM_NULLTAG",
+        }
+        if index in arguments:
+            return [], arguments[index], [], []
+
+    if function_usr == "c:@F@p101_setegid" and index == 2:
+        return [
+            f"            gid_t {fixture};",
+            f"            {fixture} = getegid();",
+        ], fixture, [], []
+
+    if function_usr == "c:@F@p101_ungetc" and index == 2:
+        return [], "EOF", [], []
+
+    if function_usr == "c:@F@p101_ungetwc" and index == 2:
+        return [], "WEOF", [], []
+
     two_timespec_parameters = {
         ("c:@F@p101_futimens", 3),
         ("c:@F@p101_utimensat", 4),
@@ -2230,7 +2286,6 @@ def native_contract_fixture(
             f"            char *{slave_name};",
             f"            int {fixture};",
             f"            int {fixture}_status;",
-            f"            pid_t {fixture}_session;",
             f"            {master} = posix_openpt(O_RDWR | O_NOCTTY);",
             f"            if({master} < 0)",
             "            {",
@@ -2254,14 +2309,7 @@ def native_contract_fixture(
             f"                P101_NATIVE_CLEANUP_ERRNO(close({master}));",
             "                _Exit(77);",
             "            }",
-            f"            {fixture}_session = setsid();",
-            f"            if({fixture}_session < 0)",
-            "            {",
-            f"                P101_NATIVE_CLEANUP_ERRNO(close({master}));",
-            "                native_child_status = 77;",
-            "                goto native_child_done_;",
-            "            }",
-            f"            {fixture} = open({slave_name}, O_RDWR);",
+            f"            {fixture} = open({slave_name}, O_RDWR | O_NOCTTY);",
             f"            if({fixture} < 0)",
             "            {",
             f"                P101_NATIVE_CLEANUP_ERRNO(close({master}));",
@@ -4295,6 +4343,64 @@ def fault_test(
                 "            if(native_result != NULL)",
                 "            {",
                 "                if_freenameindex(native_result);",
+                "            }",
+            ]
+        )
+    if function_usr in {
+        "c:@F@p101_calloc",
+        "c:@F@p101_malloc",
+        "c:@F@p101_realloc",
+        "c:@F@p101_strdup",
+        "c:@F@p101_strerror",
+        "c:@F@p101_strndup",
+        "c:@F@p101_wcsdup",
+    }:
+        native_cleanup.append("            free(native_result);")
+    if function_usr in {"c:@F@p101_getdelim", "c:@F@p101_getline"}:
+        native_cleanup.append("            free(native_argument_2);")
+    if function_usr in {
+        "c:@F@p101_open_memstream",
+        "c:@F@p101_open_wmemstream",
+    }:
+        native_cleanup.extend(
+            [
+                "            if(native_result != NULL)",
+                "            {",
+                "                P101_NATIVE_CLEANUP_ERRNO(fclose(native_result));",
+                "            }",
+                "            free(native_argument_2);",
+            ]
+        )
+    if function_usr == "c:@F@p101_wordexp":
+        native_cleanup.extend(
+            [
+                "            if(native_result == 0)",
+                "            {",
+                "                wordfree(&native_argument_3);",
+                "            }",
+            ]
+        )
+    if function_usr == "c:@F@p101_fsm_effect_batch_create":
+        native_cleanup.append(
+            "            p101_fsm_effect_batch_destroy(native_env, &native_result);"
+        )
+    if function_usr in {
+        "c:@F@p101_tool_argv_append",
+        "c:@F@p101_tool_argv_append_prefixed",
+    }:
+        native_cleanup.append(
+            "            p101_tool_argv_destroy(native_env, &native_argument_2);"
+        )
+    if function_usr == "c:@F@p101_tsearch":
+        native_cleanup.extend(
+            [
+                "            if(native_argument_3 != NULL)",
+                "            {",
+                "                void *native_delete_result;",
+                "",
+                "                native_delete_result = tdelete(",
+                "                    NULL, &native_argument_3, native_compare_callback);",
+                "                (void)native_delete_result;",
                 "            }",
             ]
         )

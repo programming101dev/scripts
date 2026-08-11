@@ -2,6 +2,23 @@
 # Verify that build-repo.sh retries only the failed phase in interactive mode.
 set -euo pipefail
 
+report_failure() {
+  local status="$1"
+  local line="$2"
+  local command="$3"
+
+  # Several negative controls below intentionally disable errexit while they
+  # capture a status.  Do not turn those admitted failures into test failures.
+  case "$-" in
+    *e*) ;;
+    *) return 0 ;;
+  esac
+  printf 'FAIL: %s:%s: command exited %d: %s\n' \
+    "${BASH_SOURCE[1]}" "$line" "$status" "$command" >&2
+  exit "$status"
+}
+trap 'report_failure "$?" "$LINENO" "$BASH_COMMAND"' ERR
+
 # This test constructs its own admitted-cache fixtures below.  A workspace
 # acceptance run may itself use a repository build cache; inheriting that
 # outer cache would make the first fixture exercise cache policy rather than

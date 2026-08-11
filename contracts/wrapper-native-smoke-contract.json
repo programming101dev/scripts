@@ -31,12 +31,13 @@
       "function_usr": "c:@F@p101_aio_read"
     },
     {
-      "error_code": "EINVAL",
-      "error_domain": "errno",
-      "outcome": "error",
-      "rationale": "aio_return requires a completed request whose result has not already been collected; the smoke verifies rejection of an inactive control block.",
-      "result_expression": "-1",
-      "result_kind": "equals",
+      "allowed_error_codes": [
+        "EINPROGRESS",
+        "EINVAL"
+      ],
+      "error_result_expression": "-1",
+      "outcome": "success-or-error",
+      "rationale": "Implementations disagree on the observable state of a zeroed inactive AIO control block: Linux may report a completed zero result while macOS and FreeBSD reject it. The smoke accepts only that success or the documented inactive-request failures.",
       "function_usr": "c:@F@p101_aio_return"
     },
     {
@@ -139,6 +140,16 @@
       "function_usr": "c:@F@p101_pause"
     },
     {
+      "allowed_error_codes": [
+        "EACCES",
+        "EPERM"
+      ],
+      "error_result_expression": "NULL",
+      "outcome": "success-or-error",
+      "rationale": "Updating the host utmpx database is installation-policy dependent. The smoke accepts an ordinary update or only the documented permission refusals and verifies the NULL error result.",
+      "function_usr": "c:@F@p101_pututxline"
+    },
+    {
       "error_code": "EINVAL",
       "error_domain": "errno",
       "outcome": "error",
@@ -165,6 +176,15 @@
       "result_expression": "-1",
       "result_kind": "equals",
       "function_usr": "c:@F@p101_sigsuspend"
+    },
+    {
+      "error_code": "EIO",
+      "error_domain": "errno",
+      "outcome": "error",
+      "rationale": "Passing WEOF exercises the wrapper's deterministic no-errno failure translation without making libc allocate a pushback buffer that some LeakSanitizer runtimes retain.",
+      "result_expression": "WEOF",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_ungetwc"
     }
   ],
   "schema": "p101-wrapper-native-smoke-contract-v3"
