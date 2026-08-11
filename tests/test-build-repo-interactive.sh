@@ -2,6 +2,12 @@
 # Verify that build-repo.sh retries only the failed phase in interactive mode.
 set -euo pipefail
 
+# This test constructs its own admitted-cache fixtures below.  A workspace
+# acceptance run may itself use a repository build cache; inheriting that
+# outer cache would make the first fixture exercise cache policy rather than
+# interactive retry behavior.
+unset P101_REPOSITORY_BUILD_CACHE
+
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 case " $* " in

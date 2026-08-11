@@ -38,7 +38,7 @@
       "url": "https://github.com/programming101dev/lib_filesystem.git"
     },
     {
-      "commit": "7ff1c1fdce6b6a6757336c43f1aa1d4914b69e7e",
+      "commit": "49bb925b3b77175d46e49acbb84bd5f7c3425648",
       "path": "../libraries/lib_c_facts",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_c_facts.git"

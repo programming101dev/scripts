@@ -97,6 +97,24 @@ workspace_link_dirs() {
   printf '%s' "$link_dirs"
 }
 
+effective_template_sanitizers() {
+  template_dir="$1"
+  compiler="$2"
+  compiler_path="$compiler"
+  compiler_name="$(basename "$compiler")"
+  flags_dir="$template_dir/.flags/$compiler_name"
+  requested="$(head -n 1 "$template_dir/sanitizers.txt" 2>/dev/null || true)"
+
+  if [ "${compiler#/}" = "$compiler" ]; then
+    compiler_path="$(command -v "$compiler" 2>/dev/null || true)"
+  fi
+  if [ -z "$compiler_path" ]; then
+    printf 'FAIL: compiler is not executable: %s\n' "$compiler" >&2
+    return 2
+  fi
+  ./workspace/filter-sanitizers.sh "$compiler_path" "$flags_dir" "$requested"
+}
+
 cleanup() {
   if [ "$automatic_out_dir" -eq 1 ] && [ "$failed" -eq 0 ] && [ "$keep" -eq 0 ]; then
     rm -rf "$out_dir"
@@ -250,14 +268,16 @@ copy_and_check() {
 
     if [ "$lang" = "cxx" ]; then
       dependency_link_dirs="$(workspace_link_dirs "$cxx")"
+      sanitizer_selection="$(effective_template_sanitizers "$dest" "$cxx")"
       run_logged "configure/build fresh $template instance" "$build_log" \
-        bash -c 'cd "$1" && ./change-compiler.sh -c "$2" -b build-standalone-check -- "-DP101_PUBLIC_INCLUDE_DIRS=$3" "-DP101_PUBLIC_LINK_DIRS=$4" && ./build.sh -q' \
-        sh "$dest" "$cxx" "$workspace_include_dirs" "$dependency_link_dirs"
+        bash -c 'cd "$1" && ./change-compiler.sh -c "$2" -s "$5" -b build-standalone-check -- "-DP101_PUBLIC_INCLUDE_DIRS=$3" "-DP101_PUBLIC_LINK_DIRS=$4" && ./build.sh -q' \
+        sh "$dest" "$cxx" "$workspace_include_dirs" "$dependency_link_dirs" "$sanitizer_selection"
     else
       dependency_link_dirs="$(workspace_link_dirs "$cc")"
+      sanitizer_selection="$(effective_template_sanitizers "$dest" "$cc")"
       run_logged "configure/build fresh $template instance" "$build_log" \
-        bash -c 'cd "$1" && ./change-compiler.sh -c "$2" -b build-standalone-check -- "-DP101_PUBLIC_INCLUDE_DIRS=$3" "-DP101_PUBLIC_LINK_DIRS=$4" && ./build.sh -q' \
-        sh "$dest" "$cc" "$workspace_include_dirs" "$dependency_link_dirs"
+        bash -c 'cd "$1" && ./change-compiler.sh -c "$2" -s "$5" -b build-standalone-check -- "-DP101_PUBLIC_INCLUDE_DIRS=$3" "-DP101_PUBLIC_LINK_DIRS=$4" && ./build.sh -q' \
+        sh "$dest" "$cc" "$workspace_include_dirs" "$dependency_link_dirs" "$sanitizer_selection"
     fi
   fi
 
