@@ -221,9 +221,9 @@
       "sha256": "e7b693bc3254f883b18e3c22ffd6550178c690663c7f1bc1870b87883c16eb5f"
     },
     {
-      "bytes": 6861,
+      "bytes": 7862,
       "path": "contracts/wrapper-native-smoke-contract.json",
-      "sha256": "1c2fb2a51baea08109cbbbe7c3f6028752b0e797774fa082a71bd8dcb1f05d08"
+      "sha256": "ff168545c86f0158b7bad399d85887370d6922dda44d4e69471a41c0ed29d3da"
     },
     {
       "bytes": 420326,
@@ -231,9 +231,9 @@
       "sha256": "5c4b0f9573ae7265f7876a0237b45e1698cd0fb15cc75cf7b82eeb52f8c9e2ac"
     },
     {
-      "bytes": 2830891,
+      "bytes": 2831157,
       "path": "contracts/wrapper-platform-faults.json",
-      "sha256": "19440e96c0f3210c594661a663669f6daaf4c21193af4117e6fc58a8a5c52bfb"
+      "sha256": "5fe158bdf7c943ee30adde5f10a6407db96fd174a5032a33efa3a3715d6442f7"
     },
     {
       "bytes": 10792,
@@ -266,19 +266,19 @@
       "sha256": "669b80c8415d1651f3de0df75c1ea5864f919c01a9ca5daf3216da7d8d12ee7c"
     },
     {
-      "bytes": 239812,
+      "bytes": 245510,
       "path": "generators/generate-wrapper-unit-tests.py",
-      "sha256": "5e6da1a63dbac432d5569425f7a5b3ba88fcc4e60aefc1dadec5ebeeecced725"
+      "sha256": "d42af283200b7ccae4731d0fdfb8fc471236f5255180f70f34a3cdfe27ef4a8b"
     },
     {
-      "bytes": 41876,
+      "bytes": 42256,
       "path": "generators/refresh-wrapper-platform-faults.py",
-      "sha256": "78428e6736c0be00eaf9efcbc0e59b1795c5e78a6560e137a31ddee882c27f0b"
+      "sha256": "0986d2702ea419f7dece02fbf52e56b269d65a527316cb2bbe1ff2c640adf417"
     },
     {
       "bytes": 8624,
       "path": "repos.lock",
-      "sha256": "0c1238dc0d3c16024627bb756d0722b827070e36bb2c4e7d900c88cb4a97900d"
+      "sha256": "121fb528f19597b44b7ede45c5050f25b3f9adf2c4ba9c3c6d55c628fb081711"
     },
     {
       "bytes": 3345,
@@ -321,9 +321,9 @@
       "sha256": "b129021011ddd818cbd2ee2c62fe7b50a5348604f3e0092863122fdd6c3b4356"
     },
     {
-      "bytes": 34777,
+      "bytes": 35310,
       "path": "tests/test-build-repo-interactive.sh",
-      "sha256": "8538c61e7f9c56894ad5c1f40f062cebb05d67700acadc53007c68c29a05a5b7"
+      "sha256": "ed18f02154c6bc50f1d2ec03336b082b8594c8ec804fbf1d4f38198083ac02eb"
     },
     {
       "bytes": 5740,
@@ -331,9 +331,9 @@
       "sha256": "5a236c83e5de7643babcc600e1a8a4394804e3dad75a4fe923a3b7bfc38ec5a1"
     },
     {
-      "bytes": 20945,
+      "bytes": 21286,
       "path": "update-all.sh",
-      "sha256": "1c60f5c59ebe2ac4cc6dc55c22b0773c70419b5800bb84218d3773554e99060a"
+      "sha256": "ec9e4f84e70fbdc628b7bfaa172092886b68207964783b649504b7a9a4e6979d"
     },
     {
       "bytes": 10546,
