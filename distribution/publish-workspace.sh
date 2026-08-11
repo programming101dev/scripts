@@ -154,6 +154,7 @@ verify_qualification_commit()
     local candidate_stack_contract="$4"
     local observed_parent
     local changed_paths
+    local changed_path
     local expected_blob
     local observed_blob
     local expected_stack_blob
@@ -168,10 +169,18 @@ verify_qualification_commit()
         git diff-tree --no-commit-id --name-only -r \
             "$parent_commit" "$qualification_commit"
     )"
-    if [[ "$changed_paths" != $'contracts/p101-stack-contract.json\nrepos.lock' ]]; then
-        printf 'Error: qualification commit must change only repos.lock and its stack contract.\n' >&2
-        return 2
-    fi
+    while IFS= read -r changed_path; do
+        [[ -n "$changed_path" ]] || continue
+        case "$changed_path" in
+            contracts/p101-stack-contract.json | repos.lock)
+                ;;
+            *)
+                printf 'Error: qualification commit changes forbidden path: %s\n' \
+                    "$changed_path" >&2
+                return 2
+                ;;
+        esac
+    done <<< "$changed_paths"
     expected_blob="$(git hash-object "$candidate_lock_file")"
     observed_blob="$(git rev-parse "$qualification_commit:repos.lock")"
     if [[ "$observed_blob" != "$expected_blob" ]]; then
