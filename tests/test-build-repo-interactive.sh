@@ -674,8 +674,14 @@ parallel_status=0
 [[ "$parallel_status" -eq 1 ]]
 grep -Fq 'update-all:clang-b__clang__-b: error:' "$parallel_matrix/matrix.stderr"
 grep -Fq 'update-all:clang-c__clang__-c: error:' "$parallel_matrix/matrix.stderr"
-grep -Fq 'complete diagnostic for clang-b' "$parallel_matrix/matrix.stderr"
-grep -Fq 'complete diagnostic for clang-c' "$parallel_matrix/matrix.stderr"
+grep -Fq -- '--- failure log: clang-b : clang++-b ---' \
+  "$parallel_matrix/matrix.stderr"
+grep -Fq -- '--- failure log: clang-c : clang++-c ---' \
+  "$parallel_matrix/matrix.stderr"
+grep -Fq 'complete diagnostic for clang-b' \
+  "$parallel_matrix/evidence/0002-clang-b__clang__-b.log"
+grep -Fq 'complete diagnostic for clang-c' \
+  "$parallel_matrix/evidence/0003-clang-c__clang__-c.log"
 grep -Fq 'compiler-worker-receipt-missing' "$parallel_matrix/matrix.stderr"
 [[ ! -e "$parallel_matrix/evidence/old.log" ]]
 [[ ! -e "$parallel_matrix/evidence/old.status" ]]
