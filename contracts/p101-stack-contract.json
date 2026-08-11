@@ -221,9 +221,9 @@
       "sha256": "e7b693bc3254f883b18e3c22ffd6550178c690663c7f1bc1870b87883c16eb5f"
     },
     {
-      "bytes": 6861,
+      "bytes": 7778,
       "path": "contracts/wrapper-native-smoke-contract.json",
-      "sha256": "1c2fb2a51baea08109cbbbe7c3f6028752b0e797774fa082a71bd8dcb1f05d08"
+      "sha256": "4454dfcd211171950c78467db19a0bce6fc87ed7bc326060e39345706a24948b"
     },
     {
       "bytes": 420326,
@@ -266,9 +266,9 @@
       "sha256": "669b80c8415d1651f3de0df75c1ea5864f919c01a9ca5daf3216da7d8d12ee7c"
     },
     {
-      "bytes": 239812,
+      "bytes": 243554,
       "path": "generators/generate-wrapper-unit-tests.py",
-      "sha256": "5e6da1a63dbac432d5569425f7a5b3ba88fcc4e60aefc1dadec5ebeeecced725"
+      "sha256": "f4fb7f654d2c6638e6ee00b5f7f6d3d2986d412a1402bf79789c7a6f20ad4dce"
     },
     {
       "bytes": 41876,
@@ -278,7 +278,7 @@
     {
       "bytes": 8624,
       "path": "repos.lock",
-      "sha256": "0c1238dc0d3c16024627bb756d0722b827070e36bb2c4e7d900c88cb4a97900d"
+      "sha256": "327f209e2433d5619c71421818f75179941fe7df5c5cebf8f00afad63a039624"
     },
     {
       "bytes": 3345,
@@ -321,9 +321,9 @@
       "sha256": "b129021011ddd818cbd2ee2c62fe7b50a5348604f3e0092863122fdd6c3b4356"
     },
     {
-      "bytes": 34777,
+      "bytes": 35249,
       "path": "tests/test-build-repo-interactive.sh",
-      "sha256": "8538c61e7f9c56894ad5c1f40f062cebb05d67700acadc53007c68c29a05a5b7"
+      "sha256": "bdfd71ffbc673a4af8273b4cd9a84556ee0561d453aa5f3b71220f0bc91d176c"
     },
     {
       "bytes": 5740,
