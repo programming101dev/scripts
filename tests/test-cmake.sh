@@ -161,7 +161,7 @@ configure() {
 build() {
   local p="$1"
   RC=0
-  MAKEFLAGS= MFLAGS= MAKELEVEL=0 \
+  MAKEFLAGS='' MFLAGS='' MAKELEVEL=0 \
     cmake --build "$p/build" > "$p/build.log" 2>&1 || RC=$?
 }
 
@@ -208,7 +208,7 @@ if (( RC == 0 )); then
     touch -t 202901010000 "$PROJ/build/Makefile" \
       "$PROJ/build/CMakeFiles/cmake.check_cache"
     RC=0
-    MAKEFLAGS= MFLAGS= MAKELEVEL=0 \
+    MAKEFLAGS='' MFLAGS='' MAKELEVEL=0 \
       cmake --build "$PROJ/build" --verbose > "$PROJ/no-op-build.log" 2>&1 || RC=$?
     if (( RC == 0 )) &&
        ! grep -Eq 'Per-TU analyze stage|Generating \.p101-quality/clang-tidy\.stamp|cppcheck over entire project' \
@@ -222,7 +222,7 @@ if (( RC == 0 )); then
       > "$PROJ/src/main.c"
     touch -t 203001010000 "$PROJ/src/main.c"
     RC=0
-    MAKEFLAGS= MFLAGS= MAKELEVEL=0 \
+    MAKEFLAGS='' MFLAGS='' MAKELEVEL=0 \
       cmake --build "$PROJ/build" --verbose > "$PROJ/changed-build.log" 2>&1 || RC=$?
     if (( RC == 0 )) &&
        grep -q 'Per-TU analyze stage' "$PROJ/changed-build.log" &&
@@ -604,7 +604,7 @@ if have clang-format; then
     format_after="$(cksum "$PROJ/src/main.c")"
     if (( RC != 0 )) && [[ "$format_before" == "$format_after" ]] \
        && grep -qi 'clang-format' "$PROJ/build.log"; then
-      if MAKEFLAGS= MFLAGS= MAKELEVEL=0 \
+      if MAKEFLAGS='' MFLAGS='' MAKELEVEL=0 \
            cmake --build "$PROJ/build" --target sample_format_all \
            > "$PROJ/format.log" 2>&1; then
         build "$PROJ"
