@@ -631,12 +631,13 @@ case "$phase" in
     : > "started-$compiler"
     started_count=$(find . -name 'started-*' -type f -print | wc -l | tr -d ' ')
     [ "$started_count" -lt 4 ] || : > workers-started
+    echo "complete diagnostic for $compiler"
     attempts=0
     while [ ! -f workers-started ]; do
       attempts=$((attempts + 1))
-      [ "$attempts" -lt 1000000 ] || { echo "workers did not overlap"; exit 12; }
+      [ "$attempts" -lt 10 ] || { echo "workers did not overlap"; exit 12; }
+      sleep 1
     done
-    echo "complete diagnostic for $compiler"
     if [ "$interactive" -eq 1 ]; then
       echo "interactive repair passed for $compiler"
       exit 0

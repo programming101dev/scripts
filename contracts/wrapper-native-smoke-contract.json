@@ -141,13 +141,14 @@
     },
     {
       "allowed_error_codes": [
+        "EACCES",
         "EINVAL",
         "ESRCH",
         "EPERM"
       ],
       "error_result_expression": "NULL",
       "outcome": "success-or-error",
-      "rationale": "Updating the host utmpx database is installation-policy dependent. The smoke accepts an ordinary update or only the union of documented FreeBSD, macOS, and POSIX failures, and verifies the NULL error result.",
+      "rationale": "Updating the host utmpx database is installation-policy dependent. The smoke accepts an ordinary update or only the union of documented FreeBSD, macOS, POSIX, and reviewed Linux runtime failures, and verifies the NULL error result.",
       "function_usr": "c:@F@p101_pututxline"
     },
     {
