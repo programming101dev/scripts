@@ -70,6 +70,22 @@ class ArchitectureContractTests(unittest.TestCase):
         with self.assertRaisesRegex(INVENTORY_MODULE.InventoryError, "stale"):
             INVENTORY_MODULE.validate(document, copy.deepcopy(self.graph))
 
+    def test_generated_transaction_tree_is_not_authored_source(self) -> None:
+        generated = (
+            SCRIPTS_ROOT
+            / "target"
+            / "workspace-transactions"
+            / "candidate.example"
+            / "acceptance"
+            / "templates"
+            / "template-c"
+            / "test-all.sh"
+        )
+        authored = SCRIPTS_ROOT / "checks" / "check-example.sh"
+
+        self.assertFalse(INVENTORY_MODULE.is_tracked_source_candidate(generated))
+        self.assertTrue(INVENTORY_MODULE.is_tracked_source_candidate(authored))
+
     def test_facade_growth_is_rejected(self) -> None:
         document = copy.deepcopy(self.responsibilities)
         document["facades"][0]["maximum_lines"] = 1

@@ -121,6 +121,18 @@ prints every failed pair's complete log in manifest order instead of stopping
 at the first background exit. Use `--matrix-output <dir>` to choose a stable
 evidence directory.
 
+Set `P101_REPOSITORY_BUILD_CACHE` to an absolute directory to keep those exact
+lanes outside the checkout and reuse them across invocations. The ordinary
+`build-<lane>` path becomes a symlink to the admitted cache entry, so existing
+repository scripts retain one layout. A cache hit is acceleration, not a
+verdict: every repository is reconfigured, CMake rechecks the dependency graph,
+and compiler, source, header, flag, and quality-tool changes invalidate their
+outputs. Each entry is also bound to the exact repository worktree and shared
+build-policy bytes, so a restored tree with newer timestamps cannot conceal a
+source or policy change. GitHub Actions restores separate operating-system/
+architecture caches for repository lanes and governed check evidence, then
+saves partial progress even when a later phase fails.
+
 Preparation owns every operation whose result is shared by compiler pairs:
 the scripts refresh, all managed-repository pulls, retired-repository cleanup,
 flag-cache version comparison, compiler discovery, flag generation, shared
@@ -171,6 +183,14 @@ forcing one compiler's private sanitizer runtime into consumers built by a
 different compiler. On macOS, sanitized executables also link their
 compiler-matched ASan dylib before application libraries so its interceptors
 initialize before any p101 dylib.
+
+The distributed `build.sh` remains clean-first for a direct student invocation.
+The governed workspace driver opts into its `--incremental` behavior after the
+lane has been configured, avoiding unconditional deletion while retaining the
+same strict default at the repository boundary. Analyze, clang-tidy, and
+cppcheck stages are dependency-tracked CMake outputs; a no-op lane build reuses
+them, while source, public/dependency-header, compile-database, policy, or tool
+identity changes rerun the affected stages.
 
 `repos.txt` uses `c`, `cxx`, and `python` for active projects. A newly created,
 not-yet-populated C repository uses `c-bootstrap`: `clone-repos.sh` keeps it

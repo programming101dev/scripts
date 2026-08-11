@@ -41,9 +41,9 @@
       "sha256": "5a246310f34e3043e20750764c2ba17186f54d1dfc47b2ed6984dc875295fa7c"
     },
     {
-      "bytes": 77837,
+      "bytes": 82443,
       "path": "CMakeLists.txt",
-      "sha256": "e6f80c935fa45d7e1d33fdd9e0a67317bb4c4c96f17557ee10555ef449706e55"
+      "sha256": "7179cca30bf55c371bdc95bfda9863c8b4a4aac67213d59cdee162a37069fddb"
     },
     {
       "bytes": 14216,
@@ -221,9 +221,9 @@
       "sha256": "e7b693bc3254f883b18e3c22ffd6550178c690663c7f1bc1870b87883c16eb5f"
     },
     {
-      "bytes": 6772,
+      "bytes": 6861,
       "path": "contracts/wrapper-native-smoke-contract.json",
-      "sha256": "1961cbd47797c305318ff42e992645b9bf9a66fb1509caa10b55e9de9483ea73"
+      "sha256": "1c2fb2a51baea08109cbbbe7c3f6028752b0e797774fa082a71bd8dcb1f05d08"
     },
     {
       "bytes": 420326,
@@ -241,9 +241,9 @@
       "sha256": "2b49e18ff463e14b3c052b61895693a64c8386819545412697b5998e28c3cab1"
     },
     {
-      "bytes": 7655,
+      "bytes": 8943,
       "path": "docs/bootstrap-architecture.md",
-      "sha256": "601efd5f147b7c39b8d802d8ca07042440fdc17e686a9705a79c4b3ab8decbf5"
+      "sha256": "23ca005be4ef5671b604276ae8d40c8d54b26f91cef8a2d9c1a03452d97939da"
     },
     {
       "bytes": 6434,
@@ -266,9 +266,9 @@
       "sha256": "669b80c8415d1651f3de0df75c1ea5864f919c01a9ca5daf3216da7d8d12ee7c"
     },
     {
-      "bytes": 228275,
+      "bytes": 239410,
       "path": "generators/generate-wrapper-unit-tests.py",
-      "sha256": "857c77cb05af57962be96ee89d165ad7da5115b33227c3e81ef5bcf47ccde190"
+      "sha256": "d78775e2fa25a79b8b84692c31b4da1bdceeb8f4a99c710563b37c76e2a060d9"
     },
     {
       "bytes": 41876,
@@ -278,7 +278,7 @@
     {
       "bytes": 8624,
       "path": "repos.lock",
-      "sha256": "084008348c897ad49d520e55d7a1cb3103444d3940b8b50d50b6e42adf1fcf07"
+      "sha256": "45ee28e7631e2d22a444c4de25303cd4bd8e7d191702d65597531bbc27c1005a"
     },
     {
       "bytes": 3345,
@@ -321,9 +321,9 @@
       "sha256": "b129021011ddd818cbd2ee2c62fe7b50a5348604f3e0092863122fdd6c3b4356"
     },
     {
-      "bytes": 26658,
+      "bytes": 31011,
       "path": "tests/test-build-repo-interactive.sh",
-      "sha256": "bdbb97c191bbb7ef923d1d81fbb9f2b5222ea3ae73957e8cf758cc66309d4a7b"
+      "sha256": "16a3a516c3bd8c384c5b82961075780f6179cd28ba61a231cc12fc3f3b704d65"
     },
     {
       "bytes": 5740,
@@ -331,9 +331,9 @@
       "sha256": "5a236c83e5de7643babcc600e1a8a4394804e3dad75a4fe923a3b7bfc38ec5a1"
     },
     {
-      "bytes": 20242,
+      "bytes": 20945,
       "path": "update-all.sh",
-      "sha256": "1c728996ec9d4043b74c67c01ec897235aa3d6f03b6c4a32689ebb0786b64ad5"
+      "sha256": "1c60f5c59ebe2ac4cc6dc55c22b0773c70419b5800bb84218d3773554e99060a"
     },
     {
       "bytes": 10546,
@@ -356,9 +356,9 @@
       "sha256": "084b0d1dec135cf1b6f7b101a247ee977f01c38a602503d8b04f3709c98726e9"
     },
     {
-      "bytes": 19455,
+      "bytes": 24787,
       "path": "workspace/build-repo.sh",
-      "sha256": "416d05e697858d389f4e40480eb6e364a285bacae819e7053edec32fa6998c4f"
+      "sha256": "97ab19aadff7030f305be8eee9607644aa4dd23e7d1ee02ec6ab916562d4bc7d"
     },
     {
       "bytes": 2816,

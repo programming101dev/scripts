@@ -30,6 +30,28 @@ grep -Fq 'ln -sf "/usr/local/llvm${required}/bin/clang-tidy" /usr/local/bin/clan
   .github/workflows/p101-stack.yml)" -eq 3 ]]
 [[ "$(grep -c './update-all.sh -C ci_c_compilers.txt' \
   .github/workflows/p101-stack.yml)" -eq 3 ]]
+[[ "$(grep -c 'uses: actions/cache/restore@v4' \
+  .github/workflows/p101-stack.yml)" -eq 3 ]]
+[[ "$(grep -c 'uses: actions/cache/save@v4' \
+  .github/workflows/p101-stack.yml)" -eq 3 ]]
+[[ "$(grep -c 'P101_REPOSITORY_BUILD_CACHE=' \
+  .github/workflows/p101-stack.yml)" -eq 3 ]]
+[[ "$(grep -c 'target/check-evidence-cache' \
+  .github/workflows/p101-stack.yml)" -eq 6 ]]
+[[ "$(grep -c 'target/ci-build-cache' \
+  .github/workflows/p101-stack.yml)" -eq 9 ]]
+[[ "$(grep -c '^[[:space:]]\{12\}exit 0$' \
+  .github/workflows/p101-stack.yml)" -ge 1 ]]
+if awk '
+  /key: .*steps\.workspace-cache\.outputs\.cache-primary-key/ {
+    getline
+    if ($0 ~ /^[[:space:]]+exit 0$/) found = 1
+  }
+  END { exit found ? 0 : 1 }
+' .github/workflows/p101-stack.yml; then
+  echo 'FreeBSD VM exit leaked into an action input map.' >&2
+  exit 1
+fi
 if grep -Fq './distribution/clone-repos.sh' \
   .github/workflows/p101-stack.yml; then
   echo 'GitHub Actions clones repositories outside update-all preparation.' >&2

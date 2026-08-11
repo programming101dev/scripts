@@ -368,7 +368,11 @@ if [ "$prepare_status" -ne 0 ]; then
 fi
 printf '[PASS] workspace preparation (log: %s)\n' "$prepare_log"
 
-printf 'Starting %d compiler pair(s) in parallel.\n' "$pairs_run"
+matrix_jobs=$(parallel_jobs)
+pair_jobs=$((matrix_jobs / pairs_run))
+[ "$pair_jobs" -gt 0 ] || pair_jobs=1
+printf 'Starting %d compiler pair(s) in parallel (%d build job(s) per pair; %d total available).\n' \
+  "$pairs_run" "$pair_jobs" "$matrix_jobs"
 pids_file="$matrix_output/pids.txt"
 : > "$pids_file"
 terminate_matrix() {
@@ -395,7 +399,8 @@ while IFS='|' read -r pair_id c x pair_label; do
   (
     pair_start=$(date +%s)
     status=0
-    run_driver "$c" "$x" build "$pair_role" > "$pair_log" 2>&1 || status=$?
+    CMAKE_BUILD_PARALLEL_LEVEL="$pair_jobs" \
+      run_driver "$c" "$x" build "$pair_role" > "$pair_log" 2>&1 || status=$?
     pair_end=$(date +%s)
     elapsed=$((pair_end - pair_start))
     printf '%s\n' "$status" > "$pair_status"
@@ -468,7 +473,8 @@ if [ "$matrix_failures" -gt 0 ] && [ "$interactive" -eq 1 ]; then
     retry_tee_status=0
     (
       retry_worker_status=0
-      run_driver "$c" "$x" retry "$pair_role" || retry_worker_status=$?
+      CMAKE_BUILD_PARALLEL_LEVEL="$matrix_jobs" \
+        run_driver "$c" "$x" retry "$pair_role" || retry_worker_status=$?
       printf '%s\n' "$retry_worker_status" > "$retry_status_file"
       exit "$retry_worker_status"
     ) 2>&1 | tee "$retry_log" || retry_tee_status=$?

@@ -22,6 +22,42 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Direct repository builds remain clean-first. Only an explicit option or the
+# workspace driver's environment opts into dependency-tracked incremental use.
+build_interface="$sandbox/build-interface"
+mkdir -p "$build_interface/build" "$build_interface/bin"
+cp ../templates/template-c/build.sh "$build_interface/build.sh"
+touch "$build_interface/build/CMakeCache.txt"
+cat > "$build_interface/bin/cmake" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$*" > "$P101_TEST_CMAKE_ARGUMENTS"
+EOF
+chmod +x "$build_interface/build.sh" "$build_interface/bin/cmake"
+export P101_TEST_CMAKE_ARGUMENTS="$build_interface/cmake-arguments.txt"
+(
+  cd "$build_interface"
+  PATH="$build_interface/bin:$PATH" ./build.sh -q -b build
+)
+grep -Fq -- '--clean-first' "$P101_TEST_CMAKE_ARGUMENTS"
+(
+  cd "$build_interface"
+  PATH="$build_interface/bin:$PATH" ./build.sh -q -b build --incremental
+)
+if grep -Fq -- '--clean-first' "$P101_TEST_CMAKE_ARGUMENTS"; then
+  echo 'explicit incremental build unexpectedly cleaned its CMake tree' >&2
+  exit 1
+fi
+(
+  cd "$build_interface"
+  PATH="$build_interface/bin:$PATH" P101_INCREMENTAL_BUILD=1 \
+    ./build.sh -q -b build
+)
+if grep -Fq -- '--clean-first' "$P101_TEST_CMAKE_ARGUMENTS"; then
+  echo 'workspace incremental build unexpectedly cleaned its CMake tree' >&2
+  exit 1
+fi
+unset P101_TEST_CMAKE_ARGUMENTS
+
 # Sanitizer capability is a link-time property. A target may accept a
 # sanitizer option for compilation while lacking the corresponding runtime.
 sanitizer_flags="$sandbox/sanitizer-flags"
@@ -199,7 +235,8 @@ build_dir=""
 while [[ "$#" -gt 0 ]]; do
   case "$1" in -b) build_dir="$2"; shift 2 ;; *) shift ;; esac
 done
-printf '%s\n' "$build_dir" >> build-invocations.txt
+printf '%s incremental=%s\n' "$build_dir" \
+  "${P101_INCREMENTAL_BUILD:-unset}" >> build-invocations.txt
 EOF
 cat > "$runtime_repo/install.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -214,6 +251,10 @@ chmod +x "$runtime_repo/change-compiler.sh" "$runtime_repo/build.sh" \
   -s address > "$sandbox/runtime.stdout" 2> "$sandbox/runtime.stderr"
 [[ "$(wc -l < "$runtime_repo/configure-invocations.txt")" -eq 2 ]]
 [[ "$(wc -l < "$runtime_repo/build-invocations.txt")" -eq 2 ]]
+grep -Fq 'build-test-quality incremental=1' \
+  "$runtime_repo/build-invocations.txt"
+grep -Fq 'build-test-runtime incremental=1' \
+  "$runtime_repo/build-invocations.txt"
 grep -Fq 'build=build-test-quality sanitizers=address' \
   "$runtime_repo/configure-invocations.txt"
 grep -Fq 'build=build-test-runtime sanitizers= cmake=-DP101_RUNTIME_ONLY=ON' \
@@ -242,6 +283,58 @@ grep -Fxq 'kind=runtime' \
 grep -Fq 'build=build-test-quality sanitizers= cmake=-DP101_BUILD_KEY=test-quality' \
   "$runtime_repo/configure-invocations.txt"
 grep -Fxq -- '-b build-test-runtime' "$runtime_repo/install-arguments.txt"
+
+# Cross-run acceleration stores each exact compiler lane outside the checkout,
+# but leaves the repository's conventional build path as a transparent link.
+# A restored cache remains an input to CMake; it is not accepted as a verdict.
+rm -rf "$runtime_repo/build-test-quality"
+: > "$runtime_repo/configure-invocations.txt"
+: > "$runtime_repo/build-invocations.txt"
+P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
+  "$sandbox/scripts/workspace/build-repo.sh" \
+    -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
+    -B test-quality -U test-runtime -s "" -I \
+    > "$sandbox/cache-miss.stdout" 2> "$sandbox/cache-miss.stderr"
+[[ -L "$runtime_repo/build-test-quality" ]]
+grep -Fq 'Build cache MISS' "$sandbox/cache-miss.stdout"
+grep -Fxq 'cache_state=miss' \
+  "$runtime_repo/build-test-quality/p101-build-lane.txt"
+grep -Eq '^orchestrator_identity=policy:[0-9a-f]{40}$' \
+  "$runtime_repo/build-test-quality/p101-build-lane.txt"
+policy_identity_before="$(grep '^orchestrator_identity=' \
+  "$runtime_repo/build-test-quality/p101-build-lane.txt")"
+grep -Fq 'build-test-quality incremental=1' \
+  "$runtime_repo/build-invocations.txt"
+
+: > "$runtime_repo/configure-invocations.txt"
+: > "$runtime_repo/build-invocations.txt"
+P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
+  "$sandbox/scripts/workspace/build-repo.sh" \
+    -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
+    -B test-quality -U test-runtime -s "" -I \
+    > "$sandbox/cache-hit.stdout" 2> "$sandbox/cache-hit.stderr"
+grep -Fq 'Build cache HIT' "$sandbox/cache-hit.stdout"
+grep -Fxq 'cache_state=hit' \
+  "$runtime_repo/build-test-quality/p101-build-lane.txt"
+[[ "$(wc -l < "$runtime_repo/configure-invocations.txt")" -eq 1 ]]
+[[ "$(wc -l < "$runtime_repo/build-invocations.txt")" -eq 1 ]]
+
+printf '\n# Deliberate build-policy identity change.\n' \
+  >> "$sandbox/scripts/workspace/build-lane.sh"
+P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
+  "$sandbox/scripts/workspace/build-repo.sh" \
+    -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
+    -B test-quality -U test-runtime -s "" -I \
+    > "$sandbox/cache-invalidated.stdout" 2> "$sandbox/cache-invalidated.stderr"
+grep -Fq 'Build cache MISS' "$sandbox/cache-invalidated.stdout"
+policy_identity_after="$(grep '^orchestrator_identity=' \
+  "$runtime_repo/build-test-quality/p101-build-lane.txt")"
+if [[ "$policy_identity_before" == "$policy_identity_after" ]]; then
+  echo 'build-policy change retained a stale lane receipt' >&2
+  exit 1
+fi
+grep -Eq '^orchestrator_identity=policy:[0-9a-f]{40}$' \
+  "$runtime_repo/build-test-quality/p101-build-lane.txt"
 
 # Parallel matrix mode builds the host runtime without installing it, then a
 # separate finalize pass installs without recompiling and restores stable host
@@ -427,6 +520,10 @@ done
 case "$phase" in
   --prepare-only|--finalize-only) exit 0 ;;
   --build-only)
+    if [ "${CMAKE_BUILD_PARALLEL_LEVEL:-0}" -le 0 ]; then
+      echo "compiler worker received no positive CMake build budget"
+      exit 13
+    fi
     : > "started-$compiler"
     attempts=0
     while [ "$(find . -maxdepth 1 -name 'started-*' -type f | wc -l | tr -d ' ')" -lt 4 ]; do

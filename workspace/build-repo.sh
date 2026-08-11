@@ -24,6 +24,7 @@ defer_install=false
 finalize_only=false
 build_key=""
 runtime_build_key=""
+repository_build_cache="${P101_REPOSITORY_BUILD_CACHE:-}"
 
 usage() {
   cat <<USAGE >&2
@@ -103,6 +104,17 @@ if $defer_install && $finalize_only; then
   echo "Error: --defer-install and --finalize-only are mutually exclusive" >&2
   exit 2
 fi
+if [[ -n "$repository_build_cache" ]]; then
+  case "$repository_build_cache" in
+    /*) ;;
+    *)
+      echo "Error: P101_REPOSITORY_BUILD_CACHE must be an absolute path" >&2
+      exit 2
+      ;;
+  esac
+  mkdir -p -- "$repository_build_cache"
+  repository_build_cache="$(CDPATH='' cd -P -- "$repository_build_cache" && pwd -P)"
+fi
 
 # ----------------- helpers -----------------
 say() { printf '%b\n' "$*"; }
@@ -112,6 +124,7 @@ write_lane_receipt() {
   local directory="$1"
   local lane="$2"
   local kind="$3"
+  local cache_state="${4:-disabled}"
   local lane_sanitizers="$sanitizers"
   local lane_coverage="$coverage_mode"
   local lane_profile="$profile_mode"
@@ -134,8 +147,122 @@ write_lane_receipt() {
     printf 'sanitizers=%s\n' "$lane_sanitizers"
     printf 'coverage=%s\n' "$lane_coverage"
     printf 'profile=%s\n' "$lane_profile"
+    printf 'dependency_policy=exact-workspace-lane\n'
+    printf 'cache_state=%s\n' "$cache_state"
+    printf 'source_identity=%s\n' "$repository_source_identity"
+    printf 'orchestrator_identity=%s\n' "$orchestrator_source_identity"
   } > "$temporary"
   mv -f -- "$temporary" "$directory/p101-build-lane.txt"
+}
+
+git_source_identity() {
+  local commit
+  local dirty_identity
+  local path
+
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printf 'external:%s' "${GITHUB_SHA:-snapshot}"
+    return 0
+  fi
+  commit="$(git rev-parse HEAD)"
+  if git diff --quiet -- && git diff --cached --quiet -- &&
+     [[ -z "$(git ls-files --others --exclude-standard | sed -n '1p')" ]]; then
+    printf 'commit:%s' "$commit"
+    return 0
+  fi
+
+  dirty_identity="$({
+    printf 'HEAD %s\n' "$commit"
+    git diff --binary HEAD --
+    while IFS= read -r path || [[ -n "$path" ]]; do
+      printf 'UNTRACKED %s ' "$path"
+      git hash-object -- "$path"
+    done < <(git ls-files --others --exclude-standard)
+  } | git hash-object --stdin)"
+  printf 'worktree:%s' "$dirty_identity"
+}
+
+orchestrator_build_identity() {
+  local path
+  local policy_identity
+
+  policy_identity="$({
+    {
+      printf '%s\n' CMakeLists.txt
+      printf '%s\n' workspace/build-repo.sh
+      printf '%s\n' workspace/build-lane.sh
+      printf '%s\n' shared/compilers.sh
+      if [[ -d cmake ]]; then
+        find cmake -type f -print
+      fi
+    } | LC_ALL=C sort -u | while IFS= read -r path || [[ -n "$path" ]]; do
+      [[ -f "$path" ]] || continue
+      printf '%s ' "$path"
+      git hash-object -- "$path"
+    done
+  } | git hash-object --stdin)"
+  printf 'policy:%s' "$policy_identity"
+}
+
+activate_repository_build_cache() {
+  local repository_label="$1"
+  local directory="$2"
+  local cache_directory
+  local cache_state_label
+  local current_target
+  local receipt
+  local valid_identity=false
+
+  P101_LANE_CACHE_STATE=disabled
+  [[ -n "$repository_build_cache" ]] || return 0
+  case "$repository_build_cache" in
+    /*) ;;
+    *)
+      printf 'Error: P101_REPOSITORY_BUILD_CACHE must be an absolute path: %s\n' \
+        "$repository_build_cache" >&2
+      return 2
+      ;;
+  esac
+
+  cache_directory="$repository_build_cache/$repository_label/$directory"
+  mkdir -p -- "$(dirname -- "$cache_directory")"
+  if [[ -L "$directory" ]]; then
+    current_target="$(CDPATH='' cd -P -- "$directory" 2>/dev/null && pwd -P || true)"
+    if [[ "$current_target" != "$cache_directory" ]]; then
+      printf 'Error: build-lane symlink points outside its admitted cache: %s -> %s\n' \
+        "$directory" "${current_target:-missing}" >&2
+      return 2
+    fi
+  elif [[ -e "$directory" ]]; then
+    if [[ -e "$cache_directory" ]]; then
+      printf 'Error: both repository and cache copies exist for build lane %s.\n' \
+        "$directory" >&2
+      return 2
+    fi
+    mv -- "$directory" "$cache_directory"
+    ln -s -- "$cache_directory" "$directory"
+  else
+    mkdir -p -- "$cache_directory"
+    ln -s -- "$cache_directory" "$directory"
+  fi
+
+  receipt="$cache_directory/p101-build-lane.txt"
+  if [[ -f "$cache_directory/CMakeCache.txt" && -f "$receipt" ]] &&
+     grep -Fqx "source_identity=$repository_source_identity" "$receipt" &&
+     grep -Fqx "orchestrator_identity=$orchestrator_source_identity" "$receipt"; then
+    valid_identity=true
+  fi
+  if $valid_identity; then
+    P101_LANE_CACHE_STATE=hit
+  else
+    if [[ -n "$(find "$cache_directory" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+      rm -rf -- "$cache_directory"
+      mkdir -p -- "$cache_directory"
+    fi
+    P101_LANE_CACHE_STATE=miss
+  fi
+  cache_state_label="$(printf '%s' "$P101_LANE_CACHE_STATE" | tr '[:lower:]' '[:upper:]')"
+  say "  -> Build cache ${cache_state_label}: ${repository_label}/${directory}"
 }
 
 lane_receipt_matches() {
@@ -244,6 +371,7 @@ CXX_PATH="$(resolve_any "$cxx_compiler")"
 CLANG_FORMAT_PATH="$(resolve_any "$clang_format_name")"
 CLANG_TIDY_PATH="$(resolve_any "$clang_tidy_name")"
 CPPCHECK_PATH="$(resolve_any "$cppcheck_name")"
+orchestrator_source_identity="$(orchestrator_build_identity)"
 
 env_on() {
   local value="${1:-}"
@@ -347,8 +475,12 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   fi
 
   pushd "$dir" >/dev/null
+  repository_source_identity="$(git_source_identity)"
+  repository_cache_label="$(printf '%s' "$dir" | sed 's#[^A-Za-z0-9_.+-]#_#g')"
   quality_build_dir=""
   runtime_build_dir=""
+  quality_cache_state=disabled
+  runtime_cache_state=disabled
   runtime_install_supported=1
   make_tree=false
 
@@ -365,6 +497,13 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       fi
       quality_build_dir="build-${build_key}"
       if change_compiler_supports_build_dir; then
+        if activate_repository_build_cache "$repository_cache_label" "$quality_build_dir"; then
+          quality_cache_state="$P101_LANE_CACHE_STATE"
+        else
+          status=$?
+          popd >/dev/null
+          exit "$status"
+        fi
         change_args=(-c "$CC_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH" -b "$quality_build_dir")
       else
         # A Makefile tree accepts its toolchain through make's environment.
@@ -380,6 +519,13 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         continue
       fi
       quality_build_dir="build-${build_key}"
+      if activate_repository_build_cache "$repository_cache_label" "$quality_build_dir"; then
+        quality_cache_state="$P101_LANE_CACHE_STATE"
+      else
+        status=$?
+        popd >/dev/null
+        exit "$status"
+      fi
       change_args=(-c "$CXX_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH" -b "$quality_build_dir")
       ;;
     python)
@@ -405,7 +551,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         "-DP101_PROFILE_MODE=$([[ "$profile_mode" -eq 1 ]] && printf ON || printf OFF)")
       say "Configuring ${dir} in ${quality_build_dir}"
       if run_repo_phase "configure ${dir}" ./change-compiler.sh "${change_args[@]}"; then
-        write_lane_receipt "$quality_build_dir" "$build_key" quality
+        write_lane_receipt "$quality_build_dir" "$build_key" quality "${quality_cache_state:-disabled}"
       else
         status=$?
         popd >/dev/null
@@ -416,9 +562,9 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     if [[ -x ./build.sh ]]; then
       say "Building: ${dir}"
       if $make_tree; then
-        build_command=(env "CC=$CC_PATH" "CXX=$CXX_PATH" "CLANG_FORMAT=$CLANG_FORMAT_PATH" "CLANG_TIDY=$CLANG_TIDY_PATH" "CPPCHECK=$CPPCHECK_PATH" ./build.sh)
+        build_command=(env P101_INCREMENTAL_BUILD=1 "CC=$CC_PATH" "CXX=$CXX_PATH" "CLANG_FORMAT=$CLANG_FORMAT_PATH" "CLANG_TIDY=$CLANG_TIDY_PATH" "CPPCHECK=$CPPCHECK_PATH" ./build.sh)
       else
-        build_command=(./build.sh -b "$quality_build_dir")
+        build_command=(env P101_INCREMENTAL_BUILD=1 ./build.sh -b "$quality_build_dir")
       fi
       if [[ "${#build_script_args[@]}" -gt 0 ]]; then
         build_command+=("${build_script_args[@]}")
@@ -453,6 +599,14 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       say "  -> SKIP install: change-compiler.sh cannot create a separate instrumentation-free runtime artifact."
     else
       runtime_build_dir="build-${runtime_build_key}"
+      if activate_repository_build_cache "$repository_cache_label" "$runtime_build_dir"; then
+        runtime_cache_state="$P101_LANE_CACHE_STATE"
+      else
+        status=$?
+        printf '%s\n' "$quality_build_dir" > .last-build-dir
+        popd >/dev/null
+        exit "$status"
+      fi
       if [[ "$repo_type" == "cxx" ]]; then
         runtime_change_args=(-c "$CXX_PATH")
       else
@@ -477,7 +631,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
           env P101_COVERAGE=0 P101_PROFILE=0 \
           CFLAGS= CXXFLAGS= CPPFLAGS= LDFLAGS= \
           ./change-compiler.sh "${runtime_change_args[@]}"; then
-        write_lane_receipt "$runtime_build_dir" "$runtime_build_key" runtime
+        write_lane_receipt "$runtime_build_dir" "$runtime_build_key" runtime "${runtime_cache_state:-disabled}"
       else
         status=$?
         printf '%s\n' "$quality_build_dir" > .last-build-dir
@@ -487,9 +641,9 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
 
       say "Building instrumentation-free runtime artifact: ${dir}"
       if [[ "${#build_script_args[@]}" -gt 0 ]]; then
-        runtime_build_command=(./build.sh -b "$runtime_build_dir" "${build_script_args[@]}")
+        runtime_build_command=(env P101_INCREMENTAL_BUILD=1 ./build.sh -b "$runtime_build_dir" "${build_script_args[@]}")
       else
-        runtime_build_command=(./build.sh -b "$runtime_build_dir")
+        runtime_build_command=(env P101_INCREMENTAL_BUILD=1 ./build.sh -b "$runtime_build_dir")
       fi
       if run_repo_phase "build runtime artifact ${dir}" \
           "${runtime_build_command[@]}"; then

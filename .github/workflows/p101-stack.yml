@@ -88,11 +88,22 @@ jobs:
             "$candidate" --version | grep -Eq "clang-format version ${required}\." \
               || { echo "::error::$candidate is not clang-format ${required}"; exit 1; }
           done
+      - name: Restore exact workspace evidence and build lanes
+        id: workspace-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            scripts/target/check-evidence-cache
+            scripts/target/ci-build-cache
+          key: p101-workspace-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: |
+            p101-workspace-v1-${{ runner.os }}-${{ runner.arch }}-
       - name: Prepare macOS once, then build compiler pairs
         id: update
         run: |
           cd scripts
           export P101_QUIET=1
+          export P101_REPOSITORY_BUILD_CACHE="$PWD/target/ci-build-cache"
           printf 'clang\n' > ci_c_compilers.txt
           printf 'clang++\n' > ci_cxx_compilers.txt
           mkdir -p ci-output
@@ -103,6 +114,14 @@ jobs:
           fi
           cat ci-output/update-all.log
           exit "$status"
+      - name: Save exact workspace evidence and build lanes
+        if: ${{ always() }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            scripts/target/check-evidence-cache
+            scripts/target/ci-build-cache
+          key: ${{ steps.workspace-cache.outputs.cache-primary-key }}
       - name: Bind macOS acceptance to workspace candidate
         if: ${{ always() && inputs.candidate_id != '' && steps.update.outcome == 'success' }}
         env:
@@ -165,11 +184,22 @@ jobs:
           clang-format --version
           clang-format --version | grep -Eq "clang-format version ${required}\." \
             || { echo "::error::clang-format is not version ${required}"; exit 1; }
+      - name: Restore exact workspace evidence and build lanes
+        id: workspace-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            scripts/target/check-evidence-cache
+            scripts/target/ci-build-cache
+          key: p101-workspace-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: |
+            p101-workspace-v1-${{ runner.os }}-${{ runner.arch }}-
       - name: Prepare Linux once, then build compiler pairs
         id: update
         run: |
           cd scripts
           export P101_QUIET=1
+          export P101_REPOSITORY_BUILD_CACHE="$PWD/target/ci-build-cache"
           printf 'clang\n' > ci_c_compilers.txt
           printf 'clang++\n' > ci_cxx_compilers.txt
           mkdir -p ci-output
@@ -180,6 +210,14 @@ jobs:
           fi
           cat ci-output/update-all.log
           exit "$status"
+      - name: Save exact workspace evidence and build lanes
+        if: ${{ always() }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            scripts/target/check-evidence-cache
+            scripts/target/ci-build-cache
+          key: ${{ steps.workspace-cache.outputs.cache-primary-key }}
       - name: Bind Linux acceptance to workspace candidate
         if: ${{ always() && inputs.candidate_id != '' && steps.update.outcome == 'success' }}
         env:
@@ -224,6 +262,16 @@ jobs:
       - uses: actions/checkout@v5
         with:
           path: scripts
+      - name: Restore exact workspace evidence and build lanes
+        id: workspace-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            scripts/target/check-evidence-cache
+            scripts/target/ci-build-cache
+          key: p101-workspace-v1-${{ runner.os }}-${{ runner.arch }}-freebsd-${{ github.sha }}
+          restore-keys: |
+            p101-workspace-v1-${{ runner.os }}-${{ runner.arch }}-freebsd-
       - name: Prepare FreeBSD once, then build compiler pairs
         id: freebsd-check
         uses: vmactions/freebsd-vm@v1
@@ -252,6 +300,7 @@ jobs:
             cd scripts
             git config --global --add safe.directory "$(pwd -P)"
             export P101_QUIET=1
+            export P101_REPOSITORY_BUILD_CACHE="$PWD/target/ci-build-cache"
             status=0
             failed_phase=none
             mkdir -p ci-output
@@ -279,6 +328,14 @@ jobs:
             printf '%s\n' "$failed_phase" > ci-output/freebsd-failed-phase
             printf '%s\n' "$status" > ci-output/freebsd-exit-code
             exit 0
+      - name: Save exact workspace evidence and build lanes
+        if: ${{ always() }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            scripts/target/check-evidence-cache
+            scripts/target/ci-build-cache
+          key: ${{ steps.workspace-cache.outputs.cache-primary-key }}
       - name: Publish CI summary
         if: ${{ always() }}
         env:

@@ -15,10 +15,17 @@ WORKSPACE = SCRIPTS_ROOT.parent
 INVENTORY = SCRIPTS_ROOT / "contracts" / "p101-test-inventory.json"
 GRAPH = SCRIPTS_ROOT / "contracts" / "p101-check-graph.json"
 VERIFY_NAME = re.compile(r"^(?:check|test)-.*\.(?:sh|py)$")
+GENERATED_WORKSPACE_ROOTS = frozenset({"target"})
 
 
 class InventoryError(ValueError):
     """A verification entry point has no declared owner or runner."""
+
+
+def is_tracked_source_candidate(path: Path) -> bool:
+    """Return whether *path* belongs to the authored scripts source tree."""
+    relative = path.relative_to(SCRIPTS_ROOT)
+    return not relative.parts or relative.parts[0] not in GENERATED_WORKSPACE_ROOTS
 
 
 def require_text(row: dict[str, Any], key: str, context: str) -> str:
@@ -130,7 +137,9 @@ def validate(document: dict[str, Any], graph: dict[str, Any]) -> dict[str, int]:
         path.relative_to(SCRIPTS_ROOT).as_posix()
         for directory in discovery_roots
         for path in directory.rglob("*")
-        if path.is_file() and VERIFY_NAME.match(path.name)
+        if path.is_file()
+        and is_tracked_source_candidate(path)
+        and VERIFY_NAME.match(path.name)
     }
     unknown_exclusions = exclusions - discovered
     if unknown_exclusions:

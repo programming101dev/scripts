@@ -47,6 +47,21 @@ host runtime artifacts. The host pair then configures `workspace/CMakeLists.txt`
 and builds `p101_acceptance`. `--skip-acceptance` is the explicit bring-up
 escape hatch; strict acceptance is the default.
 
+Repository build reuse is deliberately below the judgment boundary. When
+`P101_REPOSITORY_BUILD_CACHE` names an absolute cache root, each exact lane's
+physical CMake tree lives below that root and the repository's conventional
+build path is a symlink to it. Restoring such a tree never constitutes a pass:
+its receipt must match both the repository worktree identity and the narrow
+shared build-policy identity. A mismatch discards that lane before configure,
+preventing restored artifact timestamps from hiding changed inputs. The
+repository is then configured again, CMake validates its dependency graph, and
+dependency-tracked compile, analyze, clang-tidy, and cppcheck outputs rerun when
+their admitted source/header, compile database, policy, or tool identity has
+changed. The tradeoff is extra cache storage and reliance on CMake's declared
+dependency graph in exchange for avoiding unconditional clean builds. Direct
+repository builds retain clean-first behavior; only the workspace orchestrator
+opts into incremental reuse after establishing the exact lane.
+
 GitHub Actions uses this target once. It no longer runs a second
 `check-after-update-all.sh` pass after `update-all.sh`; the compatibility script
 is the policy runner invoked from `p101_workspace_checks`. Release preflight
@@ -106,6 +121,9 @@ ceilings, not benchmark claims.
 - A warm incremental replay proves exact reuse only for the current workspace,
   toolchain, policy, and workload identity. It says nothing about a different
   checkout or machine.
+- Repository build caches cannot detect an undeclared generated input. They
+  accelerate the same CMake graph but do not strengthen its completeness; the
+  clean compiler/platform matrix remains the portability evidence.
 - Independent Git repositories cannot be updated or rolled back as one remote
   transaction. The candidate gives exact, fail-closed, resumable publication;
   it does not claim cross-repository rollback.

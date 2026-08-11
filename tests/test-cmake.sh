@@ -6,7 +6,9 @@
 # past bugs have violated:
 #
 #   exe-simple         configure+build succeed (baseline pipeline:
-#                      compile -> analyze -> tidy -> cppcheck)
+#                      compile -> analyze -> tidy -> cppcheck); a no-op build
+#                      reuses quality receipts, while a source edit invalidates
+#                      all three dependency-tracked quality stages
 #   runtime-only       consumer artifact builds without rerunning the analyzer
 #                      pipeline and rejects sanitizer-bearing configurations
 #   runtime-link       keyed runtime-only consumers resolve only the exact
@@ -190,8 +192,36 @@ printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
 configure "$PROJ"
 if (( RC == 0 )); then
   build "$PROJ"
-  if (( RC == 0 )); then ok "exe-simple: configure+build (full analysis pipeline)"
-  else bad "exe-simple: build failed" "$PROJ/build.log"; fi
+  if (( RC == 0 )); then
+    ok "exe-simple: configure+build (full analysis pipeline)"
+    RC=0
+    cmake --build "$PROJ/build" --verbose > "$PROJ/no-op-build.log" 2>&1 || RC=$?
+    if (( RC == 0 )) &&
+       ! grep -Eq 'RunAnalyzeFromCompileDB|RunClangTidyOverList|running: .*cppcheck' \
+         "$PROJ/no-op-build.log"; then
+      ok "exe-simple: no-op build reuses dependency-tracked quality stages"
+    else
+      bad "exe-simple: no-op build reran a quality stage" "$PROJ/no-op-build.log"
+    fi
+
+    printf 'int main(void)\n{\n    /* Trigger dependency invalidation without changing behavior. */\n    return 0;\n}\n' \
+      > "$PROJ/src/main.c"
+    touch -t 203001010000 "$PROJ/src/main.c"
+    RC=0
+    cmake --build "$PROJ/build" --verbose > "$PROJ/changed-build.log" 2>&1 || RC=$?
+    if (( RC == 0 )) &&
+       grep -q 'RunAnalyzeFromCompileDB' "$PROJ/changed-build.log" &&
+       grep -q 'RunClangTidyOverList' "$PROJ/changed-build.log" &&
+       grep -Eq 'running: .*cppcheck|FailIfCppcheckDiagnostics' \
+         "$PROJ/changed-build.log"; then
+      ok "exe-simple: source edit invalidates every quality stage"
+    else
+      bad "exe-simple: source edit did not invalidate every quality stage" \
+        "$PROJ/changed-build.log"
+    fi
+  else
+    bad "exe-simple: build failed" "$PROJ/build.log"
+  fi
 else
   bad "exe-simple: configure failed" "$PROJ/configure.log"
 fi

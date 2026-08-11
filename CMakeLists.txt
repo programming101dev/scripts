@@ -1275,14 +1275,19 @@ endif ()
 # --- Robust arg/file passing for clang-tidy (via .cmake manifests)
 set(_TIDY_ARGS_CMAKE "${CMAKE_BINARY_DIR}/tidy_args.cmake")
 set(_TIDY_FILES_CMAKE "${CMAKE_BINARY_DIR}/tidy_files.cmake")
+set(_TIDY_ARGS_CMAKE_TMP "${_TIDY_ARGS_CMAKE}.tmp")
+set(_TIDY_FILES_CMAKE_TMP "${_TIDY_FILES_CMAKE}.tmp")
 
-file(WRITE "${_TIDY_ARGS_CMAKE}" "set(P101_TIDY_ARGS_LIST\n")
+file(WRITE "${_TIDY_ARGS_CMAKE_TMP}" "set(P101_TIDY_ARGS_LIST\n")
 foreach (_a IN LISTS _P101_TIDY_ARGS)
     string(REPLACE "\\" "\\\\" _a_esc "${_a}")
     string(REPLACE "\"" "\\\"" _a_esc "${_a_esc}")
-    file(APPEND "${_TIDY_ARGS_CMAKE}" "  \"${_a_esc}\"\n")
+    file(APPEND "${_TIDY_ARGS_CMAKE_TMP}" "  \"${_a_esc}\"\n")
 endforeach ()
-file(APPEND "${_TIDY_ARGS_CMAKE}" ")\n")
+file(APPEND "${_TIDY_ARGS_CMAKE_TMP}" ")\n")
+execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${_TIDY_ARGS_CMAKE_TMP}" "${_TIDY_ARGS_CMAKE}")
+file(REMOVE "${_TIDY_ARGS_CMAKE_TMP}")
 
 set(_TIDY_FILES)
 foreach (_abs IN LISTS _ALL_SOURCES_FOR_FORMAT)
@@ -1295,28 +1300,73 @@ foreach (_abs IN LISTS _ALL_SOURCES_FOR_FORMAT)
                 "out-of-tree path almost always indicates a config.cmake error.")
     endif ()
 endforeach ()
-file(WRITE "${_TIDY_FILES_CMAKE}" "set(P101_TIDY_FILES_LIST\n")
+file(WRITE "${_TIDY_FILES_CMAKE_TMP}" "set(P101_TIDY_FILES_LIST\n")
 foreach (_f IN LISTS _TIDY_FILES)
     string(REPLACE "\\" "\\\\" _f_esc "${_f}")
     string(REPLACE "\"" "\\\"" _f_esc "${_f_esc}")
-    file(APPEND "${_TIDY_FILES_CMAKE}" "  \"${_f_esc}\"\n")
+    file(APPEND "${_TIDY_FILES_CMAKE_TMP}" "  \"${_f_esc}\"\n")
 endforeach ()
-file(APPEND "${_TIDY_FILES_CMAKE}" ")\n")
+file(APPEND "${_TIDY_FILES_CMAKE_TMP}" ")\n")
+execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${_TIDY_FILES_CMAKE_TMP}" "${_TIDY_FILES_CMAKE}")
+file(REMOVE "${_TIDY_FILES_CMAKE_TMP}")
+
+set(_P101_LOCAL_DEPENDENCY_HEADERS)
+foreach (_p101_dependency_include IN LISTS _LOCAL_INC_DIRS)
+    file(GLOB_RECURSE _p101_dependency_headers CONFIGURE_DEPENDS
+            "${_p101_dependency_include}/*.h"
+            "${_p101_dependency_include}/*.hh"
+            "${_p101_dependency_include}/*.hpp")
+    list(APPEND _P101_LOCAL_DEPENDENCY_HEADERS ${_p101_dependency_headers})
+endforeach ()
+set(_P101_QUALITY_INPUTS
+        ${_ALL_SOURCES_FOR_FORMAT}
+        ${_ALL_HEADERS_FOR_INSTALL}
+        ${_P101_LOCAL_DEPENDENCY_HEADERS}
+        "${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt"
+        "${CMAKE_CURRENT_SOURCE_DIR}/config.cmake")
+list(REMOVE_DUPLICATES _P101_QUALITY_INPUTS)
+
+execute_process(COMMAND "${CLANG_TIDY_NAME}" --version
+        OUTPUT_VARIABLE _P101_TIDY_VERSION
+        ERROR_VARIABLE _P101_TIDY_VERSION)
+execute_process(COMMAND "${CPPCHECK_NAME}" --version
+        OUTPUT_VARIABLE _P101_CPPCHECK_VERSION
+        ERROR_VARIABLE _P101_CPPCHECK_VERSION)
+set(_P101_QUALITY_TOOL_IDENTITY
+        "${CMAKE_BINARY_DIR}/p101-quality-tool-identity.txt")
+set(_P101_QUALITY_TOOL_IDENTITY_TMP
+        "${_P101_QUALITY_TOOL_IDENTITY}.tmp")
+file(WRITE "${_P101_QUALITY_TOOL_IDENTITY_TMP}"
+        "clang-tidy=${CLANG_TIDY_NAME}\n${_P101_TIDY_VERSION}\n"
+        "cppcheck=${CPPCHECK_NAME}\n${_P101_CPPCHECK_VERSION}\n")
+execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${_P101_QUALITY_TOOL_IDENTITY_TMP}" "${_P101_QUALITY_TOOL_IDENTITY}")
+file(REMOVE "${_P101_QUALITY_TOOL_IDENTITY_TMP}")
 
 set(RUN_TIDY_SCRIPT "${P101_CMAKE_DIR}/RunClangTidyOverList.cmake")
 
-add_custom_target(${PROJECT_NAME}_tidy_all
-        ALL
+set(_P101_ANALYZE_STAMP "${CMAKE_BINARY_DIR}/.p101-quality/analyze.stamp")
+set(_P101_TIDY_STAMP "${CMAKE_BINARY_DIR}/.p101-quality/clang-tidy.stamp")
+add_custom_command(
+        OUTPUT "${_P101_TIDY_STAMP}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/.p101-quality"
         COMMAND ${CMAKE_COMMAND}
         -DCLANG_TIDY_EXEC=${CLANG_TIDY_NAME}
         -DDB=${P101_TIDY_DB_DIR}
         -DARGS_CMAKE=${_TIDY_ARGS_CMAKE}
         -DFILES_CMAKE=${_TIDY_FILES_CMAKE}
         -P "${RUN_TIDY_SCRIPT}"
-        DEPENDS ${PROJECT_NAME}_tidy_db
+        COMMAND ${CMAKE_COMMAND} -E touch "${_P101_TIDY_STAMP}"
+        DEPENDS "${P101_TIDY_DB}" "${_TIDY_ARGS_CMAKE}"
+        "${_TIDY_FILES_CMAKE}" "${RUN_TIDY_SCRIPT}"
+        "${_P101_QUALITY_TOOL_IDENTITY}" "${_P101_ANALYZE_STAMP}"
+        ${_P101_QUALITY_INPUTS}
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
         VERBATIM
 )
+add_custom_target(${PROJECT_NAME}_tidy_all ALL
+        DEPENDS "${_P101_TIDY_STAMP}")
 
 # =========================
 # Generic "ANALYZE" stage (syntax-only, using compile_commands.json)
@@ -1329,17 +1379,24 @@ if (UNIX)
     execute_process(COMMAND chmod +x "${P101_ANALYZE_DB_SCRIPT}" ERROR_QUIET)
 endif()
 
-add_custom_target(${PROJECT_NAME}_analyze_all ALL
+add_custom_command(
+        OUTPUT "${_P101_ANALYZE_STAMP}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/.p101-quality"
         COMMAND ${CMAKE_COMMAND} -E echo "${ICON} running analyze stage from compile_commands.json"
         COMMAND "${PYTHON3_EXECUTABLE}" "${P101_ANALYZE_DB_SCRIPT}"
         "${CMAKE_BINARY_DIR}/compile_commands.json"
         "${P101_ANALYZE_DIR}"
         $<IF:$<BOOL:${P101_ANALYZE_FAIL_ON_DIAGNOSTICS}>,1,0>
-        DEPENDS "${CMAKE_BINARY_DIR}/compile_commands.json" "${P101_ANALYZE_DB_SCRIPT}"
+        COMMAND ${CMAKE_COMMAND} -E touch "${_P101_ANALYZE_STAMP}"
+        DEPENDS "${CMAKE_BINARY_DIR}/compile_commands.json"
+        "${P101_ANALYZE_DB_SCRIPT}" ${P101_PRIMARY_TARGETS}
+        ${_P101_QUALITY_INPUTS}
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
         USES_TERMINAL
         COMMENT "Per-TU analyze stage (syntax-only) using flags from compile DB"
 )
+add_custom_target(${PROJECT_NAME}_analyze_all ALL
+        DEPENDS "${_P101_ANALYZE_STAMP}")
 
 # ===== ENFORCE ORDER: compile -> analyze -> tidy =====
 # (guarded: add_dependencies() with no dependency arguments is a hard
@@ -1505,7 +1562,10 @@ endforeach ()
 set(CPPCHECK_LOG "${CMAKE_BINARY_DIR}/cppcheck.log")
 set(CPPCHECK_FAIL_SCRIPT "${P101_CMAKE_DIR}/FailIfCppcheckDiagnostics.cmake")
 
-add_custom_target(${PROJECT_NAME}_cppcheck_all ALL
+set(_P101_CPPCHECK_STAMP "${CMAKE_BINARY_DIR}/.p101-quality/cppcheck.stamp")
+add_custom_command(
+        OUTPUT "${_P101_CPPCHECK_STAMP}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/.p101-quality"
         COMMAND ${CMAKE_COMMAND} -E echo "${ICON} running: ${CPPCHECK_NAME} [see log]"
         COMMAND "${CPPCHECK_NAME}" ${P101_CPPCHECK_ARGS_LIST}
         ${_CPPCHECK_SUPPRESSIONS}
@@ -1514,8 +1574,14 @@ add_custom_target(${PROJECT_NAME}_cppcheck_all ALL
         --project=${CMAKE_BINARY_DIR}/compile_commands.json
         ${_CPPCHECK_I_ARGS}
         COMMAND ${CMAKE_COMMAND} -DLOGFILE=${CPPCHECK_LOG} -P "${CPPCHECK_FAIL_SCRIPT}"
+        COMMAND ${CMAKE_COMMAND} -E touch "${_P101_CPPCHECK_STAMP}"
+        DEPENDS "${CMAKE_BINARY_DIR}/compile_commands.json"
+        "${CPPCHECK_FAIL_SCRIPT}" "${_P101_QUALITY_TOOL_IDENTITY}"
+        "${_P101_TIDY_STAMP}" ${_P101_QUALITY_INPUTS}
         USES_TERMINAL
         COMMENT "cppcheck over entire project, fail on any diagnostics")
+add_custom_target(${PROJECT_NAME}_cppcheck_all ALL
+        DEPENDS "${_P101_CPPCHECK_STAMP}")
 
 # ENFORCE: cppcheck after tidy (and thus after analyze/compile/format)
 if (P101_PRIMARY_TARGETS)
@@ -1668,11 +1734,20 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
     set(CLANG_SA_FAIL_SCRIPT "${P101_CMAKE_DIR}/FailIfClangSADiagnostics.cmake")
 
     if (_SA_STAMPS)
-        add_custom_target(${PROJECT_NAME}_clang_sa_all ALL
-                DEPENDS ${_SA_STAMPS}
+        set(_P101_CLANG_SA_DIAGNOSTICS_STAMP
+                "${P101_CLANG_SA_DIR}/diagnostics.stamp")
+        add_custom_command(
+                OUTPUT "${_P101_CLANG_SA_DIAGNOSTICS_STAMP}"
                 COMMAND ${CMAKE_COMMAND} -E env P101_CLANG_SA_FAIL=$<IF:$<BOOL:${P101_CLANG_SA_FAIL_ON_DIAGNOSTICS}>,1,0>
                 ${CMAKE_COMMAND} -DDIR=${P101_CLANG_SA_DIR} -P "${CLANG_SA_FAIL_SCRIPT}"
+                COMMAND ${CMAKE_COMMAND} -E touch
+                "${_P101_CLANG_SA_DIAGNOSTICS_STAMP}"
+                DEPENDS ${_SA_STAMPS} "${CLANG_SA_FAIL_SCRIPT}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt"
+                "${CMAKE_CURRENT_SOURCE_DIR}/config.cmake"
                 COMMENT "Clang static analyzer (--analyze) over project sources (in-depth)")
+        add_custom_target(${PROJECT_NAME}_clang_sa_all ALL
+                DEPENDS "${_P101_CLANG_SA_DIAGNOSTICS_STAMP}")
         add_dependencies(${PROJECT_NAME}_clang_sa_all ${PROJECT_NAME}_cppcheck_all)
     else ()
         add_custom_target(${PROJECT_NAME}_clang_sa_all ALL
@@ -1722,7 +1797,12 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
             if (P101_CLANG_SA_EXTRA_ARGS_LIST)
                 list(APPEND _CTU_ARGS ${P101_CLANG_SA_EXTRA_ARGS_LIST})
             endif ()
-            add_custom_target(${PROJECT_NAME}_clang_sa_ctu_all ALL
+            set(_P101_CLANG_SA_CTU_STAMP
+                    "${CMAKE_BINARY_DIR}/clang-sa-ctu/analysis.stamp")
+            add_custom_command(
+                    OUTPUT "${_P101_CLANG_SA_CTU_STAMP}"
+                    COMMAND ${CMAKE_COMMAND} -E make_directory
+                    "${CMAKE_BINARY_DIR}/clang-sa-ctu"
                     COMMAND ${CMAKE_COMMAND} -E echo "${ICON} clang SA cross-TU (CTU) analysis (extdef-mapping: ${P101_EXTDEF_MAPPING})"
                     COMMAND "${PYTHON3_EXECUTABLE}" "${P101_CMAKE_DIR}/RunClangSaCtu.py"
                             "${_COMPILER}" "${P101_EXTDEF_MAPPING}"
@@ -1731,9 +1811,17 @@ if (_COMPILER_ID MATCHES "Clang" AND NOT P101_IS_RASPBERRY_PI)
                             "$<IF:$<BOOL:${P101_CLANG_SA_FAIL_ON_DIAGNOSTICS}>,1,0>"
                             "${CMAKE_CURRENT_SOURCE_DIR}"
                             -- ${_CTU_ARGS}
+                    COMMAND ${CMAKE_COMMAND} -E touch
+                    "${_P101_CLANG_SA_CTU_STAMP}"
+                    DEPENDS "${CMAKE_BINARY_DIR}/compile_commands.json"
+                    "${P101_CMAKE_DIR}/RunClangSaCtu.py"
+                    "${_P101_CLANG_SA_DIAGNOSTICS_STAMP}"
+                    ${P101_PRIMARY_TARGETS} ${_P101_QUALITY_INPUTS}
                     USES_TERMINAL
                     VERBATIM
                     COMMENT "Clang static analyzer, cross-translation-unit (interprocedural across files)")
+            add_custom_target(${PROJECT_NAME}_clang_sa_ctu_all ALL
+                    DEPENDS "${_P101_CLANG_SA_CTU_STAMP}")
             add_dependencies(${PROJECT_NAME}_clang_sa_ctu_all ${PROJECT_NAME}_clang_sa_all)
         else ()
             message(STATUS "clang-extdef-mapping not found for ${_COMPILER}; skipping optional cross-TU (CTU) analysis.")
