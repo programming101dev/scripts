@@ -556,6 +556,7 @@ def test_fallible_wrapper_has_isolated_native_smoke(generator) -> None:
     for marker in (
         "pid_t native_pid    = fork();",
         "(void)alarm(2U);",
+        'native_stdin_result = freopen("/dev/null", "r", stdin);',
         "p101_env_set_fault_injector(env, NULL, NULL);",
         "p101_example(env, err);",
         "native_waitpid_nointr(native_pid, &native_status)",

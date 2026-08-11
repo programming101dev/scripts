@@ -197,7 +197,7 @@ if (( RC == 0 )); then
     RC=0
     cmake --build "$PROJ/build" --verbose > "$PROJ/no-op-build.log" 2>&1 || RC=$?
     if (( RC == 0 )) &&
-       ! grep -Eq 'RunAnalyzeFromCompileDB|RunClangTidyOverList|running: .*cppcheck' \
+       ! grep -Eq 'Per-TU analyze stage|Generating \.p101-quality/clang-tidy\.stamp|cppcheck over entire project' \
          "$PROJ/no-op-build.log"; then
       ok "exe-simple: no-op build reuses dependency-tracked quality stages"
     else
@@ -210,10 +210,10 @@ if (( RC == 0 )); then
     RC=0
     cmake --build "$PROJ/build" --verbose > "$PROJ/changed-build.log" 2>&1 || RC=$?
     if (( RC == 0 )) &&
-       grep -q 'RunAnalyzeFromCompileDB' "$PROJ/changed-build.log" &&
-       grep -q 'RunClangTidyOverList' "$PROJ/changed-build.log" &&
-       grep -Eq 'running: .*cppcheck|FailIfCppcheckDiagnostics' \
-         "$PROJ/changed-build.log"; then
+       grep -q 'Per-TU analyze stage' "$PROJ/changed-build.log" &&
+       grep -q 'Generating \.p101-quality/clang-tidy\.stamp' \
+         "$PROJ/changed-build.log" &&
+       grep -q 'cppcheck over entire project' "$PROJ/changed-build.log"; then
       ok "exe-simple: source edit invalidates every quality stage"
     else
       bad "exe-simple: source edit did not invalidate every quality stage" \
