@@ -56,6 +56,15 @@ PLATFORM_ERROR_OVERRIDES = {
 # native-smoke observations explicit rather than teaching the generated tests
 # to skip an undeclared result.
 PLATFORM_RUNTIME_OBSERVATIONS = {
+    ("linux", "pututxline"): {
+        "errors": ["EACCES", "EPERM"],
+        "source": "p101-native-smoke://linux/glibc-pututxline",
+        "reason": (
+            "glibc pututxline can report EACCES when the process cannot "
+            "update the system utmp file; Linux's shared getutent(3) page "
+            "does not document that file-access outcome."
+        ),
+    },
     ("macos", "mlockall"): {
         "errors": ["ENOSYS"],
         "source": "p101-native-smoke://macos/libsystem",

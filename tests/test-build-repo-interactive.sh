@@ -629,11 +629,12 @@ case "$phase" in
       exit 13
     fi
     : > "started-$compiler"
+    started_count=$(find . -name 'started-*' -type f -print | wc -l | tr -d ' ')
+    [ "$started_count" -lt 4 ] || : > workers-started
     attempts=0
-    while [ "$(find . -name 'started-*' -type f -print | wc -l | tr -d ' ')" -lt 4 ]; do
+    while [ ! -f workers-started ]; do
       attempts=$((attempts + 1))
-      [ "$attempts" -lt 500 ] || { echo "workers did not overlap"; exit 12; }
-      sleep 0.01
+      [ "$attempts" -lt 1000000 ] || { echo "workers did not overlap"; exit 12; }
     done
     echo "complete diagnostic for $compiler"
     if [ "$interactive" -eq 1 ]; then

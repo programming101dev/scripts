@@ -53310,16 +53310,21 @@
         },
         "linux": {
           "effective_errors": [
+            "EACCES",
             "EPERM"
           ],
-          "effective_source": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/pututxline.html",
-          "effective_source_kind": "posix-fallback",
+          "effective_source": "p101-native-smoke://linux/glibc-pututxline",
+          "effective_source_kind": "platform-runtime",
           "effective_source_path": null,
-          "errors": [],
+          "errors": [
+            "EACCES",
+            "EPERM"
+          ],
           "references": [],
-          "source": "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
-          "source_path": "man3/getutent.3",
-          "status": "documented"
+          "reviewed_observation": "glibc pututxline can report EACCES when the process cannot update the system utmp file; Linux's shared getutent(3) page does not document that file-access outcome.",
+          "source": "p101-native-smoke://linux/glibc-pututxline",
+          "source_path": null,
+          "status": "runtime-observed"
         },
         "macos": {
           "effective_errors": [
@@ -77599,14 +77604,15 @@
     },
     "linux": {
       "authoritative_sources": [
-        "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz"
+        "https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.18.tar.xz",
+        "p101-native-smoke://linux/glibc-pututxline"
       ],
       "manual_override_functions": 959,
       "manual_override_wrappers": 785,
-      "posix_fallback_functions": 347,
-      "posix_fallback_wrappers": 209,
-      "runtime_observation_functions": 0,
-      "runtime_observation_wrappers": 0
+      "posix_fallback_functions": 346,
+      "posix_fallback_wrappers": 208,
+      "runtime_observation_functions": 1,
+      "runtime_observation_wrappers": 1
     },
     "macos": {
       "authoritative_sources": [
