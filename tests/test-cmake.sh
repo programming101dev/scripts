@@ -199,6 +199,12 @@ if (( RC == 0 )); then
   build "$PROJ"
   if (( RC == 0 )); then
     ok "exe-simple: configure+build (full analysis pipeline)"
+    # Some VM images install CMake module files with timestamps ahead of the
+    # guest clock.  Without this fixture-local normalization, CMake regenerates
+    # its Makefile on the next build and the test measures image clock skew
+    # instead of dependency-tracked quality stages.  The later source edit is
+    # dated 2030, so it remains newer and still exercises invalidation.
+    touch -t 202901010000 "$PROJ/build/Makefile"
     RC=0
     cmake --build "$PROJ/build" --verbose > "$PROJ/no-op-build.log" 2>&1 || RC=$?
     if (( RC == 0 )) &&
