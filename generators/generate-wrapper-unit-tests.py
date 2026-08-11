@@ -1706,6 +1706,16 @@ def native_contract_fixture(
     if function_usr == "c:@F@p101_nftw" and index == 4:
         return [], "1", [], []
 
+    if function_usr == "c:@F@p101_pututxline" and index == 2:
+        return [
+            f"            struct utmpx {fixture} = {{0}};",
+            f"            {fixture}.ut_type    = USER_PROCESS;",
+            f"            {fixture}.ut_pid     = getpid();",
+            f"            {fixture}.ut_line[0] = 'p';",
+            f"            {fixture}.ut_id[0]   = 'p';",
+            f"            {fixture}.ut_user[0] = 'p';",
+        ], f"&{fixture}", [], []
+
     if function_usr == "c:@F@p101_fmtmsg":
         arguments = {
             2: "MM_PRINT",
@@ -4643,8 +4653,12 @@ def fault_test(
             "            if(p101_error_has_error(native_err) &&\n"
             f"               {allowed_assertion})\n"
             "            {\n"
+            "                const char *native_error_message;\n\n"
+            "                native_error_message = "
+            "p101_error_get_message(native_err);\n"
             '                fprintf(stderr, "native smoke produced an '
-            f'undeclared conditional failure: {name}\\n");\n'
+            f'undeclared conditional failure: {name}: %s\\n",\n'
+            "                        native_error_message);\n"
             "                native_passed = false;\n"
             "            }\n"
             "            if(p101_error_has_error(native_err))\n"
@@ -4664,8 +4678,12 @@ def fault_test(
                 "            if(p101_error_has_error(native_err) &&\n"
                 f"               {allowed_assertion})\n"
                 "            {\n"
+                "                const char *native_error_message;\n\n"
+                "                native_error_message = "
+                "p101_error_get_message(native_err);\n"
                 '                fprintf(stderr, "native smoke produced an '
-                f'undeclared conditional failure: {name}\\n");\n'
+                f'undeclared conditional failure: {name}: %s\\n",\n'
+                "                        native_error_message);\n"
                 "                native_passed = false;\n"
                 "            }\n"
                 "            if(p101_error_has_error(native_err))\n"
