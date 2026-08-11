@@ -127,6 +127,9 @@ OPAQUE_POINTEE_TYPES = {
     "struct p101_fsm_info",
 }
 NATIVE_CALLBACKS = {
+    (
+        "int (*)(const char *, const struct stat *, int)"
+    ): "native_ftw_callback",
     "int (*)(const char *, int)": "native_path_error_callback",
     (
         "int (*)(const char *, const struct stat *, int, struct FTW *)"
@@ -161,6 +164,17 @@ static int native_path_error_callback(const char *path, int error_code)
 {
     (void)path;
     (void)error_code;
+    return 0;
+}
+""",
+    "native_ftw_callback": """
+static int native_ftw_callback(const char *path,
+                               const struct stat *status,
+                               int type)
+{
+    (void)path;
+    (void)status;
+    (void)type;
     return 0;
 }
 """,
@@ -1676,6 +1690,21 @@ def native_contract_fixture(
 
     if function_usr == "c:@F@p101_ftw" and index == 2:
         return [], '"."', [], []
+
+    if function_usr == "c:@F@p101_ftw" and index == 3:
+        return [], "native_ftw_callback", [], []
+
+    if function_usr == "c:@F@p101_ftw" and index == 4:
+        return [], "1", [], []
+
+    if function_usr == "c:@F@p101_nftw" and index == 2:
+        return [], '"."', [], []
+
+    if function_usr == "c:@F@p101_nftw" and index == 3:
+        return [], "native_nftw_callback", [], []
+
+    if function_usr == "c:@F@p101_nftw" and index == 4:
+        return [], "1", [], []
 
     if function_usr == "c:@F@p101_fmtmsg":
         arguments = {
@@ -4807,6 +4836,10 @@ def native_callback_helpers(
             if callback is not None:
                 helpers.add(callback)
     admitted_usrs = {function_usrs[name] for name in names}
+    if "c:@F@p101_ftw" in admitted_usrs:
+        helpers.add("native_ftw_callback")
+    if "c:@F@p101_nftw" in admitted_usrs:
+        helpers.add("native_nftw_callback")
     if {"c:@F@p101_pause", "c:@F@p101_sigsuspend"} & admitted_usrs:
         helpers.add("native_signal_callback")
     if "c:@F@p101_pthread_cond_wait" in admitted_usrs:

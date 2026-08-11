@@ -161,7 +161,8 @@ configure() {
 build() {
   local p="$1"
   RC=0
-  cmake --build "$p/build" > "$p/build.log" 2>&1 || RC=$?
+  MAKEFLAGS= MFLAGS= MAKELEVEL=0 \
+    cmake --build "$p/build" > "$p/build.log" 2>&1 || RC=$?
 }
 
 # Common tidy-clean C bits
@@ -204,9 +205,11 @@ if (( RC == 0 )); then
     # its Makefile on the next build and the test measures image clock skew
     # instead of dependency-tracked quality stages.  The later source edit is
     # dated 2030, so it remains newer and still exercises invalidation.
-    touch -t 202901010000 "$PROJ/build/Makefile"
+    touch -t 202901010000 "$PROJ/build/Makefile" \
+      "$PROJ/build/CMakeFiles/cmake.check_cache"
     RC=0
-    cmake --build "$PROJ/build" --verbose > "$PROJ/no-op-build.log" 2>&1 || RC=$?
+    MAKEFLAGS= MFLAGS= MAKELEVEL=0 \
+      cmake --build "$PROJ/build" --verbose > "$PROJ/no-op-build.log" 2>&1 || RC=$?
     if (( RC == 0 )) &&
        ! grep -Eq 'Per-TU analyze stage|Generating \.p101-quality/clang-tidy\.stamp|cppcheck over entire project' \
          "$PROJ/no-op-build.log"; then
@@ -219,7 +222,8 @@ if (( RC == 0 )); then
       > "$PROJ/src/main.c"
     touch -t 203001010000 "$PROJ/src/main.c"
     RC=0
-    cmake --build "$PROJ/build" --verbose > "$PROJ/changed-build.log" 2>&1 || RC=$?
+    MAKEFLAGS= MFLAGS= MAKELEVEL=0 \
+      cmake --build "$PROJ/build" --verbose > "$PROJ/changed-build.log" 2>&1 || RC=$?
     if (( RC == 0 )) &&
        grep -q 'Per-TU analyze stage' "$PROJ/changed-build.log" &&
        grep -q 'Generating \.p101-quality/clang-tidy\.stamp' \
@@ -600,7 +604,8 @@ if have clang-format; then
     format_after="$(cksum "$PROJ/src/main.c")"
     if (( RC != 0 )) && [[ "$format_before" == "$format_after" ]] \
        && grep -qi 'clang-format' "$PROJ/build.log"; then
-      if cmake --build "$PROJ/build" --target sample_format_all \
+      if MAKEFLAGS= MFLAGS= MAKELEVEL=0 \
+           cmake --build "$PROJ/build" --target sample_format_all \
            > "$PROJ/format.log" 2>&1; then
         build "$PROJ"
         if (( RC == 0 )); then

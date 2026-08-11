@@ -643,7 +643,7 @@ case "$phase" in
     case "$compiler" in
       clang-b) exit 7 ;;
       clang-c) exit 9 ;;
-      clang-d) kill -9 "$PPID"; exit 0 ;;
+      clang-d) exit 125 ;;
     esac
     ;;
 esac

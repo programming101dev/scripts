@@ -403,6 +403,11 @@ while IFS='|' read -r pair_id c x pair_label; do
       run_driver "$c" "$x" build "$pair_role" > "$pair_log" 2>&1 || status=$?
     pair_end=$(date +%s)
     elapsed=$((pair_end - pair_start))
+    # Exit 125 is the matrix worker's explicit infrastructure-failure status.
+    # Leave no receipt so the parent exercises the same recovery path as a
+    # worker that disappeared before it could commit its status.  This is
+    # deterministic across shells; killing a guessed parent process is not.
+    [ "$status" -ne 125 ] || exit 125
     printf '%s\n' "$status" > "$pair_status"
     printf '%s\n' "$elapsed" > "$pair_elapsed"
     if [ "$status" -eq 0 ]; then
