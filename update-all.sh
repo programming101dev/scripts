@@ -399,8 +399,9 @@ while IFS='|' read -r pair_id c x pair_label; do
   (
     pair_start=$(date +%s)
     status=0
-    CMAKE_BUILD_PARALLEL_LEVEL="$pair_jobs" \
-      run_driver "$c" "$x" build "$pair_role" > "$pair_log" 2>&1 || status=$?
+    CMAKE_BUILD_PARALLEL_LEVEL="$pair_jobs"
+    export CMAKE_BUILD_PARALLEL_LEVEL
+    run_driver "$c" "$x" build "$pair_role" > "$pair_log" 2>&1 || status=$?
     pair_end=$(date +%s)
     elapsed=$((pair_end - pair_start))
     # Exit 125 is the matrix worker's explicit infrastructure-failure status.
@@ -478,8 +479,9 @@ if [ "$matrix_failures" -gt 0 ] && [ "$interactive" -eq 1 ]; then
     retry_tee_status=0
     (
       retry_worker_status=0
-      CMAKE_BUILD_PARALLEL_LEVEL="$matrix_jobs" \
-        run_driver "$c" "$x" retry "$pair_role" || retry_worker_status=$?
+      CMAKE_BUILD_PARALLEL_LEVEL="$matrix_jobs"
+      export CMAKE_BUILD_PARALLEL_LEVEL
+      run_driver "$c" "$x" retry "$pair_role" || retry_worker_status=$?
       printf '%s\n' "$retry_worker_status" > "$retry_status_file"
       exit "$retry_worker_status"
     ) 2>&1 | tee "$retry_log" || retry_tee_status=$?
