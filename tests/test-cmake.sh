@@ -135,9 +135,14 @@ new_proj() {
   PROJ="$SANDBOX/$1"
   mkdir -p "$PROJ/src" "$PROJ/include"
   cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
-  # the shared CMakeLists now sources its helpers from cmake/ — mirror the
-  # workspace symlink so the harness exercises the real layout
-  ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
+  # The shared CMakeLists now sources its helpers from cmake/.  Copy the exact
+  # helper bytes into the fixture and normalize their mtimes to the guest
+  # clock.  GitHub's FreeBSD VM source synchronization can leave host-written
+  # files slightly in the future, which otherwise makes a genuine no-op build
+  # reconfigure and rerun every quality stage.
+  mkdir -p "$PROJ/cmake"
+  cp -R "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake/." "$PROJ/cmake"
+  find "$PROJ/cmake" -type f -exec touch {} +
   mkdir -p "$PROJ/.flags/$(basename "$c_compiler")"
   if [[ -n "$cxx_compiler" ]]; then
     mkdir -p "$PROJ/.flags/$(basename "$cxx_compiler")"
