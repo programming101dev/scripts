@@ -630,7 +630,7 @@ case "$phase" in
     fi
     : > "started-$compiler"
     attempts=0
-    while [ "$(find . -maxdepth 1 -name 'started-*' -type f | wc -l | tr -d ' ')" -lt 4 ]; do
+    while [ "$(find . -name 'started-*' -type f -print | wc -l | tr -d ' ')" -lt 4 ]; do
       attempts=$((attempts + 1))
       [ "$attempts" -lt 500 ] || { echo "workers did not overlap"; exit 12; }
       sleep 0.01

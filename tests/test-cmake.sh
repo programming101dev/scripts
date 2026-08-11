@@ -205,8 +205,10 @@ if (( RC == 0 )); then
     # its Makefile on the next build and the test measures image clock skew
     # instead of dependency-tracked quality stages.  The later source edit is
     # dated 2030, so it remains newer and still exercises invalidation.
-    touch -t 202901010000 "$PROJ/build/Makefile" \
-      "$PROJ/build/CMakeFiles/cmake.check_cache"
+    # Normalize the whole fixture after the first build. Source archives and
+    # FreeBSD VM clocks can otherwise leave dependency files newer than their
+    # generated targets, causing a false non-no-op relink and quality rerun.
+    find "$PROJ" -type f -exec touch -t 202901010000 {} +
     RC=0
     MAKEFLAGS='' MFLAGS='' MAKELEVEL=0 \
       cmake --build "$PROJ/build" --verbose > "$PROJ/no-op-build.log" 2>&1 || RC=$?
