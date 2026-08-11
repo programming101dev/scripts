@@ -278,7 +278,7 @@
     {
       "bytes": 8624,
       "path": "repos.lock",
-      "sha256": "d5b50f2c560a3d6c5fa148bc8923d43c5580381f8949ef7a9cb9d58c35999dcb"
+      "sha256": "b574d9ccafd42cc71965b07384fc27ce3f42cf5c989f6f6b5f5327a69b1f7249"
     },
     {
       "bytes": 3345,
@@ -321,9 +321,9 @@
       "sha256": "b129021011ddd818cbd2ee2c62fe7b50a5348604f3e0092863122fdd6c3b4356"
     },
     {
-      "bytes": 31011,
+      "bytes": 33290,
       "path": "tests/test-build-repo-interactive.sh",
-      "sha256": "16a3a516c3bd8c384c5b82961075780f6179cd28ba61a231cc12fc3f3b704d65"
+      "sha256": "cfc68722fd60c47de7dc76ef28360e6e2fa13077a6f068d441732df954fd4c9d"
     },
     {
       "bytes": 5740,
@@ -356,9 +356,9 @@
       "sha256": "084b0d1dec135cf1b6f7b101a247ee977f01c38a602503d8b04f3709c98726e9"
     },
     {
-      "bytes": 24787,
+      "bytes": 24992,
       "path": "workspace/build-repo.sh",
-      "sha256": "97ab19aadff7030f305be8eee9607644aa4dd23e7d1ee02ec6ab916562d4bc7d"
+      "sha256": "96a2e023c79109c31f8ffd843d0be57a2e0142f4436ffdc6393ca3b6be5b4ea6"
     },
     {
       "bytes": 2816,

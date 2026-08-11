@@ -546,6 +546,9 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       elif [[ -n "$sanitizers" ]]; then
         say "  -> change-compiler.sh does not accept -s; using the repository's configured sanitizer flags."
       fi
+      if [[ -n "$repository_build_cache" ]]; then
+        change_args+=(-R)
+      fi
       change_args+=(-- "-DP101_BUILD_KEY=$build_key"
         "-DP101_COVERAGE_MODE=$([[ "$coverage_mode" -eq 1 ]] && printf ON || printf OFF)"
         "-DP101_PROFILE_MODE=$([[ "$profile_mode" -eq 1 ]] && printf ON || printf OFF)")
@@ -625,6 +628,9 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         -DP101_PROFILE_MODE=OFF
         "-DP101_BUILD_KEY=$runtime_build_key"
       )
+      if [[ -n "$repository_build_cache" ]]; then
+        runtime_change_args=(-R "${runtime_change_args[@]}")
+      fi
 
       say "Configuring instrumentation-free runtime artifact: ${dir}"
       if run_repo_phase "configure runtime artifact ${dir}" \

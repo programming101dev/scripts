@@ -22,6 +22,59 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# The repository driver may expose an exact build-cache lane through a
+# repository-local symlink.  The canonical configurator must accept only links
+# whose resolved target is inside the explicitly admitted cache, and only in
+# incremental mode so it cannot unlink the cache entry before configuring it.
+guard_repo="$sandbox/build-cache-guard"
+guard_cache="$sandbox/admitted-build-cache"
+guard_outside="$sandbox/outside-build-cache"
+mkdir -p "$guard_repo/bin" "$guard_cache/repo/build-cached" \
+  "$guard_outside/build-foreign"
+cp ../templates/template-c/change-compiler.sh "$guard_repo/change-compiler.sh"
+cat > "$guard_repo/bin/cmake" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+chmod +x "$guard_repo/change-compiler.sh" "$guard_repo/bin/cmake"
+ln -s "$guard_cache/repo/build-cached" "$guard_repo/build-cached"
+(
+  cd "$guard_repo"
+  P101_REPOSITORY_BUILD_CACHE="$guard_cache" PATH="$guard_repo/bin:$PATH" \
+    ./change-compiler.sh -R -c /usr/bin/true -f /usr/bin/true \
+      -t /usr/bin/true -k /usr/bin/true -s "" -b build-cached >/dev/null
+)
+if (
+  cd "$guard_repo"
+  PATH="$guard_repo/bin:$PATH" ./change-compiler.sh -R -c /usr/bin/true \
+    -f /usr/bin/true -t /usr/bin/true -k /usr/bin/true -s "" \
+    -b build-cached >/dev/null 2>&1
+); then
+  echo 'cached build symlink was admitted without a cache root' >&2
+  exit 1
+fi
+if (
+  cd "$guard_repo"
+  P101_REPOSITORY_BUILD_CACHE="$guard_cache" PATH="$guard_repo/bin:$PATH" \
+    ./change-compiler.sh -c /usr/bin/true -f /usr/bin/true \
+      -t /usr/bin/true -k /usr/bin/true -s "" -b build-cached \
+      >/dev/null 2>&1
+); then
+  echo 'cached build symlink was admitted without incremental mode' >&2
+  exit 1
+fi
+ln -s "$guard_outside/build-foreign" "$guard_repo/build-foreign"
+if (
+  cd "$guard_repo"
+  P101_REPOSITORY_BUILD_CACHE="$guard_cache" PATH="$guard_repo/bin:$PATH" \
+    ./change-compiler.sh -R -c /usr/bin/true -f /usr/bin/true \
+      -t /usr/bin/true -k /usr/bin/true -s "" -b build-foreign \
+      >/dev/null 2>&1
+); then
+  echo 'build symlink outside the admitted cache was accepted' >&2
+  exit 1
+fi
+
 # Direct repository builds remain clean-first. Only an explicit option or the
 # workspace driver's environment opts into dependency-tracked incremental use.
 build_interface="$sandbox/build-interface"
@@ -207,6 +260,7 @@ EOF
 cat > "$runtime_repo/change-compiler.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
+printf '%s\n' "$*" >> configure-raw-invocations.txt
 build_dir="build-quality"
 sanitizers="<omitted>"
 cmake_arguments=""
@@ -296,6 +350,7 @@ P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
     -B test-quality -U test-runtime -s "" -I \
     > "$sandbox/cache-miss.stdout" 2> "$sandbox/cache-miss.stderr"
 [[ -L "$runtime_repo/build-test-quality" ]]
+tail -n 1 "$runtime_repo/configure-raw-invocations.txt" | grep -Eq '(^| )-R( |$)'
 grep -Fq 'Build cache MISS' "$sandbox/cache-miss.stdout"
 grep -Fxq 'cache_state=miss' \
   "$runtime_repo/build-test-quality/p101-build-lane.txt"
@@ -313,6 +368,7 @@ P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
     -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
     -B test-quality -U test-runtime -s "" -I \
     > "$sandbox/cache-hit.stdout" 2> "$sandbox/cache-hit.stderr"
+tail -n 1 "$runtime_repo/configure-raw-invocations.txt" | grep -Eq '(^| )-R( |$)'
 grep -Fq 'Build cache HIT' "$sandbox/cache-hit.stdout"
 grep -Fxq 'cache_state=hit' \
   "$runtime_repo/build-test-quality/p101-build-lane.txt"
