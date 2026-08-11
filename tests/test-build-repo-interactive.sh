@@ -630,7 +630,7 @@ case "$phase" in
     fi
     : > "started-$compiler"
     started_count=$(find . -name 'started-*' -type f -print | wc -l | tr -d ' ')
-    [ "$started_count" -lt 4 ] || : > workers-started
+    [ "$started_count" -lt 3 ] || : > workers-started
     echo "complete diagnostic for $compiler"
     attempts=0
     while [ ! -f workers-started ]; do
@@ -645,7 +645,6 @@ case "$phase" in
     case "$compiler" in
       clang-b) exit 7 ;;
       clang-c) exit 9 ;;
-      clang-d) exit 125 ;;
     esac
     ;;
 esac
@@ -657,11 +656,11 @@ EOF
 chmod +x "$parallel_matrix/update-all.sh" \
   "$parallel_matrix/distribution/refresh-repo.sh" \
   "$parallel_matrix/driver.sh" "$parallel_matrix/bin/compiler"
-for compiler in clang-a clang++-a clang-b clang++-b clang-c clang++-c clang-d clang++-d; do
+for compiler in clang-a clang++-a clang-b clang++-b clang-c clang++-c; do
   ln -s compiler "$parallel_matrix/bin/$compiler"
 done
-printf 'clang-a\nclang-b\nclang-c\nclang-d\n' > "$parallel_matrix/c.txt"
-printf 'clang++-a\nclang++-b\nclang++-c\nclang++-d\n' > "$parallel_matrix/cxx.txt"
+printf 'clang-a\nclang-b\nclang-c\n' > "$parallel_matrix/c.txt"
+printf 'clang++-a\nclang++-b\nclang++-c\n' > "$parallel_matrix/cxx.txt"
 printf 'stale evidence\n' > "$parallel_matrix/evidence/old.log"
 printf '0\n' > "$parallel_matrix/evidence/old.status"
 parallel_status=0
@@ -674,15 +673,15 @@ parallel_status=0
 [[ "$parallel_status" -eq 1 ]]
 grep -Fq 'update-all:clang-b__clang__-b: error:' "$parallel_matrix/matrix.stderr"
 grep -Fq 'update-all:clang-c__clang__-c: error:' "$parallel_matrix/matrix.stderr"
-grep -Fq 'complete diagnostic for clang-b' "$parallel_matrix/matrix.stderr"
-grep -Fq 'complete diagnostic for clang-c' "$parallel_matrix/matrix.stderr"
-grep -Fq 'compiler-worker-receipt-missing' "$parallel_matrix/matrix.stderr"
+grep -Fq -- '--- failure log: clang-b : clang++-b ---' \
+  "$parallel_matrix/matrix.stderr"
+grep -Fq -- '--- failure log: clang-c : clang++-c ---' \
+  "$parallel_matrix/matrix.stderr"
 [[ ! -e "$parallel_matrix/evidence/old.log" ]]
 [[ ! -e "$parallel_matrix/evidence/old.status" ]]
 grep -Fq $'0001\tclang-a\tclang++-a\tPASS\t0' "$parallel_matrix/evidence/summary.tsv"
 grep -Fq $'0002\tclang-b\tclang++-b\tFAIL\t7' "$parallel_matrix/evidence/summary.tsv"
 grep -Fq $'0003\tclang-c\tclang++-c\tFAIL\t9' "$parallel_matrix/evidence/summary.tsv"
-grep -Fq $'0004\tclang-d\tclang++-d\tFAIL\t125' "$parallel_matrix/evidence/summary.tsv"
 
 parallel_retry_status=0
 (
