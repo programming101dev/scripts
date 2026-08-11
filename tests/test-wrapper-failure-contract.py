@@ -1756,6 +1756,35 @@ def test_generated_harness_has_one_main_exit(generator) -> None:
     )
 
 
+def test_generated_semantic_fixture_is_content_addressed(generator) -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        original_root = generator.SCRIPTS_ROOT
+        original_acquire = generator.acquire
+        paths: list[Path] = []
+
+        def record_acquire(workspace, sources):
+            del workspace
+            paths.extend(sources)
+            return []
+
+        try:
+            generator.SCRIPTS_ROOT = Path(directory) / "scripts"
+            generator.acquire = record_acquire
+            source = "int generated_fixture(void) { return 0; }\n"
+            generator.validate_generated_source_semantics("lib_demo", source)
+            generator.validate_generated_source_semantics("lib_demo", source)
+        finally:
+            generator.SCRIPTS_ROOT = original_root
+            generator.acquire = original_acquire
+
+        check(len(paths) == 2, "generated fixture was not analyzed twice")
+        check(paths[0] == paths[1], "generated fixture path is not stable")
+        check(
+            "generated-wrapper-validation" in paths[0].parts,
+            "generated fixture is outside the persistent cache tree",
+        )
+
+
 def main() -> int:
     generator = load_generator()
     tests = (
@@ -1792,6 +1821,9 @@ def main() -> int:
         test_portable_input_contract,
         lambda: test_generated_portable_rejection(generator),
         lambda: test_generated_harness_has_one_main_exit(generator),
+        lambda: test_generated_semantic_fixture_is_content_addressed(
+            generator
+        ),
     )
     for test in tests:
         test()

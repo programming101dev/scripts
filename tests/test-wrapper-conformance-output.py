@@ -7,9 +7,11 @@ import importlib.util
 import io
 import json
 import tempfile
+import threading
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
@@ -67,6 +69,27 @@ class FailureOutputTests(unittest.TestCase):
                 "  | second finding",
             ],
         )
+
+    def test_independent_library_suites_run_concurrently(self) -> None:
+        barrier = threading.Barrier(2)
+
+        def run(library: str, _repo: Path, _output: Path):
+            barrier.wait(timeout=1)
+            return library, library
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            selected = {
+                "lib_a": root / "lib_a",
+                "lib_b": root / "lib_b",
+            }
+            with mock.patch.object(
+                CHECKER, "run_library_suite", side_effect=run
+            ):
+                results = CHECKER.run_library_suites(
+                    selected, root / "output", 2
+                )
+        self.assertEqual(results, {"lib_a": "lib_a", "lib_b": "lib_b"})
 
 
 class FaultOutcomeTests(unittest.TestCase):
@@ -166,6 +189,21 @@ class CanonicalEventModelTests(unittest.TestCase):
             path.write_text('{"schema":"old","nodes":[]}', encoding="utf-8")
             with self.assertRaisesRegex(RuntimeError, "unsupported schema"):
                 CHECKER.call_evidence(path)
+
+    def test_unit_evidence_is_deterministic_and_preserves_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "unit-tests.tsv"
+            CHECKER.write_unit_evidence(
+                path,
+                [
+                    {"library": "lib_z", "passed": False},
+                    {"library": "lib_a", "passed": True},
+                ],
+            )
+            self.assertEqual(
+                path.read_text(encoding="utf-8"),
+                "library\tstatus\nlib_a\tPASS\nlib_z\tFAIL\n",
+            )
 
 
 if __name__ == "__main__":

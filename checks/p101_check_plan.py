@@ -233,6 +233,14 @@ def validate(document: dict[str, Any]) -> list[dict[str, Any]]:
             raise GraphError(
                 f"{context} lacks a complete admitted-input declaration"
             )
+        environment_files = raw.get("environment_files", [])
+        if not isinstance(environment_files, list) or any(
+            not isinstance(name, str)
+            or not name.startswith("P101_")
+            or not name.replace("_", "").isalnum()
+            for name in environment_files
+        ):
+            raise GraphError(f"{context} has invalid environment files")
 
     for node in nodes:
         unknown = set(node["depends_on"]) - identifiers

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import functools
 import json
 import re
 import sys
@@ -25,6 +26,7 @@ class ResponsibilityError(ValueError):
     """A shared mechanism escaped its declared source owner."""
 
 
+@functools.lru_cache(maxsize=None)
 def path_is_beneath(path: str, relative_root: str) -> bool:
     try:
         Path(path).resolve().relative_to((WORKSPACE / relative_root).resolve())
@@ -33,6 +35,7 @@ def path_is_beneath(path: str, relative_root: str) -> bool:
     return True
 
 
+@functools.lru_cache(maxsize=None)
 def is_repository_production_path(path: str, repository: Path) -> bool:
     try:
         relative = Path(path).resolve().relative_to(repository.resolve())
@@ -46,7 +49,9 @@ def is_repository_production_path(path: str, repository: Path) -> bool:
     )
 
 
-def source_files(roots: Iterable[str]) -> Iterable[Path]:
+@functools.lru_cache(maxsize=None)
+def _source_files(roots: tuple[str, ...]) -> tuple[Path, ...]:
+    paths: list[Path] = []
     for relative in roots:
         root = WORKSPACE / relative
         if not root.exists():
@@ -58,7 +63,12 @@ def source_files(roots: Iterable[str]) -> Iterable[Path]:
                 and path.suffix in SOURCE_SUFFIXES
                 and not any(part.startswith("build") for part in relative_parts)
             ):
-                yield path
+                paths.append(path)
+    return tuple(paths)
+
+
+def source_files(roots: Iterable[str]) -> Iterable[Path]:
+    return _source_files(tuple(roots))
 
 
 def gather_facts(document: dict[str, Any]) -> list[dict[str, Any]]:

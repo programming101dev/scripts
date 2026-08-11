@@ -11,10 +11,11 @@ skip_fuzz=0
 c_compiler=""
 cxx_compiler=""
 jobs="${P101_JOBS:-0}"
+unit_evidence_files=()
 
 usage() {
   cat <<'USAGE'
-Usage: ./check-repository-tests.sh [-c <cc>] [-x <cxx>] [-o <dir>] [-j <jobs>] [--fuzz-secs <seconds>] [--skip-fuzz]
+Usage: ./check-repository-tests.sh [-c <cc>] [-x <cxx>] [-o <dir>] [-j <jobs>] [--unit-evidence <tsv>] [--fuzz-secs <seconds>] [--skip-fuzz]
 
 Runs every standalone test.sh named by repos.txt, plus local p101-* program
 repositories that have not yet been added to that manifest. Repositories with a
@@ -30,6 +31,10 @@ on the same runtime.
 Repositories run concurrently with a conservative host-derived default capped
 at two workers. Use -j 1 for serial execution. P101_JOBS supplies the default
 when -j is omitted.
+
+--unit-evidence accepts the checked unit-tests.tsv emitted by executable
+wrapper conformance. A PASS for a library reuses that stronger test.sh run;
+fuzzing and repositories absent from the receipt still execute here.
 USAGE
 }
 
@@ -40,6 +45,7 @@ while [ "$#" -gt 0 ]; do
     -x) cxx_compiler="${2:?}"; shift 2 ;;
     -o) out_dir="${2:?}"; shift 2 ;;
     -j|--jobs) jobs="${2:?}"; shift 2 ;;
+    --unit-evidence) unit_evidence_files+=("${2:?}"); shift 2 ;;
     --fuzz-secs) fuzz_secs="${2:?}"; shift 2 ;;
     --skip-fuzz) skip_fuzz=1; shift ;;
     *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
@@ -71,6 +77,45 @@ results_dir="$out_dir/results"
 cost_contract="contracts/repository-test-costs.tsv"
 mkdir -p "$results_dir"
 printf '# p101 standalone repository tests\n\n| Repository | Unit tests | Fuzz smoke | Seconds |\n| --- | --- | --- | ---: |\n' > "$summary"
+
+if [ "${#unit_evidence_files[@]}" -gt 0 ]; then
+  for unit_evidence in "${unit_evidence_files[@]}"; do
+    [ -f "$unit_evidence" ] || {
+      printf 'Unit-test evidence is missing: %s\n' "$unit_evidence" >&2
+      exit 2
+    }
+    awk -F '\t' '
+      NR == 1 { valid = ($1 == "library" && $2 == "status"); next }
+      NF != 2 || $1 == "" || ($2 != "PASS" && $2 != "FAIL") || seen[$1]++ {
+        valid = 0
+      }
+      END { exit valid ? 0 : 1 }
+    ' "$unit_evidence" || {
+      printf 'Unit-test evidence is malformed: %s\n' "$unit_evidence" >&2
+      exit 2
+    }
+  done
+fi
+
+has_reusable_unit_evidence() {
+  evidence_name="$1"
+  [ "${#unit_evidence_files[@]}" -gt 0 ] || return 1
+  for evidence_path in "${unit_evidence_files[@]}"; do
+    if awk -F '\t' -v name="$evidence_name" \
+      '$1 == name && $2 == "FAIL" { found=1 } END { exit !found }' \
+      "$evidence_path"; then
+      return 1
+    fi
+  done
+  for evidence_path in "${unit_evidence_files[@]}"; do
+    if awk -F '\t' -v name="$evidence_name" \
+      '$1 == name && $2 == "PASS" { found=1 } END { exit !found }' \
+      "$evidence_path"; then
+      return 0
+    fi
+  done
+  return 1
+}
 
 [ -f "$cost_contract" ] || {
   printf 'Repository test cost contract is missing: %s\n' "$cost_contract" >&2
@@ -121,7 +166,12 @@ run_repository() {
   if [ -f "$repo/test/CMakeLists.txt" ] || [ "$language" = "python" ]; then
     has_unit_suite=1
   fi
-  if [ "$has_unit_suite" -eq 1 ] && [ -x "$repo/test.sh" ]; then
+  if [ "$has_unit_suite" -eq 1 ] && \
+     has_reusable_unit_evidence "$name"; then
+    unit="REUSED"
+    printf 'Reused stricter wrapper-conformance test.sh evidence for %s.\n' \
+      "$name" > "$test_log"
+  elif [ "$has_unit_suite" -eq 1 ] && [ -x "$repo/test.sh" ]; then
     if (CDPATH='' cd "$repo" && P101_TEST_CC="$c_compiler" P101_TEST_CXX="$cxx_compiler" ./test.sh) > "$test_log" 2>&1; then
       unit="PASS"
     else

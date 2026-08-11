@@ -1122,6 +1122,57 @@ def _run_cases(
         )
 
 
+def _run_native_evidence(
+    catalog: Catalog,
+    profiles: list[AcceptanceProfile],
+    case_names: list[str],
+    output: Path,
+    jobs: int,
+) -> list[dict[str, Any]]:
+    """Run independent profile and playground evidence in one bounded queue."""
+    representative_by_key: dict[
+        tuple[tuple[str, ...], str], AcceptanceProfile
+    ] = {}
+    for profile in profiles:
+        key = (profile.command, profile.cwd)
+        representative_by_key.setdefault(key, profile)
+
+    with ThreadPoolExecutor(max_workers=jobs) as executor:
+        profile_futures = {
+            key: executor.submit(_run_profile, catalog, profile, output)
+            for key, profile in representative_by_key.items()
+        }
+        case_futures = [
+            executor.submit(
+                _run_case,
+                catalog,
+                case_name,
+                output,
+                repaired=False,
+            )
+            for case_name in case_names
+        ]
+
+        results: list[dict[str, Any]] = []
+        for profile in profiles:
+            key = (profile.command, profile.cwd)
+            original = profile_futures[key].result()
+            representative = representative_by_key[key]
+            if profile is representative:
+                results.append(original)
+            else:
+                results.append(
+                    {
+                        **original,
+                        "label": "profile-" + profile.profile_id,
+                        "duration_ns": 0,
+                        "shared_with": original["label"],
+                    }
+                )
+        results.extend(future.result() for future in case_futures)
+    return results
+
+
 def _write_protocol_fixtures(
     catalog: Catalog,
     output: Path,
@@ -1450,7 +1501,6 @@ def command_verify_all(args: argparse.Namespace) -> int:
                 for profile in catalog.profiles
                 if args.full or profile.quick
             ]
-            results.extend(_run_profiles(catalog, profiles, output, jobs))
             if args.full:
                 case_names = sorted(
                     {
@@ -1462,8 +1512,9 @@ def command_verify_all(args: argparse.Namespace) -> int:
             else:
                 case_names = ["orientation", "fd-leak", "short-read"]
             results.extend(
-                _run_cases(
+                _run_native_evidence(
                     catalog,
+                    profiles,
                     [case_name or "" for case_name in case_names],
                     output,
                     jobs,

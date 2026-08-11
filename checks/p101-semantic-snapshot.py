@@ -12,12 +12,13 @@ import argparse
 import gzip
 import hashlib
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
 
 RECEIPT_SCHEMA = "p101-semantic-snapshot-receipt-v1"
-RUNTIME_SCHEMA = "p101-facts-snapshot-v1"
+RUNTIME_SCHEMA = "p101-facts-snapshot-v2"
 RAW_SCHEMA = "p101-facts-cache-v1"
 USAGE_SCHEMA = "p101-semantic-usage-v1"
 DOES_NOT_PROVE = (
@@ -47,22 +48,27 @@ def canonical_digest(value: Any) -> str:
 
 
 def runtime_entry(path: Path) -> dict[str, Any]:
-    key = path.name.removesuffix(".jsonl.gz")
+    key = path.name.removesuffix(".json.gz")
     if len(key) != 64 or any(
         character not in "0123456789abcdef" for character in key
     ):
         raise SnapshotError(f"invalid runtime entry name: {path}")
     try:
         with gzip.open(path, "rt", encoding="utf-8") as stream:
-            header = json.loads(stream.readline())
-            count = sum(1 for line in stream if json.loads(line) is not None)
+            document = json.load(stream)
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise SnapshotError(
             f"cannot decode runtime entry {path}: {error}"
         ) from error
-    if header.get("schema") != RUNTIME_SCHEMA or header.get("key") != key:
+    if (
+        not isinstance(document, dict)
+        or document.get("schema") != RUNTIME_SCHEMA
+        or document.get("key") != key
+        or not isinstance(document.get("facts"), list)
+    ):
         raise SnapshotError(f"runtime entry identity mismatch: {path}")
-    if header.get("fact_count") != count:
+    count = len(document["facts"])
+    if document.get("fact_count") != count:
         raise SnapshotError(f"runtime entry fact count mismatch: {path}")
     return {
         "kind": "runtime-facts",
@@ -152,7 +158,7 @@ def inspect(
     used = usage_keys(usage_directory)
     for kind, key in sorted(used):
         path = (
-            cache / f"{key}.jsonl.gz"
+            cache / f"{key}.json.gz"
             if kind == "runtime-facts"
             else cache / "entries" / key
         )
@@ -166,11 +172,75 @@ def inspect(
     return entries
 
 
+def prune_cache(
+    cache: Path, entries: list[dict[str, Any]]
+) -> dict[str, int]:
+    retained_runtime = {
+        entry["key"]
+        for entry in entries
+        if entry["kind"] == "runtime-facts"
+    }
+    retained_raw = {
+        entry["key"]
+        for entry in entries
+        if entry["kind"] == "compile-database-facts"
+    }
+    removed_entries = 0
+    removed_bytes = 0
+
+    def remove_file(path: Path) -> None:
+        nonlocal removed_entries, removed_bytes
+        try:
+            removed_bytes += path.stat().st_size
+            path.unlink()
+            removed_entries += 1
+        except FileNotFoundError:
+            pass
+
+    for path in sorted(cache.glob("*.json.gz")):
+        key = path.name.removesuffix(".json.gz")
+        if key not in retained_runtime:
+            remove_file(path)
+    # v1 runtime entries and abandoned atomic writes are never valid v2
+    # evidence. The snapshot is terminal, so no producer remains active.
+    for pattern in ("*.jsonl.gz", ".*.tmp"):
+        for path in sorted(cache.glob(pattern)):
+            remove_file(path)
+    raw_root = cache / "entries"
+    if raw_root.is_dir():
+        for path in sorted(raw_root.iterdir()):
+            if path.is_dir() and path.name not in retained_raw:
+                removed_bytes += sum(
+                    child.stat().st_size
+                    for child in path.rglob("*")
+                    if child.is_file()
+                )
+                shutil.rmtree(path)
+                removed_entries += 1
+    locks = cache / ".locks"
+    if locks.is_dir():
+        removed_bytes += sum(
+            child.stat().st_size
+            for child in locks.rglob("*")
+            if child.is_file()
+        )
+        shutil.rmtree(locks)
+    return {
+        "entries_removed": removed_entries,
+        "bytes_removed": removed_bytes,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache", type=Path, required=True)
     parser.add_argument("--usage-directory", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
+    parser.add_argument(
+        "--prune",
+        action="store_true",
+        help="remove cache entries not referenced by this completed run",
+    )
     arguments = parser.parse_args()
     try:
         entries = inspect(
@@ -192,6 +262,11 @@ def main() -> int:
         "entries": entries,
         "does_not_prove": DOES_NOT_PROVE,
     }
+    receipt["pruning"] = (
+        prune_cache(arguments.cache.resolve(), entries)
+        if arguments.prune
+        else {"entries_removed": 0, "bytes_removed": 0}
+    )
     receipt["receipt_digest"] = canonical_digest(receipt)
     arguments.receipt.parent.mkdir(parents=True, exist_ok=True)
     arguments.receipt.write_text(

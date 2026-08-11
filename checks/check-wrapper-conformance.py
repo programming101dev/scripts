@@ -11,6 +11,7 @@ checker evaluates per-wrapper runtime obligations.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import csv
 import json
 import os
@@ -158,6 +159,70 @@ def conformance_run_id(library: str) -> str:
     return f"p101-wrapper-conformance-{library.replace('_', '-')}"
 
 
+def run_library_suite(
+    library: str, repo: Path, output: Path
+) -> tuple[str, subprocess.CompletedProcess[str]]:
+    call_log = output / f"{library}.calls.log"
+    resource_log = output / f"{library}.resources.log"
+    outcome_log = output / f"{library}.outcomes.tsv"
+    call_log.unlink(missing_ok=True)
+    resource_log.unlink(missing_ok=True)
+    outcome_log.unlink(missing_ok=True)
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "P101_EVENT_RUN_ID": conformance_run_id(library),
+            "P101_WRAPPER_CONFORMANCE": "1",
+            "P101_CALL_LOG": str(call_log),
+            "P101_CALL_LOG_ARGS": "1",
+            "P101_CALL_LOG_RESULT": "1",
+            "P101_RESOURCE_LOG": str(resource_log),
+            "P101_WRAPPER_OUTCOME_LOG": str(outcome_log),
+        }
+    )
+    result = subprocess.run(
+        ["./test.sh"],
+        cwd=repo,
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+        timeout=600,
+    )
+    (output / f"{library}.test.log").write_text(
+        result.stdout, encoding="utf-8"
+    )
+    return library, result
+
+
+def run_library_suites(
+    selected: dict[str, Path], output: Path, jobs: int
+) -> dict[str, subprocess.CompletedProcess[str]]:
+    workers = min(jobs, max(1, len(selected)))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        completed = executor.map(
+            lambda item: run_library_suite(item[0], item[1], output),
+            selected.items(),
+        )
+        return dict(completed)
+
+
+def write_unit_evidence(
+    path: Path, receipts: list[dict[str, object]]
+) -> None:
+    """Publish the stronger test.sh result for repository-test reuse."""
+    path.write_text(
+        "library\tstatus\n"
+        + "".join(
+            f"{item['library']}\t"
+            f"{'PASS' if item['passed'] else 'FAIL'}\n"
+            for item in sorted(receipts, key=lambda value: str(value["library"]))
+        ),
+        encoding="utf-8",
+    )
+
+
 def fault_outcome_evidence(
     path: Path,
 ) -> tuple[
@@ -272,7 +337,16 @@ def main() -> int:
         default=Path(tempfile.gettempdir()) / "p101-wrapper-conformance",
     )
     parser.add_argument("--library", action="append", default=[])
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        default=min(4, max(1, os.cpu_count() or 1)),
+        help="maximum concurrent independent library suites (default: up to 4)",
+    )
     args = parser.parse_args()
+    if args.jobs < 1:
+        parser.error("--jobs must be a positive integer")
 
     contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
     fault_contract = load_contract(FAULT_CONTRACT_PATH)
@@ -362,6 +436,8 @@ def main() -> int:
         )
         return 2
 
+    suite_results = run_library_suites(selected, args.output, args.jobs)
+
     for library, repo in selected.items():
         library_failure_start = len(failures)
         api_by_usr = {
@@ -418,34 +494,7 @@ def main() -> int:
         resource_log = args.output / f"{library}.resources.log"
         normalized = args.output / f"{library}.run-model.json"
         outcome_log = args.output / f"{library}.outcomes.tsv"
-        call_log.unlink(missing_ok=True)
-        resource_log.unlink(missing_ok=True)
-        outcome_log.unlink(missing_ok=True)
-        environment = os.environ.copy()
-        environment.update(
-            {
-                "P101_EVENT_RUN_ID": conformance_run_id(library),
-                "P101_WRAPPER_CONFORMANCE": "1",
-                "P101_CALL_LOG": str(call_log),
-                "P101_CALL_LOG_ARGS": "1",
-                "P101_CALL_LOG_RESULT": "1",
-                "P101_RESOURCE_LOG": str(resource_log),
-                "P101_WRAPPER_OUTCOME_LOG": str(outcome_log),
-            }
-        )
-        result = subprocess.run(
-            ["./test.sh"],
-            cwd=repo,
-            env=environment,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            check=False,
-            timeout=600,
-        )
-        (args.output / f"{library}.test.log").write_text(
-            result.stdout, encoding="utf-8"
-        )
+        result = suite_results[library]
         if result.returncode != 0:
             failures.append(f"{library}: test.sh failed")
             failure_details.append(
@@ -455,6 +504,27 @@ def main() -> int:
                     "exit_status": result.returncode,
                     "log": str(args.output / f"{library}.test.log"),
                     "output_lines": failure_output(result.stdout),
+                }
+            )
+            receipts.append(
+                {
+                    "library": library,
+                    "apis": len(api),
+                    "trace_applicable": 0,
+                    "invoked": 0,
+                    "balanced": 0,
+                    "fault_tests": sum(
+                        row["test_kind"] == "fault"
+                        for row in tests_by_usr.values()
+                    ),
+                    "fault_cases": fault_case_count,
+                    "fault_outcomes_observed": 0,
+                    "fault_outcome_log": str(outcome_log),
+                    "arguments_logged": 0,
+                    "results_logged": 0,
+                    "non_injected_apis_observed": 0,
+                    "non_injected_invocations": 0,
+                    "passed": False,
                 }
             )
             continue
@@ -594,6 +664,7 @@ def main() -> int:
         "failure_details": failure_details,
         "passed": not failures,
     }
+    write_unit_evidence(args.output / "unit-tests.tsv", receipts)
     (args.output / "receipt.json").write_text(
         json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )

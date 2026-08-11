@@ -91,9 +91,9 @@
       "sha256": "525253f6975505f4a4b581227ea610487675efa10ec85720f8a2644c4f757f0d"
     },
     {
-      "bytes": 23059,
+      "bytes": 25451,
       "path": "checks/check-wrapper-conformance.py",
-      "sha256": "02a80b00335fd02c8d6300360a8db8745cf32c0335966f772420d9d9581fa37a"
+      "sha256": "f377c1137555a849a0fe731ab2cf4aac87fb815d38b9e228dc576d48e0c4d1bb"
     },
     {
       "bytes": 8544,
@@ -111,19 +111,19 @@
       "sha256": "b4058dad172fb1765c80ef94ebae71eebd5909ec7a16cbb12a4e9ca786f3f4ff"
     },
     {
-      "bytes": 56211,
+      "bytes": 62494,
       "path": "checks/p101-check-graph.py",
-      "sha256": "e4be6551e1bf8212922337a4fb8ed17756fcdb9819407f9e0df438c2e9767589"
+      "sha256": "e4e3b774932268bfd3cbaa5dec68685a2c9219d024c4d653739b5bd398c4b2de"
     },
     {
-      "bytes": 7548,
+      "bytes": 9806,
       "path": "checks/p101-semantic-snapshot.py",
-      "sha256": "04d3398a9d8d8e9ac67e07de66e8fbde0c6757620e74bdc3180d5cb5cf66360d"
+      "sha256": "e65de70557d4b465cf95b57a4f4ed329544a00d6ef1dfc462a7f8066d1b7fd4e"
     },
     {
-      "bytes": 14845,
+      "bytes": 15224,
       "path": "checks/p101_check_plan.py",
-      "sha256": "589370239e7c6d1a54f5199032a3ad7af4b62c894be0418d2cd5f0efeb183875"
+      "sha256": "d82152366ab5e10adc5ae1eb8d51896c6dc8dbcac1a18a2510dbb4ff3f34c190"
     },
     {
       "bytes": 3984,
@@ -166,9 +166,9 @@
       "sha256": "15517de986d872ea2ce7b2da54a1197e3118746fd326ee0698ad3617178f699c"
     },
     {
-      "bytes": 58469,
+      "bytes": 58702,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "0b1a45115651718a8d5eea796f3f30e70f147cf368c054cf0949597575a429cc"
+      "sha256": "3d6649e78893053af57171a6fcdfbbfa63c0fee0772a11bd653fbace19655e3f"
     },
     {
       "bytes": 62722,
@@ -266,14 +266,29 @@
       "sha256": "669b80c8415d1651f3de0df75c1ea5864f919c01a9ca5daf3216da7d8d12ee7c"
     },
     {
-      "bytes": 245510,
+      "bytes": 245765,
       "path": "generators/generate-wrapper-unit-tests.py",
-      "sha256": "d42af283200b7ccae4731d0fdfb8fc471236f5255180f70f34a3cdfe27ef4a8b"
+      "sha256": "bb894313b5ae315810a6fd47479524ef7dd0d441f876f8258ab552d7039a0af5"
     },
     {
       "bytes": 42256,
       "path": "generators/refresh-wrapper-platform-faults.py",
       "sha256": "0986d2702ea419f7dece02fbf52e56b269d65a527316cb2bbe1ff2c640adf417"
+    },
+    {
+      "bytes": 20684,
+      "path": "github-actions/p101-stack.yml",
+      "sha256": "756c6ba6674126032bae95f750acd335080395ee582c2fd1b2ac75c50a335a36"
+    },
+    {
+      "bytes": 1069,
+      "path": "github-actions/platform-sentinel.sh",
+      "sha256": "c56319def112e4dda09bfb8298470b300490979c385c8912ac5853e5532ad296"
+    },
+    {
+      "bytes": 13825,
+      "path": "github-actions/preflight.sh",
+      "sha256": "13ad76ab2f1acac934e17b04aab5440ede329e9c88093c6c07f759e049b70a98"
     },
     {
       "bytes": 8624,
@@ -286,9 +301,9 @@
       "sha256": "2f1dbe4ead066504e707366978c98d0aa3901359946d0f6852a520d9297fb74d"
     },
     {
-      "bytes": 25392,
+      "bytes": 30072,
       "path": "runtime/c_facts.py",
-      "sha256": "cc5d3c201dc1e70146862675430191ab1222ee16063636e260846fae8c55872a"
+      "sha256": "7402ec65e90fa5a35738a0da3ebc95a83afc66c0a966896fd0f512dfb3fcbd9c"
     },
     {
       "bytes": 15930,
@@ -366,9 +381,9 @@
       "sha256": "318c9c9c05f4db1970655d6f0772f166e68fe794d70a5d5b753b854669446707"
     },
     {
-      "bytes": 10890,
+      "bytes": 11005,
       "path": "workspace/stack-contract.py",
-      "sha256": "09977e8c3f65c59b2402c5c654844a201a86f75ea5b4475ade84d832ca93523b"
+      "sha256": "187eeb37e1392779ba07677480d3cfc96b70550ef337a696322591850acc94ea"
     },
     {
       "bytes": 27232,

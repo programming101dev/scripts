@@ -102,6 +102,43 @@ reported="$(awk -F'|' '
   exit 1
 }
 
+cat > "$work/unit-evidence.tsv" <<'EOF'
+library	status
+alpha	PASS
+bravo	PASS
+charlie	FAIL
+EOF
+cat > "$work/conflicting-unit-evidence.tsv" <<'EOF'
+library	status
+charlie	PASS
+EOF
+chmod -x "$work/repos/alpha/test.sh" "$work/repos/bravo/test.sh"
+cat > "$work/repos/charlie/test.sh" <<'EOF'
+#!/usr/bin/env bash
+set -eu
+printf 'charlie reran because its conformance evidence failed\n'
+EOF
+chmod +x "$work/repos/charlie/test.sh"
+(
+  cd "$work/scripts"
+  ./checks/check-repository-tests.sh -j 2 --skip-fuzz \
+    --unit-evidence "$work/unit-evidence.tsv" \
+    --unit-evidence "$work/conflicting-unit-evidence.tsv" \
+    -o "$work/reused-output"
+) > "$work/reused-stdout.txt" 2>&1 || {
+  cat "$work/reused-stdout.txt"
+  echo "checked unit evidence was not reusable" >&2
+  exit 1
+}
+grep -q '| alpha | REUSED | SKIP | [0-9][0-9]* |' \
+  "$work/reused-output/summary.md"
+grep -q '| bravo | REUSED | SKIP | [0-9][0-9]* |' \
+  "$work/reused-output/summary.md"
+grep -q '| charlie | PASS | SKIP | [0-9][0-9]* |' \
+  "$work/reused-output/summary.md"
+grep -q 'charlie reran because its conformance evidence failed' \
+  "$work/reused-output/charlie-test.log"
+
 cp "$work/scripts/contracts/repository-test-costs.tsv" "$work/scripts/contracts/repository-test-costs.valid"
 printf 'broken|not-a-number\n' >> "$work/scripts/contracts/repository-test-costs.tsv"
 set +e

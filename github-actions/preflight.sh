@@ -19,9 +19,11 @@ usage() {
 Usage: ./github-actions/preflight.sh [-c <cc>] [-x <cxx>] [-o <dir>] [--keep-builds]
 
 Build the clean local candidate revisions with the same strict clang-oriented
-path used by GitHub Actions, then run the complete governed acceptance graph
-without its evidence cache. Clean commits ahead of upstream are admitted only
-through a temporary lock; repos.lock is never modified.
+path used by GitHub Actions, then satisfy the complete governed acceptance
+graph from exact input-bound evidence. A node runs whenever its admitted source
+bytes, tools, platform, environment, or dependency evidence changed. Clean
+commits ahead of upstream are admitted only through a temporary lock;
+repos.lock is never modified.
 
 Options:
   -c <cc>     C compiler. Default: Homebrew LLVM clang on macOS, otherwise clang.
@@ -381,7 +383,7 @@ cmake -S workspace -B "$host_build" \
   -DCMAKE_C_COMPILER="$cc" \
   -DP101_ACCEPTANCE_CXX_COMPILER="$cxx" \
   -DP101_ACCEPTANCE_OUTPUT_DIR="$out_dir/acceptance" \
-  -DP101_ACCEPTANCE_NO_CACHE=ON
+  -DP101_ACCEPTANCE_NO_CACHE=OFF
 P101_REPOS_LOCK="$candidate_lock" \
 P101_STACK_REPOS_LOCK="$candidate_lock" \
 P101_STACK_CONTRACT="$candidate_stack_contract" \
@@ -416,8 +418,10 @@ cat > "$out_dir/receipt.md" <<EOF
 - Immutable candidate: workspace-candidate.json
 - Acceptance summary: acceptance/summary.md
 
-This receipt exercises the strict build and complete governed acceptance graph
-over the exact clean commits bound by workspace-candidate.json. It does not
+This receipt exercises the strict build and satisfies the complete governed
+acceptance graph with exact input-bound evidence over the clean commits bound
+by workspace-candidate.json. Reused nodes remain bound to source bytes, tools,
+platform, environment, and dependency receipts. It does not
 prove behavior on operating systems other than the host that produced it,
 privileged system installation, or atomic rollback across independent Git
 repositories.

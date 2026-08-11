@@ -237,6 +237,50 @@ class LessonCatalogTests(unittest.TestCase):
             ["first", "second"],
         )
 
+    def test_profiles_and_cases_share_one_parallel_queue(self) -> None:
+        barrier = threading.Barrier(2)
+        profile = self.catalog.profiles[0]
+
+        def fake_run_profile(
+            _catalog: object,
+            selected: object,
+            _output: Path,
+        ) -> dict[str, object]:
+            barrier.wait(timeout=2)
+            return {
+                "label": "profile-" + selected.profile_id,
+                "status": "PASS",
+            }
+
+        def fake_run_case(
+            _catalog: object,
+            case_name: str,
+            _output: Path,
+            *,
+            repaired: bool,
+        ) -> dict[str, object]:
+            self.assertFalse(repaired)
+            barrier.wait(timeout=2)
+            return {"label": "broken-" + case_name, "status": "PASS"}
+
+        with patch.object(
+            p101_lessons, "_run_profile", side_effect=fake_run_profile
+        ), patch.object(
+            p101_lessons, "_run_case", side_effect=fake_run_case
+        ):
+            results = p101_lessons._run_native_evidence(
+                self.catalog,
+                [profile],
+                ["first"],
+                Path("/unused"),
+                2,
+            )
+
+        self.assertEqual(
+            [result["label"] for result in results],
+            ["profile-" + profile.profile_id, "broken-first"],
+        )
+
     def test_native_failures_print_the_complete_log(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)

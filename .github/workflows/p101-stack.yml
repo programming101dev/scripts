@@ -88,6 +88,8 @@ jobs:
             "$candidate" --version | grep -Eq "clang-format version ${required}\." \
               || { echo "::error::$candidate is not clang-format ${required}"; exit 1; }
           done
+      - name: Run fast platform sentinel
+        run: cd scripts && ./github-actions/platform-sentinel.sh
       - name: Restore exact workspace evidence and build lanes
         id: workspace-cache
         uses: actions/cache/restore@v4
@@ -184,6 +186,8 @@ jobs:
           clang-format --version
           clang-format --version | grep -Eq "clang-format version ${required}\." \
             || { echo "::error::clang-format is not version ${required}"; exit 1; }
+      - name: Run fast platform sentinel
+        run: cd scripts && ./github-actions/platform-sentinel.sh
       - name: Restore exact workspace evidence and build lanes
         id: workspace-cache
         uses: actions/cache/restore@v4
@@ -312,6 +316,12 @@ jobs:
               status=1
               failed_phase=tools
             }
+            if [ "$status" -eq 0 ]; then
+              ./github-actions/platform-sentinel.sh || {
+                status=$?
+                failed_phase=sentinel
+              }
+            fi
             if [ "$status" -eq 0 ]; then
               printf 'clang\n' > ci_c_compilers.txt
               printf 'clang++\n' > ci_cxx_compilers.txt

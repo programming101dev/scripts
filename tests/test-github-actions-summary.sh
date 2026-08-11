@@ -11,6 +11,7 @@ grep -Fq 'P101_STACK_REPOS_LOCK="$candidate_lock"' github-actions/preflight.sh
 grep -Fq -- '--parallel "$acceptance_jobs"' github-actions/preflight.sh
 grep -Fq 'P101_STACK_CONTRACT="$candidate_stack_contract"' \
   github-actions/preflight.sh
+grep -Fq -- '-DP101_ACCEPTANCE_NO_CACHE=OFF' github-actions/preflight.sh
 grep -Fq 'candidate_lock_sha256:' github-actions/p101-stack.yml
 grep -Fq 'candidate_stack_contract_sha256:' github-actions/p101-stack.yml
 grep -Fq 'qualification_ref:' github-actions/p101-stack.yml
@@ -27,6 +28,8 @@ grep -Fq -- '--matrix-output ci-output/compiler-matrix' \
 grep -Fq 'ln -sf "/usr/local/llvm${required}/bin/clang-tidy" /usr/local/bin/clang-tidy' \
   .github/workflows/p101-stack.yml
 [[ "$(grep -c 'Prepare .* once, then build compiler pairs' \
+  .github/workflows/p101-stack.yml)" -eq 3 ]]
+[[ "$(grep -c 'platform-sentinel.sh' \
   .github/workflows/p101-stack.yml)" -eq 3 ]]
 [[ "$(grep -c './update-all.sh -C ci_c_compilers.txt' \
   .github/workflows/p101-stack.yml)" -eq 3 ]]

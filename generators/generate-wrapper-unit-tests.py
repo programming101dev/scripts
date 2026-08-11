@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import csv
 import difflib
+import hashlib
 import json
 import os
 import platform
@@ -5382,16 +5383,25 @@ def validate_generated_source_semantics(
     source: str,
 ) -> None:
     """Apply generated-fixture policy to resolved calls, never spellings."""
-    with tempfile.TemporaryDirectory(prefix="p101-wrapper-generator-") as raw:
-        path = Path(raw) / "test_fault_wrappers.c"
+    source_digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
+    fixture_directory = (
+        SCRIPTS_ROOT
+        / "target"
+        / "generated-wrapper-validation"
+        / library
+        / source_digest
+    )
+    fixture_directory.mkdir(parents=True, exist_ok=True)
+    path = fixture_directory / "test_fault_wrappers.c"
+    if not path.exists() or path.read_text(encoding="utf-8") != source:
         path.write_text(source, encoding="utf-8")
-        try:
-            facts = acquire(WORKSPACE, (path,), cache=None)
-        except CFactError as error:
-            raise RuntimeError(
-                f"{library}: cannot validate generated fixture semantics: "
-                f"{error}"
-            ) from error
+    try:
+        facts = acquire(WORKSPACE, (path,))
+    except CFactError as error:
+        raise RuntimeError(
+            f"{library}: cannot validate generated fixture semantics: "
+            f"{error}"
+        ) from error
 
     calls = {
         (int(fact.get("start", -1)), int(fact.get("end", -1))): fact

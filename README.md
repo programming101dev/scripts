@@ -361,6 +361,16 @@ It also writes `profile.md`, which records every node's elapsed time, result,
 log size, and contribution to the end-to-end governed runtime. The default
 functional run schedules independent nodes concurrently, bounded by `--jobs`,
 declared resource capacities, and overlapping output paths.
+Source identity is indexed once per governed run: repository state and source
+bytes are read once, while each node receives a digest over only its declared
+patterns. A dependency in `depends_on` is an ordering/failure boundary; it does
+not invalidate downstream evidence by itself. A node that consumes an upstream
+artifact must also name that edge in `impact_dependencies`, which binds the
+upstream receipt into its cache identity. This separation prevents an early
+scripts-only change from invalidating unrelated library evidence without
+weakening failure propagation. The publication preflight uses the same exact
+cache: "strict" means every required node has current input-bound evidence,
+not that an identical tool invocation must be repeated.
 Use `./checks/p101-check-graph.py list` to inspect the graph,
 `./check-after-update-all.sh --only boundaries` for one node and its
 dependencies, or `--resume` to reuse a node only when its prior receipt has the
@@ -438,15 +448,19 @@ serial diagnostic run or `-j N`/`P101_JOBS=N` to choose another bound.
 The governed graph shares one content-addressed semantic store between Python
 policy checks, the library audit, instrumentation audit, tool audit, and
 workspace API audit. Runtime and compile-database fact producers retain
-separate entry formats inside that store, but every entry is immutable. Each
-governed check records the exact content keys it used in a private per-run
-ledger; the terminal `semantic-snapshot-receipt.json` validates and seals only
-that union, excluding stale unreferenced cache entries. Ledgers are ordinary
-node outputs, so exact check-cache restoration also restores their provenance.
-Entries remain repository/scoped units rather than one monolithic blob, so one
-source edit invalidates only semantic units that admitted it. This is the
-deliberate tradeoff: one evidence identity and one reuse boundary without
-workspace-wide invalidation.
+separate entry formats inside that store, but every entry is immutable. Runtime
+facts use one compact compressed document per semantic unit. Per-key advisory
+locks coalesce concurrent misses, so overlapping checks wait for and reuse one
+Clang parse instead of launching duplicate producers. Each governed check
+records the exact content keys it used in a private per-run ledger; the
+terminal `semantic-snapshot-receipt.json` validates and seals only that union,
+then prunes unreferenced and legacy entries. Ledgers are ordinary node outputs,
+so exact check-cache restoration also restores their provenance. Entries
+remain repository/scoped units rather than one monolithic blob, so one source
+edit invalidates only semantic units that admitted it. This is the deliberate
+tradeoff: one evidence identity and one reuse boundary without workspace-wide
+invalidation. The terminal prune depends on its graph barrier; it must not be
+run while independent producers are still active.
 
 The key admits the selected fact producer (including its native executable),
 compile database, platform, selected source trees, and all sibling public
@@ -455,6 +469,14 @@ own policy. A missing key is a normal cache miss, while a corrupt artifact is a
 hard error. Direct use is available through `checks/p101-facts-cache.py`, and
 `--facts-cache DIR` exposes the integration boundary on the individual audits.
 The cache cannot make inactive translation units or undeclared inputs visible.
+
+Independent wrapper-library suites and native lesson evidence use bounded
+worker queues. Wrapper results are still judged and written in repository
+order, and lesson receipts still list owning-tool profiles before playground
+cases. The scheduler merely removes artificial barriers: long owning-tool
+suites may overlap playground cases, and a successful wrapper unit-test receipt
+can satisfy the later repository-test phase. This improves the critical path
+without weakening a test or changing its admitted inputs.
 
 The workspace API check combines facts from all built
 libraries, programs, templates, playgrounds, and examples so public functions,

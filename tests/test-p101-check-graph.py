@@ -116,6 +116,8 @@ class CheckGraphTests(unittest.TestCase):
             graph.chmod(0o755)
             environment = os.environ.copy()
             environment["P101_CHECK_GRAPH"] = str(graph)
+            environment["P101_INSPECT_CAPTURE"] = "/usr/bin/true"
+            environment["P101_TOOL_RECEIPT"] = "/usr/bin/true"
             result = subprocess.run(
                 [
                     str(SCRIPTS_ROOT / "check-after-update-all.sh"),
@@ -177,6 +179,115 @@ class CheckGraphTests(unittest.TestCase):
             {"required": "value", "optional": ""},
         )
         self.assertEqual(command, ["tool", "value"])
+
+    def test_unused_graph_variable_does_not_invalidate_node(self) -> None:
+        node = self.node("identity", "print('identity')")
+        command = node["command"]
+        workspace = {
+            "algorithm": "sha256",
+            "digest": "sha256:workspace",
+            "files": 1,
+            "bytes": 1,
+            "repositories": [],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            first = MODULE.node_input_identity(
+                node,
+                command,
+                {"unused": "first", "cc": "/usr/bin/true"},
+                output,
+                workspace,
+            )
+            second = MODULE.node_input_identity(
+                node,
+                command,
+                {"unused": "changed", "cc": "/usr/bin/false"},
+                output,
+                workspace,
+            )
+        self.assertEqual(first, second)
+
+    def test_qualified_tool_identity_is_content_addressed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            scripts_root = root / "scripts"
+            first = root / "candidate-one" / "inspect-capture"
+            second = root / "candidate-two" / "inspect-capture"
+            scripts_root.mkdir()
+            first.parent.mkdir()
+            second.parent.mkdir()
+            first.write_bytes(b"same qualified executable\n")
+            second.write_bytes(first.read_bytes())
+            with patch.object(MODULE, "SCRIPTS_ROOT", scripts_root):
+                first_identity = MODULE.tool_identity(str(first))
+                second_identity = MODULE.tool_identity(str(second))
+        self.assertEqual(first_identity, second_identity)
+
+    def test_qualified_tool_locators_are_bound_by_content(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            scripts_root = root / "scripts"
+            first_tool = root / "candidate-one" / "inspect-capture"
+            second_tool = root / "candidate-two" / "inspect-capture"
+            scripts_root.mkdir()
+            first_tool.parent.mkdir()
+            second_tool.parent.mkdir()
+            first_tool.write_bytes(b"same qualified executable\n")
+            second_tool.write_bytes(first_tool.read_bytes())
+            with patch.object(MODULE, "SCRIPTS_ROOT", scripts_root):
+                with patch.dict(
+                    os.environ,
+                    {"P101_INSPECT_CAPTURE": str(first_tool)},
+                    clear=True,
+                ):
+                    first = MODULE.semantic_environment()
+                with patch.dict(
+                    os.environ,
+                    {"P101_INSPECT_CAPTURE": str(second_tool)},
+                    clear=True,
+                ):
+                    second = MODULE.semantic_environment()
+        self.assertEqual(first, second)
+        self.assertIn("P101_INSPECT_CAPTURE", first)
+
+    def test_external_policy_file_is_bound_by_content_not_path(self) -> None:
+        node = self.node("identity", "print('identity')")
+        node["environment_files"] = ["P101_REPOS_LOCK"]
+        workspace = {
+            "algorithm": "sha256",
+            "digest": "sha256:workspace",
+            "files": 1,
+            "bytes": 1,
+            "repositories": [],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first_path = root / "one.lock"
+            second_path = root / "two.lock"
+            first_path.write_text("same\n", encoding="utf-8")
+            second_path.write_text("same\n", encoding="utf-8")
+            with patch.dict(
+                os.environ, {"P101_REPOS_LOCK": str(first_path)}, clear=False
+            ):
+                first = MODULE.node_input_identity(
+                    node, node["command"], {}, root, workspace
+                )
+            with patch.dict(
+                os.environ, {"P101_REPOS_LOCK": str(second_path)}, clear=False
+            ):
+                second = MODULE.node_input_identity(
+                    node, node["command"], {}, root, workspace
+                )
+            second_path.write_text("changed\n", encoding="utf-8")
+            with patch.dict(
+                os.environ, {"P101_REPOS_LOCK": str(second_path)}, clear=False
+            ):
+                changed = MODULE.node_input_identity(
+                    node, node["command"], {}, root, workspace
+                )
+        self.assertEqual(first, second)
+        self.assertNotEqual(first, changed)
 
     def test_temporary_root_marker_is_not_owned_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -727,6 +838,77 @@ class CheckGraphTests(unittest.TestCase):
             self.assertEqual(measured["mode"], "measurement")
             self.assertEqual(measured["records"][0]["outcome"], "clean")
 
+    def test_ordering_dependency_does_not_invalidate_exact_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cache = root / "cache"
+            counter = root / "consumer-count"
+
+            def run(output: Path, producer_value: str) -> dict:
+                producer = self.node("producer", f"print({producer_value!r})")
+                consumer = self.node(
+                    "consumer",
+                    "from pathlib import Path; "
+                    f"p=Path({str(counter)!r}); "
+                    "value=int(p.read_text())+1 if p.exists() else 1; "
+                    "p.write_text(str(value))",
+                    dependencies=["producer"],
+                )
+                document = self.make_document([producer, consumer])
+                output.mkdir()
+                status = MODULE.run_graph(
+                    document,
+                    [producer, consumer],
+                    output,
+                    {"out": str(output)},
+                    False,
+                    jobs=1,
+                    cache_directory=cache,
+                )
+                self.assertEqual(status, 0)
+                return json.loads((output / "receipt.json").read_text())
+
+            run(root / "one", "first")
+            second = run(root / "two", "changed")
+            self.assertEqual(counter.read_text(), "1")
+            by_id = {record["id"]: record for record in second["records"]}
+            self.assertEqual(by_id["producer"]["outcome"], "clean")
+            self.assertEqual(by_id["consumer"]["outcome"], "reused")
+
+    def test_artifact_dependency_invalidates_exact_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cache = root / "cache"
+            counter = root / "consumer-count"
+
+            def run(output: Path, producer_value: str) -> None:
+                producer = self.node("producer", f"print({producer_value!r})")
+                consumer = self.node(
+                    "consumer",
+                    "from pathlib import Path; "
+                    f"p=Path({str(counter)!r}); "
+                    "value=int(p.read_text())+1 if p.exists() else 1; "
+                    "p.write_text(str(value))",
+                    dependencies=["producer"],
+                )
+                consumer["impact_dependencies"] = ["producer"]
+                document = self.make_document([producer, consumer])
+                output.mkdir()
+                status = MODULE.run_graph(
+                    document,
+                    [producer, consumer],
+                    output,
+                    {"out": str(output)},
+                    False,
+                    jobs=1,
+                    cache_directory=cache,
+                )
+                self.assertEqual(status, 0)
+
+            run(root / "one", "first")
+            run(root / "two", "changed")
+            self.assertEqual(counter.read_text(), "2")
+
     def test_cache_publication_keeps_execution_input_identity(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -750,6 +932,7 @@ class CheckGraphTests(unittest.TestCase):
 
             def source_identity(
                 patterns: tuple[str, ...] | None = None,
+                _source_indexes: object | None = None,
             ) -> dict[str, object]:
                 generation = "new" if invalidated.exists() else "old"
                 return {
@@ -950,6 +1133,57 @@ class CheckGraphTests(unittest.TestCase):
             receipt["artifact_count"] = 4
             path.write_text(json.dumps(receipt), encoding="utf-8")
             self.assertFalse(MODULE.stack_contract_identity(output)["valid"])
+
+
+class WorkspaceSourceIndexTests(unittest.TestCase):
+    def test_scoped_identities_share_one_workspace_scan(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            scripts = workspace / "scripts"
+            library = workspace / "libraries" / "lib_demo"
+            scripts.mkdir()
+            (library / "src").mkdir(parents=True)
+            (scripts / "repos.txt").write_text(
+                "https://example.invalid/lib_demo.git|"
+                "../libraries/lib_demo|c\n",
+                encoding="utf-8",
+            )
+            source = library / "src" / "demo.c"
+            source.write_text("int demo(void) { return 1; }\n", encoding="utf-8")
+            (library / "README.md").write_text("demo\n", encoding="utf-8")
+
+            holder: dict[str, MODULE.WorkspaceSourceIndex] = {}
+            original = MODULE.repository_source_files
+            with patch.object(MODULE, "SCRIPTS_ROOT", scripts), patch.object(
+                MODULE,
+                "repository_source_files",
+                wraps=original,
+            ) as source_files:
+                first = MODULE.workspace_source_identity(
+                    ("libraries/lib_demo/src/**",), holder
+                )
+                second = MODULE.workspace_source_identity(
+                    ("libraries/lib_demo/**",), holder
+                )
+                self.assertEqual(source_files.call_count, 2)
+                self.assertEqual(first["files"], 1)
+                self.assertGreater(second["files"], first["files"])
+                self.assertEqual(
+                    set(first["repositories"][0]), {"path"}
+                )
+
+                source.write_text(
+                    "int demo(void) { return 2; }\n", encoding="utf-8"
+                )
+                still_snapshotted = MODULE.workspace_source_identity(
+                    ("libraries/lib_demo/src/**",), holder
+                )
+                self.assertEqual(still_snapshotted["digest"], first["digest"])
+                holder.clear()
+                refreshed = MODULE.workspace_source_identity(
+                    ("libraries/lib_demo/src/**",), holder
+                )
+                self.assertNotEqual(refreshed["digest"], first["digest"])
 
 
 if __name__ == "__main__":

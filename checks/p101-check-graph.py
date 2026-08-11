@@ -5,10 +5,13 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import fnmatch
+import functools
 import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -16,7 +19,7 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 CHECKS_DIR = Path(__file__).resolve().parent
 if os.fspath(CHECKS_DIR) not in sys.path:
@@ -48,18 +51,53 @@ SOURCE_EXCLUDES = {
 SOURCE_EXCLUDE_PREFIXES = ("build-",)
 SEMANTIC_ENVIRONMENT = {
     "ASAN_OPTIONS",
+    "LANG",
+    "LC_ALL",
+    "LSAN_OPTIONS",
+    "PATH",
+    "TSAN_OPTIONS",
+    "UBSAN_OPTIONS",
+}
+COMPILER_ENVIRONMENT = {
     "CC",
     "CFLAGS",
     "CPPFLAGS",
     "CXX",
     "CXXFLAGS",
-    "LANG",
-    "LC_ALL",
     "LDFLAGS",
-    "LSAN_OPTIONS",
-    "PATH",
-    "TSAN_OPTIONS",
-    "UBSAN_OPTIONS",
+}
+ORCHESTRATION_ENVIRONMENT = {
+    "P101_ACCEPTANCE_CXX_COMPILER",
+    "P101_ACCEPTANCE_NO_CACHE",
+    "P101_ACCEPTANCE_OUTPUT_DIR",
+    "P101_C_FACTS_CACHE_DIR",
+    "P101_CHECK_GRAPH",
+    "P101_FACTS_CACHE",
+    "P101_GITHUB_CC",
+    "P101_GITHUB_CLANG_FORMAT",
+    "P101_GITHUB_CLANG_TIDY",
+    "P101_GITHUB_CPPCHECK",
+    "P101_GITHUB_CXX",
+    "P101_JOBS",
+    "P101_QUIET",
+    "P101_REPOSITORY_BUILD_CACHE",
+    "P101_REPOS_LOCK",
+    "P101_SEMANTIC_CACHE_ROOT",
+    "P101_SEMANTIC_USAGE_LOG",
+    "P101_STACK_CONTRACT",
+    "P101_STACK_REPOS_LOCK",
+}
+TOOL_LOCATOR_ENVIRONMENT = {
+    "P101_AUDIT_DOCTOR",
+    "P101_AUDIT_ERRORS",
+    "P101_AUDIT_FACTS",
+    "P101_AUDIT_MODULES",
+    "P101_AUDIT_WRAPPERS",
+    "P101_EVENT_MODEL",
+    "P101_INSPECT_CAPTURE",
+    "P101_TEST_FAULTS",
+    "P101_TEST_MUTATION",
+    "P101_TOOL_RECEIPT",
 }
 
 
@@ -145,104 +183,183 @@ def active_repository_roots() -> list[Path]:
     return sorted(set(roots), key=lambda path: os.fspath(path))
 
 
+class WorkspaceSourceIndex:
+    """Hash workspace source bytes once, then derive exact scoped identities."""
+
+    def __init__(self) -> None:
+        self.workspace = SCRIPTS_ROOT.parent.resolve()
+        self.repositories: list[tuple[dict[str, Any], tuple[Path, ...]]] = []
+        self.file_records: dict[Path, tuple[str, bytes, bytes, int]] = {}
+        self.pattern_files: dict[str, frozenset[Path]] = {}
+        for repository in active_repository_roots():
+            metadata: dict[str, Any] = {
+                "path": repository.relative_to(self.workspace).as_posix()
+            }
+            for key, arguments in (
+                ("head", ["rev-parse", "--verify", "HEAD"]),
+                ("origin", ["remote", "get-url", "origin"]),
+                (
+                    "upstream",
+                    [
+                        "rev-parse",
+                        "--abbrev-ref",
+                        "--symbolic-full-name",
+                        "@{u}",
+                    ],
+                ),
+                (
+                    "status",
+                    ["status", "--porcelain=v1", "--untracked-files=normal"],
+                ),
+            ):
+                completed = subprocess.run(
+                    ["git", "-C", os.fspath(repository), *arguments],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                    check=False,
+                )
+                metadata[key] = (
+                    completed.stdout.strip() if completed.returncode == 0 else ""
+                )
+            files: list[Path] = []
+            for path in repository_source_files(repository):
+                if path.is_symlink():
+                    payload = os.readlink(path).encode(
+                        "utf-8", errors="surrogateescape"
+                    )
+                    kind = b"symlink"
+                elif path.is_file():
+                    payload = path.read_bytes()
+                    kind = b"file"
+                else:
+                    continue
+                relative = path.relative_to(self.workspace).as_posix()
+                self.file_records[path] = (
+                    relative,
+                    kind,
+                    hashlib.sha256(payload).digest(),
+                    len(payload),
+                )
+                files.append(path)
+            self.repositories.append((metadata, tuple(files)))
+
+    def files_for_pattern(self, pattern: str) -> frozenset[Path]:
+        cached = self.pattern_files.get(pattern)
+        if cached is not None:
+            return cached
+        pattern_parts = tuple(part for part in pattern.split("/") if part)
+
+        def matches_parts(path_parts: tuple[str, ...]) -> bool:
+            remembered: dict[tuple[int, int], bool] = {}
+
+            def matches(pattern_index: int, path_index: int) -> bool:
+                key = (pattern_index, path_index)
+                if key in remembered:
+                    return remembered[key]
+                if pattern_index == len(pattern_parts):
+                    result = path_index == len(path_parts)
+                elif pattern_parts[pattern_index] == "**":
+                    if pattern_index + 1 == len(pattern_parts):
+                        result = path_index < len(path_parts)
+                    else:
+                        result = matches(pattern_index + 1, path_index) or (
+                            path_index < len(path_parts)
+                            and matches(pattern_index, path_index + 1)
+                        )
+                else:
+                    result = (
+                        path_index < len(path_parts)
+                        and fnmatch.fnmatchcase(
+                            path_parts[path_index], pattern_parts[pattern_index]
+                        )
+                        and matches(pattern_index + 1, path_index + 1)
+                    )
+                remembered[key] = result
+                return result
+
+            return matches(0, 0)
+
+        matches = {
+            path
+            for path, record in self.file_records.items()
+            if matches_parts(tuple(record[0].split("/")))
+        }
+        result = frozenset(matches)
+        self.pattern_files[pattern] = result
+        return result
+
+    def identity(
+        self, input_patterns: tuple[str, ...] | None = None
+    ) -> dict[str, Any]:
+        admitted_files: set[Path] | None = None
+        if input_patterns is not None:
+            admitted_files = set()
+            for pattern in input_patterns:
+                admitted_files.update(self.files_for_pattern(pattern))
+            if not admitted_files:
+                # A stale declaration must invalidate conservatively rather
+                # than create a content-free cache key.
+                return self.identity()
+        digest = hashlib.sha256()
+        file_count = 0
+        byte_count = 0
+        repository_identities = []
+        include_repository_state = input_patterns is None or "**" in input_patterns
+        for metadata, repository_files in self.repositories:
+            selected = repository_files
+            if admitted_files is not None:
+                selected = tuple(
+                    path for path in repository_files if path in admitted_files
+                )
+                if not selected:
+                    continue
+            repository_identities.append(
+                metadata if include_repository_state else {"path": metadata["path"]}
+            )
+            for path in selected:
+                relative, kind, payload_digest, payload_size = self.file_records[path]
+                digest.update(relative.encode("utf-8"))
+                digest.update(b"\0")
+                digest.update(kind)
+                digest.update(b"\0")
+                digest.update(payload_digest)
+                digest.update(b"\0")
+                file_count += 1
+                byte_count += payload_size
+        digest.update(
+            json.dumps(
+                repository_identities,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        )
+        return {
+            "algorithm": "sha256",
+            "digest": "sha256:" + digest.hexdigest(),
+            "files": file_count,
+            "bytes": byte_count,
+            "repositories": repository_identities,
+            "inputs": list(input_patterns) if input_patterns is not None else ["**"],
+        }
+
+
 def workspace_source_identity(
     input_patterns: tuple[str, ...] | None = None,
+    source_indexes: dict[str, WorkspaceSourceIndex] | None = None,
 ) -> dict[str, Any]:
-    workspace = SCRIPTS_ROOT.parent.resolve()
-    digest = hashlib.sha256()
-    file_count = 0
-    byte_count = 0
-    repositories = active_repository_roots()
-    admitted_files: set[Path] | None = None
-    if input_patterns is not None:
-        admitted_files = set()
-        for pattern in input_patterns:
-            candidates: Iterable[Path]
-            if pattern.endswith("/**"):
-                root = workspace / pattern[:-3]
-                candidates = [root] if root.exists() else []
-            else:
-                candidates = workspace.glob(pattern)
-            for candidate in candidates:
-                if candidate.is_file() or candidate.is_symlink():
-                    admitted_files.add(candidate)
-                elif candidate.is_dir():
-                    admitted_files.update(
-                        path
-                        for path in candidate.rglob("*")
-                        if (path.is_file() or path.is_symlink())
-                        and not source_path_excluded(path.relative_to(workspace))
-                    )
-        if not admitted_files:
-            # A stale declaration must invalidate conservatively rather than
-            # create a content-free cache key.
-            return workspace_source_identity()
-    repository_identities = []
-    for repository in repositories:
-        metadata: dict[str, Any] = {
-            "path": repository.relative_to(workspace).as_posix()
-        }
-        for key, arguments in (
-            ("head", ["rev-parse", "--verify", "HEAD"]),
-            ("origin", ["remote", "get-url", "origin"]),
-            (
-                "upstream",
-                ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
-            ),
-            ("status", ["status", "--porcelain=v1", "--untracked-files=normal"]),
-        ):
-            completed = subprocess.run(
-                ["git", "-C", os.fspath(repository), *arguments],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                text=True,
-                check=False,
-            )
-            metadata[key] = completed.stdout.strip() if completed.returncode == 0 else ""
-        repository_files = repository_source_files(repository)
-        if admitted_files is not None:
-            repository_files = [
-                path for path in repository_files if path in admitted_files
-            ]
-            if not repository_files:
-                continue
-        repository_identities.append(metadata)
-        for path in repository_files:
-            relative = path.relative_to(workspace).as_posix()
-            if path.is_symlink():
-                payload = os.readlink(path).encode("utf-8", errors="surrogateescape")
-                kind = b"symlink"
-            elif path.is_file():
-                payload = path.read_bytes()
-                kind = b"file"
-            else:
-                continue
-            digest.update(relative.encode("utf-8"))
-            digest.update(b"\0")
-            digest.update(kind)
-            digest.update(b"\0")
-            digest.update(hashlib.sha256(payload).digest())
-            digest.update(b"\0")
-            file_count += 1
-            byte_count += len(payload)
-    digest.update(
-        json.dumps(
-            repository_identities,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("utf-8")
-    )
-    return {
-        "algorithm": "sha256",
-        "digest": "sha256:" + digest.hexdigest(),
-        "files": file_count,
-        "bytes": byte_count,
-        "repositories": repository_identities,
-        "inputs": list(input_patterns) if input_patterns is not None else ["**"],
-    }
+    if source_indexes is None:
+        index = WorkspaceSourceIndex()
+    else:
+        index = source_indexes.get("workspace")
+        if index is None:
+            index = WorkspaceSourceIndex()
+            source_indexes["workspace"] = index
+    return index.identity(input_patterns)
 
 
+@functools.lru_cache(maxsize=None)
 def tool_identity(value: str) -> dict[str, Any]:
     candidate = Path(value)
     if "/" in value:
@@ -258,7 +375,13 @@ def tool_identity(value: str) -> dict[str, Any]:
     try:
         workspace = SCRIPTS_ROOT.parent.resolve()
         if path.is_file() and (path == workspace or workspace in path.parents):
-            result["sha256"] = file_sha256(path)
+            # Qualified tools are built below content-addressed candidate
+            # directories.  Their location is orchestration state; their
+            # executable bytes are the semantic input.
+            result = {
+                "executable": path.name,
+                "sha256": file_sha256(path),
+            }
         elif path.exists():
             stat = path.stat()
             result["bytes"] = stat.st_size
@@ -281,21 +404,38 @@ def tool_identity(value: str) -> dict[str, Any]:
     return result
 
 
-def semantic_environment() -> dict[str, str]:
-    return {
-        key: value
-        for key, value in sorted(os.environ.items())
-        if (
-            key in SEMANTIC_ENVIRONMENT or key.startswith("P101_")
+def semantic_environment(*, compiler_sensitive: bool = False) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for key, value in sorted(os.environ.items()):
+        admitted = (
+            key in SEMANTIC_ENVIRONMENT
+            or (compiler_sensitive and key in COMPILER_ENVIRONMENT)
+            or key.startswith("P101_")
         )
-        and key
-        not in {
-            "P101_FACTS_CACHE",
-            "P101_C_FACTS_CACHE_DIR",
-            "P101_SEMANTIC_CACHE_ROOT",
-            "P101_SEMANTIC_USAGE_LOG",
-        }
-    }
+        if not admitted or key in ORCHESTRATION_ENVIRONMENT:
+            continue
+        if key in TOOL_LOCATOR_ENVIRONMENT:
+            result[key] = canonical_sha256(tool_identity(value))
+        else:
+            result[key] = value
+    return result
+
+
+def environment_file_identity(name: str) -> dict[str, Any]:
+    value = os.environ.get(name, "")
+    identity: dict[str, Any] = {"name": name, "set": bool(value)}
+    if not value:
+        return identity
+    path = Path(value)
+    try:
+        if path.is_file():
+            identity["bytes"] = path.stat().st_size
+            identity["sha256"] = file_sha256(path)
+        else:
+            identity["missing"] = True
+    except OSError:
+        identity["unavailable"] = True
+    return identity
 
 
 def normalize_for_identity(
@@ -317,11 +457,22 @@ def node_input_identity(
     workspace: dict[str, Any],
     dependency_identities: dict[str, str] | None = None,
 ) -> str:
+    variable_names = set(
+        re.findall(
+            r"\{([A-Za-z_][A-Za-z0-9_]*)\}",
+            json.dumps(node, ensure_ascii=False, sort_keys=True),
+        )
+    )
+    compiler_sensitive = bool(
+        {"cc", "cxx"} & variable_names
+        or "compiler" in node.get("resources", {}).get("units", {})
+    )
     tools = [command[0]]
-    for name in ("cc", "cxx"):
-        value = variables.get(name)
-        if value:
-            tools.append(value)
+    if compiler_sensitive:
+        for name in ("cc", "cxx"):
+            value = variables.get(name)
+            if value:
+                tools.append(value)
     if node.get("receipts"):
         tools.append(variables.get("receipt_verifier", "p101-tool-receipt"))
     normalized_node = dict(node)
@@ -340,6 +491,7 @@ def node_input_identity(
         "variables": {
             key: normalize_for_identity(value, output, semantic_cache)
             for key, value in sorted(variables.items())
+            if key in variable_names
             if key not in {"out", "semantic_cache"}
             and (key != "receipt_verifier" or bool(node.get("receipts")))
         },
@@ -351,7 +503,13 @@ def node_input_identity(
             "machine": platform.machine(),
             "python": platform.python_version(),
         },
-        "environment": semantic_environment(),
+        "environment": semantic_environment(
+            compiler_sensitive=compiler_sensitive
+        ),
+        "environment_files": [
+            environment_file_identity(name)
+            for name in node.get("environment_files", [])
+        ],
         "tools": [tool_identity(value) for value in sorted(set(tools))],
     }
     return canonical_sha256(payload)
@@ -1050,6 +1208,7 @@ def run_graph(
         for identifier in identity_ids
     }
     workspace_identities: dict[tuple[str, ...] | None, dict[str, Any]] = {}
+    source_indexes: dict[str, WorkspaceSourceIndex] = {}
 
     def identity_scope(node: dict[str, Any]) -> dict[str, Any]:
         patterns = node.get("inputs")
@@ -1060,7 +1219,9 @@ def run_graph(
             else None
         )
         if key not in workspace_identities:
-            workspace_identities[key] = workspace_source_identity(key)
+            workspace_identities[key] = workspace_source_identity(
+                key, source_indexes
+            )
         return workspace_identities[key]
 
     identities: dict[str, str] = {}
@@ -1078,23 +1239,32 @@ def run_graph(
 
     def identity_for(identifier: str) -> str:
         if identifier not in identities:
+            node = by_id[identifier]
+            identity_dependencies = list(
+                node.get("impact_dependencies", [])
+            )
+            if node.get("wait_for_selected", False):
+                identity_dependencies.extend(
+                    dependency
+                    for dependency in selected_ids
+                    if dependency != identifier
+                    and dependency not in identity_dependencies
+                )
             identities[identifier] = node_input_identity(
-                by_id[identifier],
+                node,
                 commands[identifier],
                 variables,
                 output,
-                identity_scope(by_id[identifier]),
+                identity_scope(node),
                 {
                     dependency: identity_for(dependency)
-                    for dependency in effective_dependencies(
-                        by_id[identifier]
-                    )
+                    for dependency in identity_dependencies
                     if dependency in identity_ids
                 },
             )
         return identities[identifier]
 
-    workspace = workspace_source_identity()
+    workspace = workspace_source_identity(None, source_indexes)
     previous_records: dict[str, dict[str, Any]] = {}
     previous_directory: Path | None = None
     if previous is not None:
@@ -1359,8 +1529,11 @@ def run_graph(
                         and node.get("invalidates_source_identity", False)
                     ):
                         workspace_identities.clear()
+                        source_indexes.clear()
                         identities.clear()
-                        workspace = workspace_source_identity()
+                        workspace = workspace_source_identity(
+                            None, source_indexes
+                        )
                     if (
                         record["outcome"] == "clean"
                         and active_cache is not None

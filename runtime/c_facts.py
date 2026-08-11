@@ -7,6 +7,8 @@ declaration identities, source extents, and typed fact kinds.
 from __future__ import annotations
 
 import concurrent.futures
+import contextlib
+import fcntl
 import gzip
 import hashlib
 import json
@@ -344,8 +346,18 @@ def _compile_database_include_roots(repository: Path) -> set[Path]:
 
 
 
-SNAPSHOT_SCHEMA = "p101-facts-snapshot-v1"
+SNAPSHOT_SCHEMA = "p101-facts-snapshot-v2"
 _SNAPSHOT_SKIP_DIRECTORIES = {".git", "__pycache__", ".pytest_cache", ".facts-cache", "_to_delete"}
+_FILE_CONTENT_DIGESTS: dict[tuple[str, int, int, int, int, int], bytes] = {}
+_PRODUCER_LIBRARY_SOURCES = (
+    "lib_c_facts",
+    "lib_filesystem",
+    "lib_io",
+    "lib_c",
+    "lib_env",
+    "lib_tool_event",
+    "lib_error",
+)
 
 
 def _resolve_snapshot_cache(cache: Path | str | None) -> Path | None:
@@ -366,10 +378,37 @@ def _resolve_snapshot_cache(cache: Path | str | None) -> Path | None:
     return Path(__file__).resolve().parent.parent / ".facts-cache"
 
 
+def _file_signature(path: Path) -> tuple[str, int, int, int, int, int]:
+    status = path.stat()
+    return (
+        str(path),
+        status.st_dev,
+        status.st_ino,
+        status.st_size,
+        status.st_mtime_ns,
+        status.st_ctime_ns,
+    )
+
+
+def _file_content_digest(path: Path) -> bytes:
+    while True:
+        before = _file_signature(path)
+        cached = _FILE_CONTENT_DIGESTS.get(before)
+        if cached is not None:
+            return cached
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            while block := stream.read(1024 * 1024):
+                digest.update(block)
+        after = _file_signature(path)
+        if before == after:
+            value = digest.digest()
+            _FILE_CONTENT_DIGESTS[before] = value
+            return value
+
+
 def _hash_file_into(digest: "hashlib._Hash", path: Path) -> None:
-    with path.open("rb") as stream:
-        while block := stream.read(1024 * 1024):
-            digest.update(block)
+    digest.update(_file_content_digest(path))
 
 
 def _tree_digest(root: Path, memo: dict[Path, str]) -> str:
@@ -402,18 +441,41 @@ def _producer_identity(producer: Path) -> bytes:
     digest.update(SNAPSHOT_SCHEMA.encode())
     digest.update(platform.system().encode())
     producer_repository = producer.parent
-    producer_paths = [producer]
+    digest.update(b"launcher\0")
+    _hash_file_into(digest, producer)
+    candidates: list[Path] = []
     for marker_name in (".last-build-dir", ".last-runtime-build-dir"):
         marker = producer_repository / marker_name
         if marker.is_file():
-            producer_paths.append(marker)
             build_name = marker.read_text(encoding="utf-8").strip()
             candidate = producer_repository / build_name / "audit-facts"
-            if build_name and candidate.is_file():
-                producer_paths.append(candidate)
-    for path in producer_paths:
-        digest.update(str(path).encode())
-        _hash_file_into(digest, path)
+            if build_name:
+                candidates.append(candidate)
+    candidates.extend(
+        producer_repository / directory / "audit-facts"
+        for directory in ("build-clang", "build-clang-22", "build")
+    )
+    selected = next((path for path in candidates if path.is_file()), None)
+    if selected is None:
+        raise FileNotFoundError("native semantic fact producer is absent")
+    # Build-lane and transaction paths are orchestration state. Bind the
+    # launcher and the selected native producer by bytes so identical tools
+    # share facts across qualified candidate directories.
+    digest.update(b"native\0")
+    _hash_file_into(digest, selected)
+    # audit-facts is dynamically linked. Its executable bytes do not change
+    # when an already-linked p101 dylib/DSO is rebuilt, so bind the admitted
+    # source of every local runtime dependency as well. Build markers and lane
+    # paths remain excluded, preserving reuse across equivalent candidates.
+    workspace = producer_repository.parent.parent
+    memo: dict[Path, str] = {}
+    for library in _PRODUCER_LIBRARY_SOURCES:
+        repository = workspace / "libraries" / library
+        for relative in ("include", "src"):
+            root = repository / relative
+            if root.is_dir():
+                digest.update(f"{library}/{relative}\0".encode())
+                digest.update(_tree_digest(root, memo).encode())
     return digest.digest()
 
 
@@ -455,16 +517,21 @@ def _unit_snapshot_key(
 
 
 def _snapshot_restore(cache_directory: Path, key: str) -> list[dict[str, object]] | None:
-    path = cache_directory / f"{key}.jsonl.gz"
+    path = cache_directory / f"{key}.json.gz"
     try:
         with gzip.open(path, "rt", encoding="utf-8") as stream:
-            header = json.loads(stream.readline())
-            if header.get("schema") != SNAPSHOT_SCHEMA or header.get("key") != key:
-                return None
-            facts = [json.loads(line) for line in stream]
+            document = json.load(stream)
     except (OSError, ValueError):
         return None
-    if len(facts) != header.get("fact_count"):
+    if (
+        not isinstance(document, dict)
+        or document.get("schema") != SNAPSHOT_SCHEMA
+        or document.get("key") != key
+        or not isinstance(document.get("facts"), list)
+    ):
+        return None
+    facts = document["facts"]
+    if len(facts) != document.get("fact_count"):
         return None
     return facts
 
@@ -473,13 +540,48 @@ def _snapshot_store(cache_directory: Path, key: str, facts: list[dict[str, objec
     try:
         cache_directory.mkdir(parents=True, exist_ok=True)
         temporary = cache_directory / f".{key}.{os.getpid()}.tmp"
-        with gzip.open(temporary, "wt", encoding="utf-8") as stream:
-            stream.write(json.dumps({"schema": SNAPSHOT_SCHEMA, "key": key, "fact_count": len(facts)}) + "\n")
-            for fact in facts:
-                stream.write(json.dumps(fact) + "\n")
-        os.replace(temporary, cache_directory / f"{key}.jsonl.gz")
+        with gzip.open(
+            temporary, "wt", encoding="utf-8", compresslevel=6
+        ) as stream:
+            json.dump(
+                {
+                    "schema": SNAPSHOT_SCHEMA,
+                    "key": key,
+                    "fact_count": len(facts),
+                    "facts": facts,
+                },
+                stream,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        os.replace(temporary, cache_directory / f"{key}.json.gz")
     except OSError:
         return
+
+
+@contextlib.contextmanager
+def _snapshot_key_lock(cache_directory: Path, key: str) -> Iterable[bool]:
+    """Serialize one cache miss across concurrent checker processes."""
+    stream = None
+    locked = False
+    try:
+        locks = cache_directory / ".locks"
+        locks.mkdir(parents=True, exist_ok=True)
+        stream = (locks / f"{key}.lock").open("a+b")
+        fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+        locked = True
+    except OSError:
+        if stream is not None:
+            stream.close()
+            stream = None
+    try:
+        yield locked
+    finally:
+        if stream is not None:
+            try:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+            finally:
+                stream.close()
 
 
 def acquire(
@@ -606,7 +708,7 @@ def acquire(
                 file=sys.stderr,
             )
 
-    def run_unit(
+    def invoke_unit(
         command: list[str],
     ) -> tuple[subprocess.CompletedProcess[str], float]:
         started = time.monotonic()
@@ -624,19 +726,65 @@ def acquire(
             ) from error
         return completed, time.monotonic() - started
 
+    def run_unit(
+        index: int,
+    ) -> tuple[
+        subprocess.CompletedProcess[str] | None,
+        float,
+        list[dict[str, object]] | None,
+        bool,
+    ]:
+        command = commands[index][0]
+        key = unit_keys[index]
+
+        def produce() -> tuple[
+            subprocess.CompletedProcess[str],
+            float,
+            list[dict[str, object]] | None,
+            bool,
+        ]:
+            completed, seconds = invoke_unit(command)
+            decoded = (
+                decode_lines(completed.stdout.splitlines())
+                if completed.returncode == 0
+                else None
+            )
+            if (
+                decoded is not None
+                and cache_directory is not None
+                and key is not None
+            ):
+                _snapshot_store(cache_directory, key, decoded)
+            return completed, seconds, decoded, False
+
+        if cache_directory is None or key is None:
+            return produce()
+        with _snapshot_key_lock(cache_directory, key):
+            restored = _snapshot_restore(cache_directory, key)
+            if restored is not None:
+                return None, 0.0, restored, True
+            return produce()
+
     # Units are independent producer invocations over disjoint trees; run
     # the ones without a snapshot across cores and keep the facts in unit
     # order so callers see the exact stream the sequential loop produced.
     if pending:
         workers = max(1, min(len(pending), os.cpu_count() or 1))
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-            results = list(
-                pool.map(run_unit, [commands[index][0] for index in pending])
-            )
+            results = list(pool.map(run_unit, pending))
         durations: list[tuple[float, int]] = []
-        for index, (result, seconds) in zip(pending, results):
+        coalesced = 0
+        for index, (result, seconds, decoded, restored_after_wait) in zip(
+            pending, results
+        ):
+            if restored_after_wait:
+                unit_facts[index] = decoded
+                coalesced += 1
+                continue
             durations.append((seconds, index))
             repository = commands[index][1]
+            if result is None:
+                raise CFactError("semantic C-fact producer returned no result")
             if result.returncode != 0:
                 context = (
                     str(repository.relative_to(workspace_root))
@@ -647,11 +795,13 @@ def acquire(
                     f"semantic C-fact acquisition failed for {context}: "
                     + (result.stderr.strip() or f"exit {result.returncode}")
                 )
-            decoded = decode_lines(result.stdout.splitlines())
             unit_facts[index] = decoded
-            key = unit_keys[index]
-            if cache_directory is not None and key is not None:
-                _snapshot_store(cache_directory, key, decoded)
+        if coalesced:
+            print(
+                "p101 facts snapshot: coalesced "
+                f"{coalesced} concurrent unit(s)",
+                file=sys.stderr,
+            )
         for seconds, index in sorted(durations, reverse=True)[:5]:
             repository = commands[index][1]
             name = (
