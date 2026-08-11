@@ -155,18 +155,35 @@ write_lane_receipt() {
   mv -f -- "$temporary" "$directory/p101-build-lane.txt"
 }
 
+git_untracked_source_paths() {
+  local path
+  local target
+
+  git ls-files --others --exclude-standard | while IFS= read -r path || [[ -n "$path" ]]; do
+    if [[ -n "$repository_build_cache" && -L "$path" ]]; then
+      target="$(CDPATH='' cd -P -- "$path" 2>/dev/null && pwd -P || true)"
+      case "$target" in
+        "$repository_build_cache"/*) continue ;;
+      esac
+    fi
+    printf '%s\n' "$path"
+  done
+}
+
 git_source_identity() {
   local commit
   local dirty_identity
   local path
+  local untracked_paths
 
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     printf 'external:%s' "${GITHUB_SHA:-snapshot}"
     return 0
   fi
   commit="$(git rev-parse HEAD)"
+  untracked_paths="$(git_untracked_source_paths)"
   if git diff --quiet -- && git diff --cached --quiet -- &&
-     [[ -z "$(git ls-files --others --exclude-standard | sed -n '1p')" ]]; then
+     [[ -z "$untracked_paths" ]]; then
     printf 'commit:%s' "$commit"
     return 0
   fi
@@ -175,9 +192,10 @@ git_source_identity() {
     printf 'HEAD %s\n' "$commit"
     git diff --binary HEAD --
     while IFS= read -r path || [[ -n "$path" ]]; do
+      [[ -n "$path" ]] || continue
       printf 'UNTRACKED %s ' "$path"
       git hash-object -- "$path"
-    done < <(git ls-files --others --exclude-standard)
+    done <<< "$untracked_paths"
   } | git hash-object --stdin)"
   printf 'worktree:%s' "$dirty_identity"
 }

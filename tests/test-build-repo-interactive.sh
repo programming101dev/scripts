@@ -338,6 +338,23 @@ grep -Fq 'build=build-test-quality sanitizers= cmake=-DP101_BUILD_KEY=test-quali
   "$runtime_repo/configure-invocations.txt"
 grep -Fxq -- '-b build-test-runtime' "$runtime_repo/install-arguments.txt"
 
+# Exercise cache identity in a real Git repository. A build-* directory is
+# conventionally ignored, but Git still reports a symlink with that name as an
+# untracked file because it is not a directory. The workspace identity must
+# ignore only an admitted cache link, otherwise finalization invalidates the
+# artifact it is about to install.
+cat > "$runtime_repo/.gitignore" <<'EOF'
+build-*/
+*-invocations.txt
+install-arguments.txt
+.last-build-dir
+.last-runtime-build-dir
+EOF
+git -C "$runtime_repo" init -q
+git -C "$runtime_repo" add .gitignore build.sh change-compiler.sh install.sh
+git -C "$runtime_repo" -c user.name=p101-test \
+  -c user.email=p101-test@example.invalid commit -qm 'fixture'
+
 # Cross-run acceleration stores each exact compiler lane outside the checkout,
 # but leaves the repository's conventional build path as a transparent link.
 # A restored cache remains an input to CMake; it is not accepted as a verdict.
@@ -372,6 +389,14 @@ tail -n 1 "$runtime_repo/configure-raw-invocations.txt" | grep -Eq '(^| )-R( |$)
 grep -Fq 'Build cache HIT' "$sandbox/cache-hit.stdout"
 grep -Fxq 'cache_state=hit' \
   "$runtime_repo/build-test-quality/p101-build-lane.txt"
+[[ "$(wc -l < "$runtime_repo/configure-invocations.txt")" -eq 1 ]]
+[[ "$(wc -l < "$runtime_repo/build-invocations.txt")" -eq 1 ]]
+P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
+  "$sandbox/scripts/workspace/build-repo.sh" \
+    -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
+    -B test-quality -U test-runtime -s "" -I --finalize-only \
+    > "$sandbox/cache-finalize.stdout" 2> "$sandbox/cache-finalize.stderr"
+grep -Fq 'Build cache HIT' "$sandbox/cache-finalize.stdout"
 [[ "$(wc -l < "$runtime_repo/configure-invocations.txt")" -eq 1 ]]
 [[ "$(wc -l < "$runtime_repo/build-invocations.txt")" -eq 1 ]]
 
