@@ -9,7 +9,27 @@ case " $* " in
       "Usage: ./check-shell-scripts.sh [-j jobs]"
     exit 0 ;;
 esac
-jobs=4
+available_processors() {
+  local count=""
+
+  count="$(getconf _NPROCESSORS_ONLN 2>/dev/null || true)"
+  case "$count" in
+    ''|*[!0-9]*|0)
+      count="$(sysctl -n hw.logicalcpu 2>/dev/null || true)"
+      ;;
+  esac
+  case "$count" in
+    ''|*[!0-9]*|0) count=4 ;;
+  esac
+  # ShellCheck is CPU-heavy but modestly sized batches stop scaling beyond
+  # eight workers on the measured hosts. Respect smaller VM allocations.
+  if [ "$count" -gt 8 ]; then
+    count=8
+  fi
+  printf '%s' "$count"
+}
+
+jobs="${P101_SHELLCHECK_JOBS:-$(available_processors)}"
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
     -j)

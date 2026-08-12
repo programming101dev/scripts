@@ -24,6 +24,12 @@ SPEC = importlib.util.spec_from_file_location(
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
+CONTENT_SPEC = importlib.util.spec_from_file_location(
+    "p101_content_manifest", SCRIPTS_ROOT / "runtime" / "content_manifest.py"
+)
+assert CONTENT_SPEC is not None and CONTENT_SPEC.loader is not None
+CONTENT_MODULE = importlib.util.module_from_spec(CONTENT_SPEC)
+CONTENT_SPEC.loader.exec_module(CONTENT_MODULE)
 
 
 class CheckGraphTests(unittest.TestCase):
@@ -117,6 +123,7 @@ class CheckGraphTests(unittest.TestCase):
             environment = os.environ.copy()
             environment["P101_CHECK_GRAPH"] = str(graph)
             environment["P101_INSPECT_CAPTURE"] = "/usr/bin/true"
+            environment["P101_INSPECT"] = "/usr/bin/true"
             environment["P101_TOOL_RECEIPT"] = "/usr/bin/true"
             result = subprocess.run(
                 [
@@ -163,6 +170,16 @@ class CheckGraphTests(unittest.TestCase):
                 "boundaries",
                 "boundary-tests",
             ],
+        )
+
+    def test_semantic_prime_precedes_all_direct_semantic_consumers(self) -> None:
+        nodes = {node["id"]: node for node in self.document["nodes"]}
+        self.assertNotEqual(nodes["semantic-prime"].get("affected"), False)
+        self.assertIn(
+            "semantic-prime", nodes["source-responsibilities"]["depends_on"]
+        )
+        self.assertIn(
+            "semantic-prime", nodes["wrapper-failure-contract"]["depends_on"]
         )
 
     def test_group_skip_and_resume(self) -> None:
@@ -1138,6 +1155,59 @@ class CheckGraphTests(unittest.TestCase):
 
 
 class WorkspaceSourceIndexTests(unittest.TestCase):
+    def test_content_manifest_rejects_duplicate_or_escaping_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            manifest_path = workspace / "content.json"
+            record = {
+                "path": "source.c",
+                "kind": "file",
+                "sha256": "0" * 64,
+                "bytes": 0,
+                "modified_ns": 0,
+                "changed_ns": 0,
+                "device": 0,
+                "inode": 0,
+            }
+            for records in ([record, record], [{**record, "path": "../source.c"}]):
+                manifest_path.write_text(
+                    json.dumps(
+                        {
+                            "schema": CONTENT_MODULE.SCHEMA,
+                            "workspace": os.fspath(workspace),
+                            "files": records,
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                with self.assertRaises(CONTENT_MODULE.ContentManifestError):
+                    CONTENT_MODULE.ContentManifest(manifest_path)
+
+    def test_content_manifest_reuses_only_unchanged_admitted_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            scripts = workspace / "scripts"
+            library = workspace / "libraries" / "lib_demo"
+            scripts.mkdir()
+            (library / "src").mkdir(parents=True)
+            (scripts / "repos.txt").write_text(
+                "https://example.invalid/lib_demo.git|"
+                "../libraries/lib_demo|c\n",
+                encoding="utf-8",
+            )
+            source = library / "src" / "demo.c"
+            source.write_text("int demo(void);\n", encoding="utf-8")
+            manifest_path = workspace / "content.json"
+            with patch.object(MODULE, "SCRIPTS_ROOT", scripts):
+                index = MODULE.WorkspaceSourceIndex()
+                index.write_manifest(manifest_path)
+
+            manifest = CONTENT_MODULE.ContentManifest(manifest_path)
+            expected = MODULE.hashlib.sha256(source.read_bytes()).digest()
+            self.assertEqual(manifest.digest(source), expected)
+            source.write_text("int other(void);\n", encoding="utf-8")
+            self.assertIsNone(manifest.digest(source))
+
     def test_scoped_identities_share_one_workspace_scan(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)

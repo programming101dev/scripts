@@ -1761,13 +1761,15 @@ def test_generated_semantic_fixture_is_content_addressed(generator) -> None:
         original_root = generator.SCRIPTS_ROOT
         original_acquire = generator.acquire
         paths: list[Path] = []
+        include_roots: list[Path] = []
         acquisitions = 0
 
-        def record_acquire(workspace, sources):
+        def record_acquire(workspace, sources, *, additional_include_roots=None):
             nonlocal acquisitions
             del workspace
             acquisitions += 1
             paths.extend(sources)
+            include_roots.extend(additional_include_roots or ())
             return []
 
         try:
@@ -1789,6 +1791,10 @@ def test_generated_semantic_fixture_is_content_addressed(generator) -> None:
         check(len(paths) == 2, "generated fixture batch lost an input")
         check(paths[0].parent == paths[1].parent, "content identity is unstable")
         check(
+            set(include_roots) == {Path(directory)},
+            "generated fixture include roots do not preserve the source location",
+        )
+        check(
             "generated-wrapper-validation" in paths[0].parts,
             "generated fixture is outside the persistent cache tree",
         )
@@ -1799,8 +1805,8 @@ def test_generated_semantic_extents_include_source_identity(generator) -> None:
         original_root = generator.SCRIPTS_ROOT
         original_acquire = generator.acquire
 
-        def record_acquire(workspace, sources):
-            del workspace, sources
+        def record_acquire(workspace, sources, *, additional_include_roots=None):
+            del workspace, sources, additional_include_roots
             return [
                 {
                     "kind": "CALL",

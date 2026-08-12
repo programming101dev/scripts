@@ -489,35 +489,6 @@ class LessonCatalogTests(unittest.TestCase):
             summary["lessons"]["P101-LESSON-ERROR-CONTRACTS"]["findings"], 1
         )
 
-    def test_terminal_view_appends_lesson_links(self) -> None:
-        path = SCRIPTS_ROOT / "runtime" / "p101-view.py"
-        spec = importlib.util.spec_from_file_location("p101_lesson_test_view", path)
-        self.assertIsNotNone(spec)
-        self.assertIsNotNone(spec.loader)
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module
-        spec.loader.exec_module(module)
-        with tempfile.TemporaryDirectory() as directory:
-            report = Path(directory) / "correlated-report.json"
-            report.write_text(
-                json.dumps(
-                    p101_lessons.annotate_document(
-                        {
-                            "findings": [
-                                {"id": "P101-FD-001", "policy": "resource"}
-                            ]
-                        },
-                        self.catalog,
-                    )
-                ),
-                encoding="utf-8",
-            )
-            appendix = module.lesson_appendix(
-                Path(directory), report.name, "resource"
-            )
-        self.assertIn("P101-FD-001", appendix)
-        self.assertIn("corpus/cases/fd-leak/lesson.md", appendix)
-
     def test_catalog_loader_rejects_malformed_contracts(self) -> None:
         def reject(
             mutate: object,

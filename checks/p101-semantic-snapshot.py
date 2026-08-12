@@ -18,8 +18,9 @@ from typing import Any
 
 
 RECEIPT_SCHEMA = "p101-semantic-snapshot-receipt-v1"
-RUNTIME_SCHEMA = "p101-facts-snapshot-v2"
+RUNTIME_SCHEMA = "p101-facts-snapshot-v3"
 RAW_SCHEMA = "p101-facts-cache-v1"
+AST_SCHEMA = "p101-clang-ast-cache-v1"
 USAGE_SCHEMA = "p101-semantic-usage-v1"
 DOES_NOT_PROVE = (
     "This receipt proves the identity and integrity of materialized semantic "
@@ -116,6 +117,73 @@ def raw_entry(path: Path) -> dict[str, Any]:
     }
 
 
+def ast_entry(path: Path) -> dict[str, Any]:
+    manifest_path = path / "manifest.json"
+    payload_path = path / "ast.json.gz"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise SnapshotError(f"cannot decode AST entry {path}: {error}") from error
+    if manifest.get("schema") != AST_SCHEMA or manifest.get("key") != path.name:
+        raise SnapshotError(f"AST entry identity mismatch: {path}")
+    dependencies = manifest.get("dependencies")
+    if not isinstance(dependencies, list) or not dependencies:
+        raise SnapshotError(f"AST entry has no dependencies: {path}")
+    for dependency in dependencies:
+        if not isinstance(dependency, dict):
+            raise SnapshotError(f"AST dependency is malformed: {path}")
+        dependency_path = dependency.get("path")
+        dependency_bytes = dependency.get("bytes")
+        dependency_modified = dependency.get("modified_ns")
+        dependency_changed = dependency.get("changed_ns")
+        dependency_device = dependency.get("device")
+        dependency_inode = dependency.get("inode")
+        if (
+            not isinstance(dependency_path, str)
+            or not isinstance(dependency_bytes, int)
+            or not isinstance(dependency_modified, int)
+            or not isinstance(dependency_changed, int)
+            or not isinstance(dependency_device, int)
+            or not isinstance(dependency_inode, int)
+        ):
+            raise SnapshotError(f"AST dependency is malformed: {path}")
+        try:
+            dependency_status = Path(dependency_path).stat()
+        except OSError as error:
+            raise SnapshotError(
+                f"AST dependency is unavailable: {dependency_path}: {error}"
+            ) from error
+        if (
+            dependency_status.st_size != dependency_bytes
+            or dependency_status.st_mtime_ns != dependency_modified
+            or dependency_status.st_ctime_ns != dependency_changed
+            or dependency_status.st_dev != dependency_device
+            or dependency_status.st_ino != dependency_inode
+        ):
+            raise SnapshotError(f"AST dependency changed: {dependency_path}")
+    if (
+        not payload_path.is_file()
+        or payload_path.stat().st_size != manifest.get("payload_bytes")
+        or hash_file(payload_path) != manifest.get("payload_sha256")
+    ):
+        raise SnapshotError(f"AST payload integrity mismatch: {payload_path}")
+    try:
+        with gzip.open(payload_path, "rt", encoding="utf-8") as stream:
+            document = json.load(stream)
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise SnapshotError(f"cannot decode AST payload {payload_path}: {error}") from error
+    if not isinstance(document, dict):
+        raise SnapshotError(f"AST payload is not an object: {payload_path}")
+    return {
+        "kind": "clang-ast",
+        "key": path.name,
+        "manifest_sha256": hash_file(manifest_path),
+        "payload_sha256": manifest["payload_sha256"],
+        "payload_bytes": manifest["payload_bytes"],
+        "dependencies": len(dependencies),
+    }
+
+
 def usage_keys(directory: Path) -> dict[tuple[str, str], set[str]]:
     if not directory.is_dir():
         raise SnapshotError(
@@ -136,7 +204,11 @@ def usage_keys(directory: Path) -> dict[tuple[str, str], set[str]]:
             if (
                 record.get("schema") != USAGE_SCHEMA
                 or kind
-                not in {"runtime-facts", "compile-database-facts"}
+                not in {
+                    "runtime-facts",
+                    "compile-database-facts",
+                    "clang-ast",
+                }
                 or not isinstance(key, str)
                 or len(key) != 64
                 or any(
@@ -157,16 +229,22 @@ def inspect(
     entries: list[dict[str, Any]] = []
     used = usage_keys(usage_directory)
     for kind, key in sorted(used):
-        path = (
-            cache / f"{key}.json.gz"
-            if kind == "runtime-facts"
-            else cache / "entries" / key
-        )
+        if kind == "runtime-facts":
+            path = cache / f"{key}.json.gz"
+        elif kind == "compile-database-facts":
+            path = cache / "entries" / key
+        else:
+            path = cache / "ast" / key
         if not path.exists():
             raise SnapshotError(
                 f"semantic usage references a missing entry: {path}"
             )
-        entry = runtime_entry(path) if kind == "runtime-facts" else raw_entry(path)
+        if kind == "runtime-facts":
+            entry = runtime_entry(path)
+        elif kind == "compile-database-facts":
+            entry = raw_entry(path)
+        else:
+            entry = ast_entry(path)
         entry["consumers"] = sorted(used[(kind, key)])
         entries.append(entry)
     return entries
@@ -185,6 +263,9 @@ def prune_cache(
         for entry in entries
         if entry["kind"] == "compile-database-facts"
     }
+    retained_ast = {
+        entry["key"] for entry in entries if entry["kind"] == "clang-ast"
+    }
     removed_entries = 0
     removed_bytes = 0
 
@@ -199,6 +280,10 @@ def prune_cache(
 
     for path in sorted(cache.glob("*.json.gz")):
         key = path.name.removesuffix(".json.gz")
+        if key not in retained_runtime:
+            remove_file(path)
+    for path in sorted(cache.glob("*.meta.json")):
+        key = path.name.removesuffix(".meta.json")
         if key not in retained_runtime:
             remove_file(path)
     # v1 runtime entries and abandoned atomic writes are never valid v2
@@ -217,14 +302,25 @@ def prune_cache(
                 )
                 shutil.rmtree(path)
                 removed_entries += 1
-    locks = cache / ".locks"
-    if locks.is_dir():
-        removed_bytes += sum(
-            child.stat().st_size
-            for child in locks.rglob("*")
-            if child.is_file()
-        )
-        shutil.rmtree(locks)
+    ast_root = cache / "ast"
+    if ast_root.is_dir():
+        for path in sorted(ast_root.iterdir()):
+            if path.is_dir() and path.name not in retained_ast:
+                removed_bytes += sum(
+                    child.stat().st_size
+                    for child in path.rglob("*")
+                    if child.is_file()
+                )
+                shutil.rmtree(path)
+                removed_entries += 1
+    for locks in (cache / ".locks", cache / "ast-locks"):
+        if locks.is_dir():
+            removed_bytes += sum(
+                child.stat().st_size
+                for child in locks.rglob("*")
+                if child.is_file()
+            )
+            shutil.rmtree(locks)
     return {
         "entries_removed": removed_entries,
         "bytes_removed": removed_bytes,
@@ -258,6 +354,9 @@ def main() -> int:
         ),
         "compile_database_entry_count": sum(
             entry["kind"] == "compile-database-facts" for entry in entries
+        ),
+        "clang_ast_entry_count": sum(
+            entry["kind"] == "clang-ast" for entry in entries
         ),
         "entries": entries,
         "does_not_prove": DOES_NOT_PROVE,

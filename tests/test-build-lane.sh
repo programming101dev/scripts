@@ -30,9 +30,20 @@ make_compiler "$sandbox/clang++" clang-cxx
 make_compiler "$sandbox/gcc" gcc-c
 make_compiler "$sandbox/g++" gcc-cxx
 
-lane_a="$(./workspace/build-lane.sh -c "$sandbox/clang" -x "$sandbox/clang++" \
+flags_root="$sandbox/flags"
+mkdir -p "$flags_root/clang" "$flags_root/clang++"
+printf '%s\n' '-Wall' > "$flags_root/clang/warning_flags.txt"
+printf '%s\n' '-Wall' > "$flags_root/clang++/warning_flags.txt"
+printf '%s\n' '/tmp/probe.first/probe.c' > "$flags_root/clang/clang-c.log"
+printf '%s\n' '/tmp/probe.first/probe.cc' > "$flags_root/clang++/clang-cxx.log"
+printf '%s\n' '/tmp/response.first.txt' > "$flags_root/clang/conflicts.txt"
+printf '%s\n' '/tmp/response.first.txt' > "$flags_root/clang++/conflicts.txt"
+
+lane_a="$(P101_BUILD_LANE_FLAGS_ROOT="$flags_root" \
+  ./workspace/build-lane.sh -c "$sandbox/clang" -x "$sandbox/clang++" \
   -s 'undefined,address' -P 1)"
-lane_b="$(./workspace/build-lane.sh -c "$sandbox/clang" -x "$sandbox/clang++" \
+lane_b="$(P101_BUILD_LANE_FLAGS_ROOT="$flags_root" \
+  ./workspace/build-lane.sh -c "$sandbox/clang" -x "$sandbox/clang++" \
   -s ' address, undefined,address ' -P 1)"
 [[ "$lane_a" == "$lane_b" ]]
 [[ "$lane_a" == clang__clang++__quality-maximal-profile-san__* ]]
@@ -56,5 +67,23 @@ runtime_c="$(CFLAGS=-pg LDFLAGS=-pg ./workspace/build-lane.sh \
 [[ "$runtime_a" == "$runtime_b" ]]
 [[ "$runtime_a" == "$runtime_c" ]]
 [[ "$runtime_a" == clang__clang++__runtime-maximal-clean__* ]]
+
+# Diagnostic logs are not compiler configuration and contain nondeterministic
+# probe paths. They must not invalidate an otherwise identical artifact lane.
+printf '%s\n' '/tmp/probe.second/probe.c' > "$flags_root/clang/clang-c.log"
+printf '%s\n' '/tmp/probe.second/probe.cc' > "$flags_root/clang++/clang-cxx.log"
+printf '%s\n' '/tmp/response.second.txt' > "$flags_root/clang/conflicts.txt"
+printf '%s\n' '/tmp/response.second.txt' > "$flags_root/clang++/conflicts.txt"
+lane_after_log_change="$(P101_BUILD_LANE_FLAGS_ROOT="$flags_root" \
+  ./workspace/build-lane.sh -c "$sandbox/clang" -x "$sandbox/clang++" \
+  -s 'undefined,address' -P 1)"
+[[ "$lane_after_log_change" == "$lane_a" ]]
+
+# A consumed flag record is semantic input and must still invalidate the lane.
+printf '%s\n' '-Wall -Wextra' > "$flags_root/clang/warning_flags.txt"
+lane_after_flag_change="$(P101_BUILD_LANE_FLAGS_ROOT="$flags_root" \
+  ./workspace/build-lane.sh -c "$sandbox/clang" -x "$sandbox/clang++" \
+  -s 'undefined,address' -P 1)"
+[[ "$lane_after_flag_change" != "$lane_a" ]]
 
 printf 'PASS: build lanes bind compiler pairs and complete instrumentation configuration.\n'

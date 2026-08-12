@@ -27,6 +27,7 @@ SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 if os.fspath(SCRIPTS_ROOT / "runtime") not in sys.path:
     sys.path.insert(0, os.fspath(SCRIPTS_ROOT / "runtime"))
 
+from content_manifest import hash_file as content_hash_file  # noqa: E402
 from semantic_usage import record_usage  # noqa: E402
 
 SCHEMA = "p101-facts-cache-v1"
@@ -38,11 +39,7 @@ class CacheError(RuntimeError):
 
 
 def hash_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        while block := stream.read(1024 * 1024):
-            digest.update(block)
-    return digest.hexdigest()
+    return content_hash_file(path).hex()
 
 
 def admitted_files(root: Path) -> list[Path]:

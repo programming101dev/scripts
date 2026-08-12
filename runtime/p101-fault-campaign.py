@@ -351,10 +351,10 @@ def main() -> int:
             "inspect-capture",
             "P101_INSPECT_CAPTURE",
         )
-        model_tool = built_tool(
-            WORKSPACE / "libraries" / "lib_tool_event",
-            "p101-event-model",
-            "P101_EVENT_MODEL",
+        inspect_tool = built_tool(
+            WORKSPACE / "programs" / "p101-inspect",
+            "p101-inspect",
+            "P101_INSPECT",
         )
     except ValueError as error:
         print(f"p101 fault campaign: {error}", file=sys.stderr)
@@ -373,13 +373,9 @@ def main() -> int:
         command = [
             str(fault_runner),
             "-U",
-            str(SCRIPT_ROOT / "runtime" / "p101-run.py"),
+            str(inspect_tool),
             "-O",
             str(capture_tool),
-            "-Y",
-            str(SCRIPT_ROOT / "runtime" / "p101-analyze.py"),
-            "-B",
-            str(model_tool),
             "-n",
             str(args.max_fault_index),
             "-F",

@@ -4,15 +4,18 @@ Rule packs turn the facts in a completed p101 analysis into a small,
 course-specific policy gate:
 
 ```bash
-./runtime/p101-model.py check /tmp/student-run.analysis --rules resource-clean
-./runtime/p101-model.py check /tmp/student-run.analysis \
+p101-inspect model check /tmp/student-run.analysis --rules resource-clean
+p101-inspect model check /tmp/student-run.analysis \
     --rules resource-clean --rules concurrency
-./runtime/p101-model.py check /tmp/student-run.analysis --rules secure-c --json
+p101-inspect model check /tmp/student-run.analysis --rules secure-c
 ```
 
 The built-in packs are `resource-clean`, `concurrency`, and `secure-c`.
-`--rules` may instead name a JSON file. A clean result exits 0, policy
-violations exit 1, and invalid or incomplete evidence exits 2.
+Their JSON files in `scripts/rules/` are the single source of truth for the
+checked-in native catalog. A clean result exits 0, policy violations exit 1,
+and invalid or incomplete evidence exits 2. Arbitrary run-time rule files are
+intentionally not admitted: extending policy requires changing and reviewing
+the governed catalog.
 
 ## Contract
 
@@ -81,6 +84,6 @@ is not proof that the program is secure.
 
 ## Evidence
 
-The deterministic rule engine is covered by `tests/test-p101-model.py`. The
+The deterministic rule engine is covered by `programs/p101-inspect/test/test_native_cli.sh`. The
 stack-level behavior corpus exercises clean, leak, double-release, generic
 resource, execution-inheritance, and malformed-protocol cases.

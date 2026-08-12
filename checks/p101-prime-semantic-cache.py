@@ -21,7 +21,7 @@ WORKSPACE = SCRIPTS_ROOT.parent
 import sys
 
 sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
-from c_facts import CFactError, acquire  # noqa: E402
+from c_facts import CFactError, prime  # noqa: E402
 
 
 def active_repositories() -> list[tuple[Path, str]]:
@@ -77,14 +77,14 @@ def main() -> int:
     paths = admitted_paths()
     started = time.monotonic_ns()
     try:
-        facts = acquire(WORKSPACE, paths, cache=arguments.cache.resolve())
+        fact_count = prime(WORKSPACE, paths, cache=arguments.cache.resolve())
     except (CFactError, OSError, ValueError) as error:
         print(f"p101 semantic prime: {error}")
         return 1
     receipt = {
         "schema": "p101-semantic-prime-receipt-v1",
         "scope_count": len(paths),
-        "fact_count": len(facts),
+        "fact_count": fact_count,
         "elapsed_ns": time.monotonic_ns() - started,
         "does_not_prove": (
             "This receipt proves that declared semantic scopes were acquired. "

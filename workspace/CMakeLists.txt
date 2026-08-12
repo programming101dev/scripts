@@ -112,6 +112,7 @@ add_custom_target(p101_host_tools
         test_faults
         test_mutation
         inspect_capture
+        p101_inspect
         p101_event_model
         p101_receipt)
 
@@ -143,6 +144,7 @@ foreach(host_tool IN ITEMS
         test_faults
         test_mutation
         inspect_capture
+        p101_inspect
         p101_event_model
         p101_receipt)
     p101_qualify_tool("${host_tool}")
@@ -162,10 +164,16 @@ add_test(NAME host-tool.inspect.capture-regression
         COMMAND "${P101_BASH_EXECUTABLE}"
                 "${P101_WORKSPACE_ROOT}/programs/p101-inspect/test/test_cli.sh"
                 "$<TARGET_FILE:inspect_capture>")
+add_test(NAME host-tool.inspect.native-regression
+        COMMAND "${P101_BASH_EXECUTABLE}"
+                "${P101_WORKSPACE_ROOT}/programs/p101-inspect/test/test_native_cli.sh"
+                "$<TARGET_FILE:p101_inspect>"
+                "${P101_WORKSPACE_ROOT}/libraries/lib_tool_event/test/fixtures")
 set_tests_properties(
         host-tool.audit.semantic-regression
         host-tool.test.fault-campaign-regression
         host-tool.inspect.capture-regression
+        host-tool.inspect.native-regression
         PROPERTIES
         LABELS "host-tool"
         WORKING_DIRECTORY "${P101_WORKSPACE_ROOT}"
@@ -184,6 +192,7 @@ set(_P101_HOST_TOOL_TARGETS
         test_faults
         test_mutation
         inspect_capture
+        p101_inspect
         p101_event_model
         p101_receipt)
 add_custom_command(
@@ -193,7 +202,7 @@ add_custom_command(
         COMMAND "${CMAKE_COMMAND}"
                 -DOUTPUT=${P101_HOST_TOOL_RECEIPT}
                 -DCOMPILER=${CMAKE_C_COMPILER}
-                -DTOOL_COUNT=10
+                -DTOOL_COUNT=11
                 -DTEST_COUNT=${P101_HOST_TEST_COUNT}
                 -P "${CMAKE_CURRENT_SOURCE_DIR}/WriteHostToolReceipt.cmake"
         DEPENDS ${_P101_HOST_TOOL_TARGETS}
@@ -221,6 +230,7 @@ else()
                     -DC_COMPILER=${CMAKE_C_COMPILER}
                     -DCXX_COMPILER=${P101_ACCEPTANCE_CXX_COMPILER}
                     -DINSPECT_CAPTURE=$<TARGET_FILE:inspect_capture>
+                    -DP101_INSPECT=$<TARGET_FILE:p101_inspect>
                     -DTOOL_RECEIPT=$<TARGET_FILE:p101_receipt>
                     -DAUDIT_WRAPPERS=$<TARGET_FILE:audit_wrappers>
                     -DAUDIT_FACTS=$<TARGET_FILE:audit_facts>
@@ -248,6 +258,6 @@ message(STATUS "p101 workspace host graph")
 message(STATUS "  C compiler        = ${CMAKE_C_COMPILER}")
 message(STATUS "  C++ evidence      = ${P101_ACCEPTANCE_CXX_COMPILER}")
 message(STATUS "  runtime libraries = 16 targets from 15 repositories")
-message(STATUS "  host tools        = 10 targets from 3 repositories")
+message(STATUS "  host tools        = 11 targets from 3 repositories")
 message(STATUS "  acceptance output = ${P101_ACCEPTANCE_OUTPUT_DIR}")
 message(STATUS "")

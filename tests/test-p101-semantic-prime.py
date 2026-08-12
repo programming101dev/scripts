@@ -70,8 +70,8 @@ class SemanticPrimeTests(unittest.TestCase):
         receipt = self.workspace / "receipt.json"
         cache = self.workspace / "cache"
         with self.patched_roots(), mock.patch.object(
-            MODULE, "acquire", return_value=[{"kind": "FILE"}]
-        ) as acquire, mock.patch(
+            MODULE, "prime", return_value=1
+        ) as prime, mock.patch(
             "sys.argv",
             ["p101-prime", "--cache", str(cache), "--receipt", str(receipt)],
         ):
@@ -80,7 +80,7 @@ class SemanticPrimeTests(unittest.TestCase):
         self.assertEqual(document["schema"], "p101-semantic-prime-receipt-v1")
         self.assertEqual(document["fact_count"], 1)
         self.assertTrue(document["does_not_prove"])
-        acquire.assert_called_once()
+        prime.assert_called_once()
 
 
 if __name__ == "__main__":

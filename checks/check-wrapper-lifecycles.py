@@ -20,11 +20,6 @@ SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = SCRIPTS_ROOT.parent
 CONTRACT_PATH = SCRIPTS_ROOT / "contracts" / "wrapper-lifecycle-contract.json"
 LAB_DIR = SCRIPTS_ROOT / "wrapper-lab"
-sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
-
-from p101_runtime import RuntimeModelError, analyze_model, load_model  # noqa: E402
-
-
 def resolved_program(program: str) -> Path:
     found = shutil.which(program)
     return Path(found if found is not None else program).resolve()
@@ -294,7 +289,7 @@ def first_line(*texts: str) -> str:
 
 def run_case(
     driver: Path,
-    event_model: Path,
+    inspect_tool: Path,
     output: Path,
     scenario: str,
     replay: list[str],
@@ -308,12 +303,13 @@ def run_case(
     calls = case_dir / "calls.log"
     resources = case_dir / "resources.log"
     fault = case_dir / "fault.log"
-    model = case_dir / "model.json"
+    analysis = case_dir / "analysis"
+    if analysis.exists():
+        shutil.rmtree(analysis)
     for stale in (
         calls,
         resources,
         fault,
-        model,
         case_dir / "stdout.txt",
         case_dir / "stderr.txt",
         case_dir / "resource-report.txt",
@@ -366,13 +362,12 @@ def run_case(
     (case_dir / "stdout.txt").write_text(result.stdout, encoding="utf-8")
     (case_dir / "stderr.txt").write_text(result.stderr, encoding="utf-8")
     model_command = [
-        str(event_model),
-        "-r",
-        str(resources),
-        "-c",
-        str(calls),
+        str(inspect_tool),
+        "analyze",
+        "--force",
         "-o",
-        str(model),
+        str(analysis),
+        str(case_dir),
     ]
     try:
         model_result = subprocess.run(
@@ -394,27 +389,56 @@ def run_case(
             model_command,
             2,
             stdout=stdout,
-            stderr=stderr + "\nevent model timed out after 60 seconds\n",
+            stderr=stderr + "\nnative analysis timed out after 60 seconds\n",
         )
-    (case_dir / "event-model-report.txt").write_text(
+    (case_dir / "analysis-report.txt").write_text(
         model_result.stdout + model_result.stderr, encoding="utf-8"
     )
-    resource_status = 2
-    resource_diagnostic = ""
-    if model_result.returncode == 0:
+    view_command = [
+        str(inspect_tool),
+        "view",
+        "resource",
+        str(analysis),
+    ]
+    if model_result.returncode in (0, 1):
         try:
-            resource_analysis = analyze_model(load_model(model)).resource
-            resource_status = resource_analysis.status
-            resource_diagnostic = resource_analysis.text
-        except RuntimeModelError as error:
-            resource_diagnostic = f"p101 runtime: {error}\n"
+            view_result = subprocess.run(
+                view_command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired as error:
+            stdout = error.stdout or ""
+            stderr = error.stderr or ""
+            if isinstance(stdout, bytes):
+                stdout = stdout.decode("utf-8", errors="replace")
+            if isinstance(stderr, bytes):
+                stderr = stderr.decode("utf-8", errors="replace")
+            view_result = subprocess.CompletedProcess(
+                view_command,
+                2,
+                stdout=stdout,
+                stderr=stderr + "\nresource view timed out after 60 seconds\n",
+            )
+    else:
+        view_result = subprocess.CompletedProcess(view_command, 2, stdout="", stderr="")
+    resource_status = view_result.returncode
+    resource_report = analysis / "resource-report.txt"
+    resource_diagnostic = (
+        resource_report.read_text(encoding="utf-8", errors="replace")
+        if resource_report.is_file()
+        else view_result.stdout + view_result.stderr + model_result.stdout + model_result.stderr
+    )
     (case_dir / "resource-report.txt").write_text(
         resource_diagnostic, encoding="utf-8"
     )
     fault_hit = fault.is_file() and fault.stat().st_size > 0
     passed = (
         result.returncode == 0
-        and model_result.returncode == 0
+        and model_result.returncode in (0, 1)
         and resource_status == 0
     )
     receipt: dict[str, object] = {
@@ -425,7 +449,7 @@ def run_case(
         "fault_name": fault_name,
         "fault_hit": fault_hit,
         "driver_status": result.returncode,
-        "event_model_status": model_result.returncode,
+        "analysis_status": model_result.returncode,
         "resource_policy_status": resource_status,
         "case_directory": str(case_dir),
         "passed": passed,
@@ -437,9 +461,9 @@ def run_case(
             receipt["reason_code"] = "driver-failed"
             receipt["failed_stage"] = "driver"
             receipt["first_diagnostic"] = first_line(result.stderr, result.stdout)
-        elif model_result.returncode != 0:
-            receipt["reason_code"] = "event-model-failed"
-            receipt["failed_stage"] = "event-model"
+        elif model_result.returncode not in (0, 1):
+            receipt["reason_code"] = "native-analysis-failed"
+            receipt["failed_stage"] = "native-analysis"
             receipt["first_diagnostic"] = first_line(
                 model_result.stderr, model_result.stdout
             )
@@ -452,7 +476,7 @@ def run_case(
 
 def minimize_failure(
     driver: Path,
-    event_model: Path,
+    inspect_tool: Path,
     output: Path,
     receipt: dict[str, object],
     specification: dict[str, Any],
@@ -469,7 +493,7 @@ def minimize_failure(
                 continue
             passed, _ = run_case(
                 driver,
-                event_model,
+                inspect_tool,
                 output / "minimize",
                 str(receipt["scenario"]),
                 candidate,
@@ -506,10 +530,10 @@ def main() -> int:
         driver, sanitizer_flags, dropped_sanitizers = configure_driver(
             args.output, args.compiler
         )
-        event_model = find_program(
-            WORKSPACE / "libraries" / "lib_tool_event",
-            "p101-event-model",
-            "P101_EVENT_MODEL",
+        inspect_tool = find_program(
+            WORKSPACE / "programs" / "p101-inspect",
+            "p101-inspect",
+            "P101_INSPECT",
         )
     except RuntimeError as exc:
         print(f"FAIL: {exc}")
@@ -528,7 +552,7 @@ def main() -> int:
         for replay in replays:
             passed, receipt = run_case(
                 driver,
-                event_model,
+                inspect_tool,
                 args.output,
                 scenario,
                 replay,
@@ -546,7 +570,7 @@ def main() -> int:
             for fault_index in range(1, maximum_fault_calls + 1):
                 passed, receipt = run_case(
                     driver,
-                    event_model,
+                    inspect_tool,
                     args.output,
                     scenario,
                     fault_replay,
@@ -578,7 +602,7 @@ def main() -> int:
         specification = contract["scenarios"][str(failure["scenario"])]
         minimized = minimize_failure(
             driver,
-            event_model,
+            inspect_tool,
             args.output,
             failure,
             specification,

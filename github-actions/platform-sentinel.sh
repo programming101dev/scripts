@@ -15,7 +15,7 @@ trap 'rm -rf "$output"' EXIT
 pids=()
 for test_path in "${tests[@]}"; do
   test_name="$(basename -- "$test_path" .sh)"
-  "$test_path" > "$output/$test_name.log" 2>&1 &
+  P101_SNAPSHOT_ONLY=1 "$test_path" > "$output/$test_name.log" 2>&1 &
   pids+=("$!")
 done
 

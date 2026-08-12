@@ -195,8 +195,8 @@ wrapper_tool="$(find_tool P101_AUDIT_WRAPPERS "$workspace_dir/programs/p101-audi
 error_contract_tool="$(find_tool P101_AUDIT_ERRORS "$workspace_dir/programs/p101-audit/build-clang-22/audit-errors" "$workspace_dir/programs/p101-audit/build-clang/audit-errors" "$(last_build_tool "$workspace_dir/programs/p101-audit" audit-errors)" audit-errors)" || { echo "student workflow: audit-errors not found" >&2; exit 2; }
 module_tool="$(find_tool P101_AUDIT_MODULES "$workspace_dir/programs/p101-audit/build-clang-22/audit-modules" "$workspace_dir/programs/p101-audit/build-clang/audit-modules" "$(last_build_tool "$workspace_dir/programs/p101-audit" audit-modules)" audit-modules)" || { echo "student workflow: audit-modules not found" >&2; exit 2; }
 observe_tool="$(find_tool P101_INSPECT_CAPTURE "$workspace_dir/programs/p101-inspect/build-clang-22/inspect-capture" "$workspace_dir/programs/p101-inspect/build-clang/inspect-capture" "$(last_build_tool "$workspace_dir/programs/p101-inspect" inspect-capture)" inspect-capture)" || { echo "student workflow: inspect-capture not found" >&2; exit 2; }
+inspect_tool="$(find_tool P101_INSPECT "$workspace_dir/programs/p101-inspect/build-clang-22/p101-inspect" "$workspace_dir/programs/p101-inspect/build-clang/p101-inspect" "$(last_build_tool "$workspace_dir/programs/p101-inspect" p101-inspect)" p101-inspect)" || { echo "student workflow: p101-inspect not found" >&2; exit 2; }
 walk_tool="$(find_tool P101_TEST_FAULTS "$workspace_dir/programs/p101-test/build-clang-22/test-faults" "$workspace_dir/programs/p101-test/build-clang/test-faults" "$(last_build_tool "$workspace_dir/programs/p101-test" test-faults)" test-faults)" || { echo "student workflow: test-faults not found" >&2; exit 2; }
-model_tool="$(find_tool P101_EVENT_MODEL "$workspace_dir/libraries/lib_tool_event/build-clang-22/p101-event-model" "$workspace_dir/libraries/lib_tool_event/build-clang/p101-event-model" "$(last_build_tool "$workspace_dir/libraries/lib_tool_event" p101-event-model)" p101-event-model)" || { echo "student workflow: p101-event-model not found" >&2; exit 2; }
 
 quality_status=0
 quality_state="SKIP"
@@ -236,11 +236,11 @@ doctor_args+=(-- "$@")
 (cd "$project_dir" && run_logged "source audit" "$log_dir/doctor.log" "$doctor_tool" "${doctor_args[@]}")
 doctor_status=$?
 
-(cd "$project_dir" && run_logged "p101 runtime capture and analysis" "$log_dir/runtime.log" "$script_dir/p101-run.py" -o "$out_dir/runtime" --observe-tool "$observe_tool" --model-tool "$model_tool" -- "$@")
+(cd "$project_dir" && run_logged "p101 runtime capture and analysis" "$log_dir/runtime.log" "$inspect_tool" run -o "$out_dir/runtime" --observe-tool "$observe_tool" -- "$@")
 runtime_status=$?
 
 mkdir -p "$out_dir/fault-walk"
-walk_args=(-n "$fault_count" -l "$out_dir/fault-walk/case" -U "$script_dir/p101-run.py" -O "$observe_tool" -Y "$script_dir/p101-analyze.py" -B "$model_tool" -- "$@")
+walk_args=(-n "$fault_count" -l "$out_dir/fault-walk/case" -U "$inspect_tool" -O "$observe_tool" -- "$@")
 (cd "$project_dir" && run_logged "p101 error-path walk" "$log_dir/error-path-walk.log" "$walk_tool" "${walk_args[@]}")
 walk_status=$?
 
