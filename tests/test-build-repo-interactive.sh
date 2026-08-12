@@ -670,11 +670,11 @@ printf 'gitdir: /definitely/missing/p101-scripts-git-dir\n' > "$sandbox/matrix/.
 )
 grep -Fq 'source snapshot without usable Git metadata; skipping refresh' \
   "$sandbox/matrix/update-all.stdout"
-[[ "$(grep -c -- '--skip-self-update' "$sandbox/matrix/driver-arguments.txt")" -eq 3 ]]
-[[ "$(grep -c -- '--prepare-only' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
-[[ "$(grep -c -- '--build-only' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
-[[ "$(grep -c -- '--finalize-only' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
-[[ "$(grep -c -- '--format' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
+[[ "$(grep -Fxc -- '--skip-self-update' "$sandbox/matrix/driver-arguments.txt")" -eq 3 ]]
+[[ "$(grep -Fxc -- '--prepare-only' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
+[[ "$(grep -Fxc -- '--build-only' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
+[[ "$(grep -Fxc -- '--finalize-only' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
+[[ "$(grep -Fxc -- '--format' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
 grep -Fxq -- '--prepare-only' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--build-only' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--finalize-only' "$sandbox/matrix/driver-arguments.txt"
@@ -699,8 +699,8 @@ matrix_cache="$(CDPATH='' cd -- "$sandbox/matrix" && pwd -P)/target/repository-b
     -f clang-format -t clang-tidy -k cppcheck -s address \
     --no-format --skip-install --skip-acceptance > no-format.stdout
 )
-[[ "$(grep -c -- '--format' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
-[[ "$(grep -c -- '--format-check' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
+[[ "$(grep -Fxc -- '--format' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
+[[ "$(grep -Fxc -- '--format-check' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
 if (
   cd "$sandbox/matrix"
   ./update-all.sh -u ./driver.sh -C c.txt -X cxx.txt \
@@ -756,9 +756,9 @@ export P101_TEST_CMAKE_LOG="$acceptance_matrix/cmake-invocations.txt"
 )
 unset P101_TEST_CMAKE_LOG
 [[ "$(wc -l < "$acceptance_matrix/driver-invocations.txt")" -eq 4 ]]
-[[ "$(grep -c -- '--prepare-only' "$acceptance_matrix/driver-invocations.txt")" -eq 1 ]]
-[[ "$(grep -c -- '--build-only' "$acceptance_matrix/driver-invocations.txt")" -eq 2 ]]
-[[ "$(grep -c -- '--finalize-only' "$acceptance_matrix/driver-invocations.txt")" -eq 1 ]]
+[[ "$(grep -Fxc -- '--prepare-only' "$acceptance_matrix/driver-invocations.txt")" -eq 1 ]]
+[[ "$(grep -Fxc -- '--build-only' "$acceptance_matrix/driver-invocations.txt")" -eq 2 ]]
+[[ "$(grep -Fxc -- '--finalize-only' "$acceptance_matrix/driver-invocations.txt")" -eq 1 ]]
 grep -Fq -- '--prepare-only' "$acceptance_matrix/driver-invocations.txt"
 grep -Fq -- '--build-only' "$acceptance_matrix/driver-invocations.txt"
 grep -Fq -- '--finalize-only' "$acceptance_matrix/driver-invocations.txt"
