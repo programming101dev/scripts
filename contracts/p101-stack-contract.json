@@ -346,9 +346,9 @@
       "sha256": "29364ed10bf6a9b26029eb4cc34ab57371bb55d8eeb0edbeefc4042b796d4451"
     },
     {
-      "bytes": 1069,
+      "bytes": 1090,
       "path": "github-actions/platform-sentinel.sh",
-      "sha256": "c56319def112e4dda09bfb8298470b300490979c385c8912ac5853e5532ad296"
+      "sha256": "df2fa33a0ee0254ef78361d28f845a58feee03bc6cb35ec335673a0446f17d80"
     },
     {
       "bytes": 13844,
@@ -358,7 +358,7 @@
     {
       "bytes": 8624,
       "path": "repos.lock",
-      "sha256": "13ef844888ff8cb0c0587054b35c464bc8ba0281705ba264655e1647efbc3b44"
+      "sha256": "48fea71577fe6544adea63e09e81c9b8813f7bd7037384d1cd1f1e8e50d183bd"
     },
     {
       "bytes": 3345,
@@ -426,9 +426,9 @@
       "sha256": "a3b8f0bd5ef3dafd519f37a9c330faafae21d90db59eab4ec00bc03ff47d86b6"
     },
     {
-      "bytes": 8995,
+      "bytes": 9053,
       "path": "tests/test-github-actions-summary.sh",
-      "sha256": "f891aad48c895ca56d0f8570419aec66de1b2207bb0d3bdd441fdfb8c515494a"
+      "sha256": "16390a1d17167f9b28b2d07f174bf1c1d4824dfa389b657142b443b73dff48bc"
     },
     {
       "bytes": 50365,
