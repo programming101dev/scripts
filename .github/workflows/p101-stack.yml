@@ -92,7 +92,7 @@ jobs:
         run: cd scripts && ./github-actions/platform-sentinel.sh
       - name: Restore exact workspace evidence and build lanes
         id: workspace-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: |
             scripts/target/check-evidence-cache
@@ -118,7 +118,7 @@ jobs:
           exit "$status"
       - name: Save exact workspace evidence and build lanes
         if: ${{ always() }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |
             scripts/target/check-evidence-cache
@@ -190,7 +190,7 @@ jobs:
         run: cd scripts && ./github-actions/platform-sentinel.sh
       - name: Restore exact workspace evidence and build lanes
         id: workspace-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: |
             scripts/target/check-evidence-cache
@@ -216,7 +216,7 @@ jobs:
           exit "$status"
       - name: Save exact workspace evidence and build lanes
         if: ${{ always() }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |
             scripts/target/check-evidence-cache
@@ -268,7 +268,7 @@ jobs:
           path: scripts
       - name: Restore exact workspace evidence and build lanes
         id: workspace-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: |
             scripts/target/check-evidence-cache
@@ -340,7 +340,7 @@ jobs:
             exit 0
       - name: Save exact workspace evidence and build lanes
         if: ${{ always() }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |
             scripts/target/check-evidence-cache
@@ -395,10 +395,11 @@ jobs:
       - uses: actions/checkout@v5
         with:
           path: scripts
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           pattern: instrumentation-*
           path: instrumentation-receipts
+          digest-mismatch: error
       - name: Verify supported-platform instrumentation coverage
         id: instrumentation
         run: >-

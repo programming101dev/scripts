@@ -35,10 +35,14 @@ grep -Fq 'ln -sf "/usr/local/llvm${required}/bin/clang-tidy" /usr/local/bin/clan
   .github/workflows/p101-stack.yml)" -eq 3 ]]
 [[ "$(grep -c './update-all.sh .*--format-check' \
   .github/workflows/p101-stack.yml)" -eq 3 ]]
-[[ "$(grep -c 'uses: actions/cache/restore@v4' \
+[[ "$(grep -c 'uses: actions/cache/restore@v5' \
   .github/workflows/p101-stack.yml)" -eq 3 ]]
-[[ "$(grep -c 'uses: actions/cache/save@v4' \
+[[ "$(grep -c 'uses: actions/cache/save@v5' \
   .github/workflows/p101-stack.yml)" -eq 3 ]]
+[[ "$(grep -c 'uses: actions/download-artifact@v8' \
+  .github/workflows/p101-stack.yml)" -eq 1 ]]
+[[ "$(grep -c 'digest-mismatch: error' \
+  .github/workflows/p101-stack.yml)" -eq 1 ]]
 [[ "$(grep -c 'P101_REPOSITORY_BUILD_CACHE=' \
   .github/workflows/p101-stack.yml)" -eq 3 ]]
 [[ "$(grep -c 'target/check-evidence-cache' \
