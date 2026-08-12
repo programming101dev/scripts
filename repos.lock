@@ -8,7 +8,7 @@
       "url": "https://github.com/programming101dev/lib_error.git"
     },
     {
-      "commit": "0d2e67bcb2fc5f2be3625f83531ea3e0a2259f13",
+      "commit": "db5f0c998543852f4b79398e6a0fb3db593cfea5",
       "path": "../libraries/lib_tool_event",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_tool_event.git"
