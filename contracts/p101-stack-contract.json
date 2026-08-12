@@ -336,9 +336,9 @@
       "sha256": "b129021011ddd818cbd2ee2c62fe7b50a5348604f3e0092863122fdd6c3b4356"
     },
     {
-      "bytes": 44637,
+      "bytes": 44512,
       "path": "tests/test-build-repo-interactive.sh",
-      "sha256": "ae630eb280933e93e16a2520c2bdf3577041fb67b05f652253f9d4fe34f91698"
+      "sha256": "ddabb85ca0b1d517324db9bb702a26495dd0a2cfe9a5275a97321722133941b2"
     },
     {
       "bytes": 5740,

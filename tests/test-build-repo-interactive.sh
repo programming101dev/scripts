@@ -458,10 +458,8 @@ cached_quality="$(cat "$runtime_repo/.last-build-dir")"
 [[ -L "$runtime_repo/$cached_quality" ]]
 [[ -L "$runtime_repo/build-test-quality" ]]
 [[ "$(readlink "$runtime_repo/build-test-quality")" == "$cached_quality" ]]
-cached_runtime="$(cat "$runtime_repo/.last-runtime-build-dir")"
-[[ "$cached_runtime" == build-test-runtime__???????????????????????????????????????? ]]
-[[ -L "$runtime_repo/build-test-runtime" ]]
-[[ "$(readlink "$runtime_repo/build-test-runtime")" == "$cached_runtime" ]]
+# This fixture uses -I, so it deliberately exercises only the quality lane.
+# Runtime lanes are covered by the deferred-install matrix case below.
 tail -n 1 "$runtime_repo/configure-raw-invocations.txt" | grep -Eq '(^| )-R( |$)'
 grep -Fq 'Build cache MISS' "$sandbox/cache-miss.stdout"
 grep -Fxq 'cache_state=miss' \
