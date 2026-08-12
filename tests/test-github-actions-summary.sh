@@ -45,10 +45,24 @@ grep -Fq 'ln -sf "/usr/local/llvm${required}/bin/clang-tidy" /usr/local/bin/clan
   .github/workflows/p101-stack.yml)" -eq 1 ]]
 [[ "$(grep -c 'P101_REPOSITORY_BUILD_CACHE=' \
   .github/workflows/p101-stack.yml)" -eq 3 ]]
+[[ "$(grep -c 'P101_TEST_BUILD_CACHE=' \
+  .github/workflows/p101-stack.yml)" -eq 3 ]]
 [[ "$(grep -c 'target/check-evidence-cache' \
   .github/workflows/p101-stack.yml)" -eq 6 ]]
 [[ "$(grep -c 'target/ci-build-cache' \
   .github/workflows/p101-stack.yml)" -eq 9 ]]
+[[ "$(grep -c 'target/ci-test-cache' \
+  .github/workflows/p101-stack.yml)" -eq 9 ]]
+[[ "$(grep -c "steps.workspace-cache.outputs.cache-hit != 'true'" \
+  .github/workflows/p101-stack.yml)" -eq 3 ]]
+[[ "$(grep -c "steps.update.outcome == 'success'.*steps.workspace-cache.outputs.cache-hit" \
+  .github/workflows/p101-stack.yml)" -eq 2 ]]
+grep -Fq "steps.freebsd-cache.outputs.save == 'true'" \
+  .github/workflows/p101-stack.yml
+grep -Fq 'P101_TEST_BUILD_CACHE' ../templates/template-c/test.sh
+grep -Fq 'P101_TEST_BUILD_CACHE' ../templates/template-cxx/test.sh
+grep -Fq 'components/$component_name' ../programs/p101-audit/test.sh
+grep -Fq 'components/mutation' ../programs/p101-test/test.sh
 [[ "$(grep -c '^[[:space:]]\{12\}exit 0$' \
   .github/workflows/p101-stack.yml)" -ge 1 ]]
 if awk '

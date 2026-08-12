@@ -369,6 +369,13 @@
       "type_usr": "c:@EA@p101_fsm_decision_kind"
     },
     {
+      "source": "libraries/lib_tool_event/include/p101_tool_event/analysis.h",
+      "type": "p101_tool_analysis_policy",
+      "owner": "lib_tool_event",
+      "reason": "analysis policy classification, not an operation outcome",
+      "type_usr": "c:@EA@p101_tool_analysis_policy"
+    },
+    {
       "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
       "type": "p101_tool_event_record_kind",
       "owner": "lib_tool_event",

@@ -72,6 +72,7 @@ ORCHESTRATION_ENVIRONMENT = {
     "P101_ACCEPTANCE_OUTPUT_DIR",
     "P101_C_FACTS_CACHE_DIR",
     "P101_CHECK_GRAPH",
+    "P101_CONTENT_MANIFEST",
     "P101_FACTS_CACHE",
     "P101_GITHUB_CC",
     "P101_GITHUB_CLANG_FORMAT",
@@ -95,6 +96,7 @@ TOOL_LOCATOR_ENVIRONMENT = {
     "P101_AUDIT_WRAPPERS",
     "P101_EVENT_MODEL",
     "P101_INSPECT_CAPTURE",
+    "P101_INSPECT",
     "P101_TEST_FAULTS",
     "P101_TEST_MUTATION",
     "P101_TOOL_RECEIPT",
@@ -186,10 +188,44 @@ def active_repository_roots() -> list[Path]:
 class WorkspaceSourceIndex:
     """Hash workspace source bytes once, then derive exact scoped identities."""
 
+    @staticmethod
+    def _stable_payload(path: Path) -> tuple[bytes, bytes, os.stat_result]:
+        """Read bytes whose identity matches the returned filesystem status."""
+        for _attempt in range(3):
+            before = path.lstat()
+            if path.is_symlink():
+                payload = os.readlink(path).encode(
+                    "utf-8", errors="surrogateescape"
+                )
+                kind = b"symlink"
+            elif path.is_file():
+                payload = path.read_bytes()
+                kind = b"file"
+            else:
+                return b"", b"", before
+            after = path.lstat()
+            before_identity = (
+                before.st_mode,
+                before.st_size,
+                before.st_mtime_ns,
+                before.st_ctime_ns,
+            )
+            after_identity = (
+                after.st_mode,
+                after.st_size,
+                after.st_mtime_ns,
+                after.st_ctime_ns,
+            )
+            if before_identity == after_identity:
+                return payload, kind, after
+        raise RuntimeError(f"workspace source changed while hashing: {path}")
+
     def __init__(self) -> None:
         self.workspace = SCRIPTS_ROOT.parent.resolve()
         self.repositories: list[tuple[dict[str, Any], tuple[Path, ...]]] = []
-        self.file_records: dict[Path, tuple[str, bytes, bytes, int]] = {}
+        self.file_records: dict[
+            Path, tuple[str, bytes, bytes, int, int, int, int, int]
+        ] = {}
         self.pattern_files: dict[str, frozenset[Path]] = {}
         for repository in active_repository_roots():
             metadata: dict[str, Any] = {
@@ -224,15 +260,8 @@ class WorkspaceSourceIndex:
                 )
             files: list[Path] = []
             for path in repository_source_files(repository):
-                if path.is_symlink():
-                    payload = os.readlink(path).encode(
-                        "utf-8", errors="surrogateescape"
-                    )
-                    kind = b"symlink"
-                elif path.is_file():
-                    payload = path.read_bytes()
-                    kind = b"file"
-                else:
+                payload, kind, status = self._stable_payload(path)
+                if not kind:
                     continue
                 relative = path.relative_to(self.workspace).as_posix()
                 self.file_records[path] = (
@@ -240,6 +269,10 @@ class WorkspaceSourceIndex:
                     kind,
                     hashlib.sha256(payload).digest(),
                     len(payload),
+                    status.st_mtime_ns,
+                    status.st_ctime_ns,
+                    status.st_dev,
+                    status.st_ino,
                 )
                 files.append(path)
             self.repositories.append((metadata, tuple(files)))
@@ -318,7 +351,16 @@ class WorkspaceSourceIndex:
                 metadata if include_repository_state else {"path": metadata["path"]}
             )
             for path in selected:
-                relative, kind, payload_digest, payload_size = self.file_records[path]
+                (
+                    relative,
+                    kind,
+                    payload_digest,
+                    payload_size,
+                    _modified_ns,
+                    _changed_ns,
+                    _device,
+                    _inode,
+                ) = self.file_records[path]
                 digest.update(relative.encode("utf-8"))
                 digest.update(b"\0")
                 digest.update(kind)
@@ -343,6 +385,43 @@ class WorkspaceSourceIndex:
             "repositories": repository_identities,
             "inputs": list(input_patterns) if input_patterns is not None else ["**"],
         }
+
+    def write_manifest(self, path: Path) -> None:
+        files = []
+        for record in sorted(self.file_records.values(), key=lambda value: value[0]):
+            (
+                relative,
+                kind,
+                payload_digest,
+                payload_size,
+                modified_ns,
+                changed_ns,
+                device,
+                inode,
+            ) = record
+            files.append(
+                {
+                    "path": relative,
+                    "kind": kind.decode("ascii"),
+                    "sha256": payload_digest.hex(),
+                    "bytes": payload_size,
+                    "modified_ns": modified_ns,
+                    "changed_ns": changed_ns,
+                    "device": device,
+                    "inode": inode,
+                }
+            )
+        document = {
+            "schema": "p101-workspace-content-manifest-v1",
+            "workspace": os.fspath(self.workspace),
+            "files": files,
+        }
+        temporary = path.with_suffix(path.suffix + ".tmp")
+        temporary.write_text(
+            json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temporary, path)
 
 
 def workspace_source_identity(
@@ -1265,6 +1344,13 @@ def run_graph(
         return identities[identifier]
 
     workspace = workspace_source_identity(None, source_indexes)
+    content_manifest = output / "workspace-content-manifest.json"
+    source_index = source_indexes.get("workspace")
+    if source_index is not None:
+        source_index.write_manifest(content_manifest)
+        execution_environment["P101_CONTENT_MANIFEST"] = os.fspath(
+            content_manifest
+        )
     previous_records: dict[str, dict[str, Any]] = {}
     previous_directory: Path | None = None
     if previous is not None:

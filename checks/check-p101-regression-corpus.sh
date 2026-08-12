@@ -64,10 +64,10 @@ observe="$(find_tool P101_INSPECT_CAPTURE \
   "$(last_build_tool ../programs/p101-inspect inspect-capture)" \
   ../programs/p101-inspect/build-clang-22/inspect-capture \
   ../programs/p101-inspect/build-clang/inspect-capture inspect-capture)"
-model_tool="$(find_tool P101_EVENT_MODEL \
-  "$(last_build_tool ../libraries/lib_tool_event p101-event-model)" \
-  ../libraries/lib_tool_event/build-clang-22/p101-event-model \
-  ../libraries/lib_tool_event/build-clang/p101-event-model p101-event-model)"
+inspect_tool="$(find_tool P101_INSPECT \
+  "$(last_build_tool ../programs/p101-inspect p101-inspect)" \
+  ../programs/p101-inspect/build-clang-22/p101-inspect \
+  ../programs/p101-inspect/build-clang/p101-inspect p101-inspect)"
 playground="$(find_tool P101_TOOL_PLAYGROUND \
   "$(last_build_tool ../playgrounds p101-tool-playground)" \
   ../playgrounds/build-clang-22/p101-tool-playground \
@@ -117,7 +117,7 @@ check_case() {
   fi
 
   set +e
-  ./runtime/p101-analyze.py -o "$analysis" --model-tool "$model_tool" "$capture" \
+  "$inspect_tool" analyze -o "$analysis" "$capture" \
     >> "$log" 2>&1
   analysis_status=$?
   set -e
@@ -127,15 +127,15 @@ check_case() {
       "$name" "$analysis_status" "$expected_analysis_status" "$(basename "$log")" >> "$summary"
     return 1
   fi
-  if ! ./runtime/p101-model.py verify -e "$expectation" "$analysis" >> "$log" 2>&1; then
+  if ! "$inspect_tool" model verify -e "$expectation" "$analysis" >> "$log" 2>&1; then
     echo "    FAIL: executable expectation did not match"
     printf '| FAIL | %s | expectation mismatch; [log](./logs/%s) |\n' \
       "$name" "$(basename "$log")" >> "$summary"
     return 1
   fi
-  if ! grep -q $'^tool=event_model\t' "$analysis/analysis-receipt.txt"; then
-    echo "    FAIL: analysis receipt does not identify the shared model builder"
-    printf '| FAIL | %s | missing event-model receipt; [log](./logs/%s) |\n' \
+  if [ ! -f "$analysis/analysis-receipt.json" ]; then
+    echo "    FAIL: native analysis receipt is missing"
+    printf '| FAIL | %s | missing native analysis receipt; [log](./logs/%s) |\n' \
       "$name" "$(basename "$log")" >> "$summary"
     return 1
   fi
@@ -152,7 +152,9 @@ check_case alloc-leak alloc-leak ../playgrounds/expectations/alloc-leak.txt 1 ||
 check_case double-close-error-path double-close ../playgrounds/expectations/double-close.txt 1 || failures=1
 
 echo "==> policy edge-case unit corpus"
-if ./tests/test-p101-runtime.py >> "$log_dir/policy-unit.log" 2>&1; then
+if ../programs/p101-inspect/test/test_native_cli.sh \
+  "$inspect_tool" ../libraries/lib_tool_event/test/fixtures \
+  >> "$log_dir/policy-unit.log" 2>&1; then
   echo "    PASS"
   printf '| PASS | policy edge cases | resource, exec, sync, and trace contracts |\n' >> "$summary"
 else
