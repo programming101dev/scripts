@@ -115,8 +115,8 @@
         "Reports consume lifecycle facts without duplicating resource semantics."
       ],
       "collaborators": [
-        "scripts/runtime/p101_runtime.py owns lifecycle policy",
-        "scripts/runtime/p101-view.py owns presentation and teaching advice"
+        "lib_tool_event owns lifecycle and analysis mechanics",
+        "p101-inspect owns presentation and teaching advice"
       ],
       "tests": {
         "clean": {

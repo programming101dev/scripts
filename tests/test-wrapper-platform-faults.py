@@ -13,6 +13,7 @@ sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 
 from wrapper_fault_contract import (
     effective_fault_selection,
+    header_conditional_fault_symbols,
     has_explicit_platform_faults,
     has_documented_faults,
     injected_fault_cases,
@@ -177,6 +178,9 @@ def test_manual_locator(refresh) -> None:
 
 def test_platform_precedence() -> None:
     contract = {
+        "header_conditional_fault_symbols": {
+            "macos": {"regex.h": ["REG_BADMAX"]}
+        },
         "functions": {
             "open": {
                 "posix": {
@@ -229,6 +233,19 @@ def test_platform_precedence() -> None:
             },
         }
     }
+    check(
+        header_conditional_fault_symbols(
+            contract, "macos", "regex.h"
+        )
+        == {"REG_BADMAX"},
+        "header-conditional fault metadata was lost",
+    )
+    check(
+        not header_conditional_fault_symbols(
+            contract, "linux", "regex.h"
+        ),
+        "header-conditional metadata leaked across platforms",
+    )
     errors, domain, kind, source, coverage = effective_fault_selection(
         contract,
         "open",

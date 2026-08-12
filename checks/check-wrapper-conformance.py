@@ -15,6 +15,8 @@ import concurrent.futures
 import csv
 import json
 import os
+import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -28,6 +30,8 @@ sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 from wrapper_fault_contract import (  # noqa: E402
     current_platform_key,
     fault_domain,
+    fault_symbol_header,
+    header_conditional_fault_symbols,
     injected_fault_cases,
     load_contract,
 )
@@ -326,6 +330,40 @@ def compare_fault_outcomes(
     return failures
 
 
+def header_fault_symbols(
+    compiler: str,
+    header: str,
+) -> set[str]:
+    """Return macro symbols exposed by one compiler-selected system header."""
+    command = [
+        *shlex.split(compiler),
+        "-dM",
+        "-E",
+        "-x",
+        "c",
+        "-",
+    ]
+    result = subprocess.run(
+        command,
+        input=f"#include <{header}>\n",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    if result.returncode != 0:
+        diagnostic = result.stderr.strip() or "no compiler diagnostic"
+        raise RuntimeError(
+            f"cannot inspect active <{header}> with {compiler}: {diagnostic}"
+        )
+    return {
+        match.group(1)
+        for line in result.stdout.splitlines()
+        if (match := re.match(r"#define\s+([A-Za-z_][A-Za-z0-9_]*)\b", line))
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run per-wrapper runtime conformance checks."
@@ -337,6 +375,12 @@ def main() -> int:
         default=Path(tempfile.gettempdir()) / "p101-wrapper-conformance",
     )
     parser.add_argument("--library", action="append", default=[])
+    parser.add_argument(
+        "-c",
+        "--compiler",
+        default=os.environ.get("CC", "cc"),
+        help="C compiler that selects the active platform headers",
+    )
     parser.add_argument(
         "-j",
         "--jobs",
@@ -402,6 +446,8 @@ def main() -> int:
     failures: list[str] = []
     failure_details: list[dict[str, object]] = []
     receipts: list[dict[str, object]] = []
+    unavailable_header_faults: list[dict[str, str]] = []
+    header_symbols: dict[str, set[str]] = {}
     required_argument_usrs = set(
         contract["logging"]["argument_wrapper_usrs"]
     )
@@ -462,6 +508,7 @@ def main() -> int:
         fault_case_count = 0
         fault_cases_by_wrapper: dict[str, int] = {}
         expected_outcomes: set[tuple[str, str, str, str, str]] = set()
+        library_unavailable_faults: list[dict[str, str]] = []
         receipt_platform = platform_key or "posix"
         for wrapper_usr, test_row in tests_by_usr.items():
             if wrapper_usr not in api_by_usr:
@@ -476,6 +523,35 @@ def main() -> int:
                 function,
                 platform_key,
             )
+            header = fault_symbol_header(fault_contract, function)
+            conditional_symbols = header_conditional_fault_symbols(
+                fault_contract,
+                platform_key,
+                header,
+            )
+            if conditional_symbols.intersection(symbols):
+                if header not in header_symbols:
+                    header_symbols[header] = header_fault_symbols(
+                        args.compiler,
+                        header,
+                    )
+                unavailable = sorted(
+                    conditional_symbols.intersection(symbols)
+                    - header_symbols[header]
+                )
+                for symbol in unavailable:
+                    record = {
+                        "platform": receipt_platform,
+                        "library": library,
+                        "wrapper": name,
+                        "header": header,
+                        "symbol": symbol,
+                    }
+                    library_unavailable_faults.append(record)
+                    unavailable_header_faults.append(record)
+                symbols = [
+                    symbol for symbol in symbols if symbol not in unavailable
+                ]
             wrapper_case_count = len(symbols)
             fault_cases_by_wrapper[name] = wrapper_case_count
             fault_case_count += wrapper_case_count
@@ -519,6 +595,9 @@ def main() -> int:
                     ),
                     "fault_cases": fault_case_count,
                     "fault_outcomes_observed": 0,
+                    "header_unavailable_faults": (
+                        library_unavailable_faults
+                    ),
                     "fault_outcome_log": str(outcome_log),
                     "arguments_logged": 0,
                     "results_logged": 0,
@@ -628,6 +707,7 @@ def main() -> int:
                 "fault_outcomes_observed": len(
                     expected_outcomes & observed_keys
                 ),
+                "header_unavailable_faults": library_unavailable_faults,
                 "fault_outcome_log": str(outcome_log),
                 "arguments_logged": len(required_arguments & arguments),
                 "results_logged": len(required_results & results),
@@ -657,6 +737,7 @@ def main() -> int:
         "fault_outcomes_observed": sum(
             int(item["fault_outcomes_observed"]) for item in receipts
         ),
+        "header_unavailable_faults": unavailable_header_faults,
         "non_injected_apis_observed": sum(
             int(item["non_injected_apis_observed"]) for item in receipts
         ),
@@ -674,6 +755,17 @@ def main() -> int:
         f"{receipt['fault_cases']} direct platform fault outcomes, "
         f"{len(receipts)} libraries"
     )
+    if unavailable_header_faults:
+        print(
+            "active headers omit "
+            f"{len(unavailable_header_faults)} documented platform fault "
+            "outcome(s):"
+        )
+        for item in unavailable_header_faults:
+            print(
+                f"  {item['library']}:{item['wrapper']}: "
+                f"<{item['header']}> has no {item['symbol']}"
+            )
     print(
         "non-injected behavior evidence: "
         f"{receipt['non_injected_apis_observed']}/"

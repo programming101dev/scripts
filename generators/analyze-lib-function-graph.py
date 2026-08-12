@@ -302,7 +302,7 @@ def write_json(
     document = {
         "schema": "p101-library-function-graph-v2",
         "evidence": {
-            "structure": "P101FACT v7 resolved declarations and calls",
+            "structure": "P101FACT v8 resolved declarations and calls",
             "domain_policy": str(DOMAIN_CONTRACT.relative_to(SCRIPTS_ROOT)),
             "track_policy": str(TRACK_CONTRACT.relative_to(SCRIPTS_ROOT)),
             "blind_spot": "Indirect calls without a resolved declaration identity are omitted.",
@@ -358,7 +358,7 @@ def write_markdown(
     lines = [
         "# p101 library function graph",
         "",
-        "Generated from resolved `P101FACT v7` declarations and calls. "
+        "Generated from resolved `P101FACT v8` declarations and calls. "
         "Curriculum domains and tracks come from reviewed contracts; they are "
         "not inferred from identifier or path spelling.",
         "",

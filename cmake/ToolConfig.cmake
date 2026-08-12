@@ -74,9 +74,10 @@ if (NOT DEFINED P101_CLANG_SA_PROFILE OR "${P101_CLANG_SA_PROFILE}" STREQUAL "")
 endif ()
 
 if (NOT DEFINED P101_CLANG_SA_DISABLE_CHECKERS OR "${P101_CLANG_SA_DISABLE_CHECKERS}" STREQUAL "")
+    # Only disable checkers admitted by the enabled security profile. The
+    # alpha.core checkers are not enabled, and newer Clang releases reject an
+    # attempt to disable a checker name that they no longer provide.
     set(P101_CLANG_SA_DISABLE_CHECKERS
-            alpha.core.Conversion
-            alpha.core.FixedAddr
             security.insecureAPI.DeprecatedOrUnsafeBufferHandling
             security.insecureAPI.strcpy
     )

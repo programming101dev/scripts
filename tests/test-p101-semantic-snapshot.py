@@ -40,6 +40,13 @@ C_FACTS_SPEC = importlib.util.spec_from_file_location(
 assert C_FACTS_SPEC is not None and C_FACTS_SPEC.loader is not None
 C_FACTS_MODULE = importlib.util.module_from_spec(C_FACTS_SPEC)
 C_FACTS_SPEC.loader.exec_module(C_FACTS_MODULE)
+CLANG_AST_SPEC = importlib.util.spec_from_file_location(
+    "p101_runtime_clang_ast",
+    RUNTIME_ROOT / "clang_ast.py",
+)
+assert CLANG_AST_SPEC is not None and CLANG_AST_SPEC.loader is not None
+CLANG_AST_MODULE = importlib.util.module_from_spec(CLANG_AST_SPEC)
+CLANG_AST_SPEC.loader.exec_module(CLANG_AST_MODULE)
 
 
 class SemanticSnapshotTests(unittest.TestCase):
@@ -86,7 +93,7 @@ class SemanticSnapshotTests(unittest.TestCase):
         path = self.cache / "entries" / key
         path.mkdir(parents=True)
         artifact = path / "facts"
-        artifact.write_text("P101FACT\t7\tFILE\tdemo.c\tdemo\t0\t1\n", encoding="utf-8")
+        artifact.write_text("P101FACT\t8\tFILE\tdemo.c\tdemo\t0\t1\n", encoding="utf-8")
         manifest = {
             "schema": MODULE.RAW_SCHEMA,
             "key": key,
@@ -103,11 +110,44 @@ class SemanticSnapshotTests(unittest.TestCase):
         )
         return artifact
 
+    def write_ast_entry(self) -> Path:
+        key = "c" * 64
+        path = self.cache / "ast" / key
+        path.mkdir(parents=True)
+        dependency = self.root / "demo.c"
+        dependency.write_text("int demo(void) { return 0; }\n", encoding="utf-8")
+        payload = path / "ast.json.gz"
+        with gzip.open(payload, "wt", encoding="utf-8") as stream:
+            json.dump({"kind": "TranslationUnitDecl"}, stream)
+        status = dependency.stat()
+        manifest = {
+            "schema": MODULE.AST_SCHEMA,
+            "key": key,
+            "payload_bytes": payload.stat().st_size,
+            "payload_sha256": MODULE.hash_file(payload),
+            "dependencies": [
+                {
+                    "path": str(dependency),
+                    "bytes": status.st_size,
+                    "modified_ns": status.st_mtime_ns,
+                    "changed_ns": status.st_ctime_ns,
+                    "device": status.st_dev,
+                    "inode": status.st_ino,
+                }
+            ],
+        }
+        (path / "manifest.json").write_text(
+            json.dumps(manifest), encoding="utf-8"
+        )
+        return payload
+
     def test_mixed_snapshot_is_verified_and_receipted(self) -> None:
         self.write_runtime_entry()
         self.write_raw_entry()
+        self.write_ast_entry()
         self.record_usage("runtime-facts", "a" * 64)
         self.record_usage("compile-database-facts", "b" * 64)
+        self.record_usage("clang-ast", "c" * 64)
         receipt = self.root / "receipt.json"
         with mock.patch(
             "sys.argv",
@@ -124,9 +164,10 @@ class SemanticSnapshotTests(unittest.TestCase):
             self.assertEqual(MODULE.main(), 0)
         document = json.loads(receipt.read_text(encoding="utf-8"))
         self.assertEqual(document["schema"], MODULE.RECEIPT_SCHEMA)
-        self.assertEqual(document["entry_count"], 2)
+        self.assertEqual(document["entry_count"], 3)
         self.assertEqual(document["runtime_entry_count"], 1)
         self.assertEqual(document["compile_database_entry_count"], 1)
+        self.assertEqual(document["clang_ast_entry_count"], 1)
         self.assertEqual(document["entries"][0]["consumers"], ["check"])
         claimed = document.pop("receipt_digest")
         self.assertEqual(claimed, MODULE.canonical_digest(document))
@@ -144,11 +185,13 @@ class SemanticSnapshotTests(unittest.TestCase):
         self.write_runtime_entry()
         self.assertEqual(MODULE.inspect(self.cache, self.usage), [])
 
-    def test_terminal_prune_keeps_only_referenced_v2_entries(self) -> None:
+    def test_terminal_prune_keeps_only_referenced_entries(self) -> None:
         runtime = self.write_runtime_entry()
         self.write_raw_entry()
+        self.write_ast_entry()
         self.record_usage("runtime-facts", "a" * 64)
         self.record_usage("compile-database-facts", "b" * 64)
+        self.record_usage("clang-ast", "c" * 64)
         stale_runtime = self.cache / f"{'c' * 64}.json.gz"
         stale_runtime.write_bytes(runtime.read_bytes())
         legacy = self.cache / f"{'d' * 64}.jsonl.gz"
@@ -165,6 +208,7 @@ class SemanticSnapshotTests(unittest.TestCase):
 
         self.assertTrue(runtime.is_file())
         self.assertTrue((self.cache / "entries" / ("b" * 64)).is_dir())
+        self.assertTrue((self.cache / "ast" / ("c" * 64)).is_dir())
         self.assertFalse(stale_runtime.exists())
         self.assertFalse(legacy.exists())
         self.assertFalse(stale_raw.exists())
@@ -244,12 +288,122 @@ class SemanticSnapshotTests(unittest.TestCase):
         second = C_FACTS_MODULE._file_content_digest(path)
         self.assertNotEqual(first, second)
 
+    def test_prime_count_validates_sidecar_without_decoding_facts(self) -> None:
+        key = "f" * 64
+        facts = [{"kind": "FILE", "path": "demo.c"}]
+        C_FACTS_MODULE._snapshot_store(self.cache, key, facts)
+
+        with mock.patch.object(
+            C_FACTS_MODULE,
+            "_snapshot_restore",
+            side_effect=AssertionError("prime decoded the fact payload"),
+        ):
+            self.assertEqual(
+                C_FACTS_MODULE._snapshot_restore_count(self.cache, key), 1
+            )
+
+    def test_materialized_snapshot_is_decoded_once_per_process(self) -> None:
+        key = "9" * 64
+        facts = [{"kind": "FILE", "path": "demo.c"}]
+        C_FACTS_MODULE._snapshot_store(self.cache, key, facts)
+        C_FACTS_MODULE._MATERIALIZED_SNAPSHOTS.clear()
+
+        first = C_FACTS_MODULE._snapshot_restore(self.cache, key)
+        payload = self.cache / f"{key}.json.gz"
+        payload.write_bytes(b"the memo must avoid a second decode")
+        second = C_FACTS_MODULE._snapshot_restore(self.cache, key)
+
+        self.assertIs(first, second)
+        self.assertEqual(second, facts)
+
+    def test_clang_ast_parse_is_shared_by_content_key(self) -> None:
+        source = self.root / "demo.c"
+        source.write_text("int demo(void) { return 0; }\n", encoding="utf-8")
+
+        def produce(
+            _clang: str,
+            admitted_source: Path,
+            _arguments: tuple[str, ...],
+            _workspace: Path,
+            dependency_path: Path,
+        ) -> dict[str, object]:
+            dependency_path.write_text(
+                f"demo: {admitted_source}\n", encoding="utf-8"
+            )
+            return {"kind": "TranslationUnitDecl"}
+
+        environment = {"P101_FACTS_CACHE": str(self.cache)}
+        CLANG_AST_MODULE._compiler_identity.cache_clear()
+        CLANG_AST_MODULE._MATERIALIZED.clear()
+        with mock.patch.dict(os.environ, environment, clear=False), mock.patch.object(
+            CLANG_AST_MODULE, "_invoke", side_effect=produce
+        ) as invoke:
+            first = CLANG_AST_MODULE.acquire(
+                "/usr/bin/true", source, ("-std=c17",), self.root
+            )
+            CLANG_AST_MODULE._MATERIALIZED.clear()
+            second = CLANG_AST_MODULE.acquire(
+                "/usr/bin/true", source, ("-std=c17",), self.root
+            )
+        self.assertEqual(first, second)
+        self.assertEqual(invoke.call_count, 1)
+
+    def test_clang_ast_dependency_change_forces_reparse(self) -> None:
+        source = self.root / "demo.c"
+        header = self.root / "demo.h"
+        source.write_text('#include "demo.h"\nint demo(void);\n', encoding="utf-8")
+        header.write_text("int demo(void);\n", encoding="utf-8")
+
+        def produce(
+            _clang: str,
+            admitted_source: Path,
+            _arguments: tuple[str, ...],
+            _workspace: Path,
+            dependency_path: Path,
+        ) -> dict[str, object]:
+            dependency_path.write_text(
+                f"demo: {admitted_source} {header}\n", encoding="utf-8"
+            )
+            return {"kind": "TranslationUnitDecl"}
+
+        environment = {"P101_FACTS_CACHE": str(self.cache)}
+        CLANG_AST_MODULE._compiler_identity.cache_clear()
+        CLANG_AST_MODULE._MATERIALIZED.clear()
+        with mock.patch.dict(os.environ, environment, clear=False), mock.patch.object(
+            CLANG_AST_MODULE, "_invoke", side_effect=produce
+        ) as invoke:
+            CLANG_AST_MODULE.acquire(
+                "/usr/bin/true", source, ("-std=c17",), self.root
+            )
+            header.write_text("int demo(int value);\n", encoding="utf-8")
+            CLANG_AST_MODULE.acquire(
+                "/usr/bin/true", source, ("-std=c17",), self.root
+            )
+        self.assertEqual(invoke.call_count, 2)
+
+    def test_prime_count_rejects_payload_changed_after_sidecar(self) -> None:
+        key = "f" * 64
+        C_FACTS_MODULE._snapshot_store(
+            self.cache, key, [{"kind": "FILE", "path": "demo.c"}]
+        )
+        with (self.cache / f"{key}.json.gz").open("ab") as stream:
+            stream.write(b"corrupt")
+        self.assertIsNone(
+            C_FACTS_MODULE._snapshot_restore_count(self.cache, key)
+        )
+
     def test_fact_workers_use_conservative_default_and_explicit_override(
         self,
     ) -> None:
-        with mock.patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(C_FACTS_MODULE._fact_worker_count(41), 2)
+        with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
+            "os.cpu_count", return_value=8
+        ):
+            self.assertEqual(C_FACTS_MODULE._fact_worker_count(41), 4)
             self.assertEqual(C_FACTS_MODULE._fact_worker_count(1), 1)
+        with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
+            "os.cpu_count", return_value=2
+        ):
+            self.assertEqual(C_FACTS_MODULE._fact_worker_count(41), 2)
         with mock.patch.dict(
             os.environ, {"P101_FACTS_JOBS": "4"}, clear=True
         ):
@@ -323,7 +477,7 @@ class SemanticSnapshotTests(unittest.TestCase):
             "#!/bin/sh\n"
             'printf x >> "$P101_TEST_FACT_COUNTER"\n'
             "sleep 0.2\n"
-            f"printf 'P101FACT\\t7\\tFILE\\t{source / 'demo.c'}"
+            f"printf 'P101FACT\\t8\\tFILE\\t{source / 'demo.c'}"
             "\\tdemo\\t0\\t1\\n'\n",
             encoding="utf-8",
         )
@@ -343,7 +497,10 @@ class SemanticSnapshotTests(unittest.TestCase):
 
         with mock.patch.dict(
             os.environ,
-            {"P101_TEST_FACT_COUNTER": str(counter)},
+            {
+                "P101_AUDIT_FACTS": str(launcher),
+                "P101_TEST_FACT_COUNTER": str(counter),
+            },
             clear=False,
         ):
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:

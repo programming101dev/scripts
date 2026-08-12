@@ -8,18 +8,18 @@ CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT INT TERM
-cat > "$tmp_dir/v7.tsv" <<'EOF'
-P101FACT	7	FILE	src/main.c	main	0	1	0
-P101FACT	7	FUNCTION	src/main.c	main	0	1	main	c:@F@main	0	0	0	0	0	0	0	0	0	0
+cat > "$tmp_dir/v8.tsv" <<'EOF'
+P101FACT	8	FILE	src/main.c	main	0	1
+P101FACT	8	FUNCTION	src/main.c	main	0	1	main	0	0	c:@F@main	0	0	int (void)	int	0
 EOF
-output="$(./checks/check-c-facts-external-corpus.sh --verify-facts "$tmp_dir/v7.tsv")"
-[ "$output" = "version=7 facts=2" ] || {
+output="$(./checks/check-c-facts-external-corpus.sh --verify-facts "$tmp_dir/v8.tsv")"
+[ "$output" = "version=8 facts=2" ] || {
   echo "current producer output was not counted: $output" >&2
   exit 1
 }
 
 cat > "$tmp_dir/mixed.tsv" <<'EOF'
-P101FACT	7	FILE	src/main.c	main	0	1	0
+P101FACT	8	FILE	src/main.c	main	0	1
 P101FACT	6	FUNCTION	src/main.c	main	0	1	main	c:@F@main	0	0	0	0	0	0	0	0	0	0
 EOF
 if ./checks/check-c-facts-external-corpus.sh --verify-facts "$tmp_dir/mixed.tsv" >/dev/null 2>&1; then

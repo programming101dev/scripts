@@ -24,6 +24,8 @@ from pathlib import Path
 from typing import Iterable
 
 from semantic_usage import record_usage
+from content_manifest import manifest_digest
+from content_manifest import hash_tree as manifest_hash_tree
 
 
 class CFactError(RuntimeError):
@@ -32,7 +34,7 @@ class CFactError(RuntimeError):
 
 SOURCE_DIRECTORY_NAMES = ("src", "include", "test", "fuzz")
 SOURCE_SUFFIXES = {".c", ".h"}
-DEFAULT_FACT_WORKERS = 2
+MAXIMUM_DEFAULT_FACT_WORKERS = 4
 
 
 def _fact_worker_count(pending_count: int) -> int:
@@ -51,7 +53,7 @@ def _fact_worker_count(pending_count: int) -> int:
             )
         requested = int(configured)
     else:
-        requested = DEFAULT_FACT_WORKERS
+        requested = min(MAXIMUM_DEFAULT_FACT_WORKERS, os.cpu_count() or 1)
     return max(1, min(pending_count, requested))
 
 
@@ -104,8 +106,8 @@ def _decode(line: str, number: int) -> dict[str, object] | None:
     if not line.startswith("P101FACT\t"):
         return None
     fields = [_unescape(value) for value in line.split("\t")]
-    if len(fields) < 7 or fields[1] != "7":
-        raise CFactError(f"malformed P101FACT v7 record at output line {number}")
+    if len(fields) < 7 or fields[1] != "8":
+        raise CFactError(f"malformed P101FACT v8 record at output line {number}")
     base: dict[str, object] = {
         "kind": fields[2],
         "path": fields[3],
@@ -115,7 +117,7 @@ def _decode(line: str, number: int) -> dict[str, object] | None:
     }
     if fields[2] == "FILE" and len(fields) == 7:
         pass
-    elif fields[2] == "FUNCTION" and len(fields) == 13:
+    elif fields[2] == "FUNCTION" and len(fields) == 16:
         base.update(
             value=fields[7],
             is_static=fields[8] == "1",
@@ -123,6 +125,19 @@ def _decode(line: str, number: int) -> dict[str, object] | None:
             usr=fields[10],
             start=int(fields[11]),
             end=int(fields[12]),
+            type=fields[13],
+            return_type=fields[14],
+            is_variadic=fields[15] == "1",
+        )
+    elif fields[2] == "PARAMETER" and len(fields) == 14:
+        base.update(
+            value=fields[7],
+            type=fields[8],
+            canonical_type=fields[9],
+            caller_usr=fields[10],
+            parameter_index=int(fields[11]),
+            start=int(fields[12]),
+            end=int(fields[13]),
         )
     elif fields[2] == "CALL" and len(fields) == 16:
         base.update(
@@ -170,7 +185,7 @@ def _decode(line: str, number: int) -> dict[str, object] | None:
         )
     else:
         raise CFactError(
-            f"malformed {fields[2]} P101FACT v7 record at output line {number}"
+            f"malformed {fields[2]} P101FACT v8 record at output line {number}"
         )
     return base
 
@@ -314,7 +329,7 @@ def _facts_for_admitted_paths(
             continue
         resolved = path.resolve()
         if resolved in admitted_files or any(
-            _path_is_within(resolved, directory)
+            resolved == directory or directory in resolved.parents
             for directory in admitted_directories
         ):
             selected.append(fact)
@@ -478,9 +493,12 @@ def _compile_database_include_roots(repository: Path) -> set[Path]:
 
 
 
-SNAPSHOT_SCHEMA = "p101-facts-snapshot-v2"
+SNAPSHOT_SCHEMA = "p101-facts-snapshot-v3"
 _SNAPSHOT_SKIP_DIRECTORIES = {".git", "__pycache__", ".pytest_cache", ".facts-cache", "_to_delete"}
 _FILE_CONTENT_DIGESTS: dict[tuple[str, int, int, int, int, int], bytes] = {}
+_MATERIALIZED_SNAPSHOTS: dict[
+    tuple[str, str], list[dict[str, object]]
+] = {}
 _PRODUCER_LIBRARY_SOURCES = (
     "lib_c_facts",
     "lib_filesystem",
@@ -523,6 +541,9 @@ def _file_signature(path: Path) -> tuple[str, int, int, int, int, int]:
 
 
 def _file_content_digest(path: Path) -> bytes:
+    admitted_digest = manifest_digest(path)
+    if admitted_digest is not None:
+        return admitted_digest
     while True:
         before = _file_signature(path)
         cached = _FILE_CONTENT_DIGESTS.get(before)
@@ -561,45 +582,60 @@ def _tree_digest(root: Path, memo: dict[Path, str]) -> str:
             )
             for name in files:
                 entries.append(Path(current) / name)
-        for path in sorted(entries):
+        entries.sort()
+        manifest_digest = manifest_hash_tree(root, entries)
+        if manifest_digest is not None:
+            memo[root] = manifest_digest
+            return manifest_digest
+        for path in entries:
             digest.update(str(path.relative_to(root)).encode())
             _hash_file_into(digest, path)
     memo[root] = value = digest.hexdigest()
     return value
 
 
-def _producer_identity(producer: Path) -> bytes:
+def _producer_identity(
+    producer: Path, workspace: Path | None = None
+) -> bytes:
     digest = hashlib.sha256()
     digest.update(SNAPSHOT_SCHEMA.encode())
     digest.update(platform.system().encode())
     producer_repository = producer.parent
     digest.update(b"launcher\0")
     _hash_file_into(digest, producer)
-    candidates: list[Path] = []
-    for marker_name in (".last-build-dir", ".last-runtime-build-dir"):
-        marker = producer_repository / marker_name
-        if marker.is_file():
-            build_name = marker.read_text(encoding="utf-8").strip()
-            candidate = producer_repository / build_name / "audit-facts"
-            if build_name:
-                candidates.append(candidate)
-    candidates.extend(
-        producer_repository / directory / "audit-facts"
-        for directory in ("build-clang", "build-clang-22", "build")
+    expected_launcher = (
+        workspace.resolve() / "programs" / "p101-audit" / "audit-facts"
+        if workspace is not None
+        else producer
     )
-    selected = next((path for path in candidates if path.is_file()), None)
-    if selected is None:
-        raise FileNotFoundError("native semantic fact producer is absent")
-    # Build-lane and transaction paths are orchestration state. Bind the
-    # launcher and the selected native producer by bytes so identical tools
-    # share facts across qualified candidate directories.
-    digest.update(b"native\0")
-    _hash_file_into(digest, selected)
+    if producer.resolve() == expected_launcher.resolve():
+        candidates: list[Path] = []
+        for marker_name in (".last-build-dir", ".last-runtime-build-dir"):
+            marker = producer_repository / marker_name
+            if marker.is_file():
+                build_name = marker.read_text(encoding="utf-8").strip()
+                candidate = producer_repository / build_name / "audit-facts"
+                if build_name:
+                    candidates.append(candidate)
+        candidates.extend(
+            producer_repository / directory / "audit-facts"
+            for directory in ("build-clang", "build-clang-22", "build")
+        )
+        selected = next((path for path in candidates if path.is_file()), None)
+        if selected is None:
+            raise FileNotFoundError("native semantic fact producer is absent")
+        # Build-lane and transaction paths are orchestration state. Bind the
+        # launcher and selected native producer by bytes so identical tools
+        # share facts across qualified candidate directories.
+        digest.update(b"native\0")
+        _hash_file_into(digest, selected)
     # audit-facts is dynamically linked. Its executable bytes do not change
     # when an already-linked p101 dylib/DSO is rebuilt, so bind the admitted
     # source of every local runtime dependency as well. Build markers and lane
     # paths remain excluded, preserving reuse across equivalent candidates.
-    workspace = producer_repository.parent.parent
+    if workspace is None:
+        workspace = producer_repository.parent.parent
+    workspace = workspace.resolve()
     memo: dict[Path, str] = {}
     for library in _PRODUCER_LIBRARY_SOURCES:
         repository = workspace / "libraries" / library
@@ -649,6 +685,10 @@ def _unit_snapshot_key(
 
 
 def _snapshot_restore(cache_directory: Path, key: str) -> list[dict[str, object]] | None:
+    memo_key = (str(cache_directory.resolve()), key)
+    cached = _MATERIALIZED_SNAPSHOTS.get(memo_key)
+    if cached is not None:
+        return cached
     path = cache_directory / f"{key}.json.gz"
     try:
         with gzip.open(path, "rt", encoding="utf-8") as stream:
@@ -665,7 +705,68 @@ def _snapshot_restore(cache_directory: Path, key: str) -> list[dict[str, object]
     facts = document["facts"]
     if len(facts) != document.get("fact_count"):
         return None
+    _MATERIALIZED_SNAPSHOTS[memo_key] = facts
     return facts
+
+
+def _snapshot_metadata_path(cache_directory: Path, key: str) -> Path:
+    return cache_directory / f"{key}.meta.json"
+
+
+def _snapshot_store_metadata(
+    cache_directory: Path, key: str, fact_count: int
+) -> None:
+    payload = cache_directory / f"{key}.json.gz"
+    try:
+        payload_digest = _file_content_digest(payload).hex()
+        destination = _snapshot_metadata_path(cache_directory, key)
+        temporary = cache_directory / f".{key}.{os.getpid()}.meta.tmp"
+        temporary.write_text(
+            json.dumps(
+                {
+                    "schema": "p101-facts-snapshot-metadata-v1",
+                    "key": key,
+                    "fact_count": fact_count,
+                    "payload_sha256": payload_digest,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temporary, destination)
+    except OSError:
+        return
+
+
+def _snapshot_restore_count(cache_directory: Path, key: str) -> int | None:
+    """Validate a snapshot without decoding its complete fact array."""
+    payload = cache_directory / f"{key}.json.gz"
+    metadata_path = _snapshot_metadata_path(cache_directory, key)
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        fact_count = metadata.get("fact_count")
+        if (
+            metadata.get("schema") != "p101-facts-snapshot-metadata-v1"
+            or metadata.get("key") != key
+            or not isinstance(fact_count, int)
+            or fact_count < 0
+            or metadata.get("payload_sha256")
+            != _file_content_digest(payload).hex()
+        ):
+            return None
+        return fact_count
+    except (OSError, ValueError, AttributeError):
+        # Migrate an older valid cache entry once. Subsequent prime operations
+        # validate its small sidecar and compressed-payload digest without
+        # allocating and decoding every fact object.
+        facts = _snapshot_restore(cache_directory, key)
+        if facts is None:
+            return None
+        fact_count = len(facts)
+        _snapshot_store_metadata(cache_directory, key, fact_count)
+        return fact_count
 
 
 def _snapshot_store(cache_directory: Path, key: str, facts: list[dict[str, object]]) -> None:
@@ -687,6 +788,8 @@ def _snapshot_store(cache_directory: Path, key: str, facts: list[dict[str, objec
                 separators=(",", ":"),
             )
         os.replace(temporary, cache_directory / f"{key}.json.gz")
+        _MATERIALIZED_SNAPSHOTS[(str(cache_directory.resolve()), key)] = facts
+        _snapshot_store_metadata(cache_directory, key, len(facts))
     except OSError:
         return
 
@@ -716,15 +819,21 @@ def _snapshot_key_lock(cache_directory: Path, key: str) -> Iterable[bool]:
                 stream.close()
 
 
-def acquire(
+def _acquire(
     workspace: Path,
     paths: Iterable[Path],
     *,
     compile_database: Path | None = None,
     additional_include_roots: Iterable[Path] = (),
     cache: Path | str | None = "auto",
-) -> list[dict[str, object]]:
-    producer = workspace / "programs" / "p101-audit" / "audit-facts"
+    materialize: bool,
+) -> tuple[list[dict[str, object]], int]:
+    configured_producer = os.environ.get("P101_AUDIT_FACTS", "")
+    producer = (
+        Path(configured_producer).resolve()
+        if configured_producer
+        else workspace / "programs" / "p101-audit" / "audit-facts"
+    )
     if not producer.is_file():
         raise CFactError(f"semantic fact producer is absent: {producer}")
     admitted_paths = [path.resolve() for path in paths]
@@ -831,9 +940,10 @@ def acquire(
     cache_directory = _resolve_snapshot_cache(cache)
     unit_keys: list[str | None] = [None] * len(commands)
     unit_facts: list[list[dict[str, object]] | None] = [None] * len(commands)
+    unit_fact_counts: list[int | None] = [None] * len(commands)
     if cache_directory is not None:
         try:
-            producer_identity = _producer_identity(producer)
+            producer_identity = _producer_identity(producer, workspace_root)
         except OSError:
             producer_identity = None
         if producer_identity is not None:
@@ -848,9 +958,24 @@ def acquire(
                 except OSError:
                     continue
                 unit_keys[index] = key
-                unit_facts[index] = _snapshot_restore(cache_directory, key)
+                if materialize:
+                    unit_facts[index] = _snapshot_restore(cache_directory, key)
+                    if unit_facts[index] is not None:
+                        unit_fact_counts[index] = len(unit_facts[index] or [])
+                else:
+                    unit_fact_counts[index] = _snapshot_restore_count(
+                        cache_directory, key
+                    )
 
-    pending = [index for index in range(len(commands)) if unit_facts[index] is None]
+    pending = [
+        index
+        for index in range(len(commands))
+        if (
+            unit_facts[index] is None
+            if materialize
+            else unit_fact_counts[index] is None
+        )
+    ]
     if cache_directory is not None:
         restored_count = len(commands) - len(pending)
         if restored_count or pending:
@@ -887,6 +1012,7 @@ def acquire(
         float,
         list[dict[str, object]] | None,
         bool,
+        int | None,
     ]:
         command = commands[index][0]
         key = unit_keys[index]
@@ -896,6 +1022,7 @@ def acquire(
             float,
             list[dict[str, object]] | None,
             bool,
+            int | None,
         ]:
             completed, seconds = invoke_unit(command)
             decoded = (
@@ -909,14 +1036,25 @@ def acquire(
                 and key is not None
             ):
                 _snapshot_store(cache_directory, key, decoded)
-            return completed, seconds, decoded, False
+            return (
+                completed,
+                seconds,
+                decoded if materialize else None,
+                False,
+                len(decoded) if decoded is not None else None,
+            )
 
         if cache_directory is None or key is None:
             return produce()
         with _snapshot_key_lock(cache_directory, key):
-            restored = _snapshot_restore(cache_directory, key)
-            if restored is not None:
-                return None, 0.0, restored, True
+            if materialize:
+                restored = _snapshot_restore(cache_directory, key)
+                if restored is not None:
+                    return None, 0.0, restored, True, len(restored)
+            else:
+                restored_count = _snapshot_restore_count(cache_directory, key)
+                if restored_count is not None:
+                    return None, 0.0, None, True, restored_count
             return produce()
 
     # Units are independent producer invocations over disjoint trees; run
@@ -928,11 +1066,18 @@ def acquire(
             results = list(pool.map(run_unit, pending))
         durations: list[tuple[float, int]] = []
         coalesced = 0
-        for index, (result, seconds, decoded, restored_after_wait) in zip(
+        for index, (
+            result,
+            seconds,
+            decoded,
+            restored_after_wait,
+            fact_count,
+        ) in zip(
             pending, results
         ):
             if restored_after_wait:
                 unit_facts[index] = decoded
+                unit_fact_counts[index] = fact_count
                 coalesced += 1
                 continue
             durations.append((seconds, index))
@@ -950,6 +1095,7 @@ def acquire(
                     + (result.stderr.strip() or f"exit {result.returncode}")
                 )
             unit_facts[index] = decoded
+            unit_fact_counts[index] = fact_count
         if coalesced:
             print(
                 "p101 facts snapshot: coalesced "
@@ -972,14 +1118,20 @@ def acquire(
                 f"p101 facts unit: {seconds:5.1f}s {name} [{scanned}]",
                 file=sys.stderr,
             )
-    for unit, command_record in zip(unit_facts, commands):
-        admitted = command_record[2]
-        canonicalized = command_record[3]
-        facts.extend(
-            _facts_for_admitted_paths(unit or [], admitted)
-            if canonicalized
-            else (unit or [])
-        )
+    fact_count = 0
+    if materialize:
+        for unit, command_record in zip(unit_facts, commands):
+            admitted = command_record[2]
+            canonicalized = command_record[3]
+            selected = (
+                _facts_for_admitted_paths(unit or [], admitted)
+                if canonicalized
+                else (unit or [])
+            )
+            fact_count += len(selected)
+            facts.extend(selected)
+    else:
+        fact_count = sum(count or 0 for count in unit_fact_counts)
     if cache_directory is not None:
         for key in unit_keys:
             if key is not None:
@@ -989,4 +1141,44 @@ def acquire(
                     raise CFactError(
                         f"cannot record semantic fact usage: {error}"
                     ) from error
+    return facts, fact_count
+
+
+def acquire(
+    workspace: Path,
+    paths: Iterable[Path],
+    *,
+    compile_database: Path | None = None,
+    additional_include_roots: Iterable[Path] = (),
+    cache: Path | str | None = "auto",
+) -> list[dict[str, object]]:
+    """Acquire and materialize semantic facts for a policy consumer."""
+    facts, _fact_count = _acquire(
+        workspace,
+        paths,
+        compile_database=compile_database,
+        additional_include_roots=additional_include_roots,
+        cache=cache,
+        materialize=True,
+    )
     return facts
+
+
+def prime(
+    workspace: Path,
+    paths: Iterable[Path],
+    *,
+    compile_database: Path | None = None,
+    additional_include_roots: Iterable[Path] = (),
+    cache: Path | str | None = "auto",
+) -> int:
+    """Materialize valid snapshots without retaining their fact objects."""
+    _facts, fact_count = _acquire(
+        workspace,
+        paths,
+        compile_database=compile_database,
+        additional_include_roots=additional_include_roots,
+        cache=cache,
+        materialize=False,
+    )
+    return fact_count

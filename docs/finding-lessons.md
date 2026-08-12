@@ -74,7 +74,7 @@ It produces:
 - exit `1` when an emitted diagnostic lacks a lesson;
 - exit `2` for malformed catalogs, missing lesson files, or unreadable inputs.
 
-`runtime/p101-analyze.py` records the path and SHA-256 digest of the effective catalog and
+`p101-inspect analyze` embeds the generated native lesson route for each finding and
 lesson files in its receipt. It checks that digest again after analysis.
 
 ## Completeness rule

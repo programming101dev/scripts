@@ -73,10 +73,12 @@ sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 from wrapper_fault_contract import (  # noqa: E402
     effective_fault_selection,
     fault_domain,
+    header_conditional_fault_symbols,
     has_documented_faults,
     load_contract,
 )
 from c_facts import CFactError, acquire  # noqa: E402
+from clang_ast import ClangASTError, acquire as acquire_clang_ast  # noqa: E402
 
 
 WORKSPACE = SCRIPTS_ROOT.parent
@@ -113,6 +115,7 @@ PORTABLE_ZERO_TYPEDEFS = AGGREGATE_TYPEDEFS | {
     "nl_catd",
     "pthread_t",
 }
+
 AGGREGATE_MEMBERS = {
     "datum": ("dptr", "dsize"),
     "div_t": ("quot", "rem"),
@@ -393,9 +396,14 @@ def records(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(stream, delimiter="\t"))
 
 
-def workspace_path(value: object) -> Path:
-    path = Path(str(value))
+@cache
+def resolved_workspace_path(value: str) -> Path:
+    path = Path(value)
     return path.resolve() if path.is_absolute() else (WORKSPACE / path).resolve()
+
+
+def workspace_path(value: object) -> Path:
+    return resolved_workspace_path(str(value))
 
 
 def active_libraries() -> dict[str, tuple[Path, list[dict[str, str]]]]:
@@ -504,8 +512,7 @@ def clang_ast(
         for directory in libclang_include_dirs(clang)
         for flag in ("-isystem", str(directory))
     ]
-    command = [
-        clang,
+    arguments = [
         "-std=c17",
         "-D_POSIX_C_SOURCE=200809L",
         "-D_XOPEN_SOURCE=700",
@@ -513,25 +520,11 @@ def clang_ast(
         *platform_flags,
         *libclang_flags,
         *(flag for directory in include_dirs for flag in ("-I", str(directory))),
-        "-fsyntax-only",
-        "-Xclang",
-        "-ast-dump=json",
-        str(source),
     ]
-    result = subprocess.run(
-        command,
-        cwd=WORKSPACE,
-        check=False,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"Clang could not parse {source.relative_to(WORKSPACE)}:\n"
-            f"{result.stderr}"
-        )
-    return json.loads(result.stdout)
+    try:
+        return acquire_clang_ast(clang, source, arguments, WORKSPACE)
+    except ClangASTError as error:
+        raise RuntimeError(str(error)) from error
 
 
 def node_offsets(node: dict[str, Any]) -> tuple[int, int] | None:
@@ -614,6 +607,18 @@ def function_definitions(
         ] = row["function"]
 
     definitions: dict[str, dict[str, Any]] = {}
+    function_facts = {
+        str(fact.get("usr")): fact
+        for fact in semantic_facts
+        if fact.get("kind") == "FUNCTION"
+        and not fact.get("is_declaration")
+    }
+    parameter_facts: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for fact in semantic_facts:
+        if fact.get("kind") == "PARAMETER":
+            parameter_facts[str(fact.get("caller_usr", ""))].append(fact)
+    for facts in parameter_facts.values():
+        facts.sort(key=lambda fact: int(fact.get("parameter_index", -1)))
     for source, admitted_by_usr in sorted(by_source.items()):
         identities_by_extent = semantic_definition_extents(
             source,
@@ -638,11 +643,92 @@ def function_definitions(
             )
         for declaration in declarations.values():
             declaration["_p101_source"] = str(source)
+            function_usr = str(declaration.get("_p101_function_usr", ""))
+            function_fact = function_facts.get(function_usr)
+            if function_fact is None:
+                raise RuntimeError(
+                    f"{declaration.get('name', '?')} lacks a typed function fact"
+                )
+            declaration["_p101_function_fact"] = function_fact
+            ast_parameters = [
+                child
+                for child in declaration.get("inner", [])
+                if child.get("kind") == "ParmVarDecl"
+            ]
+            typed_parameters = parameter_facts.get(function_usr, [])
+            if len(ast_parameters) != len(typed_parameters):
+                raise RuntimeError(
+                    f"{declaration.get('name', '?')} has "
+                    f"{len(ast_parameters)} AST parameters but "
+                    f"{len(typed_parameters)} typed facts"
+                )
+            parameters = []
+            for ast_parameter, fact in zip(ast_parameters, typed_parameters):
+                parameter = dict(ast_parameter)
+                # C adjusts array parameters to pointers in the semantic
+                # function type. Retain the public source spelling only for
+                # fixture mechanics that need to distinguish those forms;
+                # shared declaration identity and normalized type remain
+                # available from the fact rather than being reparsed.
+                parameter["_p101_semantic_type"] = str(fact.get("type", ""))
+                parameter["_p101_canonical_type"] = str(
+                    fact.get("canonical_type", fact.get("type", ""))
+                )
+                parameter["_p101_parameter_fact"] = fact
+                parameters.append(parameter)
+            declaration["_p101_parameters"] = parameters
         definitions.update(declarations)
     return definitions
 
 
+def function_parameters(declaration: dict[str, Any]) -> list[dict[str, Any]]:
+    parameters = declaration.get("_p101_parameters")
+    if isinstance(parameters, list):
+        return parameters
+    return [
+        child
+        for child in declaration.get("inner", [])
+        if child.get("kind") == "ParmVarDecl"
+    ]
+
+
+def portable_source_return_type(declaration: dict[str, Any]) -> str:
+    """Recover a portable public typedef spelling retained in source.
+
+    Some platform headers implement a public typedef with a macro or private
+    alias.  The semantic fact must describe the resolved type, but generated
+    portable C must spell the public type that the wrapper declares.
+    """
+    text = declaration.get("_p101_source_text")
+    if not isinstance(text, str):
+        path = declaration.get("_p101_source")
+        if not isinstance(path, str):
+            return ""
+        text = source_text(path)
+    extent = declaration.get("range", {})
+    begin = extent.get("begin", {})
+    location = declaration.get("loc", {})
+    begin = begin.get("expansionLoc", begin)
+    location = location.get("expansionLoc", location)
+    begin_offset = begin.get("offset")
+    name_offset = location.get("offset")
+    if not isinstance(begin_offset, int) or not isinstance(name_offset, int):
+        return ""
+    if begin_offset < 0 or name_offset < begin_offset or name_offset > len(text):
+        return ""
+    spelling = re.sub(r"\s+", " ", text[begin_offset:name_offset]).strip()
+    return spelling if spelling in PORTABLE_ZERO_TYPEDEFS else ""
+
+
 def return_type(declaration: dict[str, Any]) -> str:
+    public_spelling = portable_source_return_type(declaration)
+    if public_spelling:
+        return public_spelling
+    function_fact = declaration.get("_p101_function_fact")
+    if isinstance(function_fact, dict):
+        result = str(function_fact.get("return_type", "")).strip()
+        if result:
+            return "bool" if result == "_Bool" else result
     qualified = declaration["type"]["qualType"]
     marker = qualified.find("(")
     if marker < 0:
@@ -655,7 +741,12 @@ def result_declaration(
     declaration: dict[str, Any],
     name: str,
 ) -> str:
-    qualified = declaration["type"]["qualType"]
+    function_fact = declaration.get("_p101_function_fact")
+    qualified = (
+        str(function_fact.get("type", ""))
+        if isinstance(function_fact, dict)
+        else declaration["type"]["qualType"]
+    )
     function_pointer = re.fullmatch(
         r"(.+?)\s*\(\*\((.*)\)\)(\(.*\))",
         qualified,
@@ -723,7 +814,7 @@ def has_va_list_parameter(declaration: dict[str, Any]) -> bool:
     return any(
         child.get("kind") == "ParmVarDecl"
         and is_va_list_parameter(declaration, child)
-        for child in declaration.get("inner", [])
+        for child in function_parameters(declaration)
     )
 
 
@@ -749,7 +840,7 @@ def accepts_error_parameter(declaration: dict[str, Any]) -> bool:
     return any(
         child.get("kind") == "ParmVarDecl"
         and is_error_parameter(child)
-        for child in declaration.get("inner", [])
+        for child in function_parameters(declaration)
     )
 
 
@@ -1024,11 +1115,7 @@ def indexed_fallback_expression(
             f"{declaration.get('name', '?')} uses {macro_name} "
             "with an invalid argument count"
         )
-    parameters = [
-        child
-        for child in declaration.get("inner", [])
-        if child.get("kind") == "ParmVarDecl"
-    ]
+    parameters = function_parameters(declaration)
     fallback_index = int(fallback_match.group(1))
     if fallback_index >= len(parameters):
         raise RuntimeError(
@@ -4123,12 +4210,10 @@ def fault_test(
     failure: dict[str, str],
     native_outcome: dict[str, str] | None = None,
     portable_rules: list[dict[str, Any]] | None = None,
+    conditional_error_names: dict[str, set[str]] | None = None,
 ) -> str:
-    parameters = [
-        child
-        for child in declaration.get("inner", [])
-        if child.get("kind") == "ParmVarDecl"
-    ]
+    conditional_error_names = conditional_error_names or {}
+    parameters = function_parameters(declaration)
     argument_setup = va_list_setup(declaration)
     fixture_declarations: list[str] = []
     argument_values: list[str] = []
@@ -4479,15 +4564,52 @@ def fault_test(
         if failure["error_domain"] == "system"
         else "p101_error_is_errno(err, state.code)"
     )
-    arrays = {
-        key: ", ".join(error_names.get(key, []) or ["EIO"])
-        for key in ("linux", "macos", "freebsd", "posix")
-    }
-    labels = {
-        key: ", ".join(
-            json.dumps(error_name)
-            for error_name in (error_names.get(key, []) or ["EIO"])
+    def platform_error_declarations(platform: str) -> str:
+        names = error_names.get(platform, []) or ["EIO"]
+        optional = conditional_error_names.get(platform, set()).intersection(
+            names
         )
+        if not optional:
+            values = ", ".join(names)
+            labels = ", ".join(json.dumps(name) for name in names)
+            return (
+                f"    static const int errors[] = {{{values}}};\n"
+                f"    static const char *const error_names[] = {{{labels}}};"
+            )
+
+        values: list[str] = []
+        labels: list[str] = []
+
+        for error_name in names:
+            if error_name in optional:
+                values.extend(
+                    [
+                        f"#ifdef {error_name}",
+                        f"        {error_name},",
+                        "#endif",
+                    ]
+                )
+                labels.extend(
+                    [
+                        f"#ifdef {error_name}",
+                        f"        {json.dumps(error_name)},",
+                        "#endif",
+                    ]
+                )
+            else:
+                values.append(f"        {error_name},")
+                labels.append(f"        {json.dumps(error_name)},")
+        return (
+            "    static const int errors[] = {\n"
+            + "\n".join(values)
+            + "\n    };\n"
+            + "    static const char *const error_names[] = {\n"
+            + "\n".join(labels)
+            + "\n    };"
+        )
+
+    arrays = {
+        key: platform_error_declarations(key)
         for key in ("linux", "macos", "freebsd", "posix")
     }
     native_declarations = ""
@@ -4705,17 +4827,13 @@ static void test_{name}(struct p101_env *env, struct p101_error *err{fault_test_
 {argument_setup}\
 {fixture_setup}\
 #ifdef __linux__
-    static const int errors[] = {{{arrays["linux"]}}};
-    static const char *const error_names[] = {{{labels["linux"]}}};
+{arrays["linux"]}
 #elif defined(__APPLE__)
-    static const int errors[] = {{{arrays["macos"]}}};
-    static const char *const error_names[] = {{{labels["macos"]}}};
+{arrays["macos"]}
 #elif defined(__FreeBSD__)
-    static const int errors[] = {{{arrays["freebsd"]}}};
-    static const char *const error_names[] = {{{labels["freebsd"]}}};
+{arrays["freebsd"]}
 #else
-    static const int errors[] = {{{arrays["posix"]}}};
-    static const char *const error_names[] = {{{labels["posix"]}}};
+{arrays["posix"]}
 #endif
 
     for(size_t index = 0U; index < sizeof(errors) / sizeof(errors[0]); index++)
@@ -4846,9 +4964,7 @@ def native_callback_helpers(
 ) -> str:
     helpers: set[str] = set()
     for name in names:
-        for parameter in declarations[name].get("inner", []):
-            if parameter.get("kind") != "ParmVarDecl":
-                continue
+        for parameter in function_parameters(declarations[name]):
             qualified = normalized_c_type(
                 parameter.get("type", {}).get("qualType", "")
             )
@@ -4897,7 +5013,9 @@ def fault_source(
     failure_contract: dict[str, dict[str, str]],
     native_smoke_contract: dict[str, dict[str, str]],
     portable_input_contract: dict[str, list[dict[str, Any]]],
+    conditional_error_names: dict[str, set[str]] | None = None,
 ) -> str:
+    conditional_error_names = conditional_error_names or {}
     if not names:
         return f"""{includes}
 #include <stdlib.h>
@@ -4916,6 +5034,7 @@ int main(void)
             failure_contract[function_usrs[name]],
             native_smoke_contract.get(function_usrs[name]),
             portable_input_contract.get(function_usrs[name]),
+            conditional_error_names,
         )
         for name in names
     )
@@ -5403,8 +5522,7 @@ def validate_generated_source_semantics(
                 continue
             source_digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
             fixture_directory = (
-                SCRIPTS_ROOT
-                / "target"
+                Path(tempfile.gettempdir())
                 / "generated-wrapper-validation"
                 / library
                 / source_digest
@@ -5415,7 +5533,11 @@ def validate_generated_source_semantics(
                 path.write_text(source, encoding="utf-8")
             paths.append(path)
         try:
-            facts = acquire(WORKSPACE, paths)
+            facts = acquire(
+                WORKSPACE,
+                paths,
+                additional_include_roots={path.parent for path in sources},
+            )
         except CFactError as error:
             raise RuntimeError(
                 f"{library}: cannot validate generated fixture semantics: "
@@ -5427,7 +5549,7 @@ def validate_generated_source_semantics(
             fact
             for fact in facts
             if isinstance(fact.get("path"), str)
-            and Path(str(fact["path"])).resolve() in admitted_paths
+            and workspace_path(fact["path"]) in admitted_paths
         ]
 
     calls = {
@@ -5500,6 +5622,12 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         )
     drift: list[Path] = []
     fault_contract = load_contract(PLATFORM_FAULTS_PATH)
+    conditional_error_names = {
+        platform_name: header_conditional_fault_symbols(
+            fault_contract, platform_name
+        )
+        for platform_name in ("linux", "macos", "freebsd")
+    }
     outcome_contract = json.loads(
         OUTCOME_CONTRACT_PATH.read_text(encoding="utf-8")
     )
@@ -5784,6 +5912,46 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         )
         wrapper_errors_by_usr[wrapper_usr]["posix"] = errors
 
+    # Acquire the complete implementation/test fact set once.  c_facts still
+    # maintains one independently invalidated snapshot per repository, but a
+    # single request lets it hash shared producer inputs once and parse all
+    # cache misses in parallel.  The generator then projects that common fact
+    # set into each library's local policy view below.
+    semantic_paths = [
+        path
+        for _library, (repo, _rows) in sorted(libraries.items())
+        for path in (repo / "src", repo / "test")
+        if path.is_dir()
+    ]
+    try:
+        workspace_facts = acquire(
+            WORKSPACE,
+            semantic_paths,
+            additional_include_roots=semantic_include_dirs,
+        )
+    except CFactError as error:
+        raise RuntimeError(str(error)) from error
+    repository_by_root = {
+        repo.resolve(): repo.resolve()
+        for repo, _rows in libraries.values()
+    }
+    facts_by_repository: dict[Path, list[dict[str, object]]] = defaultdict(list)
+    for fact in workspace_facts:
+        fact_path_value = fact.get("path")
+        if not isinstance(fact_path_value, str):
+            continue
+        fact_path = workspace_path(fact_path_value)
+        owner = next(
+            (
+                repository_by_root[parent]
+                for parent in (fact_path, *fact_path.parents)
+                if parent in repository_by_root
+            ),
+            None,
+        )
+        if owner is not None:
+            facts_by_repository[owner].append(fact)
+
     for library, (repo, library_rows) in sorted(libraries.items()):
         admitted = {row["function"] for row in library_rows}
         function_usrs = {
@@ -5822,34 +5990,35 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
             for source in (repo / "test").glob(pattern)
             if not source.name.startswith("test_fault_wrappers")
         )
-        try:
-            implementation_facts = acquire(
-                WORKSPACE,
-                (repo / "src",),
-                additional_include_roots=semantic_include_dirs,
+        library_facts = facts_by_repository[repo.resolve()]
+        source_root = (repo / "src").resolve()
+        behavior_source_set = set(behavior_sources)
+        implementation_facts = [
+            fact
+            for fact in library_facts
+            if isinstance(fact.get("path"), str)
+            and (
+                workspace_path(fact["path"]) == source_root
+                or source_root in workspace_path(fact["path"]).parents
             )
-            test_facts = (
-                acquire(
-                    WORKSPACE,
-                    behavior_sources,
-                    additional_include_roots=semantic_include_dirs,
-                )
-                if behavior_sources
-                else []
-            )
-        except CFactError as error:
-            raise RuntimeError(str(error)) from error
+        ]
+        test_root = (repo / "test").resolve()
+        test_facts = [
+            fact
+            for fact in library_facts
+            if isinstance(fact.get("path"), str)
+            and test_root in workspace_path(fact["path"]).parents
+        ]
         declarations = function_definitions(
             clang,
             library_rows,
             include_dirs,
             implementation_facts,
         )
-        behavior_source_set = set(behavior_sources)
         behavior_calls: dict[Path, set[str]] = {}
         for fact in test_facts:
             if fact["kind"] == "CALL":
-                path = Path(str(fact["path"])).resolve()
+                path = workspace_path(fact["path"])
                 if path not in behavior_source_set:
                     continue
                 behavior_calls.setdefault(path, set()).add(
@@ -5880,11 +6049,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
             if function_usrs[name] in portable_input_rules_by_usr
         ):
             declaration = declarations[name]
-            parameters = [
-                child
-                for child in declaration.get("inner", [])
-                if child.get("kind") == "ParmVarDecl"
-            ]
+            parameters = function_parameters(declaration)
             rules = portable_input_rules_by_usr[function_usrs[name]]
             if not isinstance(rules, list) or not rules:
                 raise RuntimeError(
@@ -6270,11 +6435,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                     f"{name}: injected {failure['error_domain']} failure "
                     f"does not match documented {expected_domain} domain"
                 )
-            parameters = [
-                child
-                for child in declarations[name].get("inner", [])
-                if child.get("kind") == "ParmVarDecl"
-            ]
+            parameters = function_parameters(declarations[name])
             canary_arguments = [
                 {
                     "index": index,
@@ -6344,6 +6505,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                     library_failures,
                     native_smoke_exceptions_by_usr,
                     portable_input_rules_by_usr,
+                    conditional_error_names,
                 )
                 for key in sorted(shard_members)
             }
@@ -6392,9 +6554,15 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                 else:
                     atomic_write_text(shard_path, expected_fault_source)
             if expected_fault_sources:
+                checked_in_matches = all(
+                    path.is_file()
+                    and path.read_text(encoding="utf-8") == source
+                    for path, source in expected_fault_sources.items()
+                )
                 validate_generated_source_semantics(
                     library,
                     expected_fault_sources,
+                    test_facts if checked_in_matches else None,
                 )
             shards_cmake_path = test_dir / "fault_shards.cmake"
             expected_shards_cmake = (

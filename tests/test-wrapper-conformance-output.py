@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -141,6 +142,40 @@ class FaultOutcomeTests(unittest.TestCase):
             failures,
             ["lib_io:p101_read: direct errno:EINTR outcome failed"],
         )
+
+    def test_active_header_symbols_are_discovered_semantically(self) -> None:
+        completed = subprocess.CompletedProcess(
+            args=["cc"],
+            returncode=0,
+            stdout="#define REG_BADPAT 2\n#define REG_BADMAX 15\n",
+            stderr="",
+        )
+        with mock.patch.object(
+            CHECKER.subprocess,
+            "run",
+            return_value=completed,
+        ) as run:
+            symbols = CHECKER.header_fault_symbols("cc", "regex.h")
+        self.assertEqual(symbols, {"REG_BADPAT", "REG_BADMAX"})
+        self.assertEqual(
+            run.call_args.kwargs["input"],
+            "#include <regex.h>\n",
+        )
+
+    def test_header_probe_failure_is_not_silently_treated_as_absence(self) -> None:
+        completed = subprocess.CompletedProcess(
+            args=["cc"],
+            returncode=1,
+            stdout="",
+            stderr="missing SDK",
+        )
+        with mock.patch.object(
+            CHECKER.subprocess,
+            "run",
+            return_value=completed,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "missing SDK"):
+                CHECKER.header_fault_symbols("cc", "regex.h")
 
 
 class CanonicalEventModelTests(unittest.TestCase):

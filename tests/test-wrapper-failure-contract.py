@@ -111,6 +111,25 @@ def test_bool_result_spelling(generator) -> None:
     )
 
 
+def test_public_return_type_survives_platform_desugaring(generator) -> None:
+    source = "iconv_t p101_iconv_open(void)\n{\n    return (iconv_t){0};\n}\n"
+    declaration = {
+        "_p101_source_text": source,
+        "_p101_function_fact": {
+            "return_type": "libiconv_t",
+            "type": "libiconv_t (void)",
+        },
+        "loc": {"offset": len("iconv_t ")},
+        "range": {"begin": {"offset": 0}},
+        "type": {"qualType": "libiconv_t (void)"},
+    }
+    check(
+        generator.result_declaration(declaration, "result")
+        == "iconv_t result",
+        "platform-private typedef leaked into generated portable C",
+    )
+
+
 def test_function_selection_uses_semantic_extent(generator) -> None:
     ast = {
         "kind": "TranslationUnitDecl",
@@ -563,6 +582,54 @@ def test_fallible_wrapper_has_isolated_native_smoke(generator) -> None:
         "WIFEXITED(native_status)",
     ):
         check(marker in source, f"native smoke omits {marker}")
+
+
+def test_platform_fault_symbols_follow_active_headers(generator) -> None:
+    declaration = {
+        "name": "p101_example",
+        "type": {"qualType": "int (const struct p101_env *, struct p101_error *)"},
+        "inner": [
+            {
+                "kind": "ParmVarDecl",
+                "name": "env",
+                "type": {"qualType": "const struct p101_env *"},
+            },
+            {
+                "kind": "ParmVarDecl",
+                "name": "err",
+                "type": {"qualType": "struct p101_error *"},
+            },
+        ],
+    }
+    source = generator.fault_test(
+        "p101_example",
+        "c:@F@p101_example",
+        declaration,
+        {
+            "linux": ["EIO"],
+            "macos": ["REG_BADMAX"],
+            "freebsd": ["EIO"],
+            "posix": ["EIO"],
+        },
+        {
+            "kind": "value",
+            "expression": "-1",
+            "error_domain": "errno",
+        },
+        conditional_error_names={"macos": {"REG_BADMAX"}},
+    )
+    check(
+        "#ifdef REG_BADMAX\n        REG_BADMAX,\n#endif" in source,
+        "platform fault value is not guarded by header availability",
+    )
+    check(
+        '#ifdef REG_BADMAX\n        "REG_BADMAX",\n#endif' in source,
+        "platform fault label does not follow value availability",
+    )
+    check(
+        "index < sizeof(errors) / sizeof(errors[0])" in source,
+        "platform fault loop does not cover every available symbol",
+    )
 
 
 def test_fixture_roles_do_not_depend_on_parameter_names(generator) -> None:
@@ -1761,13 +1828,15 @@ def test_generated_semantic_fixture_is_content_addressed(generator) -> None:
         original_root = generator.SCRIPTS_ROOT
         original_acquire = generator.acquire
         paths: list[Path] = []
+        include_roots: list[Path] = []
         acquisitions = 0
 
-        def record_acquire(workspace, sources):
+        def record_acquire(workspace, sources, *, additional_include_roots=None):
             nonlocal acquisitions
             del workspace
             acquisitions += 1
             paths.extend(sources)
+            include_roots.extend(additional_include_roots or ())
             return []
 
         try:
@@ -1789,6 +1858,10 @@ def test_generated_semantic_fixture_is_content_addressed(generator) -> None:
         check(len(paths) == 2, "generated fixture batch lost an input")
         check(paths[0].parent == paths[1].parent, "content identity is unstable")
         check(
+            set(include_roots) == {Path(directory)},
+            "generated fixture include roots do not preserve the source location",
+        )
+        check(
             "generated-wrapper-validation" in paths[0].parts,
             "generated fixture is outside the persistent cache tree",
         )
@@ -1799,8 +1872,8 @@ def test_generated_semantic_extents_include_source_identity(generator) -> None:
         original_root = generator.SCRIPTS_ROOT
         original_acquire = generator.acquire
 
-        def record_acquire(workspace, sources):
-            del workspace, sources
+        def record_acquire(workspace, sources, *, additional_include_roots=None):
+            del workspace, sources, additional_include_roots
             return [
                 {
                     "kind": "CALL",
@@ -1843,6 +1916,9 @@ def main() -> int:
         lambda: test_function_pointer_result(generator),
         lambda: test_portable_zero_typedefs(generator),
         lambda: test_bool_result_spelling(generator),
+        lambda: test_public_return_type_survives_platform_desugaring(
+            generator
+        ),
         lambda: test_function_selection_uses_semantic_extent(generator),
         lambda: test_protocol_declaration_bit_selects_definitions(generator),
         lambda: test_single_exit_fault_result(generator),
@@ -1853,6 +1929,7 @@ def main() -> int:
         ),
         lambda: test_portable_result_assertions(generator),
         lambda: test_fallible_wrapper_has_isolated_native_smoke(generator),
+        lambda: test_platform_fault_symbols_follow_active_headers(generator),
         lambda: test_fixture_roles_do_not_depend_on_parameter_names(generator),
         lambda: test_native_fixtures_use_types_and_api_positions(generator),
         lambda: test_native_smoke_outcomes_are_asserted(generator),

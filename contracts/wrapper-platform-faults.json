@@ -77590,6 +77590,13 @@
       }
     }
   },
+  "header_conditional_fault_symbols": {
+    "macos": {
+      "regex.h": [
+        "REG_BADMAX"
+      ]
+    }
+  },
   "platform_coverage": {
     "freebsd": {
       "authoritative_sources": [

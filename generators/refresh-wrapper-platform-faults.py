@@ -81,6 +81,16 @@ PLATFORM_RUNTIME_OBSERVATIONS = {
     },
 }
 
+# A platform manual can document a symbolic result before every supported SDK
+# header publishes that symbol.  This is contract data rather than generator
+# policy: generated tests and runtime conformance must make the same decision
+# from the active header selected by the compiler.
+HEADER_CONDITIONAL_FAULT_SYMBOLS = {
+    "macos": {
+        "regex.h": ["REG_BADMAX"],
+    },
+}
+
 
 def atomic_write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1270,6 +1280,9 @@ def main() -> int:
             "stub outcome."
         ),
         "platform_coverage": platform_coverage,
+        "header_conditional_fault_symbols": (
+            HEADER_CONDITIONAL_FAULT_SYMBOLS
+        ),
         "errno_names": sorted(errno_names),
         "system_faults": system_faults,
         "functions": records_by_function,

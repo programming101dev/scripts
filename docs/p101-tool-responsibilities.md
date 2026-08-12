@@ -86,7 +86,7 @@ those names identify record formats, not live command aliases.
 programs/p101-audit/test.sh
 programs/p101-test/test.sh
 programs/p101-inspect/test.sh
-scripts/tests/test-p101-analyze.py
+programs/p101-inspect/test/test_native_cli.sh
 scripts/tests/test-p101-lessons.py
 scripts/runtime/p101_lessons.py check
 scripts/checks/check-p101-regression-corpus.sh
