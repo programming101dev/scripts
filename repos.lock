@@ -8,7 +8,7 @@
       "url": "https://github.com/programming101dev/lib_error.git"
     },
     {
-      "commit": "0d2e67bcb2fc5f2be3625f83531ea3e0a2259f13",
+      "commit": "ce4046cfe958a700b2c21fd088503833f0852dea",
       "path": "../libraries/lib_tool_event",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_tool_event.git"
@@ -182,7 +182,7 @@
       "url": "https://github.com/programming101dev/p101-port-forwarder.git"
     },
     {
-      "commit": "188ebaa49e0018bd4dcfdba587c3fc1a0987969d",
+      "commit": "a22aa2d97213fb82bae907a7f3d7bf2c3c95a04e",
       "path": "../programs/p101-inspect",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-inspect.git"
