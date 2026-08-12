@@ -60,7 +60,7 @@ Governed advanced checks are direct scripts:
 
 - `runtime/p101-fault-campaign.py` derives every admitted synthetic mode and documented
   errno/system code from the current host platform's wrapper contract;
-- `runtime/p101-interleaving-walk.py` explores bounded synchronization reorderings;
+- `p101-inspect interleaving` explores bounded synchronization reorderings;
 - `runtime/p101-api-diff.py` compares public-API manifests;
 - each repository's `fuzz.sh` runs that repository's declared fuzz contract.
 
@@ -487,6 +487,20 @@ hard error. Direct use is available through `checks/p101-facts-cache.py`, and
 `--facts-cache DIR` exposes the integration boundary on the individual audits.
 The cache cannot make inactive translation units or undeclared inputs visible.
 
+The check graph also writes one `workspace-content-manifest.json` after its
+single source-index pass. Fact and syntax-cache keys reuse those admitted file
+digests while the file size and modification time still match, avoiding another
+workspace-wide byte scan in every consumer. P101FACT v8 carries function
+signatures and typed, position-indexed parameters, so policy tools and the
+wrapper-test generator share declaration parsing instead of reconstructing
+types independently. The generator still needs statement topology that the
+fact protocol does not represent; that narrow exception is a dependency-file-
+validated Clang JSON AST entry in the same semantic store. This separation is
+intentional: `lib_c_facts` owns reusable semantic evidence, the AST cache owns
+only missing syntax mechanics, and each tool continues to own its judgments.
+Neither cache proves that undeclared inputs, inactive translation units, or a
+platform configuration omitted by the caller were analyzed.
+
 Independent wrapper-library suites and native lesson evidence use bounded
 worker queues. Wrapper results are still judged and written in repository
 order, and lesson receipts still list owning-tool profiles before playground
@@ -533,7 +547,7 @@ To replay the source-contract audit over every active wrapper library:
 
 This uses each library's compile database, its optional checked-in
 `.audit-wrappers-allow` boundary ledger, `audit-errors`, and
-`audit-modules -L` from `programs/p101-audit`. The boundary pass records a P101FACT v7 snapshot and
+`audit-modules -L` from `programs/p101-audit`. The boundary pass records a P101FACT v8 snapshot and
 admitted-input manifest; both downstream C policy tools reuse that snapshot.
 Runtime wrapper feature coverage is enforced by each split library's generated
 wrapper tests and `unit-test-manifest.tsv`. Reports are written under one
@@ -554,14 +568,14 @@ directly:
 
 ```bash
 ../programs/p101-inspect/build-clang/inspect-capture -o /tmp/student-run -- ./student-program
-./runtime/p101-analyze.py /tmp/student-run
-./runtime/p101-analyze.py -o /tmp/student-run.analysis-2 /tmp/student-run
+p101-inspect analyze /tmp/student-run
+p101-inspect analyze -o /tmp/student-run.analysis-2 /tmp/student-run
 ```
 
 For the common one-shot workflow, compose the two explicit stages:
 
 ```bash
-./runtime/p101-run.py -o /tmp/student-run-with-analysis -- ./student-program
+p101-inspect run -o /tmp/student-run-with-analysis -- ./student-program
 ```
 
 The analysis script admits an inspect capture whose
@@ -586,15 +600,15 @@ graph of call and resource facts. Verify it directly or make a lesson/CI
 expectation executable:
 
 ```bash
-./runtime/p101-model.py verify /tmp/student-run.analysis
-./runtime/p101-model.py verify -e p101-expectations.txt /tmp/student-run.analysis
-./runtime/p101-model.py compare previous.analysis current.analysis
-./runtime/p101-model.py check /tmp/student-run.analysis --rules resource-clean
-./runtime/p101-model.py explain /tmp/student-run.analysis P101-FD-001
-./runtime/p101-view.py resource /tmp/student-run.analysis
-./runtime/p101-view.py sync /tmp/student-run.analysis
-./runtime/p101-view.py trace /tmp/student-run.analysis
-./runtime/p101-view.py report /tmp/student-run.analysis
+p101-inspect model verify /tmp/student-run.analysis
+p101-inspect model verify -e p101-expectations.txt /tmp/student-run.analysis
+p101-inspect model compare previous.analysis current.analysis
+p101-inspect model check /tmp/student-run.analysis --rules resource-clean
+p101-inspect model explain /tmp/student-run.analysis P101-FD-001
+p101-inspect view resource /tmp/student-run.analysis
+p101-inspect view sync /tmp/student-run.analysis
+p101-inspect view trace /tmp/student-run.analysis
+p101-inspect view report /tmp/student-run.analysis
 ```
 
 The model contract and expectation language are documented in
@@ -679,7 +693,7 @@ wrapper-audit checks over the C tools, and module-map design reports — run:
 By default, module-map design notes fail the audit. Use
 `--allow-module-notes` only for an exploratory report that should not enforce
 the current module-splitting rules. Each C tool is parsed once; module-map
-reuses the recorded P101FACT v7 snapshot, and a checked-in
+reuses the recorded P101FACT v8 snapshot, and a checked-in
 `.audit-wrappers-allow` file is treated as a scoped, stale-checked boundary
 ledger.
 
@@ -878,6 +892,15 @@ event. The generated executable tests assert those obligations for every
 injected fault. An injectable interface with no finite documented fault code
 still receives one `EIO` injection smoke case; that case is labeled by the
 empty manual set rather than misrepresented as a documented failure.
+
+The catalogue also names the exceptional platform symbols whose manuals can
+lead older supported SDK headers. Generated C guards those symbols with the
+owning header's preprocessor definition. Executable conformance asks the
+selected C compiler which symbols its active header publishes, requires direct
+outcome receipts for every published symbol, and records each documented but
+header-unavailable outcome explicitly. A failed header probe is an error, not
+an excuse to omit an obligation. This keeps manual evidence intact without
+pretending that code can execute a constant absent from the selected SDK.
 
 `contracts/wrapper-outcome-contract.json` is the exhaustive disposition of
 the full public API, rather than a residual list inferred from which

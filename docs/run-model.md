@@ -27,16 +27,16 @@ ordering claims.
 
 ## Outputs and policy
 
-`runtime/p101-analyze.py` launches the model builder once, runs resource,
+`p101-inspect analyze` builds the model once, runs resource,
 synchronization, and trace policies in-process, and fingerprints
 `run-model.json` plus every rendered view in its separate analysis receipt.
-`runtime/p101-model.py verify` checks graph integrity and optional expectations.
-`runtime/p101-model.py compare`
+`p101-inspect model verify` checks graph integrity and optional expectations.
+`p101-inspect model compare`
 compares stable finding identities and causal edge counts without treating
 volatile PIDs, pointer values, or descriptor numbers as semantic identity.
-`runtime/p101-model.py check --rules PACK` evaluates a bounded declarative
+`p101-inspect model check --rules PACK` evaluates a bounded native
 policy pack over the validated model and findings.
-`runtime/p101-model.py explain FINDING-ID` shows the source-matched
+`p101-inspect model explain FINDING-ID` shows the source-matched
 causal neighborhood behind one finding.
 
 An expectations file is intentionally plain text:
@@ -74,7 +74,7 @@ about the admitted event streams, not proof of complete program behavior.
 
 The graph deliberately contains facts rather than severity or teaching prose.
 The three policy modules continue to own their diagnostic IDs and judgments.
-`runtime/p101-view.py report`, `resource`, `sync`, and `trace` are read-only
+`p101-inspect view report`, `resource`, `sync`, and `trace` are read-only
 views of the resulting analysis directory.
 
 Built-in rule packs and their limits are documented in

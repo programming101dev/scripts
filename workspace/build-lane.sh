@@ -92,8 +92,8 @@ emit_flag_cache() {
   local cache_root cache_dir file relative file_digest
 
   case "$flags_profile" in
-    maximal) cache_root="$PWD/../.flags" ;;
-    standard) cache_root="$PWD/../.flags-standard" ;;
+    maximal) cache_root="${P101_BUILD_LANE_FLAGS_ROOT:-$PWD/../.flags}" ;;
+    standard) cache_root="${P101_BUILD_LANE_STANDARD_FLAGS_ROOT:-$PWD/../.flags-standard}" ;;
     none)
       printf 'disabled\n'
       return
@@ -104,11 +104,20 @@ emit_flag_cache() {
     printf 'absent\n'
     return
   fi
+  # Only admitted compiler configuration belongs in the artifact identity.
+  # Probe diagnostics contain mktemp paths and generated object names, so
+  # hashing *.log made two identical probes produce different build lanes and
+  # rendered restored CI caches unusable. CMake consumes the text records and
+  # the compiler fingerprint; bind exactly those files.
   while IFS= read -r file; do
     relative=${file#"$cache_dir"/}
     file_digest="$(hash_payload < "$file")"
     printf '%s=%s\n' "$relative" "$file_digest"
-  done < <(find -L "$cache_dir" -type f -print | LC_ALL=C sort)
+  done < <(
+    find -L "$cache_dir" -maxdepth 1 -type f \
+      \( -name '*_flags.txt' -o -name '.compiler-fingerprint' \) -print |
+      LC_ALL=C sort
+  )
 }
 
 c_name="$(path_component "$c_compiler")"

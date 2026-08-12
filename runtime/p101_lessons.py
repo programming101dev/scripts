@@ -633,10 +633,9 @@ def discover_diagnostic_ids(workspace: Path) -> set[str]:
                 ids.update(DIAGNOSTIC_PATTERN.findall(candidate.read_text(encoding="utf-8")))
             except (OSError, UnicodeError):
                 continue
-    scripts = workspace / "scripts"
     for candidate in (
-        scripts / "runtime" / "p101_runtime.py",
-        scripts / "rules" / "resource-clean.json",
+        workspace / "libraries" / "lib_tool_event" / "src" / "analysis.c",
+        workspace / "scripts" / "rules" / "resource-clean.json",
     ):
         try:
             ids.update(DIAGNOSTIC_PATTERN.findall(candidate.read_text(encoding="utf-8")))

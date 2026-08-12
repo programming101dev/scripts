@@ -75,11 +75,40 @@ endif ()
 
 if (NOT DEFINED P101_CLANG_SA_DISABLE_CHECKERS OR "${P101_CLANG_SA_DISABLE_CHECKERS}" STREQUAL "")
     set(P101_CLANG_SA_DISABLE_CHECKERS
-            alpha.core.Conversion
-            alpha.core.FixedAddr
             security.insecureAPI.DeprecatedOrUnsafeBufferHandling
             security.insecureAPI.strcpy
     )
+
+    # The deep profile enables alpha.core when the compiler provides it. Two
+    # historical checkers diagnose deliberate C ABI sentinels and conversions
+    # used by the wrapper layer. Clang releases have independently added,
+    # renamed, and removed these checkers, and reject attempts to disable an
+    # unavailable identity. Ask this compiler for its checker registry and
+    # disable only identities it actually reports.
+    execute_process(
+            COMMAND "${CMAKE_C_COMPILER}" --analyze
+                    -Xanalyzer -analyzer-checker-help-alpha
+                    -x c /dev/null
+            RESULT_VARIABLE _P101_CLANG_SA_HELP_RESULT
+            OUTPUT_VARIABLE _P101_CLANG_SA_HELP_OUTPUT
+            ERROR_VARIABLE _P101_CLANG_SA_HELP_ERROR
+    )
+    if (_P101_CLANG_SA_HELP_RESULT EQUAL 0)
+        string(CONCAT _P101_CLANG_SA_CHECKER_REGISTRY
+                "${_P101_CLANG_SA_HELP_OUTPUT}"
+                "${_P101_CLANG_SA_HELP_ERROR}")
+        foreach (_P101_NOISY_CHECKER
+                alpha.core.Conversion
+                alpha.core.FixedAddr)
+            string(FIND "${_P101_CLANG_SA_CHECKER_REGISTRY}"
+                    "${_P101_NOISY_CHECKER}"
+                    _P101_NOISY_CHECKER_POSITION)
+            if (NOT _P101_NOISY_CHECKER_POSITION EQUAL -1)
+                list(APPEND P101_CLANG_SA_DISABLE_CHECKERS
+                        "${_P101_NOISY_CHECKER}")
+            endif ()
+        endforeach ()
+    endif ()
 endif ()
 
 if (NOT DEFINED P101_CLANG_SA_COMMON_ARGS OR "${P101_CLANG_SA_COMMON_ARGS}" STREQUAL "")

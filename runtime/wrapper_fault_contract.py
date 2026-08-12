@@ -28,6 +28,40 @@ def current_platform_key() -> str | None:
     return PLATFORM_KEYS.get(platform.system())
 
 
+def header_conditional_fault_symbols(
+    contract: dict[str, Any],
+    platform_key: str | None,
+    header: str | None = None,
+) -> set[str]:
+    """Return symbols whose availability is decided by the active header."""
+    if platform_key is None:
+        return set()
+    platform_record = contract.get(
+        "header_conditional_fault_symbols", {}
+    ).get(platform_key, {})
+    if not isinstance(platform_record, dict):
+        raise ValueError(
+            f"invalid header-conditional fault metadata for {platform_key}"
+        )
+    selected = (
+        {header: platform_record.get(header, [])}
+        if header is not None
+        else platform_record
+    )
+    symbols: set[str] = set()
+    for header_name, values in selected.items():
+        if not isinstance(header_name, str) or not isinstance(values, list):
+            raise ValueError(
+                f"invalid header-conditional fault metadata for {platform_key}"
+            )
+        if any(not isinstance(value, str) or not value for value in values):
+            raise ValueError(
+                f"invalid header-conditional symbols for {header_name}"
+            )
+        symbols.update(values)
+    return symbols
+
+
 def has_explicit_platform_faults(
     contract: dict[str, Any],
     function: str,
