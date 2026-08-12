@@ -25,6 +25,7 @@ finalize_only=false
 build_key=""
 runtime_build_key=""
 repository_build_cache="${P101_REPOSITORY_BUILD_CACHE:-}"
+defer_build_markers="${P101_DEFER_BUILD_MARKERS:-0}"
 
 usage() {
   cat <<USAGE >&2
@@ -119,6 +120,133 @@ fi
 # ----------------- helpers -----------------
 say() { printf '%b\n' "$*"; }
 hr()  { printf '%*s\n' "$(tput cols 2>/dev/null || echo 80)" '' | tr ' ' -; }
+
+marker_transaction_directory=""
+marker_transaction_count=0
+marker_transaction_committed=false
+marker_queue=""
+current_marker_snapshot=""
+
+marker_write_atomic() {
+  local repository="$1"
+  local marker="$2"
+  local value="$3"
+  local temporary="$repository/.${marker}.tmp.$$"
+
+  printf '%s\n' "$value" > "$temporary"
+  mv -f -- "$temporary" "$repository/$marker"
+}
+
+marker_snapshot_repository() {
+  local repository="$1"
+  local marker
+  local value
+
+  marker_transaction_count=$((marker_transaction_count + 1))
+  current_marker_snapshot="$marker_transaction_directory/state-$marker_transaction_count"
+  mkdir -p -- "$current_marker_snapshot"
+  printf '%s\n' "$repository" > "$current_marker_snapshot/repository"
+  for marker in .last-build-dir .last-runtime-build-dir; do
+    value=""
+    if [[ -f "$repository/$marker" ]]; then
+      IFS= read -r value < "$repository/$marker" || true
+    fi
+    if [[ -n "$value" && -d "$repository/$value" ]]; then
+      cp -- "$repository/$marker" "$current_marker_snapshot/$marker"
+    else
+      : > "$current_marker_snapshot/$marker.absent"
+    fi
+  done
+}
+
+marker_restore_snapshot() {
+  local state="$1"
+  local repository
+  local marker
+
+  IFS= read -r repository < "$state/repository"
+  for marker in .last-build-dir .last-runtime-build-dir; do
+    if [[ -f "$state/$marker" ]]; then
+      marker_write_atomic "$repository" "$marker" "$(cat "$state/$marker")"
+    else
+      rm -f -- "$repository/$marker"
+    fi
+  done
+}
+
+marker_restore_current_repository() {
+  [[ -n "$current_marker_snapshot" ]] || return 0
+  marker_restore_snapshot "$current_marker_snapshot"
+}
+
+marker_restore_all() {
+  local state
+
+  [[ -d "$marker_transaction_directory" ]] || return 0
+  for state in "$marker_transaction_directory"/state-*; do
+    [[ -d "$state" ]] || continue
+    marker_restore_snapshot "$state"
+  done
+}
+
+marker_queue_value() {
+  local marker="$1"
+  local value="$2"
+
+  printf '%s\t%s\t%s\n' "$PWD" "$marker" "$value" >> "$marker_queue"
+}
+
+marker_queue_absent() {
+  local marker="$1"
+
+  printf '%s\t%s\t-\n' "$PWD" "$marker" >> "$marker_queue"
+}
+
+marker_publish_queue() {
+  local repository
+  local marker
+  local value
+
+  while IFS=$'\t' read -r repository marker value || [[ -n "$repository" ]]; do
+    [[ -n "$repository" && -n "$marker" ]] || continue
+    if [[ "$value" == - ]]; then
+      rm -f -- "$repository/$marker"
+    else
+      [[ -d "$repository/$value" ]] || {
+        printf 'Error: refusing to publish missing build marker target: %s/%s\n' \
+          "$repository" "$value" >&2
+        return 2
+      }
+      marker_write_atomic "$repository" "$marker" "$value"
+    fi
+  done < "$marker_queue"
+}
+
+marker_transaction_finish() {
+  local status="$1"
+
+  trap - EXIT
+  if ! $marker_transaction_committed; then
+    marker_restore_all || status=2
+  fi
+  [[ -z "$marker_transaction_directory" ]] || rm -rf -- "$marker_transaction_directory"
+  exit "$status"
+}
+
+content_addressed_build_directory() {
+  local base="$1"
+  local identity
+
+  if [[ -z "$repository_build_cache" ]]; then
+    printf '%s\n' "$base"
+    return 0
+  fi
+  identity="$({
+    printf '%s\n' "$repository_source_identity"
+    printf '%s\n' "$orchestrator_source_identity"
+  } | git hash-object --stdin)"
+  printf '%s__%s\n' "$base" "$identity"
+}
 
 write_lane_receipt() {
   local directory="$1"
@@ -446,6 +574,11 @@ fi
 repos_file="repos.txt"
 [[ -f "$repos_file" ]] || { echo "Error: $repos_file not found" >&2; exit 3; }
 
+marker_transaction_directory="$(mktemp -d "${TMPDIR:-/tmp}/p101-build-markers.XXXXXX")"
+marker_queue="$marker_transaction_directory/pending.tsv"
+: > "$marker_queue"
+trap 'marker_transaction_finish $?' EXIT
+
 trim() {
   local s="${1-}"
   s="${s#"${s%%[![:space:]]*}"}"
@@ -493,8 +626,10 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   fi
 
   pushd "$dir" >/dev/null
+  marker_snapshot_repository "$PWD"
   repository_source_identity="$(git_source_identity)"
   repository_cache_label="$(printf '%s' "$dir" | sed 's#[^A-Za-z0-9_.+-]#_#g')"
+  repository_cache_label="${repository_cache_label}__$(printf '%s' "$dir" | git hash-object --stdin)"
   quality_build_dir=""
   runtime_build_dir=""
   quality_cache_state=disabled
@@ -513,7 +648,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         popd >/dev/null
         continue
       fi
-      quality_build_dir="build-${build_key}"
+      quality_build_dir="$(content_addressed_build_directory "build-${build_key}")"
       if change_compiler_supports_build_dir; then
         if activate_repository_build_cache "$repository_cache_label" "$quality_build_dir"; then
           quality_cache_state="$P101_LANE_CACHE_STATE"
@@ -536,7 +671,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         popd >/dev/null
         continue
       fi
-      quality_build_dir="build-${build_key}"
+      quality_build_dir="$(content_addressed_build_directory "build-${build_key}")"
       if activate_repository_build_cache "$repository_cache_label" "$quality_build_dir"; then
         quality_cache_state="$P101_LANE_CACHE_STATE"
       else
@@ -573,6 +708,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       say "Configuring ${dir} in ${quality_build_dir}"
       if run_repo_phase "configure ${dir}" ./change-compiler.sh "${change_args[@]}"; then
         write_lane_receipt "$quality_build_dir" "$build_key" quality "${quality_cache_state:-disabled}"
+        marker_restore_current_repository
       else
         status=$?
         popd >/dev/null
@@ -591,7 +727,9 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         build_command+=("${build_script_args[@]}")
       fi
       if run_repo_phase "build ${dir} with $([[ "$repo_type" == "cxx" ]] && printf '%s' "$CXX_PATH" || printf '%s' "$CC_PATH")" "${build_command[@]}"; then
-        :
+        if [[ -n "$quality_build_dir" ]]; then
+          marker_queue_value .last-build-dir "$quality_build_dir"
+        fi
       else
         status=$?
         popd >/dev/null
@@ -619,12 +757,11 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       runtime_install_supported=0
       say "  -> SKIP install: change-compiler.sh cannot create a separate instrumentation-free runtime artifact."
     else
-      runtime_build_dir="build-${runtime_build_key}"
+      runtime_build_dir="$(content_addressed_build_directory "build-${runtime_build_key}")"
       if activate_repository_build_cache "$repository_cache_label" "$runtime_build_dir"; then
         runtime_cache_state="$P101_LANE_CACHE_STATE"
       else
         status=$?
-        printf '%s\n' "$quality_build_dir" > .last-build-dir
         popd >/dev/null
         exit "$status"
       fi
@@ -656,9 +793,9 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
           CFLAGS= CXXFLAGS= CPPFLAGS= LDFLAGS= \
           ./change-compiler.sh "${runtime_change_args[@]}"; then
         write_lane_receipt "$runtime_build_dir" "$runtime_build_key" runtime "${runtime_cache_state:-disabled}"
+        marker_restore_current_repository
       else
         status=$?
-        printf '%s\n' "$quality_build_dir" > .last-build-dir
         popd >/dev/null
         exit "$status"
       fi
@@ -674,15 +811,11 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         :
       else
         status=$?
-        printf '%s\n' "$quality_build_dir" > .last-build-dir
         popd >/dev/null
         exit "$status"
       fi
 
-      # Keep quality tools pointed at the strict build. Consumers and
-      # installers use the separate runtime marker.
-      printf '%s\n' "$quality_build_dir" > .last-build-dir
-      printf '%s\n' "$runtime_build_dir" > .last-runtime-build-dir
+      marker_queue_value .last-runtime-build-dir "$runtime_build_dir"
     fi
   fi
 
@@ -696,8 +829,8 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       failures=$((failures + 1))
       runtime_install_supported=0
     else
-      printf '%s\n' "$quality_build_dir" > .last-build-dir
-      runtime_candidate="build-${runtime_build_key}"
+      marker_queue_value .last-build-dir "$quality_build_dir"
+      runtime_candidate="$(content_addressed_build_directory "build-${runtime_build_key}")"
       if [[ -f "$runtime_candidate/CMakeCache.txt" ]] &&
          lane_receipt_matches "$runtime_candidate" "$runtime_build_key" runtime; then
         runtime_build_dir="$runtime_candidate"
@@ -709,9 +842,9 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         runtime_install_supported=0
       fi
       if [[ -n "$runtime_build_dir" ]]; then
-        printf '%s\n' "$runtime_build_dir" > .last-runtime-build-dir
+        marker_queue_value .last-runtime-build-dir "$runtime_build_dir"
       else
-        rm -f -- .last-runtime-build-dir
+        marker_queue_absent .last-runtime-build-dir
       fi
     fi
   fi
@@ -753,4 +886,10 @@ if [[ "$failures" -gt 0 ]]; then
   say "Repository build failed: ${failures} configuration problem(s)."
   exit 1
 fi
+if [[ "$defer_build_markers" == 1 ]]; then
+  marker_restore_all
+else
+  marker_publish_queue
+fi
+marker_transaction_committed=true
 say "All ${processed} repositories processed successfully."

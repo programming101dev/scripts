@@ -118,12 +118,12 @@
       "group": "build",
       "required": true,
       "cacheable": false,
-      "command": ["./checks/format-workspace.py", "--formatter", "{formatter}", "--receipt", "{out}/format-workspace-receipt.json"],
+      "command": ["./checks/format-workspace.py", "--formatter", "{formatter}", "--receipt", "{out}/format-workspace-receipt.json", "--check"],
       "inputs": ["**"],
       "inputs_complete": true,
       "depends_on": ["workspace-lock"],
       "resources": {"writes": ["{out}/format-workspace-receipt.json"], "units": {}},
-      "guarantee": "The selected clang-format runs by default over first-party tracked C/C++ files before downstream source identities are computed, reports explicitly excluded vendored files, and reports any first-party tracked-byte change as a failing receipt."
+      "guarantee": "The selected clang-format checks first-party tracked C/C++ files without mutation before downstream source identities are computed, reports explicitly excluded vendored files, and reports formatting drift as a failing receipt."
     },
     {
       "id": "stack-contract-tests",
@@ -337,11 +337,11 @@
       "group": "distribution",
       "required": true,
       "command": ["./tests/test-build-repo-interactive.sh"],
-      "inputs": ["scripts/tests/test-build-repo-interactive.sh", "scripts/update-all.sh", "scripts/workspace/build-repo.sh", "scripts/workspace/update.sh", "scripts/distribution/clone-repos.sh", "scripts/distribution/refresh-repo.sh", "templates/template-c/build.sh", "templates/template-cxx/build.sh", "scripts/CMakeLists.txt", "scripts/shared/**"],
+      "inputs": ["scripts/tests/test-build-repo-interactive.sh", "scripts/update-all.sh", "scripts/checks/format-workspace.py", "scripts/workspace/build-repo.sh", "scripts/workspace/gc-build-cache.sh", "scripts/workspace/update.sh", "scripts/distribution/clone-repos.sh", "scripts/distribution/refresh-repo.sh", "templates/template-c/build.sh", "templates/template-cxx/build.sh", "scripts/CMakeLists.txt", "scripts/shared/**"],
       "inputs_complete": true,
       "depends_on": ["retired-repository-cleanup"],
       "resources": {"writes": ["{temporary_root}"], "units": {}},
-      "guarantee": "Compiler pairs build concurrently in isolated artifact directories, every failure retains a complete ordered diagnostic receipt, and interactive recovery starts only after parallel workers stop."
+      "guarantee": "Local preparation applies formatting before source identity while CI checks without mutation; compiler pairs then build concurrently in immutable source/policy-addressed artifact directories, failed transactions restore qualified marker state, only the host finalizer publishes shared markers, and unreferenced cache lanes are collected without removing selected artifacts."
     },
     {
       "id": "github-workflow-drift",
@@ -936,7 +936,7 @@
       "impact_dependencies": ["wrapper-conformance"],
       "replace_outputs": true,
       "resources": {"writes": ["{out}/repository-tests"], "units": {"compiler": 1}},
-      "guarantee": "Every declared repository unit suite and available bounded fuzz target executes."
+      "guarantee": "Every declared repository unit suite either executes here or reuses stricter unit evidence from an admitted dependency; every available bounded fuzz target executes."
     },
     {
       "id": "boundary-execution",

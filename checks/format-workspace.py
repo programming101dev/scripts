@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run clang-format over every tracked workspace C/C++ source before checks."""
+"""Apply or verify clang-format over tracked workspace C/C++ sources."""
 
 from __future__ import annotations
 
@@ -66,6 +66,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--formatter", required=True)
     parser.add_argument("--receipt", type=Path, required=True)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="report formatting drift without modifying source files",
+    )
     arguments = parser.parse_args()
 
     version = subprocess.run(
@@ -92,31 +97,51 @@ def main() -> int:
         source for _repository, source in tracked if source not in excluded_set
     ]
     before = {source: digest(source) for source in sources}
+    changed_sources: set[Path] = set()
+    formatter_failed = False
+    diagnostics: list[str] = []
     for offset in range(0, len(sources), 128):
+        batch = sources[offset : offset + 128]
+        formatter_arguments = [arguments.formatter]
+        if arguments.check:
+            formatter_arguments.extend(["--dry-run", "--Werror"])
+        else:
+            formatter_arguments.append("-i")
+        formatter_arguments.extend(
+            ["-style=file", *(os.fspath(path) for path in batch)]
+        )
         result = subprocess.run(
-            [
-                arguments.formatter,
-                "-i",
-                "-style=file",
-                *(os.fspath(path) for path in sources[offset : offset + 128]),
-            ],
+            formatter_arguments,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             check=False,
         )
         if result.returncode != 0:
-            print(result.stderr, end="")
-            return result.returncode
+            formatter_failed = True
+            diagnostics.append(result.stdout)
+            diagnostics.append(result.stderr)
+            if arguments.check:
+                for source in batch:
+                    source_text = os.fspath(source)
+                    if source_text in result.stdout or source_text in result.stderr:
+                        changed_sources.add(source)
+            else:
+                break
+    changed_sources.update(
+        source for source in sources if before[source] != digest(source)
+    )
     changed = [
         source.relative_to(WORKSPACE).as_posix()
         for source in sources
-        if before[source] != digest(source)
+        if source in changed_sources
     ]
+    passed = not formatter_failed and (not arguments.check or not changed)
     receipt = {
         "schema": "p101-format-workspace-receipt-v1",
         "formatter": arguments.formatter,
         "formatter_version": version,
+        "mode": "check" if arguments.check else "apply",
         "source_count": len(sources),
         "excluded_vendored_count": len(excluded),
         "excluded_vendored": [
@@ -124,7 +149,7 @@ def main() -> int:
         ],
         "changed_count": len(changed),
         "changed": changed,
-        "passed": not changed,
+        "passed": passed,
         "does_not_prove": (
             "A clean formatting pass proves only that tracked C/C++ source bytes "
             "match the recorded clang-format version and repository style "
@@ -136,15 +161,26 @@ def main() -> int:
     arguments.receipt.write_text(
         json.dumps(receipt, indent=2) + "\n", encoding="utf-8"
     )
-    if changed:
-        print("clang-format changed tracked source files:")
+    if formatter_failed:
+        for diagnostic in diagnostics:
+            print(diagnostic, end="")
+        if arguments.check:
+            print("clang-format found formatting drift in tracked source files:")
+        else:
+            print("clang-format failed while formatting tracked source files:")
         for path in changed:
             print(f"  {path}")
-        print("Review and commit the formatted bytes, then rerun the check.")
+        if arguments.check:
+            print("Run update-all.sh locally to apply the required formatting.")
         return 1
+    if changed:
+        print("clang-format updated tracked source files:")
+        for path in changed:
+            print(f"  {path}")
     print(
-        f"workspace formatting: {len(sources)} first-party tracked C/C++ "
-        f"files clean; {len(excluded)} vendored files excluded"
+        f"workspace formatting ({'check' if arguments.check else 'apply'}): "
+        f"{len(sources)} first-party tracked C/C++ files; "
+        f"{len(changed)} changed; {len(excluded)} vendored files excluded"
     )
     return 0
 

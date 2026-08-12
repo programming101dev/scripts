@@ -61,9 +61,9 @@
       "sha256": "d00c1488856ff2dc9b8e110d027dc5b89523962aa0576a778890bd773d643206"
     },
     {
-      "bytes": 13161,
+      "bytes": 13173,
       "path": "checks/check-p101-boundaries.py",
-      "sha256": "b9c31b37610864cc513b690bab734e2eaaf9dc60a217916139ad388dd320c101"
+      "sha256": "9aa16ed01317af960f4c6b7d4eca83b762de20fb38fbaadc6909aa758bf94fab"
     },
     {
       "bytes": 16373,
@@ -166,9 +166,9 @@
       "sha256": "15517de986d872ea2ce7b2da54a1197e3118746fd326ee0698ad3617178f699c"
     },
     {
-      "bytes": 58702,
+      "bytes": 59038,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "3d6649e78893053af57171a6fcdfbbfa63c0fee0772a11bd653fbace19655e3f"
+      "sha256": "197223f3c8b9e4184d8adf5e29e16ca1fed468a89e91937e3d6d93db6233eb2f"
     },
     {
       "bytes": 62722,
@@ -241,9 +241,9 @@
       "sha256": "2b49e18ff463e14b3c052b61895693a64c8386819545412697b5998e28c3cab1"
     },
     {
-      "bytes": 8943,
+      "bytes": 9963,
       "path": "docs/bootstrap-architecture.md",
-      "sha256": "23ca005be4ef5671b604276ae8d40c8d54b26f91cef8a2d9c1a03452d97939da"
+      "sha256": "fef84d281e1f8d0cfce4906c4f6d696b33ed6d57b4fbe45bb1e8fed3998c7579"
     },
     {
       "bytes": 6434,
@@ -276,9 +276,9 @@
       "sha256": "0986d2702ea419f7dece02fbf52e56b269d65a527316cb2bbe1ff2c640adf417"
     },
     {
-      "bytes": 20684,
+      "bytes": 20729,
       "path": "github-actions/p101-stack.yml",
-      "sha256": "756c6ba6674126032bae95f750acd335080395ee582c2fd1b2ac75c50a335a36"
+      "sha256": "5e7032253bbe558a2d7c3a9462445d1751b4180974b2ac5bf39ed3f93793e825"
     },
     {
       "bytes": 1069,
@@ -286,9 +286,9 @@
       "sha256": "c56319def112e4dda09bfb8298470b300490979c385c8912ac5853e5532ad296"
     },
     {
-      "bytes": 13825,
+      "bytes": 13844,
       "path": "github-actions/preflight.sh",
-      "sha256": "13ad76ab2f1acac934e17b04aab5440ede329e9c88093c6c07f759e049b70a98"
+      "sha256": "d8e3b1ee323ed3e4c817276f949f15ec314fea13a28b1b761ec656c73ae91c84"
     },
     {
       "bytes": 8624,
@@ -336,9 +336,9 @@
       "sha256": "b129021011ddd818cbd2ee2c62fe7b50a5348604f3e0092863122fdd6c3b4356"
     },
     {
-      "bytes": 35458,
+      "bytes": 44007,
       "path": "tests/test-build-repo-interactive.sh",
-      "sha256": "b9f8a20c19b4ae59e40d64f3833b03b50452415f7425fabce3f7800867bfa9fc"
+      "sha256": "852e79f1520f2ec7e7774f1ffa00587d2309c6392b53ba3bbff5a3200f230087"
     },
     {
       "bytes": 5740,
@@ -346,9 +346,9 @@
       "sha256": "5a236c83e5de7643babcc600e1a8a4394804e3dad75a4fe923a3b7bfc38ec5a1"
     },
     {
-      "bytes": 21356,
+      "bytes": 22727,
       "path": "update-all.sh",
-      "sha256": "60649a5dd3ab0b80ba7a62f38c3c6bda58151c5450bc6bacbe03aeb8ab16dd2c"
+      "sha256": "d72c9ee494f62dd079e56813be0ea0bb422709ae4c651e9c233cb08a84046a37"
     },
     {
       "bytes": 10546,
@@ -371,9 +371,9 @@
       "sha256": "084b0d1dec135cf1b6f7b101a247ee977f01c38a602503d8b04f3709c98726e9"
     },
     {
-      "bytes": 25454,
+      "bytes": 29253,
       "path": "workspace/build-repo.sh",
-      "sha256": "ceb979f5f7fce098d8e74563316ae453bee99c2b43c1c7d2acef9543d0195ab8"
+      "sha256": "3a8f9899c60788f56c8344d960ef041c82ffbbbab888be7253801727522bfeae"
     },
     {
       "bytes": 2816,
@@ -381,14 +381,19 @@
       "sha256": "318c9c9c05f4db1970655d6f0772f166e68fe794d70a5d5b753b854669446707"
     },
     {
-      "bytes": 11005,
-      "path": "workspace/stack-contract.py",
-      "sha256": "187eeb37e1392779ba07677480d3cfc96b70550ef337a696322591850acc94ea"
+      "bytes": 4356,
+      "path": "workspace/gc-build-cache.sh",
+      "sha256": "33d47397d4255b63e69b9acd055282b437a1f4f05ca189d89817403bd525e94f"
     },
     {
-      "bytes": 27232,
+      "bytes": 11040,
+      "path": "workspace/stack-contract.py",
+      "sha256": "9997d1335a5162add05c4c92e72ae1b63f174a714abe48137e852a3f23aaee46"
+    },
+    {
+      "bytes": 27943,
       "path": "workspace/update.sh",
-      "sha256": "79fb60bf0bf05859fd8f878303c5d6aa288aa7403d13828fe03bddeaaf04a0c3"
+      "sha256": "80a5154fba91fe43d31a25bbac9664ff2c5a63abeda7487041a3d3b932858778"
     }
   ],
   "does_not_prove": "This contract binds the declared stack policy bytes. It does not prove that the policy is complete, correct, or sufficient for an undeclared platform.",

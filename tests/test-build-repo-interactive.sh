@@ -45,6 +45,66 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Formatting has two deliberately different contracts. CI check mode must
+# diagnose drift without touching the checkout; local apply mode must update
+# the bytes and continue successfully so later cache identities see them.
+format_fixture="$sandbox/format-fixture"
+mkdir -p "$format_fixture/scripts/checks" "$format_fixture/bin"
+cp ./checks/format-workspace.py \
+  "$format_fixture/scripts/checks/format-workspace.py"
+chmod +x "$format_fixture/scripts/checks/format-workspace.py"
+: > "$format_fixture/scripts/repos.txt"
+: > "$format_fixture/scripts/.clang-format"
+printf '%s\n' 'int badly_formatted;' > "$format_fixture/scripts/sample.c"
+git -C "$format_fixture/scripts" init -q
+git -C "$format_fixture/scripts" add repos.txt .clang-format sample.c
+git -C "$format_fixture/scripts" -c user.name=p101-test \
+  -c user.email=p101-test@example.invalid commit -qm fixture
+cat > "$format_fixture/bin/clang-format" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+case " $* " in
+  *" --version "*) printf '%s\n' 'clang-format version test'; exit 0 ;;
+esac
+check=false
+case " $* " in *" --dry-run "*) check=true ;; esac
+status=0
+for argument in "$@"; do
+  case "$argument" in
+    *.c)
+      if $check; then
+        if grep -Fq badly_formatted "$argument"; then
+          printf '%s:1:1: error: code should be clang-formatted\n' "$argument" >&2
+          status=1
+        fi
+      else
+        printf '%s\n' 'int well_formatted;' > "$argument"
+      fi
+      ;;
+  esac
+done
+exit "$status"
+EOF
+chmod +x "$format_fixture/bin/clang-format"
+format_check_status=0
+"$format_fixture/scripts/checks/format-workspace.py" \
+  --formatter "$format_fixture/bin/clang-format" \
+  --receipt "$format_fixture/check.json" --check \
+  > "$format_fixture/check.stdout" 2> "$format_fixture/check.stderr" \
+  || format_check_status=$?
+[[ "$format_check_status" -eq 1 ]]
+grep -Fxq 'int badly_formatted;' "$format_fixture/scripts/sample.c"
+grep -Fq '"mode": "check"' "$format_fixture/check.json"
+grep -Fq '"passed": false' "$format_fixture/check.json"
+"$format_fixture/scripts/checks/format-workspace.py" \
+  --formatter "$format_fixture/bin/clang-format" \
+  --receipt "$format_fixture/apply.json" \
+  > "$format_fixture/apply.stdout"
+grep -Fxq 'int well_formatted;' "$format_fixture/scripts/sample.c"
+grep -Fq '"mode": "apply"' "$format_fixture/apply.json"
+grep -Fq '"changed_count": 1' "$format_fixture/apply.json"
+grep -Fq '"passed": true' "$format_fixture/apply.json"
+
 # The repository driver may expose an exact build-cache lane through a
 # repository-local symlink.  The canonical configurator must accept only links
 # whose resolved target is inside the explicitly admitted cache, and only in
@@ -179,11 +239,14 @@ mkdir -p "$sandbox/scripts/workspace" "$sandbox/scripts/distribution" \
   "$sandbox/scripts/shared" "$sandbox/repo"
 cp ./workspace/build-repo.sh "$sandbox/scripts/workspace/build-repo.sh"
 cp ./workspace/build-lane.sh "$sandbox/scripts/workspace/build-lane.sh"
+cp ./workspace/gc-build-cache.sh \
+  "$sandbox/scripts/workspace/gc-build-cache.sh"
 cp ./workspace/compiler-fingerprint.sh \
   "$sandbox/scripts/workspace/compiler-fingerprint.sh"
 cp ./shared/compilers.sh "$sandbox/scripts/shared/compilers.sh"
 chmod +x "$sandbox/scripts/workspace/build-repo.sh" \
   "$sandbox/scripts/workspace/build-lane.sh" \
+  "$sandbox/scripts/workspace/gc-build-cache.sh" \
   "$sandbox/scripts/workspace/compiler-fingerprint.sh"
 
 cat > "$sandbox/scripts/distribution/refresh-repo.sh" <<'EOF'
@@ -314,6 +377,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 printf '%s incremental=%s\n' "$build_dir" \
   "${P101_INCREMENTAL_BUILD:-unset}" >> build-invocations.txt
+[[ ! -f fail-build ]] || exit 7
 EOF
 cat > "$runtime_repo/install.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -389,16 +453,18 @@ P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
     -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
     -B test-quality -U test-runtime -s "" -I \
     > "$sandbox/cache-miss.stdout" 2> "$sandbox/cache-miss.stderr"
-[[ -L "$runtime_repo/build-test-quality" ]]
+cached_quality="$(cat "$runtime_repo/.last-build-dir")"
+[[ "$cached_quality" == build-test-quality__???????????????????????????????????????? ]]
+[[ -L "$runtime_repo/$cached_quality" ]]
 tail -n 1 "$runtime_repo/configure-raw-invocations.txt" | grep -Eq '(^| )-R( |$)'
 grep -Fq 'Build cache MISS' "$sandbox/cache-miss.stdout"
 grep -Fxq 'cache_state=miss' \
-  "$runtime_repo/build-test-quality/p101-build-lane.txt"
+  "$runtime_repo/$cached_quality/p101-build-lane.txt"
 grep -Eq '^orchestrator_identity=policy:[0-9a-f]{40}$' \
-  "$runtime_repo/build-test-quality/p101-build-lane.txt"
+  "$runtime_repo/$cached_quality/p101-build-lane.txt"
 policy_identity_before="$(grep '^orchestrator_identity=' \
-  "$runtime_repo/build-test-quality/p101-build-lane.txt")"
-grep -Fq 'build-test-quality incremental=1' \
+  "$runtime_repo/$cached_quality/p101-build-lane.txt")"
+grep -Fq "$cached_quality incremental=1" \
   "$runtime_repo/build-invocations.txt"
 
 : > "$runtime_repo/configure-invocations.txt"
@@ -411,7 +477,8 @@ P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
 tail -n 1 "$runtime_repo/configure-raw-invocations.txt" | grep -Eq '(^| )-R( |$)'
 grep -Fq 'Build cache HIT' "$sandbox/cache-hit.stdout"
 grep -Fxq 'cache_state=hit' \
-  "$runtime_repo/build-test-quality/p101-build-lane.txt"
+  "$runtime_repo/$cached_quality/p101-build-lane.txt"
+[[ "$(cat "$runtime_repo/.last-build-dir")" == "$cached_quality" ]]
 [[ "$(wc -l < "$runtime_repo/configure-invocations.txt")" -eq 1 ]]
 [[ "$(wc -l < "$runtime_repo/build-invocations.txt")" -eq 1 ]]
 P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
@@ -431,14 +498,81 @@ P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
     -B test-quality -U test-runtime -s "" -I \
     > "$sandbox/cache-invalidated.stdout" 2> "$sandbox/cache-invalidated.stderr"
 grep -Fq 'Build cache MISS' "$sandbox/cache-invalidated.stdout"
+invalidated_quality="$(cat "$runtime_repo/.last-build-dir")"
+[[ "$invalidated_quality" == build-test-quality__???????????????????????????????????????? ]]
+[[ "$invalidated_quality" != "$cached_quality" ]]
 policy_identity_after="$(grep '^orchestrator_identity=' \
-  "$runtime_repo/build-test-quality/p101-build-lane.txt")"
+  "$runtime_repo/$invalidated_quality/p101-build-lane.txt")"
 if [[ "$policy_identity_before" == "$policy_identity_after" ]]; then
   echo 'build-policy change retained a stale lane receipt' >&2
   exit 1
 fi
 grep -Eq '^orchestrator_identity=policy:[0-9a-f]{40}$' \
-  "$runtime_repo/build-test-quality/p101-build-lane.txt"
+  "$runtime_repo/$invalidated_quality/p101-build-lane.txt"
+
+# A failed content-addressed build may leave an unreferenced partial lane, but
+# it must restore the last qualified marker instead of stranding the caller on
+# the configurator's eager marker write.
+printf '\n# Force another exact source identity.\n' >> "$runtime_repo/change-compiler.sh"
+: > "$runtime_repo/fail-build"
+set +e
+P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
+  "$sandbox/scripts/workspace/build-repo.sh" \
+    -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
+    -B test-quality -U test-runtime -s "" -I \
+    > "$sandbox/cache-failure.stdout" 2> "$sandbox/cache-failure.stderr"
+cache_failure_status=$?
+set -e
+rm -f "$runtime_repo/fail-build"
+[[ "$cache_failure_status" -eq 7 ]]
+[[ "$(cat "$runtime_repo/.last-build-dir")" == "$invalidated_quality" ]]
+[[ ! -e "$runtime_repo/.last-runtime-build-dir" ]]
+
+# A stale marker is not qualified state and must not be resurrected by a
+# failed transaction. Treat it as absent even if the eager configurator wrote
+# another value before its build failed.
+printf '%s\n' build-does-not-exist > "$runtime_repo/.last-build-dir"
+printf '\n# Force a source identity for stale-marker rollback.\n' \
+  >> "$runtime_repo/change-compiler.sh"
+: > "$runtime_repo/fail-build"
+set +e
+P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
+  "$sandbox/scripts/workspace/build-repo.sh" \
+    -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
+    -B test-quality -U test-runtime -s "" -I \
+    > "$sandbox/stale-marker-failure.stdout" \
+    2> "$sandbox/stale-marker-failure.stderr"
+stale_marker_failure_status=$?
+set -e
+rm -f "$runtime_repo/fail-build"
+[[ "$stale_marker_failure_status" -eq 7 ]]
+[[ ! -e "$runtime_repo/.last-build-dir" ]]
+[[ ! -e "$runtime_repo/.last-runtime-build-dir" ]]
+printf '%s\n' "$invalidated_quality" > "$runtime_repo/.last-build-dir"
+
+# Collection removes obsolete repository aliases immediately and aged cache
+# content separately. A marker-selected lane survives even with age zero.
+"$sandbox/scripts/workspace/gc-build-cache.sh" \
+  --cache "$sandbox/repository-build-cache" --max-age-days 0 \
+  > "$sandbox/cache-gc.stdout"
+[[ -e "$runtime_repo/$invalidated_quality" ]]
+[[ "$(find "$runtime_repo" -maxdepth 1 -type l -name 'build-*__*' | wc -l | tr -d ' ')" -eq 1 ]]
+[[ "$(find "$sandbox/repository-build-cache" -mindepth 2 -maxdepth 2 \
+  -type d -name 'build-*__*' | wc -l | tr -d ' ')" -eq 1 ]]
+grep -Eq 'Build-cache GC: [1-9][0-9]* alias\(es\), [1-9][0-9]* aged lane\(s\)' \
+  "$sandbox/cache-gc.stdout"
+
+# Matrix workers complete their exact lanes without publishing shared marker
+# state. The deterministic host finalizer is the sole publisher.
+P101_DEFER_BUILD_MARKERS=1 \
+P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
+  "$sandbox/scripts/workspace/build-repo.sh" \
+    -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
+    -B test-quality -U test-runtime -s "" -I \
+    > "$sandbox/deferred-markers.stdout" \
+    2> "$sandbox/deferred-markers.stderr"
+[[ "$(cat "$runtime_repo/.last-build-dir")" == "$invalidated_quality" ]]
+[[ ! -e "$runtime_repo/.last-runtime-build-dir" ]]
 
 # Parallel matrix mode builds the host runtime without installing it, then a
 # separate finalize pass installs without recompiling and restores stable host
@@ -503,11 +637,16 @@ mkdir -p "$sandbox/matrix/distribution" "$sandbox/matrix/workspace" \
 cp ./shared/compilers.sh "$sandbox/matrix/shared/compilers.sh"
 cp ./distribution/refresh-repo.sh "$sandbox/matrix/distribution/refresh-repo.sh"
 cp ./workspace/update.sh "$sandbox/matrix/workspace/update.sh"
+cp ./workspace/gc-build-cache.sh "$sandbox/matrix/workspace/gc-build-cache.sh"
 chmod +x "$sandbox/matrix/update-all.sh" \
   "$sandbox/matrix/distribution/refresh-repo.sh" "$sandbox/matrix/workspace/update.sh"
+chmod +x "$sandbox/matrix/workspace/gc-build-cache.sh"
 cat > "$sandbox/matrix/driver.sh" <<'EOF'
 #!/bin/sh
 printf '%s\n' "$@" >> driver-arguments.txt
+printf 'cache=%s defer=%s\n' \
+  "${P101_REPOSITORY_BUILD_CACHE:-}" \
+  "${P101_DEFER_BUILD_MARKERS:-0}" >> driver-environment.txt
 EOF
 chmod +x "$sandbox/matrix/driver.sh"
 printf 'clang\n' > "$sandbox/matrix/c.txt"
@@ -528,12 +667,41 @@ grep -Fq 'source snapshot without usable Git metadata; skipping refresh' \
 [[ "$(grep -c -- '--prepare-only' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
 [[ "$(grep -c -- '--build-only' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
 [[ "$(grep -c -- '--finalize-only' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
+[[ "$(grep -c -- '--format' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
 grep -Fxq -- '--prepare-only' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--build-only' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--finalize-only' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--interactive' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- '--skip-install' "$sandbox/matrix/driver-arguments.txt"
 grep -Fxq -- 'address' "$sandbox/matrix/driver-arguments.txt"
+matrix_cache="$(CDPATH='' cd -- "$sandbox/matrix" && pwd -P)/target/repository-build-cache"
+[[ "$(wc -l < "$sandbox/matrix/driver-environment.txt")" -eq 3 ]]
+[[ "$(grep -Fxc "cache=$matrix_cache defer=0" \
+  "$sandbox/matrix/driver-environment.txt")" -eq 2 ]]
+[[ "$(grep -Fxc "cache=$matrix_cache defer=1" \
+  "$sandbox/matrix/driver-environment.txt")" -eq 1 ]]
+
+# Local formatting is the default preparation phase. CI can select a
+# non-mutating check, and an explicit local escape hatch suppresses both.
+(
+  cd "$sandbox/matrix"
+  ./update-all.sh -u ./driver.sh -C c.txt -X cxx.txt \
+    -f clang-format -t clang-tidy -k cppcheck -s address \
+    --format-check --skip-install --skip-acceptance > format-check.stdout
+  ./update-all.sh -u ./driver.sh -C c.txt -X cxx.txt \
+    -f clang-format -t clang-tidy -k cppcheck -s address \
+    --no-format --skip-install --skip-acceptance > no-format.stdout
+)
+[[ "$(grep -c -- '--format' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
+[[ "$(grep -c -- '--format-check' "$sandbox/matrix/driver-arguments.txt")" -eq 1 ]]
+if (
+  cd "$sandbox/matrix"
+  ./update-all.sh -u ./driver.sh -C c.txt -X cxx.txt \
+    --format --format-check --skip-install --skip-acceptance >/dev/null 2>&1
+); then
+  echo 'mutually exclusive formatting modes were accepted' >&2
+  exit 1
+fi
 
 # The strict CMake acceptance phase is the default, and it must use the first
 # compiler pair that actually completed rather than the loop variables left by
@@ -543,6 +711,8 @@ mkdir -p "$acceptance_matrix/distribution" "$acceptance_matrix/workspace" \
   "$acceptance_matrix/shared" "$acceptance_matrix/bin"
 cp ./update-all.sh "$acceptance_matrix/update-all.sh"
 cp ./shared/compilers.sh "$acceptance_matrix/shared/compilers.sh"
+cp ./workspace/gc-build-cache.sh \
+  "$acceptance_matrix/workspace/gc-build-cache.sh"
 cat > "$acceptance_matrix/distribution/refresh-repo.sh" <<'EOF'
 #!/bin/sh
 exit 0
@@ -560,6 +730,7 @@ cat > "$acceptance_matrix/bin/compiler" <<'EOF'
 exit 0
 EOF
 chmod +x "$acceptance_matrix/update-all.sh" \
+  "$acceptance_matrix/workspace/gc-build-cache.sh" \
   "$acceptance_matrix/distribution/refresh-repo.sh" \
   "$acceptance_matrix/driver.sh" "$acceptance_matrix/bin/cmake" \
   "$acceptance_matrix/bin/compiler"
@@ -601,9 +772,12 @@ grep -Eq -- '--target p101_acceptance --parallel [1-9][0-9]*' \
 # first.
 parallel_matrix="$sandbox/parallel-matrix"
 mkdir -p "$parallel_matrix/distribution" "$parallel_matrix/shared" \
+  "$parallel_matrix/workspace" \
   "$parallel_matrix/bin" "$parallel_matrix/evidence"
 cp ./update-all.sh "$parallel_matrix/update-all.sh"
 cp ./shared/compilers.sh "$parallel_matrix/shared/compilers.sh"
+cp ./workspace/gc-build-cache.sh \
+  "$parallel_matrix/workspace/gc-build-cache.sh"
 cat > "$parallel_matrix/distribution/refresh-repo.sh" <<'EOF'
 #!/bin/sh
 exit 0
@@ -658,6 +832,7 @@ cat > "$parallel_matrix/bin/compiler" <<'EOF'
 exit 0
 EOF
 chmod +x "$parallel_matrix/update-all.sh" \
+  "$parallel_matrix/workspace/gc-build-cache.sh" \
   "$parallel_matrix/distribution/refresh-repo.sh" \
   "$parallel_matrix/driver.sh" "$parallel_matrix/bin/compiler"
 for compiler in clang-a clang++-a clang-b clang++-b clang-c clang++-c; do
@@ -717,7 +892,8 @@ snapshot_root="$sandbox/update-snapshot"
 snapshot_scripts="$snapshot_root/scripts"
 mkdir -p "$snapshot_scripts/workspace" "$snapshot_scripts/distribution" \
   "$snapshot_scripts/shared" \
-  "$snapshot_scripts/generators" "$snapshot_root/.flags" "$snapshot_root/bin"
+  "$snapshot_scripts/generators" "$snapshot_scripts/checks" \
+  "$snapshot_root/.flags" "$snapshot_root/bin"
 cp ./workspace/update.sh "$snapshot_scripts/workspace/update.sh"
 cp ./shared/compilers.sh "$snapshot_scripts/shared/compilers.sh"
 chmod +x "$snapshot_scripts/workspace/update.sh"
@@ -765,7 +941,8 @@ for helper in \
   distribution/copy-scripts.sh \
   distribution/copy-playground-track-scripts.sh \
   distribution/remove-retired-repos.sh \
-  distribution/copy-cmake.sh
+  distribution/copy-cmake.sh \
+  checks/format-workspace.py
 do
   ln -s ../helper "$snapshot_scripts/$helper"
 done
@@ -792,6 +969,12 @@ PATH="$snapshot_root/bin:$PATH" \
     --no-flags --skip-self-update --prepare-only > /dev/null
 grep -Fxq 'clone-repos.sh' "$P101_TEST_HELPER_LOG"
 grep -Fxq 'copy-scripts.sh' "$P101_TEST_HELPER_LOG"
+grep -Fxq 'format-workspace.py' "$P101_TEST_HELPER_LOG"
+clone_line="$(grep -n -m 1 '^clone-repos.sh$' "$P101_TEST_HELPER_LOG" | cut -d: -f1)"
+format_line="$(grep -n -m 1 '^format-workspace.py$' "$P101_TEST_HELPER_LOG" | cut -d: -f1)"
+copy_line="$(grep -n -m 1 '^copy-scripts.sh$' "$P101_TEST_HELPER_LOG" | cut -d: -f1)"
+[[ "$clone_line" -lt "$format_line" ]]
+[[ "$format_line" -lt "$copy_line" ]]
 grep -q '^check-env.sh ' "$P101_TEST_HELPER_LOG"
 if grep -Fq -- '--compiler-only' "$P101_TEST_HELPER_LOG"; then
   echo 'prepare-only incorrectly used the pair-only environment check' >&2

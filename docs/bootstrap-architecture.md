@@ -47,20 +47,36 @@ host runtime artifacts. The host pair then configures `workspace/CMakeLists.txt`
 and builds `p101_acceptance`. `--skip-acceptance` is the explicit bring-up
 escape hatch; strict acceptance is the default.
 
-Repository build reuse is deliberately below the judgment boundary. When
-`P101_REPOSITORY_BUILD_CACHE` names an absolute cache root, each exact lane's
-physical CMake tree lives below that root and the repository's conventional
-build path is a symlink to it. Restoring such a tree never constitutes a pass:
-its receipt must match both the repository worktree identity and the narrow
-shared build-policy identity. A mismatch discards that lane before configure,
-preventing restored artifact timestamps from hiding changed inputs. The
-repository is then configured again, CMake validates its dependency graph, and
-dependency-tracked compile, analyze, clang-tidy, and cppcheck outputs rerun when
-their admitted source/header, compile database, policy, or tool identity has
-changed. The tradeoff is extra cache storage and reliance on CMake's declared
-dependency graph in exchange for avoiding unconditional clean builds. Direct
-repository builds retain clean-first behavior; only the workspace orchestrator
-opts into incremental reuse after establishing the exact lane.
+Formatting follows repository refresh and formatter validation but precedes
+flag generation, shared distribution, source identity, cache-key computation,
+configuration, and compilation. Local preparation applies it and continues.
+CI and release preflight select `--format-check`, which reports drift with
+clang-format's dry-run mode without changing tracked bytes. `--no-format` is
+an explicit local escape hatch rather than the default.
+
+Repository build reuse is deliberately below the judgment boundary.
+`update-all.sh` defaults `P101_REPOSITORY_BUILD_CACHE` to
+`target/repository-build-cache`; an absolute override moves it and `off`
+disables it. Each physical CMake tree is addressed by the compiler lane plus a
+full digest of the repository worktree and narrow shared build policy. The
+repository path is only a compatibility symlink. A changed identity therefore
+creates a new immutable lane instead of destructively repurposing a prior one.
+Restoring such a tree never constitutes a pass: the repository is configured
+again, CMake validates its dependency graph, and dependency-tracked compile,
+analyze, clang-tidy, and cppcheck outputs rerun when their admitted
+source/header, compile database, policy, or tool identity has changed.
+
+Marker publication is transactional. Pair workers defer marker writes; after
+all workers pass, one serialized host finalizer validates receipts, installs,
+and atomically publishes the selected quality and runtime markers. A failed
+configure, build, install, or partial publication restores the last marker only
+when its target still exists; a stale incoming marker becomes absent. Cache
+collection runs only after workers stop and finalization succeeds. It removes
+unselected repository aliases immediately and unreferenced physical lanes after
+`P101_BUILD_CACHE_MAX_AGE_DAYS` (30 by default). The tradeoff is bounded extra
+storage and reliance on CMake's declared dependency graph in exchange for
+avoiding unconditional clean builds. Direct repository builds retain
+clean-first behavior; only the workspace orchestrator opts into this reuse.
 
 GitHub Actions uses this target once. It no longer runs a second
 `check-after-update-all.sh` pass after `update-all.sh`; the compatibility script

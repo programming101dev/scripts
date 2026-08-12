@@ -127,6 +127,28 @@ class BoundaryTests(unittest.TestCase):
             ):
                 MODULE.validate(copy.deepcopy(self.document), receipt)
 
+    def test_reused_stricter_unit_evidence_counts_as_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            receipt = Path(directory) / "receipt.json"
+            receipt.write_text(
+                json.dumps(
+                    {
+                        "schema": "p101-repository-test-receipt-v1",
+                        "passed": True,
+                        "repositories": [
+                            {"repository": "direct", "unit": "PASS"},
+                            {"repository": "stricter", "unit": "REUSED"},
+                            {"repository": "absent", "unit": "NO TEST"},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                MODULE.executed_repositories(receipt),
+                {"direct", "stricter"},
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

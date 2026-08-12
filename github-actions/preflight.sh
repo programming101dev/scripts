@@ -329,6 +329,7 @@ printf '\n==> strict update/build path\n'
 set +e
 set -o pipefail
 P101_QUIET=1 ./update-all.sh \
+  --format-check \
   --latest \
   --skip-install \
   --skip-acceptance \

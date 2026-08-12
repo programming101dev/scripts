@@ -33,6 +33,8 @@ grep -Fq 'ln -sf "/usr/local/llvm${required}/bin/clang-tidy" /usr/local/bin/clan
   .github/workflows/p101-stack.yml)" -eq 3 ]]
 [[ "$(grep -c './update-all.sh -C ci_c_compilers.txt' \
   .github/workflows/p101-stack.yml)" -eq 3 ]]
+[[ "$(grep -c './update-all.sh .*--format-check' \
+  .github/workflows/p101-stack.yml)" -eq 3 ]]
 [[ "$(grep -c 'uses: actions/cache/restore@v4' \
   .github/workflows/p101-stack.yml)" -eq 3 ]]
 [[ "$(grep -c 'uses: actions/cache/save@v4' \

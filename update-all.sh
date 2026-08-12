@@ -11,8 +11,22 @@ set -eu
 
 # Always operate from the directory this script lives in.
 cd -- "$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+scripts_root="$(pwd -P)"
 # shellcheck source=shared/compilers.sh
 . ./shared/compilers.sh
+
+# Keep exact compiler/source/policy lanes outside managed repositories so
+# cleanup and failed candidate runs cannot strand their published markers.
+# Set P101_REPOSITORY_BUILD_CACHE=off for an explicit ephemeral build.
+case "${P101_REPOSITORY_BUILD_CACHE-}" in
+  '')
+    P101_REPOSITORY_BUILD_CACHE="$(pwd -P)/target/repository-build-cache"
+    export P101_REPOSITORY_BUILD_CACHE
+    ;;
+  0|off|disabled)
+    unset P101_REPOSITORY_BUILD_CACHE
+    ;;
+esac
 
 # Defaults
 clang_format_name="clang-format"
@@ -25,7 +39,8 @@ standard=0
 skip_install=0
 interactive=0
 latest=0
-format=0
+format_mode=apply
+format_option_count=0
 acceptance=1
 acceptance_output=""
 acceptance_no_cache=0
@@ -55,10 +70,10 @@ usage() {
   --interactive     Pause, pull the pushed fix, and retry the failed phase
   --latest          Follow moving upstream branches instead of repos.lock;
                     refresh the lock before strict acceptance
-  --format          Apply clang-format to every tracked workspace source
-                    once, before the first pair builds, so the per-repo
-                    format-check gate cannot fail on formatting alone.
-                    Modifies tracked files.
+  --format          Apply clang-format before source identities are computed
+                    (the default; retained as an explicit spelling).
+  --format-check    Verify formatting without modifying files. Intended for CI.
+  --no-format       Skip the initial workspace formatting phase.
   --skip-acceptance Build the compiler matrix but do not run the strict
                     CMake-owned host-tool qualification and workspace checks.
   --acceptance-output <dir>
@@ -114,7 +129,9 @@ while [ "$#" -gt 0 ]; do
     -I|--skip-install) skip_install=1; shift ;;
     -i|--interactive) interactive=1; shift ;;
     --latest) latest=1; shift ;;
-    --format) format=1; shift ;;
+    --format) format_mode=apply; format_option_count=$((format_option_count + 1)); shift ;;
+    --format-check) format_mode=check; format_option_count=$((format_option_count + 1)); shift ;;
+    --no-format) format_mode=off; format_option_count=$((format_option_count + 1)); shift ;;
     --skip-acceptance) acceptance=0; shift ;;
     --acceptance-output)
       [ "$#" -ge 2 ] || { printf 'Error: --acceptance-output requires an argument.\n' >&2; exit 2; }
@@ -140,6 +157,10 @@ done
 
 if [ "$no_flags" -eq 1 ] && [ "$standard" -eq 1 ]; then
   printf 'Error: -N/--no-flags and -S/--standard are mutually exclusive.\n' >&2
+  exit 2
+fi
+if [ "$format_option_count" -gt 1 ]; then
+  printf 'Error: --format, --format-check, and --no-format are mutually exclusive.\n' >&2
   exit 2
 fi
 
@@ -306,6 +327,7 @@ run_driver() {
   _run_x=$2
   _run_phase=$3
   _run_role=${4:-}
+  _defer_markers=0
   set -- "$driver" -c "$_run_c" -x "$_run_x" \
     -C "$flag_c_list_file" -X "$flag_cxx_list_file" \
     -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" \
@@ -315,10 +337,14 @@ run_driver() {
       set -- "$@" --prepare-only
       [ "$interactive" -eq 0 ] || set -- "$@" --interactive
       [ "$latest" -eq 0 ] || set -- "$@" --latest
-      [ "$format" -eq 0 ] || set -- "$@" --format
+      case "$format_mode" in
+        apply) set -- "$@" --format ;;
+        check) set -- "$@" --format-check ;;
+      esac
       ;;
     build)
       set -- "$@" --build-only
+      _defer_markers=1
       if [ "$_run_role" = host ] && [ "$skip_install" -eq 0 ]; then
         set -- "$@" --defer-install
       else
@@ -327,6 +353,7 @@ run_driver() {
       ;;
     retry)
       set -- "$@" --build-only --interactive
+      _defer_markers=1
       if [ "$_run_role" = host ] && [ "$skip_install" -eq 0 ]; then
         set -- "$@" --defer-install
       else
@@ -349,7 +376,11 @@ run_driver() {
   elif [ "$sanitizers_given" -eq 1 ]; then
     set -- "$@" -s "$sanitizers"
   fi
-  "$@"
+  if [ "$_defer_markers" -eq 1 ]; then
+    P101_DEFER_BUILD_MARKERS=1 "$@"
+  else
+    "$@"
+  fi
 }
 
 printf 'Compiler matrix output: %s\n' "$matrix_output"
@@ -539,6 +570,11 @@ if [ "$finalize_status" -ne 0 ]; then
     "$finalize_status" "$finalize_log" >&2
   cat "$finalize_log" >&2
   exit "$finalize_status"
+fi
+if [ -n "${P101_REPOSITORY_BUILD_CACHE:-}" ]; then
+  "$scripts_root/workspace/gc-build-cache.sh" \
+    --cache "$P101_REPOSITORY_BUILD_CACHE" \
+    --max-age-days "${P101_BUILD_CACHE_MAX_AGE_DAYS:-30}"
 fi
 
 printf 'Done: %d compiler pair(s) built in parallel, %d skipped.\n' "$pairs_run" "$skipped"

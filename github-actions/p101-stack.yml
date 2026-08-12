@@ -109,7 +109,7 @@ jobs:
           printf 'clang\n' > ci_c_compilers.txt
           printf 'clang++\n' > ci_cxx_compilers.txt
           mkdir -p ci-output
-          if ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt --matrix-output ci-output/compiler-matrix --acceptance-output ci-output > ci-output/update-all.log 2>&1; then
+          if ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt --format-check --matrix-output ci-output/compiler-matrix --acceptance-output ci-output > ci-output/update-all.log 2>&1; then
             status=0
           else
             status=$?
@@ -207,7 +207,7 @@ jobs:
           printf 'clang\n' > ci_c_compilers.txt
           printf 'clang++\n' > ci_cxx_compilers.txt
           mkdir -p ci-output
-          if ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt --matrix-output ci-output/compiler-matrix --acceptance-output ci-output > ci-output/update-all.log 2>&1; then
+          if ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt --format-check --matrix-output ci-output/compiler-matrix --acceptance-output ci-output > ci-output/update-all.log 2>&1; then
             status=0
           else
             status=$?
@@ -325,7 +325,7 @@ jobs:
             if [ "$status" -eq 0 ]; then
               printf 'clang\n' > ci_c_compilers.txt
               printf 'clang++\n' > ci_cxx_compilers.txt
-              ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt --matrix-output ci-output/compiler-matrix --acceptance-output ci-output > ci-output/update-all.log 2>&1 || status=$?
+              ./update-all.sh -C ci_c_compilers.txt -X ci_cxx_compilers.txt --format-check --matrix-output ci-output/compiler-matrix --acceptance-output ci-output > ci-output/update-all.log 2>&1 || status=$?
               cat ci-output/update-all.log
               if [ "$status" -ne 0 ]; then
                 if [ -f ci-output/summary.md ]; then

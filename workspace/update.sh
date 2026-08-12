@@ -44,7 +44,7 @@ skip_install=false
 interactive=false
 skip_self_update=false
 latest=false
-format=false
+format_mode=apply
 prepare_only=false
 build_only=false
 finalize_only=false
@@ -125,9 +125,11 @@ Usage: update.sh -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clan
                        already handled the scripts repository once.
   --latest             Follow moving upstream branches instead of repos.lock.
                        Refresh repos.lock explicitly before strict acceptance.
-  --format             Apply clang-format to every tracked workspace source
-                       before building, so the format-check gate cannot fail
-                       on formatting alone. Modifies tracked files.
+  --format             Apply clang-format before source identities are
+                       computed (the default; explicit spelling retained).
+  --format-check       Verify formatting without modifying files. Intended
+                       for CI and release preflight.
+  --no-format          Skip the initial workspace formatting phase.
   --prepare-only       Refresh and prepare the shared workspace, then stop.
                        Internal matrix phase used by update-all.sh.
   --build-only         Build one compiler pair from an already-prepared
@@ -247,6 +249,8 @@ LONG_INTERACTIVE=0
 LONG_SKIP_SELF_UPDATE=0
 LONG_LATEST=0
 LONG_FORMAT=0
+LONG_FORMAT_CHECK=0
+LONG_NO_FORMAT=0
 LONG_PREPARE_ONLY=0
 LONG_BUILD_ONLY=0
 LONG_FINALIZE_ONLY=0
@@ -273,6 +277,10 @@ for _a in "$@"; do
     LONG_LATEST=1
   elif [[ "$_a" == "--format" ]]; then
     LONG_FORMAT=1
+  elif [[ "$_a" == "--format-check" ]]; then
+    LONG_FORMAT_CHECK=1
+  elif [[ "$_a" == "--no-format" ]]; then
+    LONG_NO_FORMAT=1
   elif [[ "$_a" == "--prepare-only" ]]; then
     LONG_PREPARE_ONLY=1
   elif [[ "$_a" == "--build-only" ]]; then
@@ -318,7 +326,9 @@ shift $((OPTIND-1))
 [[ $LONG_INTERACTIVE -eq 1 ]] && interactive=true
 [[ $LONG_SKIP_SELF_UPDATE -eq 1 ]] && skip_self_update=true
 [[ $LONG_LATEST -eq 1 ]] && latest=true
-[[ $LONG_FORMAT -eq 1 ]] && format=true
+[[ $LONG_FORMAT -eq 1 ]] && format_mode=apply
+[[ $LONG_FORMAT_CHECK -eq 1 ]] && format_mode=check
+[[ $LONG_NO_FORMAT -eq 1 ]] && format_mode=off
 [[ $LONG_PREPARE_ONLY -eq 1 ]] && prepare_only=true
 [[ $LONG_BUILD_ONLY -eq 1 ]] && build_only=true
 [[ $LONG_FINALIZE_ONLY -eq 1 ]] && finalize_only=true
@@ -337,6 +347,9 @@ fi
 
 if $no_flags && $standard; then
   die "--no-flags and --standard are mutually exclusive (one means no flags, the other a fixed standard set)."
+fi
+if ((LONG_FORMAT + LONG_FORMAT_CHECK + LONG_NO_FORMAT > 1)); then
+  die "--format, --format-check, and --no-format are mutually exclusive."
 fi
 
 # --no-flags: a one-off build with NO probed compiler flags and NO
@@ -458,6 +471,21 @@ if ! $build_only && ! $finalize_only; then
   else
     run_or_echo "$REMOVE_RETIRED_REPOS_SH" --apply --yes
   fi
+fi
+
+# ----------------- format tracked source first -----------------
+# Repository refresh and tool validation establish the admitted bytes and the
+# formatter. Formatting is then the first source-processing phase, before flag
+# generation, distribution, source identities, cache keys, configure, or build.
+if ! $build_only && ! $finalize_only && [[ "$format_mode" != off ]]; then
+  format_arguments=(
+    --formatter "$CLANG_FORMAT_PATH"
+    --receipt "$FORMAT_RECEIPT"
+  )
+  if [[ "$format_mode" == check ]]; then
+    format_arguments+=(--check)
+  fi
+  run_or_echo ./checks/format-workspace.py "${format_arguments[@]}"
 fi
 
 # ----------------- flags cache management -----------------
@@ -669,16 +697,6 @@ run_or_echo "$LINK_COMPILERS_SH"
 # finds them (single source of truth in scripts/cmake/).
 run_or_echo "$LINK_CMAKE_SH"
 
-# ----------------- format all repos -----------------
-# Opt-in. clang-format -i over every tracked, non-vendored workspace source, so
-# the per-repo format-check gate (a dependency of every build target) cannot
-# fail on formatting alone. This modifies tracked files, which is why the
-# default build never does it.
-if $format; then
-  run_or_echo ./checks/format-workspace.py \
-    --formatter "$CLANG_FORMAT_PATH" \
-    --receipt "$FORMAT_RECEIPT"
-fi
 fi
 
 if $prepare_only; then

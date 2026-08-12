@@ -58,9 +58,10 @@ def main() -> int:
         "passed": passed,
         "repositories": records,
         "does_not_prove": (
-            "A PASS proves only that each repository-owned test launcher admitted "
-            "by repos.txt completed in this campaign. It does not prove that an "
-            "unregistered test, platform, branch, or third-party dependency ran."
+            "A clean receipt proves only that each repository-owned test launcher "
+            "admitted by repos.txt either completed in this campaign or reused "
+            "stricter unit evidence admitted by the runner. It does not prove that "
+            "an unregistered test, platform, branch, or third-party dependency ran."
         ),
     }
     receipt["receipt_digest"] = canonical_digest(receipt)

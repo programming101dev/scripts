@@ -108,6 +108,13 @@ If you want to verify that everything compiles with all of the supported compile
 ./update-all.sh
 ```
 
+After repository refresh and formatter validation, the first source-processing
+phase applies clang-format to every tracked, non-vendored C/C++ source. This is
+the local default, so source identities and build-cache keys describe the
+formatted bytes. Use `--no-format` only when intentionally bypassing that
+convenience. CI and release preflight use `--format-check`: they detect the same
+drift with `--dry-run --Werror` and never modify the checkout.
+
 The supported compiler pairs build concurrently after one serialized workspace
 preparation phase. Each pair writes to a configuration lane and an isolated
 log. A lane binds both compiler fingerprints, the probed flag-cache contents,
@@ -121,22 +128,32 @@ prints every failed pair's complete log in manifest order instead of stopping
 at the first background exit. Use `--matrix-output <dir>` to choose a stable
 evidence directory.
 
-Set `P101_REPOSITORY_BUILD_CACHE` to an absolute directory to keep those exact
-lanes outside the checkout and reuse them across invocations. The ordinary
-`build-<lane>` path becomes a symlink to the admitted cache entry, so existing
-repository scripts retain one layout. A cache hit is acceleration, not a
-verdict: every repository is reconfigured, CMake rechecks the dependency graph,
-and compiler, source, header, flag, and quality-tool changes invalidate their
-outputs. Each entry is also bound to the exact repository worktree and shared
-build-policy bytes, so a restored tree with newer timestamps cannot conceal a
-source or policy change. GitHub Actions restores separate operating-system/
-architecture caches for repository lanes and governed check evidence, then
-saves partial progress even when a later phase fails.
+`update-all.sh` keeps exact lanes in
+`target/repository-build-cache` by default. Set
+`P101_REPOSITORY_BUILD_CACHE` to another absolute directory to move it, or to
+`off` for an explicitly ephemeral build. The repository's
+`build-<lane>__<source-policy-digest>` path is a symlink to the admitted cache
+entry, so existing repository scripts retain one layout while changed source
+or build policy creates a new immutable lane instead of destroying the prior
+one. A cache hit is acceleration, not a verdict: every repository is
+reconfigured, CMake rechecks the dependency graph, and compiler, source,
+header, flag, and quality-tool changes invalidate their outputs.
+
+Parallel workers never publish `.last-build-dir` or
+`.last-runtime-build-dir`. The serialized host finalizer publishes both only
+after the complete compiler matrix succeeds; any configure, build, install, or
+publication failure restores the last marker whose target still exists. After
+successful finalization, cache collection removes obsolete repository aliases
+and lanes that have been unreferenced for 30 days. Override that retention with
+`P101_BUILD_CACHE_MAX_AGE_DAYS`; zero removes all unreferenced lanes. GitHub
+Actions restores separate operating-system/architecture caches for repository
+lanes and governed check evidence, then saves partial progress even when a
+later phase fails.
 
 Preparation owns every operation whose result is shared by compiler pairs:
 the scripts refresh, all managed-repository pulls, retired-repository cleanup,
-flag-cache version comparison, compiler discovery, flag generation, shared
-file distribution, and optional formatting. Those operations run exactly once
+default local formatting, flag-cache version comparison, compiler discovery,
+flag generation, and shared file distribution. Those operations run exactly once
 per operating-system invocation. Pair workers only smoke-test their compilers,
 filter that compiler/target's compound sanitizer groups, and configure/build
 their lanes. GitHub Actions deliberately calls only `update-all.sh`; it does

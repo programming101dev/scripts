@@ -148,7 +148,7 @@ def executed_repositories(receipt_path: Path) -> set[str]:
     return {
         str(record.get("repository"))
         for record in repositories
-        if isinstance(record, dict) and record.get("unit") == "PASS"
+        if isinstance(record, dict) and record.get("unit") in {"PASS", "REUSED"}
     }
 
 

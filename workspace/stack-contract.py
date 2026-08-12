@@ -80,6 +80,7 @@ DEFAULT_PATHS = (
     "workspace/build-repo.sh",
     "workspace/CMakeLists.txt",
     "workspace/filter-sanitizers.sh",
+    "workspace/gc-build-cache.sh",
     "workspace/RunAcceptance.cmake",
     "workspace/VerifyAcceptancePerformance.cmake",
     "workspace/stack-contract.py",
