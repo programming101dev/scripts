@@ -756,9 +756,9 @@ export P101_TEST_CMAKE_LOG="$acceptance_matrix/cmake-invocations.txt"
 )
 unset P101_TEST_CMAKE_LOG
 [[ "$(wc -l < "$acceptance_matrix/driver-invocations.txt")" -eq 4 ]]
-[[ "$(grep -Fxc -- '--prepare-only' "$acceptance_matrix/driver-invocations.txt")" -eq 1 ]]
-[[ "$(grep -Fxc -- '--build-only' "$acceptance_matrix/driver-invocations.txt")" -eq 2 ]]
-[[ "$(grep -Fxc -- '--finalize-only' "$acceptance_matrix/driver-invocations.txt")" -eq 1 ]]
+[[ "$(awk '{ for(i = 1; i <= NF; i++) if($i == "--prepare-only") count++ } END { print count + 0 }' "$acceptance_matrix/driver-invocations.txt")" -eq 1 ]]
+[[ "$(awk '{ for(i = 1; i <= NF; i++) if($i == "--build-only") count++ } END { print count + 0 }' "$acceptance_matrix/driver-invocations.txt")" -eq 2 ]]
+[[ "$(awk '{ for(i = 1; i <= NF; i++) if($i == "--finalize-only") count++ } END { print count + 0 }' "$acceptance_matrix/driver-invocations.txt")" -eq 1 ]]
 grep -Fq -- '--prepare-only' "$acceptance_matrix/driver-invocations.txt"
 grep -Fq -- '--build-only' "$acceptance_matrix/driver-invocations.txt"
 grep -Fq -- '--finalize-only' "$acceptance_matrix/driver-invocations.txt"
