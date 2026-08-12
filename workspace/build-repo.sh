@@ -248,6 +248,34 @@ content_addressed_build_directory() {
   printf '%s__%s\n' "$base" "$identity"
 }
 
+publish_exact_lane_alias() {
+  local directory="$1"
+  local lane="$2"
+  local alias="build-${lane}"
+  local temporary
+
+  # P101Linking resolves workspace dependencies through the stable exact-lane
+  # name.  Content addressing is an implementation detail of the cache, so
+  # publish a repository-local alias only after the selected artifact builds
+  # successfully.  A failed build therefore leaves the last qualified alias
+  # intact for diagnosis and later reuse.
+  [[ "$directory" != "$alias" ]] || return 0
+  temporary="${alias}.tmp.$$"
+  rm -f -- "$temporary"
+  ln -s -- "$directory" "$temporary"
+  if [[ -L "$alias" ]]; then
+    rm -f -- "$alias"
+  elif [[ -d "$alias" ]]; then
+    rm -rf -- "$alias"
+  elif [[ -e "$alias" ]]; then
+    printf 'Error: exact-lane alias path is not a directory or symlink: %s\n' \
+      "$alias" >&2
+    rm -f -- "$temporary"
+    return 2
+  fi
+  mv -f -- "$temporary" "$alias"
+}
+
 write_lane_receipt() {
   local directory="$1"
   local lane="$2"
@@ -728,6 +756,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       fi
       if run_repo_phase "build ${dir} with $([[ "$repo_type" == "cxx" ]] && printf '%s' "$CXX_PATH" || printf '%s' "$CC_PATH")" "${build_command[@]}"; then
         if [[ -n "$quality_build_dir" ]]; then
+          publish_exact_lane_alias "$quality_build_dir" "$build_key"
           marker_queue_value .last-build-dir "$quality_build_dir"
         fi
       else
@@ -808,7 +837,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       fi
       if run_repo_phase "build runtime artifact ${dir}" \
           "${runtime_build_command[@]}"; then
-        :
+        publish_exact_lane_alias "$runtime_build_dir" "$runtime_build_key"
       else
         status=$?
         popd >/dev/null
@@ -829,6 +858,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       failures=$((failures + 1))
       runtime_install_supported=0
     else
+      publish_exact_lane_alias "$quality_build_dir" "$build_key"
       marker_queue_value .last-build-dir "$quality_build_dir"
       runtime_candidate="$(content_addressed_build_directory "build-${runtime_build_key}")"
       if [[ -f "$runtime_candidate/CMakeCache.txt" ]] &&
@@ -842,6 +872,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         runtime_install_supported=0
       fi
       if [[ -n "$runtime_build_dir" ]]; then
+        publish_exact_lane_alias "$runtime_build_dir" "$runtime_build_key"
         marker_queue_value .last-runtime-build-dir "$runtime_build_dir"
       else
         marker_queue_absent .last-runtime-build-dir

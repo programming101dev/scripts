@@ -456,6 +456,12 @@ P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
 cached_quality="$(cat "$runtime_repo/.last-build-dir")"
 [[ "$cached_quality" == build-test-quality__???????????????????????????????????????? ]]
 [[ -L "$runtime_repo/$cached_quality" ]]
+[[ -L "$runtime_repo/build-test-quality" ]]
+[[ "$(readlink "$runtime_repo/build-test-quality")" == "$cached_quality" ]]
+cached_runtime="$(cat "$runtime_repo/.last-runtime-build-dir")"
+[[ "$cached_runtime" == build-test-runtime__???????????????????????????????????????? ]]
+[[ -L "$runtime_repo/build-test-runtime" ]]
+[[ "$(readlink "$runtime_repo/build-test-runtime")" == "$cached_runtime" ]]
 tail -n 1 "$runtime_repo/configure-raw-invocations.txt" | grep -Eq '(^| )-R( |$)'
 grep -Fq 'Build cache MISS' "$sandbox/cache-miss.stdout"
 grep -Fxq 'cache_state=miss' \
@@ -479,6 +485,7 @@ grep -Fq 'Build cache HIT' "$sandbox/cache-hit.stdout"
 grep -Fxq 'cache_state=hit' \
   "$runtime_repo/$cached_quality/p101-build-lane.txt"
 [[ "$(cat "$runtime_repo/.last-build-dir")" == "$cached_quality" ]]
+[[ "$(readlink "$runtime_repo/build-test-quality")" == "$cached_quality" ]]
 [[ "$(wc -l < "$runtime_repo/configure-invocations.txt")" -eq 1 ]]
 [[ "$(wc -l < "$runtime_repo/build-invocations.txt")" -eq 1 ]]
 P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
@@ -501,6 +508,7 @@ grep -Fq 'Build cache MISS' "$sandbox/cache-invalidated.stdout"
 invalidated_quality="$(cat "$runtime_repo/.last-build-dir")"
 [[ "$invalidated_quality" == build-test-quality__???????????????????????????????????????? ]]
 [[ "$invalidated_quality" != "$cached_quality" ]]
+[[ "$(readlink "$runtime_repo/build-test-quality")" == "$invalidated_quality" ]]
 policy_identity_after="$(grep '^orchestrator_identity=' \
   "$runtime_repo/$invalidated_quality/p101-build-lane.txt")"
 if [[ "$policy_identity_before" == "$policy_identity_after" ]]; then
@@ -526,6 +534,7 @@ set -e
 rm -f "$runtime_repo/fail-build"
 [[ "$cache_failure_status" -eq 7 ]]
 [[ "$(cat "$runtime_repo/.last-build-dir")" == "$invalidated_quality" ]]
+[[ "$(readlink "$runtime_repo/build-test-quality")" == "$invalidated_quality" ]]
 [[ ! -e "$runtime_repo/.last-runtime-build-dir" ]]
 
 # A stale marker is not qualified state and must not be resurrected by a
