@@ -244,6 +244,61 @@ class SemanticSnapshotTests(unittest.TestCase):
         second = C_FACTS_MODULE._file_content_digest(path)
         self.assertNotEqual(first, second)
 
+    def test_fact_workers_use_conservative_default_and_explicit_override(
+        self,
+    ) -> None:
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(C_FACTS_MODULE._fact_worker_count(41), 2)
+            self.assertEqual(C_FACTS_MODULE._fact_worker_count(1), 1)
+        with mock.patch.dict(
+            os.environ, {"P101_FACTS_JOBS": "4"}, clear=True
+        ):
+            self.assertEqual(C_FACTS_MODULE._fact_worker_count(41), 4)
+        with mock.patch.dict(
+            os.environ, {"P101_FACTS_JOBS": "0"}, clear=True
+        ):
+            with self.assertRaisesRegex(
+                C_FACTS_MODULE.CFactError, "positive decimal integer"
+            ):
+                C_FACTS_MODULE._fact_worker_count(2)
+
+    def test_canonical_root_scan_does_not_merge_component_scopes(self) -> None:
+        repository = self.root / "repo"
+        root_source = repository / "src"
+        root_test = repository / "test"
+        component_source = repository / "components" / "doctor" / "src"
+        root_source.mkdir(parents=True)
+        root_test.mkdir(parents=True)
+        component_source.mkdir(parents=True)
+        (root_source / "root.c").write_text("int root;\n", encoding="utf-8")
+        (root_test / "test_root.c").write_text(
+            "int test_root;\n", encoding="utf-8"
+        )
+        (component_source / "doctor.c").write_text(
+            "int doctor;\n", encoding="utf-8"
+        )
+        paths = C_FACTS_MODULE._canonical_scan_paths(
+            repository, (root_source,)
+        )
+        self.assertEqual(paths, (root_source,))
+
+    def test_analysis_units_separate_production_test_and_fuzz_scopes(self) -> None:
+        workspace = self.root / "workspace"
+        repository = workspace / "libraries" / "lib_demo"
+        (repository / ".git").mkdir(parents=True)
+        paths = []
+        for name in ("src", "include", "test", "fuzz"):
+            path = repository / name
+            path.mkdir()
+            paths.append(path)
+        units = C_FACTS_MODULE._analysis_units(workspace, paths)
+        self.assertEqual(len(units), 3)
+        admitted_sets = {tuple(path.name for path in unit[1]) for unit in units}
+        self.assertEqual(
+            admitted_sets,
+            {("fuzz",), ("include", "src"), ("test",)},
+        )
+
     def test_concurrent_runtime_fact_misses_run_the_producer_once(self) -> None:
         workspace = self.root / "workspace"
         repository = workspace / "libraries" / "lib_demo"
@@ -268,7 +323,8 @@ class SemanticSnapshotTests(unittest.TestCase):
             "#!/bin/sh\n"
             'printf x >> "$P101_TEST_FACT_COUNTER"\n'
             "sleep 0.2\n"
-            "printf 'P101FACT\\t7\\tFILE\\tdemo.c\\tdemo\\t0\\t1\\n'\n",
+            f"printf 'P101FACT\\t7\\tFILE\\t{source / 'demo.c'}"
+            "\\tdemo\\t0\\t1\\n'\n",
             encoding="utf-8",
         )
         launcher.chmod(0o755)
@@ -292,8 +348,15 @@ class SemanticSnapshotTests(unittest.TestCase):
         ):
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
                 results = list(pool.map(lambda _index: acquire(), range(2)))
+            file_facts = C_FACTS_MODULE.acquire(
+                workspace,
+                [source / "demo.c"],
+                additional_include_roots=(),
+                cache=self.cache,
+            )
         self.assertEqual(counter.read_text(encoding="utf-8"), "x")
         self.assertEqual([len(facts) for facts in results], [1, 1])
+        self.assertEqual(len(file_facts), 1)
 
 
 if __name__ == "__main__":

@@ -32,6 +32,7 @@ receipts for the generated and handwritten cases.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import csv
 import difflib
 import hashlib
@@ -5380,36 +5381,70 @@ def formatted_source(formatter: str, path: Path, text: str) -> str:
 
 def validate_generated_source_semantics(
     library: str,
-    source: str,
+    sources: dict[Path, str],
+    facts: list[dict[str, object]] | None = None,
 ) -> None:
-    """Apply generated-fixture policy to resolved calls, never spellings."""
-    source_digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
-    fixture_directory = (
-        SCRIPTS_ROOT
-        / "target"
-        / "generated-wrapper-validation"
-        / library
-        / source_digest
-    )
-    fixture_directory.mkdir(parents=True, exist_ok=True)
-    path = fixture_directory / "test_fault_wrappers.c"
-    if not path.exists() or path.read_text(encoding="utf-8") != source:
-        path.write_text(source, encoding="utf-8")
-    try:
-        facts = acquire(WORKSPACE, (path,))
-    except CFactError as error:
-        raise RuntimeError(
-            f"{library}: cannot validate generated fixture semantics: "
-            f"{error}"
-        ) from error
+    """Apply fixture policy to one library batch, never to spellings.
+
+    A current checked-in shard is already an immutable validation input, so
+    reuse its real path and the semantic cache entry used by later test
+    checkers. Drifted or not-yet-written shards use content-addressed staging
+    paths. One native acquisition covers the complete library batch.
+    """
+    supplied_facts = facts is not None
+    if facts is None:
+        paths: list[Path] = []
+        for shard_path, source in sorted(sources.items()):
+            if (
+                shard_path.is_file()
+                and shard_path.read_text(encoding="utf-8") == source
+            ):
+                paths.append(shard_path)
+                continue
+            source_digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
+            fixture_directory = (
+                SCRIPTS_ROOT
+                / "target"
+                / "generated-wrapper-validation"
+                / library
+                / source_digest
+            )
+            fixture_directory.mkdir(parents=True, exist_ok=True)
+            path = fixture_directory / shard_path.name
+            if not path.exists() or path.read_text(encoding="utf-8") != source:
+                path.write_text(source, encoding="utf-8")
+            paths.append(path)
+        try:
+            facts = acquire(WORKSPACE, paths)
+        except CFactError as error:
+            raise RuntimeError(
+                f"{library}: cannot validate generated fixture semantics: "
+                f"{error}"
+            ) from error
+    elif supplied_facts:
+        admitted_paths = {path.resolve() for path in sources}
+        facts = [
+            fact
+            for fact in facts
+            if isinstance(fact.get("path"), str)
+            and Path(str(fact["path"])).resolve() in admitted_paths
+        ]
 
     calls = {
-        (int(fact.get("start", -1)), int(fact.get("end", -1))): fact
+        (
+            str(fact.get("path", "")),
+            int(fact.get("start", -1)),
+            int(fact.get("end", -1)),
+        ): fact
         for fact in facts
         if fact.get("kind") == "CALL"
     }
     discarded = {
-        (int(fact.get("start", -1)), int(fact.get("end", -1)))
+        (
+            str(fact.get("path", "")),
+            int(fact.get("start", -1)),
+            int(fact.get("end", -1)),
+        )
         for fact in facts
         if fact.get("kind") == "NOTE"
         and fact.get("value") == "CALL_RESULT_DISCARDED"
@@ -5793,7 +5828,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                 (repo / "src",),
                 additional_include_roots=semantic_include_dirs,
             )
-            behavior_facts = (
+            test_facts = (
                 acquire(
                     WORKSPACE,
                     behavior_sources,
@@ -5810,10 +5845,13 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
             include_dirs,
             implementation_facts,
         )
+        behavior_source_set = set(behavior_sources)
         behavior_calls: dict[Path, set[str]] = {}
-        for fact in behavior_facts:
+        for fact in test_facts:
             if fact["kind"] == "CALL":
                 path = Path(str(fact["path"])).resolve()
+                if path not in behavior_source_set:
+                    continue
                 behavior_calls.setdefault(path, set()).add(
                     str(fact.get("usr", ""))
                 )
@@ -6295,48 +6333,50 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
             for name in members
         }
         if fault_names or cmake_uses_fault_test:
+            raw_fault_sources = {
+                shard_paths[key]: fault_source(
+                    library,
+                    public_header_includes(repo),
+                    declarations,
+                    function_usrs,
+                    shard_members[key],
+                    wrapper_errors_by_usr,
+                    library_failures,
+                    native_smoke_exceptions_by_usr,
+                    portable_input_rules_by_usr,
+                )
+                for key in sorted(shard_members)
+            }
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=min(2, max(1, len(raw_fault_sources)))
+            ) as executor:
+                formatted = executor.map(
+                    lambda item: (
+                        item[0],
+                        formatted_source(
+                            formatter,
+                            item[0],
+                            item[1],
+                        ),
+                    ),
+                    raw_fault_sources.items(),
+                )
+                expected_fault_sources = dict(formatted)
             for key in sorted(shard_members):
                 shard_path = shard_paths[key]
-                expected_fault_source = formatted_source(
-                    formatter,
-                    shard_path,
-                    fault_source(
-                        library,
-                        public_header_includes(repo),
-                        declarations,
-                        function_usrs,
-                        shard_members[key],
-                        wrapper_errors_by_usr,
-                        library_failures,
-                        native_smoke_exceptions_by_usr,
-                        portable_input_rules_by_usr,
-                    ),
-                )
-                validate_generated_source_semantics(
-                    library,
-                    expected_fault_source,
-                )
+                expected_fault_source = expected_fault_sources[shard_path]
                 if check:
                     actual_fault_source = (
                         shard_path.read_text(encoding="utf-8")
                         if shard_path.is_file()
                         else None
                     )
-                    normalized_actual = (
-                        formatted_source(
-                            formatter,
-                            shard_path,
-                            actual_fault_source,
-                        )
-                        if actual_fault_source is not None
-                        else None
-                    )
-                    if normalized_actual != expected_fault_source:
-                        if normalized_actual is not None:
+                    if actual_fault_source != expected_fault_source:
+                        if actual_fault_source is not None:
                             print(
                                 "".join(
                                     difflib.unified_diff(
-                                        normalized_actual.splitlines(
+                                        actual_fault_source.splitlines(
                                             keepends=True
                                         ),
                                         expected_fault_source.splitlines(
@@ -6351,6 +6391,11 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                         drift.append(shard_path)
                 else:
                     atomic_write_text(shard_path, expected_fault_source)
+            if expected_fault_sources:
+                validate_generated_source_semantics(
+                    library,
+                    expected_fault_sources,
+                )
             shards_cmake_path = test_dir / "fault_shards.cmake"
             expected_shards_cmake = (
                 "# Generated by generate-wrapper-unit-tests.py; do not edit.\n"

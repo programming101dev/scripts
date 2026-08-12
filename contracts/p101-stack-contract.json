@@ -116,6 +116,11 @@
       "sha256": "e4e3b774932268bfd3cbaa5dec68685a2c9219d024c4d653739b5bd398c4b2de"
     },
     {
+      "bytes": 3642,
+      "path": "checks/p101-prime-semantic-cache.py",
+      "sha256": "ad4dd359d46454bf304a3fac2d467e3f8e166b7d5877bd95ca174d9a2abb459b"
+    },
+    {
       "bytes": 9806,
       "path": "checks/p101-semantic-snapshot.py",
       "sha256": "e65de70557d4b465cf95b57a4f4ed329544a00d6ef1dfc462a7f8066d1b7fd4e"
@@ -166,9 +171,9 @@
       "sha256": "15517de986d872ea2ce7b2da54a1197e3118746fd326ee0698ad3617178f699c"
     },
     {
-      "bytes": 59038,
+      "bytes": 60705,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "197223f3c8b9e4184d8adf5e29e16ca1fed468a89e91937e3d6d93db6233eb2f"
+      "sha256": "ef0334cfff10ca1d05bf7b3e23db46d18b74e26fa8c029bc74aaf5b9d5c74121"
     },
     {
       "bytes": 62722,
@@ -266,9 +271,9 @@
       "sha256": "669b80c8415d1651f3de0df75c1ea5864f919c01a9ca5daf3216da7d8d12ee7c"
     },
     {
-      "bytes": 245765,
+      "bytes": 247489,
       "path": "generators/generate-wrapper-unit-tests.py",
-      "sha256": "bb894313b5ae315810a6fd47479524ef7dd0d441f876f8258ab552d7039a0af5"
+      "sha256": "58c37e0cc91abceea230050166169685cbfb3df673f892faeb31e8222f34c66c"
     },
     {
       "bytes": 42256,
@@ -293,7 +298,7 @@
     {
       "bytes": 8624,
       "path": "repos.lock",
-      "sha256": "dcdac99ea2d07132737ae30957fb597a580bd1ab156a60903a5146620f5eb49d"
+      "sha256": "7565bd588ed971827cec18ab95bcbaf0c93cfb6344c45aecec750b4b931d913f"
     },
     {
       "bytes": 3345,
@@ -301,9 +306,9 @@
       "sha256": "2f1dbe4ead066504e707366978c98d0aa3901359946d0f6852a520d9297fb74d"
     },
     {
-      "bytes": 30072,
+      "bytes": 35398,
       "path": "runtime/c_facts.py",
-      "sha256": "7402ec65e90fa5a35738a0da3ebc95a83afc66c0a966896fd0f512dfb3fcbd9c"
+      "sha256": "9bcf93015ed7febb4e07790d233455408422702ede9748c65a6fd30077206256"
     },
     {
       "bytes": 15930,
@@ -386,9 +391,9 @@
       "sha256": "33d47397d4255b63e69b9acd055282b437a1f4f05ca189d89817403bd525e94f"
     },
     {
-      "bytes": 11040,
+      "bytes": 11083,
       "path": "workspace/stack-contract.py",
-      "sha256": "9997d1335a5162add05c4c92e72ae1b63f174a714abe48137e852a3f23aaee46"
+      "sha256": "1aa4ed38bbe5efe476a621d738dbbb5a869b95b6179c0f97989b8d635f6b06e3"
     },
     {
       "bytes": 27943,

@@ -38,7 +38,7 @@
       "url": "https://github.com/programming101dev/lib_filesystem.git"
     },
     {
-      "commit": "eed7d7e151065c7846650e8527d0ff54ca68dd16",
+      "commit": "131a735adcada796a80b76117aa87f4d8663c391",
       "path": "../libraries/lib_c_facts",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_c_facts.git"
@@ -194,7 +194,7 @@
       "url": "https://github.com/programming101dev/p101-test.git"
     },
     {
-      "commit": "d98cc15355c2639f37f0888bd818daea7d052be1",
+      "commit": "c1cac249a8589b44eec31948da40ce005ab9bb9b",
       "path": "../programs/p101-audit",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-audit.git"

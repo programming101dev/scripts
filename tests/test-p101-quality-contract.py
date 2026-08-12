@@ -166,9 +166,9 @@ class QualityContractTests(unittest.TestCase):
             SCRIPTS_ROOT.parent,
             [SCRIPTS_ROOT.parent / "programs"],
         )
-        by_repository = {
-            repository: set(paths) for repository, paths in units
-        }
+        by_repository: dict[Path | None, set[Path]] = {}
+        for repository, paths in units:
+            by_repository.setdefault(repository, set()).update(paths)
         audit = (SCRIPTS_ROOT.parent / "programs" / "p101-audit").resolve()
         self.assertIn(audit, by_repository)
         self.assertIn(audit / "src", by_repository[audit])
@@ -183,9 +183,9 @@ class QualityContractTests(unittest.TestCase):
             SCRIPTS_ROOT.parent,
             [audit],
         )
-        direct_by_scope = {
-            scope: set(paths) for scope, paths in direct_units
-        }
+        direct_by_scope: dict[Path | None, set[Path]] = {}
+        for scope, paths in direct_units:
+            direct_by_scope.setdefault(scope, set()).update(paths)
         self.assertIn(audit, direct_by_scope)
         doctor = audit / "components" / "doctor"
         self.assertIn(doctor, direct_by_scope)

@@ -32,6 +32,27 @@ class CFactError(RuntimeError):
 
 SOURCE_DIRECTORY_NAMES = ("src", "include", "test", "fuzz")
 SOURCE_SUFFIXES = {".c", ".h"}
+DEFAULT_FACT_WORKERS = 2
+
+
+def _fact_worker_count(pending_count: int) -> int:
+    """Return a bounded parser count for process-heavy libclang producers.
+
+    Each worker launches a separate audit-facts process. Using every logical
+    CPU oversubscribes libclang and the filesystem, so the measured default is
+    deliberately conservative. P101_FACTS_JOBS remains available for
+    controlled profiling and unusually capable hosts.
+    """
+    configured = os.environ.get("P101_FACTS_JOBS", "")
+    if configured:
+        if not configured.isdecimal() or int(configured) == 0:
+            raise CFactError(
+                "P101_FACTS_JOBS must be a positive decimal integer"
+            )
+        requested = int(configured)
+    else:
+        requested = DEFAULT_FACT_WORKERS
+    return max(1, min(pending_count, requested))
 
 
 def _libclang_include_roots() -> set[Path]:
@@ -211,6 +232,95 @@ def _analysis_scope(repository: Path, path: Path) -> Path:
     return components / relative.parts[0]
 
 
+def _path_is_within(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return False
+    return True
+
+
+def _canonical_scan_paths(
+    repository: Path, admitted_paths: tuple[Path, ...]
+) -> tuple[Path, ...] | None:
+    """Return a stable, scope-equivalent repository scan.
+
+    Production policy must not inherit the very large generated test corpus.
+    Test and fuzz callers similarly receive stable keys for their own trees;
+    only a deliberately mixed request uses the complete repository scope.
+    """
+    all_scan_paths = tuple(
+        path
+        for path in _repository_scan_paths(repository)
+        if _analysis_scope(repository, path) == repository
+    )
+    if all(
+        any(_path_is_within(path, root) for root in all_scan_paths)
+        for path in admitted_paths
+    ):
+        categories: set[str] = set()
+        for path in admitted_paths:
+            matching = next(
+                root
+                for root in all_scan_paths
+                if _path_is_within(path, root)
+            )
+            categories.add(
+                matching.name
+                if matching.is_dir()
+                else "production"
+            )
+        if categories <= {"src", "include", "production"}:
+            selected = tuple(
+                path
+                for path in all_scan_paths
+                if not path.is_dir() or path.name in {"src", "include"}
+            )
+        elif categories == {"test"}:
+            selected = tuple(
+                path
+                for path in all_scan_paths
+                if path.is_dir() and path.name == "test"
+            )
+        elif categories == {"fuzz"}:
+            selected = tuple(
+                path
+                for path in all_scan_paths
+                if path.is_dir() and path.name == "fuzz"
+            )
+        else:
+            selected = all_scan_paths
+        return selected
+    return None
+
+
+def _facts_for_admitted_paths(
+    facts: list[dict[str, object]], admitted_paths: tuple[Path, ...]
+) -> list[dict[str, object]]:
+    """Project canonical repository facts back onto one caller's scope."""
+    admitted_files = {
+        path.resolve() for path in admitted_paths if not path.is_dir()
+    }
+    admitted_directories = tuple(
+        path.resolve() for path in admitted_paths if path.is_dir()
+    )
+    selected: list[dict[str, object]] = []
+    for fact in facts:
+        value = fact.get("path")
+        if not isinstance(value, str) or not value:
+            continue
+        path = Path(value)
+        if not path.is_absolute():
+            continue
+        resolved = path.resolve()
+        if resolved in admitted_files or any(
+            _path_is_within(resolved, directory)
+            for directory in admitted_directories
+        ):
+            selected.append(fact)
+    return selected
+
+
 def _is_standalone_header_input(path: Path) -> bool:
     """Return whether a path needs parsing outside a compile database.
 
@@ -234,16 +344,35 @@ def _analysis_units(
     sorted first.
     """
     workspace = workspace.resolve()
-    grouped: dict[Path | None, set[Path]] = defaultdict(set)
+    grouped: dict[tuple[Path | None, str], set[Path]] = defaultdict(set)
+
+    def add(repository: Path | None, path: Path) -> None:
+        scope = (
+            _analysis_scope(repository, path)
+            if repository is not None
+            else None
+        )
+        if scope is None:
+            category = "shared"
+        else:
+            try:
+                relative = path.resolve().relative_to(scope.resolve())
+            except ValueError:
+                category = "shared"
+            else:
+                first = relative.parts[0] if relative.parts else ""
+                category = first if first in {"test", "fuzz"} else "production"
+        grouped[(scope, category)].add(path)
+
     for admitted_path in admitted_paths:
         admitted_path = admitted_path.resolve()
         repository = _repository_root(workspace, admitted_path)
         if repository is not None:
             if admitted_path == repository:
                 for scan_path in _repository_scan_paths(repository):
-                    grouped[_analysis_scope(repository, scan_path)].add(scan_path)
+                    add(repository, scan_path)
             else:
-                grouped[_analysis_scope(repository, admitted_path)].add(admitted_path)
+                add(repository, admitted_path)
             continue
         child_repositories = (
             [
@@ -258,14 +387,17 @@ def _analysis_units(
             for child in child_repositories:
                 child = child.resolve()
                 for scan_path in _repository_scan_paths(child):
-                    grouped[_analysis_scope(child, scan_path)].add(scan_path)
+                    add(child, scan_path)
         else:
-            grouped[None].add(admitted_path)
+            add(None, admitted_path)
     return tuple(
         (repository, tuple(sorted(paths)))
-        for repository, paths in sorted(
+        for (repository, _category), paths in sorted(
             grouped.items(),
-            key=lambda item: "" if item[0] is None else str(item[0]),
+            key=lambda item: (
+                "" if item[0][0] is None else str(item[0][0]),
+                item[0][1],
+            ),
         )
     )
 
@@ -614,7 +746,9 @@ def acquire(
         else _analysis_units(workspace_root, admitted_paths)
     )
     facts: list[dict[str, object]] = []
-    commands: list[tuple[list[str], Path | None]] = []
+    commands: list[
+        tuple[list[str], Path | None, tuple[Path, ...], bool]
+    ] = []
     for repository, unit_paths in units:
         # Workspace policy scans admit the paths named by the caller, not
         # merely the translation units selected by a repository's latest
@@ -640,6 +774,15 @@ def acquire(
                 partitions.append((header_paths, None))
 
         for partition_paths, partition_database in partitions:
+            command_paths = partition_paths
+            canonicalized = False
+            if repository is not None and partition_database is None:
+                canonical_paths = _canonical_scan_paths(
+                    repository, partition_paths
+                )
+                if canonical_paths is not None:
+                    command_paths = canonical_paths
+                    canonicalized = True
             include_roots = set(shared_include_roots)
             if repository is not None:
                 if partition_database is None:
@@ -675,8 +818,15 @@ def acquire(
                 command.extend(
                     ("--compile-db", str(partition_database.resolve()))
                 )
-            command.extend(str(path) for path in partition_paths)
-            commands.append((command, repository))
+            command.extend(str(path) for path in command_paths)
+            commands.append(
+                (
+                    command,
+                    repository,
+                    partition_paths,
+                    canonicalized,
+                )
+            )
 
     cache_directory = _resolve_snapshot_cache(cache)
     unit_keys: list[str | None] = [None] * len(commands)
@@ -688,7 +838,9 @@ def acquire(
             producer_identity = None
         if producer_identity is not None:
             memo: dict[Path, str] = {}
-            for index, (command, _repository) in enumerate(commands):
+            for index, (command, _repository, _paths, _canonical) in enumerate(
+                commands
+            ):
                 try:
                     key = _unit_snapshot_key(
                         workspace_root, producer_identity, command, memo
@@ -712,6 +864,8 @@ def acquire(
         command: list[str],
     ) -> tuple[subprocess.CompletedProcess[str], float]:
         started = time.monotonic()
+        if os.environ.get("P101_FACTS_VERBOSE") == "1":
+            print("p101 facts command: " + shlex.join(command), file=sys.stderr)
         try:
             completed = subprocess.run(
                 command,
@@ -769,7 +923,7 @@ def acquire(
     # the ones without a snapshot across cores and keep the facts in unit
     # order so callers see the exact stream the sequential loop produced.
     if pending:
-        workers = max(1, min(len(pending), os.cpu_count() or 1))
+        workers = _fact_worker_count(len(pending))
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
             results = list(pool.map(run_unit, pending))
         durations: list[tuple[float, int]] = []
@@ -818,8 +972,14 @@ def acquire(
                 f"p101 facts unit: {seconds:5.1f}s {name} [{scanned}]",
                 file=sys.stderr,
             )
-    for unit in unit_facts:
-        facts.extend(unit or [])
+    for unit, command_record in zip(unit_facts, commands):
+        admitted = command_record[2]
+        canonicalized = command_record[3]
+        facts.extend(
+            _facts_for_admitted_paths(unit or [], admitted)
+            if canonicalized
+            else (unit or [])
+        )
     if cache_directory is not None:
         for key in unit_keys:
             if key is not None:

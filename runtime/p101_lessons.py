@@ -1170,7 +1170,44 @@ def _run_native_evidence(
                     }
                 )
         results.extend(future.result() for future in case_futures)
-    return results
+        return results
+
+
+def _write_unit_test_evidence(
+    catalog: Catalog,
+    profiles: list[AcceptanceProfile],
+    results: list[dict[str, Any]],
+    output: Path,
+) -> None:
+    """Publish reusable repository test results from native profiles."""
+    statuses: dict[str, str] = {}
+    for profile, result in zip(profiles, results):
+        if not profile.command:
+            continue
+        executable = (
+            catalog.workspace / profile.cwd / profile.command[0]
+        ).resolve()
+        if executable.name != "test.sh" or not executable.is_file():
+            continue
+        try:
+            executable.relative_to(catalog.workspace.resolve())
+        except ValueError:
+            continue
+        status = str(result.get("status", ""))
+        if status not in {"PASS", "FAIL"}:
+            continue
+        repository = executable.parent.name
+        previous = statuses.get(repository)
+        statuses[repository] = (
+            "FAIL" if "FAIL" in {previous, status} else "PASS"
+        )
+    # Keep the established generic two-column receipt spelling accepted by
+    # check-repository-tests.sh; rows may now name tools as well as libraries.
+    text = "library\tstatus\n" + "".join(
+        f"{repository}\t{statuses[repository]}\n"
+        for repository in sorted(statuses)
+    )
+    (output / "unit-tests.tsv").write_text(text, encoding="utf-8")
 
 
 def _write_protocol_fixtures(
@@ -1511,14 +1548,19 @@ def command_verify_all(args: argparse.Namespace) -> int:
                 )
             else:
                 case_names = ["orientation", "fd-leak", "short-read"]
-            results.extend(
-                _run_native_evidence(
-                    catalog,
-                    profiles,
-                    [case_name or "" for case_name in case_names],
-                    output,
-                    jobs,
-                )
+            native_results = _run_native_evidence(
+                catalog,
+                profiles,
+                [case_name or "" for case_name in case_names],
+                output,
+                jobs,
+            )
+            results.extend(native_results)
+            _write_unit_test_evidence(
+                catalog,
+                profiles,
+                native_results[: len(profiles)],
+                output,
             )
         mode = "full" if args.full else ("quick" if args.quick else "structural")
         receipt = _receipt(catalog, mode, results, len(pairs))

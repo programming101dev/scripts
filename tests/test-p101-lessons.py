@@ -97,6 +97,40 @@ def make_catalog_fixture(root: Path) -> tuple[Path, dict[str, object]]:
 
 
 class LessonCatalogTests(unittest.TestCase):
+    def test_native_profile_publishes_reusable_repository_test_evidence(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            repository = workspace / "programs" / "p101-audit"
+            repository.mkdir(parents=True)
+            test_script = repository / "test.sh"
+            test_script.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            test_script.chmod(0o755)
+            catalog = Namespace(workspace=workspace)
+            profiles = [
+                p101_lessons.AcceptanceProfile(
+                    profile_id="audit",
+                    kind="native-tool-suite",
+                    description="audit",
+                    finding_ids=(),
+                    command=("./test.sh",),
+                    cwd="programs/p101-audit",
+                    evidence_paths=(),
+                    platforms=("macos",),
+                    quick=True,
+                )
+            ]
+            output = workspace / "output"
+            output.mkdir()
+            p101_lessons._write_unit_test_evidence(
+                catalog, profiles, [{"status": "PASS"}], output
+            )
+            self.assertEqual(
+                (output / "unit-tests.tsv").read_text(encoding="utf-8"),
+                "library\tstatus\np101-audit\tPASS\n",
+            )
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.workspace = Path(__file__).resolve().parents[2]

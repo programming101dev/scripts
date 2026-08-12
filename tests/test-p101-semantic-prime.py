@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Negative and positive controls for shared semantic fact production."""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SPEC = importlib.util.spec_from_file_location(
+    "p101_semantic_prime", ROOT / "checks" / "p101-prime-semantic-cache.py"
+)
+assert SPEC is not None and SPEC.loader is not None
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+
+
+class SemanticPrimeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.workspace = Path(self.temporary.name)
+        self.scripts = self.workspace / "scripts"
+        self.scripts.mkdir()
+        (self.scripts / "repos.txt").write_text(
+            "url|../libraries/lib_demo|c\n"
+            "url|../templates/template-c|c\n"
+            "url|../examples/demo|c\n",
+            encoding="utf-8",
+        )
+        for relative in (
+            "libraries/lib_demo/src",
+            "libraries/lib_demo/include",
+            "libraries/lib_demo/test",
+            "templates/template-c/src",
+            "templates/template-c/test",
+            "examples/demo/src",
+        ):
+            (self.workspace / relative).mkdir(parents=True)
+
+    def patched_roots(self):
+        return mock.patch.multiple(
+            MODULE,
+            SCRIPTS_ROOT=self.scripts,
+            WORKSPACE=self.workspace,
+        )
+
+    def test_admitted_paths_exclude_examples_and_template_tests(self) -> None:
+        with self.patched_roots():
+            admitted = {
+                path.relative_to(self.workspace.resolve()).as_posix()
+                for path in MODULE.admitted_paths()
+            }
+        self.assertEqual(
+            admitted,
+            {
+                "libraries/lib_demo/include",
+                "libraries/lib_demo/src",
+                "libraries/lib_demo/test",
+                "templates/template-c/src",
+            },
+        )
+
+    def test_main_writes_a_replayable_receipt(self) -> None:
+        receipt = self.workspace / "receipt.json"
+        cache = self.workspace / "cache"
+        with self.patched_roots(), mock.patch.object(
+            MODULE, "acquire", return_value=[{"kind": "FILE"}]
+        ) as acquire, mock.patch(
+            "sys.argv",
+            ["p101-prime", "--cache", str(cache), "--receipt", str(receipt)],
+        ):
+            self.assertEqual(MODULE.main(), 0)
+        document = json.loads(receipt.read_text(encoding="utf-8"))
+        self.assertEqual(document["schema"], "p101-semantic-prime-receipt-v1")
+        self.assertEqual(document["fact_count"], 1)
+        self.assertTrue(document["does_not_prove"])
+        acquire.assert_called_once()
+
+
+if __name__ == "__main__":
+    unittest.main()

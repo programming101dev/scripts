@@ -1761,9 +1761,12 @@ def test_generated_semantic_fixture_is_content_addressed(generator) -> None:
         original_root = generator.SCRIPTS_ROOT
         original_acquire = generator.acquire
         paths: list[Path] = []
+        acquisitions = 0
 
         def record_acquire(workspace, sources):
+            nonlocal acquisitions
             del workspace
+            acquisitions += 1
             paths.extend(sources)
             return []
 
@@ -1771,18 +1774,65 @@ def test_generated_semantic_fixture_is_content_addressed(generator) -> None:
             generator.SCRIPTS_ROOT = Path(directory) / "scripts"
             generator.acquire = record_acquire
             source = "int generated_fixture(void) { return 0; }\n"
-            generator.validate_generated_source_semantics("lib_demo", source)
-            generator.validate_generated_source_semantics("lib_demo", source)
+            generator.validate_generated_source_semantics(
+                "lib_demo",
+                {
+                    Path(directory) / "first.c": source,
+                    Path(directory) / "second.c": source,
+                },
+            )
         finally:
             generator.SCRIPTS_ROOT = original_root
             generator.acquire = original_acquire
 
-        check(len(paths) == 2, "generated fixture was not analyzed twice")
-        check(paths[0] == paths[1], "generated fixture path is not stable")
+        check(acquisitions == 1, "generated fixtures were not analyzed as one batch")
+        check(len(paths) == 2, "generated fixture batch lost an input")
+        check(paths[0].parent == paths[1].parent, "content identity is unstable")
         check(
             "generated-wrapper-validation" in paths[0].parts,
             "generated fixture is outside the persistent cache tree",
         )
+
+
+def test_generated_semantic_extents_include_source_identity(generator) -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        original_root = generator.SCRIPTS_ROOT
+        original_acquire = generator.acquire
+
+        def record_acquire(workspace, sources):
+            del workspace, sources
+            return [
+                {
+                    "kind": "CALL",
+                    "path": "first.c",
+                    "start": 10,
+                    "end": 20,
+                    "usr": "c:@F@unsetenv",
+                    "caller_usr": "first",
+                },
+                {
+                    "kind": "NOTE",
+                    "path": "second.c",
+                    "start": 10,
+                    "end": 20,
+                    "value": "CALL_RESULT_DISCARDED",
+                    "caller_usr": "second",
+                },
+            ]
+
+        try:
+            generator.SCRIPTS_ROOT = Path(directory) / "scripts"
+            generator.acquire = record_acquire
+            generator.validate_generated_source_semantics(
+                "lib_demo",
+                {
+                    Path(directory) / "first.c": "int first(void);\n",
+                    Path(directory) / "second.c": "int second(void);\n",
+                },
+            )
+        finally:
+            generator.SCRIPTS_ROOT = original_root
+            generator.acquire = original_acquire
 
 
 def main() -> int:
@@ -1822,6 +1872,9 @@ def main() -> int:
         lambda: test_generated_portable_rejection(generator),
         lambda: test_generated_harness_has_one_main_exit(generator),
         lambda: test_generated_semantic_fixture_is_content_addressed(
+            generator
+        ),
+        lambda: test_generated_semantic_extents_include_source_identity(
             generator
         ),
     )

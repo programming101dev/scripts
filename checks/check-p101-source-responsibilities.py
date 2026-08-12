@@ -50,6 +50,16 @@ def is_repository_production_path(path: str, repository: Path) -> bool:
 
 
 @functools.lru_cache(maxsize=None)
+def _owning_repository(path: Path) -> Path:
+    for candidate in (path.parent, *path.parents):
+        if (candidate / ".git").exists():
+            return candidate
+        if candidate == WORKSPACE:
+            break
+    return WORKSPACE
+
+
+@functools.lru_cache(maxsize=None)
 def _source_files(roots: tuple[str, ...]) -> tuple[Path, ...]:
     paths: list[Path] = []
     for relative in roots:
@@ -90,7 +100,22 @@ def gather_facts(document: dict[str, Any]) -> list[dict[str, Any]]:
                 admitted_roots.add(owner_root)
             if isinstance(roots, list):
                 admitted_roots.update(root for root in roots if isinstance(root, str))
-    admitted_paths = {WORKSPACE / path for path in admitted_roots}
+    admitted_paths: set[Path] = set()
+    for relative in admitted_roots:
+        root = WORKSPACE / relative
+        if not root.exists():
+            raise ResponsibilityError(f"missing semantic root: {relative}")
+        candidates = (root,) if root.is_file() else root.rglob("*")
+        admitted_paths.update(
+            path
+            for path in candidates
+            if path.is_file()
+            and path.suffix in {".c", ".h"}
+            and is_repository_production_path(
+                str(path),
+                _owning_repository(path),
+            )
+        )
     # The dependency-edge check filters every fact through
     # is_repository_production_path, so test, fuzz, and build trees under the
     # config roots can never be judged. Admit only the production paths of

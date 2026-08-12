@@ -158,6 +158,8 @@ class CheckGraphTests(unittest.TestCase):
                 "check-graph-tests",
                 "performance-contract-tests",
                 "workspace-cmake-tests",
+                "semantic-prime-tests",
+                "semantic-prime",
                 "boundaries",
                 "boundary-tests",
             ],
