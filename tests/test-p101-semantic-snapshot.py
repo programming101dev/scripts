@@ -381,6 +381,59 @@ class SemanticSnapshotTests(unittest.TestCase):
             )
         self.assertEqual(invoke.call_count, 2)
 
+    def test_clang_ast_cache_retains_only_requested_function_subtrees(self) -> None:
+        source = self.root / "demo.c"
+        source.write_text(
+            "int keep(void) { return 0; }\nint omit(void) { return 1; }\n",
+            encoding="utf-8",
+        )
+        keep = {
+            "kind": "FunctionDecl",
+            "range": {
+                "begin": {"offset": 0},
+                "end": {"offset": 26, "tokLen": 1},
+            },
+            "inner": [{"kind": "CompoundStmt"}],
+        }
+        omit = {
+            "kind": "FunctionDecl",
+            "range": {
+                "begin": {"offset": 28},
+                "end": {"offset": 54, "tokLen": 1},
+            },
+            "inner": [{"kind": "CompoundStmt"}],
+        }
+
+        def produce(
+            _clang: str,
+            admitted_source: Path,
+            _arguments: tuple[str, ...],
+            _workspace: Path,
+            dependency_path: Path,
+        ) -> dict[str, object]:
+            dependency_path.write_text(
+                f"demo: {admitted_source}\n", encoding="utf-8"
+            )
+            return {
+                "kind": "TranslationUnitDecl",
+                "inner": [keep, omit],
+            }
+
+        environment = {"P101_FACTS_CACHE": str(self.cache)}
+        CLANG_AST_MODULE._compiler_identity.cache_clear()
+        CLANG_AST_MODULE._MATERIALIZED.clear()
+        with mock.patch.dict(os.environ, environment, clear=False), mock.patch.object(
+            CLANG_AST_MODULE, "_invoke", side_effect=produce
+        ):
+            document = CLANG_AST_MODULE.acquire(
+                "/usr/bin/true",
+                source,
+                ("-std=c17",),
+                self.root,
+                retained_function_extents={(0, 27)},
+            )
+        self.assertEqual(document["inner"], [keep])
+
     def test_prime_count_rejects_payload_changed_after_sidecar(self) -> None:
         key = "f" * 64
         C_FACTS_MODULE._snapshot_store(

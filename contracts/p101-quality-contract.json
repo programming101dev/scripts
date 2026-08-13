@@ -6,14 +6,14 @@
       "id": "public:wrapper-api",
       "owner": "functional wrapper libraries",
       "contract": "scripts/contracts/wrapper-outcome-contract.json",
-      "checker": "scripts/checks/check-wrapper-unit-tests.py",
+      "checker": "programs/p101-audit/components/workspace/src/wrapper_unit_tests.c",
       "oracle": "wrapper-unit-tests"
     },
     {
       "id": "public:instrumented-api",
       "owner": "lib_env and wrapper libraries",
       "contract": "scripts/contracts/instrumentation-contract.json",
-      "checker": "scripts/checks/check-p101-instrumentation.py",
+      "checker": "programs/p101-audit/components/workspace/src/instrumentation.c",
       "oracle": "instrumentation"
     },
     {
@@ -27,7 +27,7 @@
       "id": "public:tool-cli",
       "owner": "programs/p101-*",
       "contract": "scripts/docs/p101-tool-design-contract.md",
-      "checker": "scripts/checks/check-p101-quality-contract.py",
+      "checker": "programs/p101-audit/components/workspace/src/quality_contract.c",
       "oracle": "quality-contract"
     }
   ],

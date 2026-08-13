@@ -113,13 +113,17 @@ class SemanticPrimeTests(unittest.TestCase):
             ],
         ):
             self.assertEqual(MODULE.main(), 0)
-        self.assertEqual(
-            bundle.read_text(encoding="utf-8").splitlines(),
-            [
-                "P101SEMANTIC\t1",
-                "CALL\tprograms/demo/src/main.c\tp101_demo\t\tc:@F@main\tTrue\t0",
-            ],
+        bundle_lines = bundle.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(bundle_lines[0], "P101SEMANTIC\t3")
+        self.assertEqual(len(bundle_lines), 3)
+        self.assertEqual(len(bundle_lines[1].split("\t")), 26)
+        self.assertEqual(len(bundle_lines[2].split("\t")), 26)
+        self.assertTrue(
+            bundle_lines[1].startswith(
+                "CALL\tprograms/demo/src/main.c\tp101_demo\t"
+            )
         )
+        self.assertTrue(bundle_lines[2].startswith("TYPE\tignored.c\t"))
         acquire.assert_called_once()
 
 

@@ -33,6 +33,10 @@ cp "$scripts_root/contracts/wrapper-lifecycle-contract.json" "$temporary_root/co
 cp "$scripts_root/contracts/wrapper-library-map.tsv" "$temporary_root/contracts/wrapper-library-map.tsv"
 cp "$scripts_root/contracts/native-wrapper-parity.tsv" "$temporary_root/contracts/native-wrapper-parity.tsv"
 cp "$scripts_root/contracts/p101-source-responsibilities.json" "$temporary_root/contracts/p101-source-responsibilities.json"
+cp "$scripts_root/contracts/p101-boundaries.json" "$temporary_root/contracts/p101-boundaries.json"
+cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
+cp "$scripts_root/contracts/p101-check-graph.json" "$temporary_root/contracts/p101-check-graph.json"
+cp "$scripts_root/contracts/instrumentation-contract.json" "$temporary_root/contracts/instrumentation-contract.json"
 
 inventory_root="$temporary_root/inventory"
 mkdir -p "$inventory_root/contracts" \
@@ -78,6 +82,7 @@ chmod +x "$inventory_root/update-all.sh" \
 check_repository_order()
 {
     local cmake_probe="$temporary_root/read-config.cmake"
+    local configs="$temporary_root/repository-configs.tsv"
     local positions="$temporary_root/repository-positions.tsv"
     local targets="$temporary_root/repository-targets.tsv"
     local dependencies="$temporary_root/repository-dependencies.tsv"
@@ -87,18 +92,28 @@ check_repository_order()
     local index=0
 
     printf '%s\n' \
-        'include("${CONFIG}")' \
-        'foreach(target IN LISTS LIBRARY_TARGETS)' \
-        '  message("P101_TARGET=${target}")' \
-        'endforeach()' \
-        'get_cmake_property(names VARIABLES)' \
-        'foreach(name IN LISTS names)' \
-        '  if(name MATCHES "_LINK_LIBRARIES$")' \
-        '    foreach(dependency IN LISTS ${name})' \
-        '      message("P101_DEPENDENCY=${dependency}")' \
-        '    endforeach()' \
-        '  endif()' \
+        'function(p101_inspect_config repository config)' \
+        '  include("${config}")' \
+        '  foreach(target IN LISTS LIBRARY_TARGETS)' \
+        '    message("P101_TARGET=${target}|${repository}")' \
+        '  endforeach()' \
+        '  get_cmake_property(names VARIABLES)' \
+        '  foreach(name IN LISTS names)' \
+        '    if(name MATCHES "_LINK_LIBRARIES$")' \
+        '      foreach(dependency IN LISTS ${name})' \
+        '        message("P101_DEPENDENCY=${repository}|${dependency}")' \
+        '      endforeach()' \
+        '    endif()' \
+        '  endforeach()' \
+        'endfunction()' \
+        'file(STRINGS "${CONFIGS}" rows)' \
+        'foreach(row IN LISTS rows)' \
+        '  string(REPLACE "|" ";" fields "${row}")' \
+        '  list(GET fields 0 repository)' \
+        '  list(GET fields 1 config)' \
+        '  p101_inspect_config("${repository}" "${config}")' \
         'endforeach()' >"$cmake_probe"
+    : >"$configs"
     : >"$positions"
     : >"$targets"
     : >"$dependencies"
@@ -111,17 +126,21 @@ check_repository_order()
         printf '%s\t%s\n' "$repository" "$index" >>"$positions"
         config="$repository/config.cmake"
         [ -f "$config" ] || continue
-        while IFS= read -r row; do
-            case "$row" in
-                P101_TARGET=*)
-                    printf '%s\t%s\n' "${row#P101_TARGET=}" "$repository" >>"$targets"
-                    ;;
-                P101_DEPENDENCY=*)
-                    printf '%s\t%s\n' "$repository" "${row#P101_DEPENDENCY=}" >>"$dependencies"
-                    ;;
-            esac
-        done < <(cmake -DCONFIG="$config" -P "$cmake_probe" 2>&1)
+        printf '%s|%s\n' "$repository" "$config" >>"$configs"
     done <"$scripts_root/repos.txt"
+
+    while IFS= read -r row; do
+        case "$row" in
+            P101_TARGET=*)
+                row="${row#P101_TARGET=}"
+                printf '%s\t%s\n' "${row%%|*}" "${row#*|}" >>"$targets"
+                ;;
+            P101_DEPENDENCY=*)
+                row="${row#P101_DEPENDENCY=}"
+                printf '%s\t%s\n' "${row%%|*}" "${row#*|}" >>"$dependencies"
+                ;;
+        esac
+    done < <(cmake -DCONFIGS="$configs" -P "$cmake_probe" 2>&1)
 
     awk -F '\t' '
         FILENAME == ARGV[1] { position[$1] = $2; next }
@@ -141,11 +160,20 @@ check_repository_order()
 run_policy()
 {
     local policy="$1"
-    "$audit_workspace" \
-        --policy "$policy" \
-        --workspace "$workspace" \
-        --scripts-root "$temporary_root" \
-        -d:human
+    if [[ "$policy" == native-wrapper-parity || "$policy" == boundaries || "$policy" == quality-contract || "$policy" == wrapper-unit-tests || "$policy" == instrumentation ]] && [ -n "$fact_bundle" ] && [ -f "$fact_bundle" ]; then
+        "$audit_workspace" \
+            --policy "$policy" \
+            --workspace "$workspace" \
+            --scripts-root "$temporary_root" \
+            --facts "$fact_bundle" \
+            -d:human
+    else
+        "$audit_workspace" \
+            --policy "$policy" \
+            --workspace "$workspace" \
+            --scripts-root "$temporary_root" \
+            -d:human
+    fi
 }
 
 expect_failure()
@@ -204,6 +232,10 @@ run_architecture_controls()
     check_repository_order
     run_policy functional-library-split >/dev/null
     run_policy native-wrapper-parity >/dev/null
+    run_policy boundaries >/dev/null
+    run_policy quality-contract >/dev/null
+    run_policy wrapper-unit-tests >/dev/null
+    run_policy instrumentation >/dev/null
     run_inventory >/dev/null
     run_source_responsibilities >/dev/null
 
@@ -258,6 +290,30 @@ run_architecture_controls()
     sed -n '2p' "$scripts_root/contracts/native-wrapper-parity.tsv" >>"$temporary_root/contracts/native-wrapper-parity.tsv"
     expect_failure native-parity native-wrapper-parity
     cp "$scripts_root/contracts/native-wrapper-parity.tsv" "$temporary_root/contracts/native-wrapper-parity.tsv"
+
+    awk '!changed && /"owner_usr":/ { sub(/"owner_usr": "[^"]*"/, "\"owner_usr\": \"c:@F@p101_missing_boundary_owner\""); changed = 1 } { print }' \
+        "$scripts_root/contracts/p101-boundaries.json" \
+        >"$temporary_root/contracts/p101-boundaries.json"
+    expect_failure boundary-owner boundaries
+    cp "$scripts_root/contracts/p101-boundaries.json" "$temporary_root/contracts/p101-boundaries.json"
+
+    sed 's/p101-quality-contract-v3/p101-quality-contract-v2/' \
+        "$scripts_root/contracts/p101-quality-contract.json" \
+        >"$temporary_root/contracts/p101-quality-contract.json"
+    expect_failure quality-schema quality-contract
+    cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
+
+    awk '!changed && /"lib_cli": "native-wrapper"/ { sub(/"lib_cli": "native-wrapper"/, "\"lib_missing\": \"native-wrapper\""); changed = 1 } { print }' \
+        "$scripts_root/contracts/instrumentation-contract.json" \
+        >"$temporary_root/contracts/instrumentation-contract.json"
+    expect_failure unit-library wrapper-unit-tests
+    cp "$scripts_root/contracts/instrumentation-contract.json" "$temporary_root/contracts/instrumentation-contract.json"
+
+    awk '!changed && /"fault"/ { sub(/"fault"/, "\"unknown-capability\""); changed = 1 } { print }' \
+        "$scripts_root/contracts/instrumentation-contract.json" \
+        >"$temporary_root/contracts/instrumentation-contract.json"
+    expect_failure instrumentation-capability instrumentation
+    cp "$scripts_root/contracts/instrumentation-contract.json" "$temporary_root/contracts/instrumentation-contract.json"
 
     awk -F '\t' 'BEGIN { OFS = FS } NR == 2 { $6 = $5 } { print }' \
         "$scripts_root/contracts/native-wrapper-parity.tsv" \

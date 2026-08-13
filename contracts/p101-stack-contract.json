@@ -61,9 +61,9 @@
       "sha256": "32a88b44f0125fa6bbdfcf5f3d8ee76deedf93869608b6f6d38f25de04b87f34"
     },
     {
-      "bytes": 3180,
+      "bytes": 3792,
       "path": "../programs/p101-audit/README.md",
-      "sha256": "099f242d38896a3da1eafe9cd326516cec412f171ada00228be21684ac39b82c"
+      "sha256": "fd18d6e70ef0493ca94d42c5c07a31c01776c53964ed989c078a350c87e1e68a"
     },
     {
       "bytes": 12322,
@@ -86,19 +86,19 @@
       "sha256": "e6aa90ed81a09df4a7cafad9a38c02a8086930d8c96717e17f62f142f0ae4f33"
     },
     {
-      "bytes": 7336,
+      "bytes": 9627,
       "path": "../programs/p101-audit/components/workspace/src/main.c",
-      "sha256": "b292827e1300e85e5eb561be304aeb8c5356a9974cd65908045d6e25443a5a4a"
+      "sha256": "6d8ccd5893493dc84e91b8e05ed0a49de93c463a5c3f4c9a0689e331a5e7571e"
     },
     {
-      "bytes": 14508,
+      "bytes": 16937,
       "path": "../programs/p101-audit/components/workspace/src/native_parity.c",
-      "sha256": "fd7840481381673b1ed1807f7f1b9721c1a505113670eb72ac3a8932591dec31"
+      "sha256": "0c69ca1bc204d9e4397d439fcb04d809bd130ef4f10dba62c67e1137e0eb6dbe"
     },
     {
-      "bytes": 34973,
+      "bytes": 29568,
       "path": "../programs/p101-audit/components/workspace/src/source_responsibilities.c",
-      "sha256": "f91b9d3c3c5580232a3343650cf280fbcaef1ebfa2e653faec9641642b342903"
+      "sha256": "5afd4e307c68782e7ae53edaab4ea37e62a596486a1ccb91602da54f05b47f9d"
     },
     {
       "bytes": 25886,
@@ -106,9 +106,9 @@
       "sha256": "33104ab7b66fc9dbb67b841103541dc94cdb77342375b3bebc6a491f84539cb9"
     },
     {
-      "bytes": 4443,
+      "bytes": 4999,
       "path": "../programs/p101-audit/config.cmake",
-      "sha256": "7f3e22179fc11b8345b414ae18c78a874d923624611e070c6137980a45819586"
+      "sha256": "bed411077194a810b858b98b7e42288c3f5b340fe95501661e55bda23ba18ae1"
     },
     {
       "bytes": 475,
@@ -116,9 +116,9 @@
       "sha256": "86a82d75f676cb9a1ce3ddf158472557a14a948336a64e4efc87b5b8491b8f86"
     },
     {
-      "bytes": 2794,
+      "bytes": 3645,
       "path": "../programs/p101-audit/include/workspace_audit.h",
-      "sha256": "ecf8934f07ee5ccfd23e2924100d6ec56763296a8027784c18c0385b84856557"
+      "sha256": "823a590ea24697de099c4b2f8bb1ec7ab4cce25f4d4276365e709c598d9686bb"
     },
     {
       "bytes": 1969,
@@ -226,9 +226,9 @@
       "sha256": "78eb89ebc3b3632c8d5fae84d79dde1f3fe33f309f264a9f0681c1689e03f520"
     },
     {
-      "bytes": 5309,
+      "bytes": 8508,
       "path": "checks/p101-prime-semantic-cache.py",
-      "sha256": "c6272a839e2831e2b1bfd9f137e13da1342fe825c3886adfbdd6207737323706"
+      "sha256": "1645e8cd66ceaf02c9caf4d61255f4c4237218ea261bcd8d1eae097e65a26270"
     },
     {
       "bytes": 14193,
@@ -286,9 +286,9 @@
       "sha256": "5864163bee662d5bd46a231b466c91756b2450159439b0102a864c58e6253b16"
     },
     {
-      "bytes": 62508,
+      "bytes": 62116,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "9ebf95e1c29621a41e6e4f4a5b2e5c98f97d243140fa06c5bef139bc504db87d"
+      "sha256": "ce825ab7ff7e82bf78340a99deef91fbc6437a5e63cf79146a05aad296380939"
     },
     {
       "bytes": 62722,
@@ -306,9 +306,9 @@
       "sha256": "0dfc17712b7896ef4fd8ab862d455f99f3158a6bcf09bc970279e50209b78a3b"
     },
     {
-      "bytes": 21359,
+      "bytes": 21418,
       "path": "contracts/p101-quality-contract.json",
-      "sha256": "503e764351aa3e34c80f8f4c59944ef7c052ecaefbd53277bf268745beba1f17"
+      "sha256": "7b131d9f6f6b8766e4adadd75ab20806aae8b7f258719877f381be2319783b85"
     },
     {
       "bytes": 2304,
@@ -396,9 +396,9 @@
       "sha256": "0bc2709640c08e472aa0e7bb2c42897896f327efe0e39ed91d95a95c0ea64ca5"
     },
     {
-      "bytes": 254779,
+      "bytes": 254987,
       "path": "generators/generate-wrapper-unit-tests.py",
-      "sha256": "c8da02b5e958b7da75a12ff3e5856bfd37ce37f046196d1f548ae5e785bccc25"
+      "sha256": "31e2303c7c808ca6b16bb2ac2fc5bce1c5441b6e9f12b0710024d6c8c155c2c1"
     },
     {
       "bytes": 42739,
@@ -423,7 +423,7 @@
     {
       "bytes": 8624,
       "path": "repos.lock",
-      "sha256": "6571f751a009134acfd3c84c253876757044176c721ca15d7d69069e97511e63"
+      "sha256": "cec6fefc34ba3dfe154b3f4805074da84bf266bde1c1c2a2f9af2d0cae5999cd"
     },
     {
       "bytes": 3345,
@@ -436,9 +436,9 @@
       "sha256": "da04e08ce881675373f1f90aff20512e049913153ce524c4bc4189ae5958b422"
     },
     {
-      "bytes": 10171,
+      "bytes": 11968,
       "path": "runtime/clang_ast.py",
-      "sha256": "f5438eee1c222c5957cd539392af5b50439ae6d634680ca241df89e9f1fe96a4"
+      "sha256": "73d2f2d5f0d35ea42b6077ea492b5861fb8b728a9c62236ca71f014a3ec6ee71"
     },
     {
       "bytes": 5304,
@@ -476,9 +476,9 @@
       "sha256": "b129021011ddd818cbd2ee2c62fe7b50a5348604f3e0092863122fdd6c3b4356"
     },
     {
-      "bytes": 13062,
+      "bytes": 16393,
       "path": "tests/test-audit-workspace.sh",
-      "sha256": "98092372186332e414be537a38ea7e4472dc38d97696f68c1330b2840f08aa1c"
+      "sha256": "1855cb271f99b482eda52b00ce400af85177c3291660425d942cd6c9a76bcfc5"
     },
     {
       "bytes": 4054,
@@ -506,14 +506,14 @@
       "sha256": "63b025d9f0035ee1d75c185aa72d9457bcf5200f351e9ff1e4737a298d5445b1"
     },
     {
-      "bytes": 4224,
+      "bytes": 4509,
       "path": "tests/test-p101-semantic-prime.py",
-      "sha256": "a81a7d36d4ffd0d6ddb009ebcc9c83bf0e85fb14293c15809b8d65a84ff40ffa"
+      "sha256": "88b86415b0e19f1166eaa092483a764ea8d912a850ad00d7bb1d8ec2b6c5a218"
     },
     {
-      "bytes": 22202,
+      "bytes": 24020,
       "path": "tests/test-p101-semantic-snapshot.py",
-      "sha256": "b4f048d3de5cc272d51ed019f4e3a998f88dc35e2f0d11daee33f4f4ccf7f4c1"
+      "sha256": "f7299f6af7ea07b90c93a9a111cc745b34831f16dea4a5ae26b931cbda2dedeb"
     },
     {
       "bytes": 6120,

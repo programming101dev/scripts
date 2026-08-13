@@ -490,6 +490,7 @@ def clang_ast(
     clang: str,
     source: Path,
     include_dirs: list[Path],
+    retained_extents: set[tuple[int, int]],
 ) -> dict[str, Any]:
     platform_definitions: list[str] = []
     platform_flags: list[str] = []
@@ -522,7 +523,13 @@ def clang_ast(
         *(flag for directory in include_dirs for flag in ("-I", str(directory))),
     ]
     try:
-        return acquire_clang_ast(clang, source, arguments, WORKSPACE)
+        return acquire_clang_ast(
+            clang,
+            source,
+            arguments,
+            WORKSPACE,
+            retained_function_extents=retained_extents,
+        )
     except ClangASTError as error:
         raise RuntimeError(str(error)) from error
 
@@ -632,7 +639,9 @@ def function_definitions(
                 f"{source.relative_to(WORKSPACE)} lacks semantic definitions "
                 f"for {', '.join(sorted(missing_usrs))}"
             )
-        ast = clang_ast(clang, source, include_dirs)
+        ast = clang_ast(
+            clang, source, include_dirs, set(identities_by_extent)
+        )
         declarations = function_declarations(ast, identities_by_extent)
         missing = set(admitted_by_usr.values()) - declarations.keys()
         if missing:

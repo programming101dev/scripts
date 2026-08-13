@@ -29,7 +29,7 @@ from content_manifest import hash_file
 from semantic_usage import record_usage
 
 
-SCHEMA = "p101-clang-ast-cache-v1"
+SCHEMA = "p101-clang-ast-cache-v2"
 _MATERIALIZED: dict[
     tuple[str, str], tuple[dict[str, Any], list[dict[str, object]]]
 ] = {}
@@ -72,13 +72,19 @@ def _compiler_identity(clang: str) -> dict[str, object]:
     }
 
 
-def _key(clang: str, source: Path, arguments: tuple[str, ...]) -> str:
+def _key(
+    clang: str,
+    source: Path,
+    arguments: tuple[str, ...],
+    retained_extents: tuple[tuple[int, int], ...],
+) -> str:
     request = {
         "schema": SCHEMA,
         "compiler": _compiler_identity(clang),
         "source": os.fspath(source.resolve()),
         "source_sha256": hash_file(source.resolve()).hex(),
         "arguments": arguments,
+        "retained_function_extents": retained_extents,
     }
     encoded = json.dumps(
         request, sort_keys=True, separators=(",", ":")
@@ -232,23 +238,66 @@ def _invoke(
     return document
 
 
+def _node_extent(node: dict[str, Any]) -> tuple[int, int] | None:
+    extent = node.get("range", {})
+    begin = extent.get("begin", {})
+    end = extent.get("end", {})
+    begin = begin.get("expansionLoc", begin)
+    end = end.get("expansionLoc", end)
+    start = begin.get("offset")
+    finish = end.get("offset")
+    token_length = end.get("tokLen", 0)
+    if not all(
+        isinstance(value, int)
+        for value in (start, finish, token_length)
+    ):
+        return None
+    return start, finish + token_length
+
+
+def _project_function_definitions(
+    document: dict[str, Any], retained_extents: tuple[tuple[int, int], ...]
+) -> dict[str, Any]:
+    admitted = set(retained_extents)
+    retained: list[dict[str, Any]] = []
+    pending: list[dict[str, Any]] = [document]
+    while pending:
+        node = pending.pop()
+        if node.get("kind") == "FunctionDecl" and _node_extent(node) in admitted:
+            retained.append(node)
+            continue
+        pending.extend(
+            child
+            for child in node.get("inner", [])
+            if isinstance(child, dict)
+        )
+    return {"kind": "TranslationUnitDecl", "inner": retained}
+
+
 def acquire(
     clang: str,
     source: Path,
     arguments: Iterable[str],
     workspace: Path,
+    retained_function_extents: Iterable[tuple[int, int]] = (),
 ) -> dict[str, Any]:
     """Return a dependency-validated, content-addressed Clang JSON AST."""
     source = source.resolve()
     argument_tuple = tuple(arguments)
+    retained_extents = tuple(sorted(set(retained_function_extents)))
     root = _cache_root()
-    key = _key(clang, source, argument_tuple)
+    key = _key(clang, source, argument_tuple, retained_extents)
     if root is None:
         with tempfile.TemporaryDirectory(prefix="p101-clang-ast-") as directory:
             dependency_path = Path(directory) / "dependencies.d"
-            return _invoke(
+            document = _invoke(
                 clang, source, argument_tuple, workspace, dependency_path
             )
+            if retained_extents:
+                document = _project_function_definitions(
+                    document, retained_extents
+                )
+            return document
 
     entry = root / "ast" / key
     with _entry_lock(root, key):
@@ -267,6 +316,10 @@ def acquire(
                     workspace,
                     dependency_path,
                 )
+                if retained_extents:
+                    document = _project_function_definitions(
+                        document, retained_extents
+                    )
                 dependencies = _depfile_paths(dependency_path, source)
                 dependency_path.unlink()
                 payload = temporary / "ast.json.gz"

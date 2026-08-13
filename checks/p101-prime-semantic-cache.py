@@ -104,6 +104,27 @@ def main() -> int:
     arguments.receipt.parent.mkdir(parents=True, exist_ok=True)
     if arguments.bundle is not None and facts is not None:
         arguments.bundle.parent.mkdir(parents=True, exist_ok=True)
+        function_parameters: dict[str, tuple[bool, bool]] = {}
+        for fact in facts:
+            if fact.get("kind") != "PARAMETER":
+                continue
+            caller_usr = str(fact.get("caller_usr") or "")
+            canonical_type = str(fact.get("canonical_type") or "")
+            if not caller_usr:
+                continue
+            has_env, has_error = function_parameters.get(
+                caller_usr, (False, False)
+            )
+            has_env = has_env or canonical_type in {
+                "const struct p101_env *",
+                "struct p101_env *",
+            }
+            has_error = has_error or canonical_type in {
+                "const struct p101_error *",
+                "struct p101_error *",
+            }
+            function_parameters[caller_usr] = has_env, has_error
+
         def field(value: object) -> str:
             text = "" if value is None else str(value)
             if text == "-":
@@ -116,22 +137,74 @@ def main() -> int:
             )
 
         with arguments.bundle.open("w", encoding="utf-8") as stream:
-            stream.write("P101SEMANTIC\t1\n")
+            stream.write("P101SEMANTIC\t3\n")
             for fact in facts:
                 kind = fact.get("kind")
-                if kind not in {"FILE", "FUNCTION", "CALL", "INCLUDE"}:
+                if kind not in {
+                    "FUNCTION",
+                    "CALL",
+                    "INCLUDE",
+                    "TYPE",
+                    "ENUM",
+                    "ENUMERATOR",
+                    "NOTE",
+                }:
                     continue
+                value = fact.get("value")
+                if kind == "NOTE":
+                    note = str(value or "")
+                    if not note.startswith(
+                        ("CALLEE_SEMANTIC_ROLE:", "SEMANTIC_ROLE:")
+                    ) and note not in {
+                        "TRACE_USE",
+                        "TYPE_SEMANTIC_ROLE:p101:trace-scope",
+                        "FUNCTION_RETURN",
+                        "FUNCTION_EARLY_RETURN",
+                        "CALL_NOT_ISOLATED",
+                        "CALL_RESULT_DISCARDED",
+                    }:
+                        continue
+                is_definition = bool(fact.get("is_definition", False))
+                if kind == "FUNCTION":
+                    is_definition = not bool(
+                        fact.get("is_declaration", False)
+                    )
+                has_env, has_error = function_parameters.get(
+                    str(fact.get("usr") or ""), (False, False)
+                )
                 stream.write(
                     "\t".join(
                         field(value)
                         for value in (
                             kind,
                             fact.get("path"),
-                            fact.get("value"),
+                            value,
                             fact.get("usr"),
                             fact.get("caller_usr"),
                             fact.get("resolved"),
                             fact.get("line", 0),
+                            value if kind == "MACRO" else None,
+                            int(is_definition),
+                            fact.get("type"),
+                            fact.get("canonical_type"),
+                            fact.get("return_type"),
+                            fact.get("caller"),
+                            fact.get("column", 0),
+                            fact.get("start", 0),
+                            fact.get("end", 0),
+                            fact.get("parameter_index", 0),
+                            int(bool(fact.get("is_header", False))),
+                            int(bool(fact.get("is_static", False))),
+                            int(
+                                kind == "FUNCTION"
+                                and not bool(fact.get("is_static", False))
+                            ),
+                            int(bool(fact.get("is_variadic", False))),
+                            int(bool(fact.get("is_local", False))),
+                            int(bool(fact.get("is_indirect", False))),
+                            int(has_env),
+                            int(has_error),
+                            fact.get("parent_usr"),
                         )
                     )
                     + "\n"
