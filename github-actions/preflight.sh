@@ -329,6 +329,7 @@ printf '\n==> strict update/build path\n'
 set +e
 set -o pipefail
 P101_QUIET=1 ./update-all.sh \
+  --level 3 \
   --format-check \
   --latest \
   --skip-install \
@@ -382,6 +383,7 @@ case "$acceptance_jobs" in
 esac
 cmake -S workspace -B "$host_build" \
   -DCMAKE_C_COMPILER="$cc" \
+  -DP101_WORKSPACE_LEVEL=3 \
   -DP101_ACCEPTANCE_CXX_COMPILER="$cxx" \
   -DP101_ACCEPTANCE_OUTPUT_DIR="$out_dir/acceptance" \
   -DP101_ACCEPTANCE_NO_CACHE=OFF

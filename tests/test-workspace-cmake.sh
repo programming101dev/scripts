@@ -28,8 +28,15 @@ fi
 grep -Fq "Logical dependency 'p101_deliberately_missing' is not an in-tree target" \
     "$work/missing.log"
 
+cmake -S "$scripts_dir/workspace" -B "$work/default-host-build" \
+    -DP101_WORKSPACE_ROOT="$workspace_dir" \
+    -DP101_ACCEPTANCE_CXX_COMPILER= >"$work/default-configure.log"
+grep -Fq 'P101_WORKSPACE_LEVEL:STRING=1' \
+    "$work/default-host-build/CMakeCache.txt"
+
 cmake -S "$scripts_dir/workspace" -B "$work/host-build" \
     -DP101_WORKSPACE_ROOT="$workspace_dir" \
+    -DP101_WORKSPACE_LEVEL=2 \
     -DP101_ACCEPTANCE_CXX_COMPILER= >"$work/configure.log"
 cmake --build "$work/host-build" --target help >"$work/targets.log"
 
@@ -59,6 +66,8 @@ grep -Fq 'P101_IN_TREE_DEPENDENCIES_ONLY:BOOL=ON' \
 grep -Fq 'P101_USE_PROBED_FLAGS:BOOL=OFF' \
     "$work/host-build/CMakeCache.txt"
 grep -Fq 'P101_VERIFY_INCREMENTAL_ACCEPTANCE:BOOL=ON' \
+    "$work/host-build/CMakeCache.txt"
+grep -Fq 'P101_WORKSPACE_LEVEL:STRING=2' \
     "$work/host-build/CMakeCache.txt"
 
 mkdir -p "$work/fake-scripts"

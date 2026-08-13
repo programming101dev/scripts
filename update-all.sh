@@ -45,6 +45,8 @@ acceptance=1
 acceptance_output=""
 acceptance_no_cache=0
 matrix_output=""
+verbose=0
+build_level=1
 
 c_list_file="supported_c_compilers.txt"
 cxx_list_file="supported_cxx_compilers.txt"
@@ -66,6 +68,10 @@ usage() {
                     subset (flag-selection.standard.json), no sanitizers
   --coverage        Opt-in: instrument every pair for code coverage (gcov)
   --profile         Opt-in: instrument every pair for profiling (gprof)
+  --level <1|2|3>   CMake depth for every repository and the workspace:
+                    1 checks formatting and builds/installs; 2 adds unit tests;
+                    3 adds full static and governed workspace acceptance.
+                    Default: 1.
   --skip-install    Build every pair but do not run repo install.sh scripts
   --interactive     Pause, pull the pushed fix, and retry the failed phase
   --latest          Follow moving upstream branches instead of repos.lock;
@@ -84,7 +90,11 @@ usage() {
                     for release preflight; ordinary runs reuse exact receipts.
   --matrix-output <dir>
                     Store isolated compiler-pair logs and the parseable matrix
-                    summary here. Default: target/update-all/<run-id>."
+                    summary here. Default: target/update-all/<run-id>.
+  -v, --verbose     Stream full serial preparation/finalization output and
+                    quiet stage progress from concurrent compiler pairs.
+                    Pair progress is prefixed with its compiler-pair key; the
+                    per-pair log remains unprefixed."
     if [ -f "$c_list_file" ]; then
         printf '\nCompiler pairs this will build (from %s):\n' "$c_list_file"
         while IFS= read -r _l || [ -n "$_l" ]; do
@@ -128,11 +138,17 @@ while [ "$#" -gt 0 ]; do
     -S|--standard) standard=1; shift ;;
     -I|--skip-install) skip_install=1; shift ;;
     -i|--interactive) interactive=1; shift ;;
+    -v|--verbose) verbose=1; shift ;;
     --latest) latest=1; shift ;;
     --format) format_mode=apply; format_option_count=$((format_option_count + 1)); shift ;;
     --format-check) format_mode=check; format_option_count=$((format_option_count + 1)); shift ;;
     --no-format) format_mode=off; format_option_count=$((format_option_count + 1)); shift ;;
     --skip-acceptance) acceptance=0; shift ;;
+    --level)
+      [ "$#" -ge 2 ] || { printf 'Error: --level requires 1, 2, or 3.\n' >&2; exit 2; }
+      build_level=$2
+      shift 2
+      ;;
     --acceptance-output)
       [ "$#" -ge 2 ] || { printf 'Error: --acceptance-output requires an argument.\n' >&2; exit 2; }
       acceptance_output=$2
@@ -163,6 +179,12 @@ if [ "$format_option_count" -gt 1 ]; then
   printf 'Error: --format, --format-check, and --no-format are mutually exclusive.\n' >&2
   exit 2
 fi
+case "$build_level" in
+  1|2|3) ;;
+  *) printf 'Error: --level must be 1, 2, or 3.\n' >&2; exit 2 ;;
+esac
+P101_BUILD_LEVEL=$build_level
+export P101_BUILD_LEVEL
 
 # Preconditions
 [ -f "$c_list_file" ]   || { printf 'Error: C list not found: %s\n' "$c_list_file" >&2; exit 2; }
@@ -377,10 +399,63 @@ run_driver() {
     set -- "$@" -s "$sanitizers"
   fi
   if [ "$_defer_markers" -eq 1 ]; then
-    P101_DEFER_BUILD_MARKERS=1 "$@"
+    if [ "$verbose" -eq 1 ] && [ "$_run_phase" = build ]; then
+      # Concurrent workers report readable stage changes while their noisy
+      # child build commands remain quiet. The same unprefixed progress is
+      # retained in the pair's raw log.
+      P101_QUIET=1 P101_DEFER_BUILD_MARKERS=1 "$@"
+    elif [ "$verbose" -eq 1 ]; then
+      P101_QUIET='' P101_DEFER_BUILD_MARKERS=1 "$@"
+    else
+      P101_DEFER_BUILD_MARKERS=1 "$@"
+    fi
+  elif [ "$verbose" -eq 1 ]; then
+    P101_QUIET='' "$@"
   else
     "$@"
   fi
+}
+
+# Run one driver phase into its durable raw log. In verbose mode, stream a
+# pair-prefixed copy to the terminal as well. The side receipt preserves the
+# driver's status across the POSIX pipeline without relying on pipefail.
+run_driver_logged() {
+  _logged_c=$1
+  _logged_x=$2
+  _logged_phase=$3
+  _logged_role=$4
+  _logged_log=$5
+  _logged_prefix=$6
+
+  if [ "$verbose" -eq 0 ]; then
+    run_driver "$_logged_c" "$_logged_x" "$_logged_phase" "$_logged_role" \
+      > "$_logged_log" 2>&1
+    return
+  fi
+
+  _logged_status_file="${_logged_log}.command.status"
+  rm -f -- "$_logged_status_file"
+  (
+    _logged_command_status=0
+    run_driver "$_logged_c" "$_logged_x" "$_logged_phase" "$_logged_role" \
+      || _logged_command_status=$?
+    printf '%s\n' "$_logged_command_status" > "$_logged_status_file"
+    exit "$_logged_command_status"
+  ) 2>&1 | tee "$_logged_log" | awk -v prefix="$_logged_prefix" \
+    '{ if(prefix == "") print $0; else print "[" prefix "] " $0; fflush() }'
+  _logged_pipeline_status=$?
+  _logged_command_status=125
+  if [ -f "$_logged_status_file" ]; then
+    _logged_command_status=$(cat "$_logged_status_file")
+    case "$_logged_command_status" in
+      ''|*[!0-9]*) _logged_command_status=125 ;;
+    esac
+  fi
+  rm -f -- "$_logged_status_file"
+  if [ "$_logged_pipeline_status" -ne 0 ] && [ "$_logged_command_status" -eq 0 ]; then
+    _logged_command_status=125
+  fi
+  return "$_logged_command_status"
 }
 
 printf 'Compiler matrix output: %s\n' "$matrix_output"
@@ -388,7 +463,8 @@ printf 'Preparing shared workspace with host pair: %s : %s [%s]\n' \
   "$host_c" "$host_x" "$host_label"
 prepare_log="$matrix_output/0000-prepare.log"
 prepare_status=0
-run_driver "$host_c" "$host_x" prepare > "$prepare_log" 2>&1 || prepare_status=$?
+run_driver_logged "$host_c" "$host_x" prepare host "$prepare_log" '' \
+  || prepare_status=$?
 if [ "$prepare_status" -ne 0 ]; then
   printf 'update-all:prepare: error: workspace preparation failed with exit %d; log: %s [matrix-prepare-failure]\n' \
     "$prepare_status" "$prepare_log" >&2
@@ -426,13 +502,15 @@ while IFS='|' read -r pair_id c x pair_label; do
   pair_elapsed="$matrix_output/${pair_id}.elapsed"
   pair_role=worker
   [ "$pair_id" != "$_host_id" ] || pair_role=host
-  printf '[START] %s : %s (log: %s)\n' "$c" "$x" "$pair_log"
+  printf '[START] %s : %s -- stage: repository build (log: %s)\n' \
+    "$c" "$x" "$pair_log"
   (
     pair_start=$(date +%s)
     status=0
     CMAKE_BUILD_PARALLEL_LEVEL="$pair_jobs"
     export CMAKE_BUILD_PARALLEL_LEVEL
-    run_driver "$c" "$x" build "$pair_role" > "$pair_log" 2>&1 || status=$?
+    run_driver_logged "$c" "$x" build "$pair_role" "$pair_log" "$pair_label" \
+      || status=$?
     pair_end=$(date +%s)
     elapsed=$((pair_end - pair_start))
     # Exit 125 is the matrix worker's explicit infrastructure-failure status.
@@ -564,7 +642,8 @@ fi
 printf 'Finalizing host artifacts: %s : %s\n' "$host_c" "$host_x"
 finalize_log="$matrix_output/9999-finalize.log"
 finalize_status=0
-run_driver "$host_c" "$host_x" finalize > "$finalize_log" 2>&1 || finalize_status=$?
+run_driver_logged "$host_c" "$host_x" finalize host "$finalize_log" '' \
+  || finalize_status=$?
 if [ "$finalize_status" -ne 0 ]; then
   printf 'update-all:finalize: error: host artifact finalization failed with exit %d; log: %s [matrix-finalize-failure]\n' \
     "$finalize_status" "$finalize_log" >&2
@@ -580,7 +659,7 @@ fi
 printf 'Done: %d compiler pair(s) built in parallel, %d skipped.\n' "$pairs_run" "$skipped"
 printf 'Matrix summary: %s\n' "$summary_tsv"
 
-if [ "$acceptance" -eq 1 ]; then
+if [ "$acceptance" -eq 1 ] && [ "$build_level" -ge 2 ]; then
   host_cc=$(p101_resolve_compiler "$host_c" compiler_paths.txt)
   host_cxx=$(p101_resolve_compiler "$host_x" compiler_paths.txt)
   host_name=$(printf '%s__%s' "$(basename "$host_c")" "$(basename "$host_x")" | tr -c '[:alnum:]_.-' '_')
@@ -597,9 +676,18 @@ if [ "$acceptance" -eq 1 ]; then
   cmake -S workspace -B "$host_build" \
     -DCMAKE_C_COMPILER="$host_cc" \
     -DP101_ACCEPTANCE_CXX_COMPILER="$host_cxx" \
+    -DP101_WORKSPACE_LEVEL="$build_level" \
     -DP101_ACCEPTANCE_OUTPUT_DIR="$acceptance_output" \
     -DP101_ACCEPTANCE_NO_CACHE="$acceptance_no_cache"
-  printf 'Running strict CMake acceptance target.\n'
+  if [ "$build_level" -eq 3 ]; then
+    printf 'Running full CMake-governed workspace acceptance.\n'
+  else
+    printf 'Running medium CMake host and repository test qualification.\n'
+  fi
   acceptance_jobs=$(parallel_jobs)
-  P101_QUIET=1 cmake --build "$host_build" --target p101_acceptance --parallel "$acceptance_jobs"
+  if [ "$verbose" -eq 1 ]; then
+    P101_QUIET='' cmake --build "$host_build" --target p101_acceptance --parallel "$acceptance_jobs"
+  else
+    P101_QUIET=1 cmake --build "$host_build" --target p101_acceptance --parallel "$acceptance_jobs"
+  fi
 fi

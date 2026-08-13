@@ -21,7 +21,7 @@ WORKSPACE = SCRIPTS_ROOT.parent
 import sys
 
 sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
-from c_facts import CFactError, prime  # noqa: E402
+from c_facts import CFactError, acquire, prime  # noqa: E402
 
 
 def active_repositories() -> list[tuple[Path, str]]:
@@ -73,11 +73,21 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
+    parser.add_argument(
+        "--bundle",
+        type=Path,
+        help="write the materialized shared fact model for native policy tools",
+    )
     arguments = parser.parse_args()
     paths = admitted_paths()
     started = time.monotonic_ns()
     try:
-        fact_count = prime(WORKSPACE, paths, cache=arguments.cache.resolve())
+        if arguments.bundle is None:
+            facts = None
+            fact_count = prime(WORKSPACE, paths, cache=arguments.cache.resolve())
+        else:
+            facts = acquire(WORKSPACE, paths, cache=arguments.cache.resolve())
+            fact_count = len(facts)
     except (CFactError, OSError, ValueError) as error:
         print(f"p101 semantic prime: {error}")
         return 1
@@ -92,6 +102,40 @@ def main() -> int:
         ),
     }
     arguments.receipt.parent.mkdir(parents=True, exist_ok=True)
+    if arguments.bundle is not None and facts is not None:
+        arguments.bundle.parent.mkdir(parents=True, exist_ok=True)
+        def field(value: object) -> str:
+            text = "" if value is None else str(value)
+            if text == "-":
+                return r"\-"
+            return (
+                text.replace("\\", r"\\")
+                .replace("\t", r"\t")
+                .replace("\n", r"\n")
+                .replace("\r", r"\r")
+            )
+
+        with arguments.bundle.open("w", encoding="utf-8") as stream:
+            stream.write("P101SEMANTIC\t1\n")
+            for fact in facts:
+                kind = fact.get("kind")
+                if kind not in {"FILE", "FUNCTION", "CALL", "INCLUDE"}:
+                    continue
+                stream.write(
+                    "\t".join(
+                        field(value)
+                        for value in (
+                            kind,
+                            fact.get("path"),
+                            fact.get("value"),
+                            fact.get("usr"),
+                            fact.get("caller_usr"),
+                            fact.get("resolved"),
+                            fact.get("line", 0),
+                        )
+                    )
+                    + "\n"
+                )
     arguments.receipt.write_text(
         json.dumps(receipt, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",

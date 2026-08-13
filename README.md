@@ -35,8 +35,8 @@ chmod +x setup.sh update-all.sh check-after-update-all.sh
 The repository keeps three public commands at its root:
 
 - `setup.sh` performs first-time workspace setup.
-- `update-all.sh` refreshes and builds the compiler matrix, then invokes the
-  strict CMake-owned acceptance target.
+- `update-all.sh` refreshes and builds the compiler matrix at the selected
+  CMake level, then invokes the matching CMake-owned workspace target.
 - `check-after-update-all.sh` is the compatibility entry point used by the
   CMake acceptance target for the governed policy graph.
 
@@ -108,6 +108,38 @@ If you want to verify that everything compiles with all of the supported compile
 ./update-all.sh
 ```
 
+Every C/C++ repository uses the same three-level CMake contract. The default
+for an ordinary repository or a template-derived project is the quick student
+level. Maintainers and CI select levels 2 or 3 explicitly.
+
+| Level | Repository CMake work | Workspace work | Intended use |
+| ---: | --- | --- | --- |
+| `1` | clang-format validation and build installable libraries/programs | compiler matrix and install | student build/install and fast iteration |
+| `2` | level 1 and each repository's `test.sh` | qualified in-tree host tools | maintainer test pass without the complete policy graph |
+| `3` | level 2 and the complete clang-tidy, cppcheck, compiler-analyzer, and related quality pipeline | full `check-after-update-all.sh` governed graph | release/CI evidence |
+
+Select the level directly in any CMake-based repository:
+
+```bash
+cmake -S . -B build -DP101_BUILD_LEVEL=1   # quick; this is the default
+cmake -S . -B build -DP101_BUILD_LEVEL=2   # medium
+cmake -S . -B build -DP101_BUILD_LEVEL=3   # slow/full
+cmake --build build --parallel
+cmake --install build                      # when the repository is installable
+```
+
+For the complete workspace use the matching orchestration flag:
+
+```bash
+./update-all.sh             # level 1, the default
+./update-all.sh --level 2
+./update-all.sh --level 3
+```
+
+Levels are part of the compiler-lane identity. A quick artifact is therefore
+never mistaken for medium or full evidence, and all compiler-specific lanes
+can coexist.
+
 After repository refresh and formatter validation, the first source-processing
 phase applies clang-format to every tracked, non-vendored C/C++ source. This is
 the local default, so source identities and build-cache keys describe the
@@ -143,8 +175,10 @@ Parallel workers never publish `.last-build-dir` or
 `.last-runtime-build-dir`. The serialized host finalizer publishes both only
 after the complete compiler matrix succeeds; any configure, build, install, or
 publication failure restores the last marker whose target still exists. After
-successful finalization, cache collection removes obsolete repository aliases
-and lanes that have been unreferenced for 30 days. Override that retention with
+successful finalization, cache collection removes obsolete content aliases
+and lanes that have been unreferenced for 30 days. Stable exact-lane aliases
+remain live dependency boundaries for every compiler pair, not only the host
+pair selected for installation. Override that retention with
 `P101_BUILD_CACHE_MAX_AGE_DAYS`; zero removes all unreferenced lanes. GitHub
 Actions restores separate operating-system/architecture caches for repository
 lanes and governed check evidence, then saves partial progress even when a
@@ -161,12 +195,14 @@ not clone repositories or discover compilers in separate preceding steps.
 Linux, macOS, and FreeBSD prepare independently because SDKs, linkers,
 sanitizers, and compound flag support are operating-system-specific.
 
-The final phase configures `workspace/CMakeLists.txt`. CMake builds a small,
+At levels 2 and 3, the final phase configures `workspace/CMakeLists.txt`. CMake builds a small,
 sanitizer-free host runtime in dependency order, then builds the C audit, test,
-and inspection programs against those exact in-tree targets. It qualifies the
-tools before running workspace acceptance. No install step and no search of old
+and inspection programs against those exact in-tree targets. Level 2 qualifies
+the tools; level 3 then runs workspace acceptance through the same CMake
+target. No install step and no search of old
 repository build directories is involved. Use `--skip-acceptance` only when you
-explicitly want a compiler-matrix build without the default strict gate.
+explicitly select level 2 or 3 but want the compiler-matrix build without its
+matching CMake-owned workspace gate.
 The stages, trust boundary, tradeoff, blind spots, and replay commands are
 recorded in [`docs/bootstrap-architecture.md`](docs/bootstrap-architecture.md).
 
@@ -252,7 +288,8 @@ explicit escape hatch. Strict post-update acceptance verifies the lock and
 writes `workspace-lock-receipt.json`; the governed graph receipt records its
 lock and manifest digests.
 
-`update-all.sh` runs the post-build acceptance checks by default. To replay the
+At explicitly selected level 3, `update-all.sh` runs the post-build acceptance
+checks. To replay the
 same graph directly, or to select an individual graph node, use:
 
 ```bash
@@ -435,7 +472,8 @@ Three narrower checks enforce contracts that used to be implicit:
 ./checks/check-p101-instrumentation.py
 ./checks/check-repository-tests.sh
 ./checks/check-workspace-public-api.sh
-./checks/check-wrapper-fault-semantics.py
+"${P101_AUDIT_WORKSPACE}" --policy wrapper-fault-semantics \
+    --workspace "$(pwd -P)/.." --scripts-root "$(pwd -P)"
 ```
 
 The fault-semantics contract distinguishes failures before dispatch

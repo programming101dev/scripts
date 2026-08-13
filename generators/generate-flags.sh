@@ -44,6 +44,8 @@ done
 # ---------- paths ----------
 SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd -P)"
+# shellcheck source=../shared/compilers.sh
+. "$SCRIPT_DIR/shared/compilers.sh"
 # Profile selection (P101_FLAGS_PROFILE, set by update.sh --standard): the
 # 'standard' tier probes flags-standard/ into .flags-standard/ so the maximal
 # flags/ + .flags/ are never disturbed. Default profile = maximal.
@@ -96,12 +98,22 @@ resolve_name() {
 # default configuration. Keep this as an argv array so paths containing spaces
 # remain one argument and no platform path is hard-coded.
 COMPILER_PLATFORM_ARGS=()
-if [[ "$(uname -s)" == "Darwin" ]] && command -v xcrun >/dev/null 2>&1; then
-  _p101_macos_sysroot="$(xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)"
-  if [[ -n "$_p101_macos_sysroot" && -d "$_p101_macos_sysroot" ]]; then
-    COMPILER_PLATFORM_ARGS=(-isysroot "$_p101_macos_sysroot")
-  fi
+_p101_platform_argument="$(p101_compiler_platform_argument)"
+if [[ -n "$_p101_platform_argument" ]]; then
+  COMPILER_PLATFORM_ARGS+=("$_p101_platform_argument")
 fi
+
+select_compiler_platform_args() {
+  local compiler="$1" default_config_argument
+  COMPILER_PLATFORM_ARGS=()
+  default_config_argument="$(p101_compiler_default_config_argument "$compiler")"
+  if [[ -n "$default_config_argument" ]]; then
+    COMPILER_PLATFORM_ARGS+=("$default_config_argument")
+  fi
+  if [[ -n "$_p101_platform_argument" ]]; then
+    COMPILER_PLATFORM_ARGS+=("$_p101_platform_argument")
+  fi
+}
 
 # ---------- helpers ----------
 trim() {
@@ -755,6 +767,7 @@ whole_set_check() {
 if [[ ${#supported_c_compilers[@]} -gt 0 ]]; then
   for cc in "${supported_c_compilers[@]}"; do
     cc_path="$(resolve_name "$cc")" || { echo "WARN: cannot resolve '$cc'; skipping." >&2; continue; }
+    select_compiler_platform_args "$cc_path"
     echo "Checking: $cc [C] ($cc_path)"
     load_family_deny "$(compiler_family "$cc_path")"
     load_lang_deny "c"
@@ -772,6 +785,7 @@ fi
 if [[ ${#supported_cxx_compilers[@]} -gt 0 ]]; then
   for cc in "${supported_cxx_compilers[@]}"; do
     cc_path="$(resolve_name "$cc")" || { echo "WARN: cannot resolve '$cc'; skipping." >&2; continue; }
+    select_compiler_platform_args "$cc_path"
     echo "Checking: $cc [C++] ($cc_path)"
     load_family_deny "$(compiler_family "$cc_path")"
     load_lang_deny "c++"

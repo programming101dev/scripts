@@ -25,6 +25,8 @@ grep -Fq 'git config --global --add safe.directory "$(pwd -P)"' \
 grep -Fq -- '--acceptance-output ci-output' .github/workflows/p101-stack.yml
 grep -Fq -- '--matrix-output ci-output/compiler-matrix' \
   .github/workflows/p101-stack.yml
+[[ "$(grep -c './update-all.sh .*--level 3' \
+  .github/workflows/p101-stack.yml)" -eq 3 ]]
 grep -Fq 'ln -sf "/usr/local/llvm${required}/bin/clang-tidy" /usr/local/bin/clang-tidy' \
   .github/workflows/p101-stack.yml
 [[ "$(grep -c 'Prepare .* once, then build compiler pairs' \

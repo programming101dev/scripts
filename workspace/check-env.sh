@@ -5,6 +5,10 @@ set -euo pipefail
 # sanitizers.txt land in the scripts repo no matter where we're invoked from.
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
+# shellcheck source=../shared/compilers.sh
+. ./shared/compilers.sh
+COMPILER_PLATFORM_ARG="$(p101_compiler_platform_argument)"
+
 c_compiler=""
 cxx_compiler=""
 clang_format_name="clang-format"
@@ -14,6 +18,7 @@ sanitizers=""
 sanitizers_given=false
 record_sanitizers=true
 compiler_only=false
+build_level="${P101_BUILD_LEVEL:-1}"
 
 usage() {
   cat <<'USAGE'
@@ -79,7 +84,8 @@ have() { command -v "$1" >/dev/null 2>&1; }
 compile_test() {
   # compile_test <compiler> <lang>
   local cc="$1" lang="$2"
-  local tmpdir src exe
+  local tmpdir src exe default_config_arg
+  local platform_args=()
   tmpdir="$(mktemp -d 2>/dev/null || mktemp -d -t ccprobe)"
   src="$tmpdir/t.$lang"
   exe="$tmpdir/a.out"
@@ -88,7 +94,14 @@ compile_test() {
   else
     printf 'int main(){return 0;}\n' >"$src"
   fi
-  if "$cc" -x "$lang" "$src" -o "$exe" >/dev/null 2>&1; then
+  default_config_arg="$(p101_compiler_default_config_argument "$cc")"
+  if [[ -n "$default_config_arg" ]]; then
+    platform_args+=("$default_config_arg")
+  fi
+  if [[ -n "$COMPILER_PLATFORM_ARG" ]]; then
+    platform_args+=("$COMPILER_PLATFORM_ARG")
+  fi
+  if "$cc" "${platform_args[@]}" -x "$lang" "$src" -o "$exe" >/dev/null 2>&1; then
     rm -rf "$tmpdir"
     return 0
   else
@@ -157,10 +170,16 @@ append_unique() {
   done
   return 0
 }
+case "$build_level" in
+  1|2|3) ;;
+  *) echo "invalid: P101_BUILD_LEVEL must be 1, 2, or 3"; exit 64 ;;
+esac
 if $compiler_only; then
   append_unique "$c_compiler" "$cxx_compiler"
-else
+elif [[ "$build_level" -eq 3 ]]; then
   append_unique "cmake" "$c_compiler" "$cxx_compiler" "$clang_format_name" "$clang_tidy_name" "$cppcheck_name"
+else
+  append_unique "cmake" "$c_compiler" "$cxx_compiler" "$clang_format_name"
 fi
 
 missing=0

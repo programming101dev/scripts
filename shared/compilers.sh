@@ -89,3 +89,41 @@ p101_find_compiler_by_basename()
     }
   ' "$p101_list_file"
 }
+
+# Print the one compiler argument required to make a direct host probe use the
+# same macOS SDK as CMake. Package-managed Clang installations may ship a
+# target configuration containing a versioned SDK path that becomes stale
+# after an OS or Command Line Tools update. --sysroot controls both compilation
+# and linking; -isysroot alone does not override the linker path in that case.
+p101_compiler_platform_argument()
+{
+  case "$(uname -s)" in
+    Darwin)
+      command -v xcrun >/dev/null 2>&1 || return 0
+      p101_macos_sdk=$(xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)
+      if [ -n "$p101_macos_sdk" ] && [ -d "$p101_macos_sdk" ]; then
+        printf -- '--sysroot=%s\n' "$p101_macos_sdk"
+      fi
+      ;;
+  esac
+}
+
+p101_compiler_default_config_argument()
+{
+  p101_default_config_compiler=${1:-}
+  p101_default_config_name=$(basename -- "$p101_default_config_compiler")
+  case "$p101_default_config_name" in
+    *clang*) ;;
+    *) return 0 ;;
+  esac
+
+  case "$(uname -s)" in
+    Darwin)
+      command -v xcrun >/dev/null 2>&1 || return 0
+      p101_macos_sdk=$(xcrun --sdk macosx --show-sdk-path 2>/dev/null || true)
+      if [ -n "$p101_macos_sdk" ] && [ -d "$p101_macos_sdk" ]; then
+        printf '%s\n' '--no-default-config'
+      fi
+      ;;
+  esac
+}

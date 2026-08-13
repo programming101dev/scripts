@@ -9,9 +9,23 @@ dependencies.
 | --- | --- | --- | --- |
 | 0 | configure | compiler, CMake, libclang, checked-out source | one exact CMake graph |
 | 1 | `p101_host_runtime` | 15 declared library repositories | 16 in-tree runtime targets |
-| 2 | `p101_host_tools` | runtime targets and three program repositories | 10 in-tree tool executables |
+| 2 | `p101_host_tools` | runtime targets and three program repositories | 12 in-tree tool executables |
 | 3 | `p101_tool_qualification` | those exact executables | smoke/semantic tests and `host-tool-qualification.json` |
-| 4 | `p101_acceptance` | qualified tool paths and the governed policy graph | strict workspace receipts and summary |
+| 4 | `p101_acceptance` | selected workspace level and qualified tool paths | build-only, qualification, or strict workspace receipts |
+
+The same numeric level controls every repository and the aggregate graph:
+
+| Level | Repository contract | Aggregate contract |
+| ---: | --- | --- |
+| `1` | validate formatting and compile/install primary targets | compiler matrix and installation only |
+| `2` | level 1 plus standalone unit tests | build and qualify the exact in-tree host tools |
+| `3` | level 2 plus the complete analyzer pipeline | invoke the governed `check-after-update-all.sh` graph and incremental replay |
+
+An independently configured repository, `workspace/CMakeLists.txt`, and
+`update-all.sh` all default to level 1. Maintainers and CI select level 2 or 3
+explicitly. The selected level passes into both the repository lanes and the
+workspace graph and is part of the lane identity, so evidence from a shallower
+contract cannot satisfy a deeper one.
 
 This breaks the apparent cycle. The compiler builds the mechanism first;
 qualified mechanism then evaluates the libraries and tools, including its own
@@ -43,9 +57,10 @@ lane, so incompatible profiling and compiler runtimes can coexist. Their
 output is isolated under `target/update-all/<run-id>/`, with a deterministic
 TSV/Markdown summary and complete ordered failure logs. Only after every pair
 passes does a serialized finalization phase publish host markers and install
-host runtime artifacts. The host pair then configures `workspace/CMakeLists.txt`
-and builds `p101_acceptance`. `--skip-acceptance` is the explicit bring-up
-escape hatch; strict acceptance is the default.
+host runtime artifacts. At explicitly selected levels 2 and 3, the host pair
+then configures `workspace/CMakeLists.txt` and builds `p101_acceptance`.
+`--skip-acceptance` is the explicit bring-up escape hatch for those levels;
+level 1 is the default and stops after formatting, building, and installation.
 
 Formatting follows repository refresh and formatter validation but precedes
 flag generation, shared distribution, source identity, cache-key computation,
@@ -53,6 +68,15 @@ configuration, and compilation. Local preparation applies it and continues.
 CI and release preflight select `--format-check`, which reports drift with
 clang-format's dry-run mode without changing tracked bytes. `--no-format` is
 an explicit local escape hatch rather than the default.
+
+The format pass and the level-3 compile-database mechanics do not depend on
+Python or on a p101 library. `cmake/p101_compile_db.c` is a C17 bootstrap
+program using only libc/POSIX. The workspace format entry point compiles it
+into `target/bootstrap` before any p101 tool is available; repository CMake
+trees compile the same source as an isolated custom artifact for compile-DB
+sanitizing, per-translation-unit analysis, and optional CTU analysis. Keeping
+it out of the normal target list prevents the bootstrap translation unit from
+contaminating project facts, coverage, cppcheck, or profiling evidence.
 
 Repository build reuse is deliberately below the judgment boundary.
 `update-all.sh` defaults `P101_REPOSITORY_BUILD_CACHE` to
@@ -72,11 +96,15 @@ and atomically publishes the selected quality and runtime markers. A failed
 configure, build, install, or partial publication restores the last marker only
 when its target still exists; a stale incoming marker becomes absent. Cache
 collection runs only after workers stop and finalization succeeds. It removes
-unselected repository aliases immediately and unreferenced physical lanes after
+unselected content-addressed convenience aliases immediately and unreferenced physical lanes after
 `P101_BUILD_CACHE_MAX_AGE_DAYS` (30 by default). The tradeoff is bounded extra
 storage and reliance on CMake's declared dependency graph in exchange for
 avoiding unconditional clean builds. Direct repository builds retain
 clean-first behavior; only the workspace orchestrator opts into this reuse.
+Stable exact-lane aliases for all compiler pairs remain protected: downstream
+checks resolve those names, whereas the installation markers identify only the
+host pair. This prevents collection from making a valid non-host compiler lane
+disappear between the matrix build and its acceptance pass.
 
 GitHub Actions uses this target once. It no longer runs a second
 `check-after-update-all.sh` pass after `update-all.sh`; the compatibility script
@@ -129,9 +157,14 @@ ceilings, not benchmark claims.
 
 - Stage 3 proves only CLI availability, option rejection, and the declared
   native semantic regressions. It does not prove workspace policy.
-- Stage 4 still contains mature shell/Python policy nodes. They are invoked
-  behind the CMake target while they are incrementally replaced; CMake owns
-  their ordering and exact host-tool identities, not their internal policy.
+- Stage 4 still contains mature shell/Python orchestration, generation,
+  repository-transaction, and dynamic-report nodes. Five source-policy
+  processes have moved behind the native `audit-workspace` engine. The
+  remaining Python boundary is deliberate: dynamic graph scheduling, source
+  generation, external-manual harvesting, HTML/report generation, and
+  repository transactions are not made safer or faster by a mechanical C
+  rewrite. CMake owns their ordering and exact host-tool identities, not their
+  internal policy.
 - External compiler, CMake, libclang, system headers, and operating-system
   behavior remain trusted inputs and are covered by the platform CI matrix.
 - A warm incremental replay proves exact reuse only for the current workspace,

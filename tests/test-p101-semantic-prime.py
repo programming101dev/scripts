@@ -82,6 +82,46 @@ class SemanticPrimeTests(unittest.TestCase):
         self.assertTrue(document["does_not_prove"])
         prime.assert_called_once()
 
+    def test_main_writes_a_native_fact_bundle_without_losing_zeroes(self) -> None:
+        receipt = self.workspace / "receipt.json"
+        bundle = self.workspace / "facts.tsv"
+        cache = self.workspace / "cache"
+        facts = [
+            {
+                "kind": "CALL",
+                "path": "programs/demo/src/main.c",
+                "value": "p101_demo",
+                "usr": None,
+                "caller_usr": "c:@F@main",
+                "resolved": True,
+                "line": 0,
+            },
+            {"kind": "TYPE", "path": "ignored.c", "line": 4},
+        ]
+        with self.patched_roots(), mock.patch.object(
+            MODULE, "acquire", return_value=facts
+        ) as acquire, mock.patch(
+            "sys.argv",
+            [
+                "p101-prime",
+                "--cache",
+                str(cache),
+                "--receipt",
+                str(receipt),
+                "--bundle",
+                str(bundle),
+            ],
+        ):
+            self.assertEqual(MODULE.main(), 0)
+        self.assertEqual(
+            bundle.read_text(encoding="utf-8").splitlines(),
+            [
+                "P101SEMANTIC\t1",
+                "CALL\tprograms/demo/src/main.c\tp101_demo\t\tc:@F@main\tTrue\t0",
+            ],
+        )
+        acquire.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

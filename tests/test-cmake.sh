@@ -83,6 +83,30 @@ done
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
+run_with_timeout() {
+  local seconds="$1"
+  local process_id
+  local status
+  local watchdog_id
+  shift
+
+  "$@" &
+  process_id=$!
+  (
+    sleep "$seconds"
+    kill -TERM "$process_id" 2>/dev/null || true
+  ) &
+  watchdog_id=$!
+  if wait "$process_id"; then
+    status=0
+  else
+    status=$?
+  fi
+  kill -TERM "$watchdog_id" 2>/dev/null || true
+  wait "$watchdog_id" 2>/dev/null || true
+  return "$status"
+}
+
 # ---------- pick compilers ----------
 if [[ -z "$c_compiler" ]]; then
   for cand in gcc clang cc; do
@@ -97,7 +121,7 @@ fi
 
 # ---------- prerequisites (same tools the real builds REQUIRE) ----------
 missing=0
-for t in cmake clang-tidy cppcheck; do
+for t in cmake clang-format clang-tidy cppcheck; do
   if ! have "$t"; then echo "missing prerequisite: $t" >&2; missing=$((missing+1)); fi
 done
 if [[ -z "$c_compiler" ]] || ! have "$c_compiler"; then
@@ -109,10 +133,6 @@ if (( missing > 0 )); then
   echo "Cannot run: $missing prerequisite(s) missing." >&2
   exit 2
 fi
-if ! have clang-format; then
-  echo "note: clang-format not found; the format stage will be skipped by CMake (as in real builds)."
-fi
-
 # ---------- sandbox ----------
 SANDBOX="$(mktemp -d 2>/dev/null || mktemp -d -t p101cmaketest)"
 cleanup() {
@@ -154,7 +174,8 @@ new_proj() {
 configure() {
   local p="$1"; shift
   RC=0
-  cmake -S "$p" -B "$p/build" -DCMAKE_C_COMPILER="$c_compiler" "$@" \
+  cmake -S "$p" -B "$p/build" -DCMAKE_C_COMPILER="$c_compiler" \
+    -DP101_BUILD_LEVEL=3 "$@" \
     > "$p/configure.log" 2>&1 || RC=$?
 }
 
@@ -250,13 +271,15 @@ printf '1\n' > "$PROJ/coverage.txt"
 printf '1\n' > "$PROJ/profile.txt"
 printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
 configure "$PROJ" -DP101_RUNTIME_ONLY=ON \
+  -DP101_BUILD_LEVEL=1 \
   -DP101_DISABLE_INSTRUMENTATION=ON \
   -DP101_COVERAGE_MODE=OFF -DP101_PROFILE_MODE=OFF \
   -DSANITIZER_LIST=
 if (( RC == 0 )); then
   build "$PROJ"
   if (( RC == 0 )) &&
-     grep -q 'P101_RUNTIME_ONLY: building installable targets' "$PROJ/configure.log" &&
+     grep -q 'P101 build level 1: checking formatting and building an instrumentation-free install artifact' "$PROJ/configure.log" &&
+     grep -q 'checking:.*clang-format' "$PROJ/build.log" &&
      ! grep -Eq 'Coverage selected|Profiling selected' "$PROJ/configure.log" &&
      ! grep -Eq 'clang-tidy|cppcheck|static analyzer|analyze stage' "$PROJ/build.log" &&
      ! grep -Eq -- '--coverage|-pg' "$PROJ/build/compile_commands.json"; then
@@ -268,6 +291,48 @@ if (( RC == 0 )); then
   fi
 else
   bad "runtime-only: configure failed" "$PROJ/configure.log"
+fi
+
+# ---------- cases: explicit build levels ----------
+new_proj quick-level
+write_c_config_exe "$PROJ"
+printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
+printf '#!/usr/bin/env bash\nprintf tested > "%s/test-ran"\n' "$PROJ" \
+  > "$PROJ/test.sh"
+RC=0
+cmake -S "$PROJ" -B "$PROJ/build" -DCMAKE_C_COMPILER="$c_compiler" \
+  > "$PROJ/configure.log" 2>&1 || RC=$?
+if (( RC == 0 )); then
+  build "$PROJ"
+  if (( RC == 0 )) && [[ ! -e "$PROJ/test-ran" ]] &&
+     grep -Fq 'P101_BUILD_LEVEL:STRING=1' "$PROJ/build/CMakeCache.txt" &&
+     grep -q 'checking:.*clang-format' "$PROJ/build.log" &&
+     ! grep -Eq 'clang-tidy|cppcheck|analyze stage' "$PROJ/build.log"; then
+    ok "level-1: default checks formatting and builds without tests or analyzers"
+  else
+    bad "level-1: ran work outside the compile/install contract" "$PROJ/build.log"
+  fi
+else
+  bad "level-1: configure failed" "$PROJ/configure.log"
+fi
+
+new_proj medium-level
+write_c_config_exe "$PROJ"
+printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
+printf '#!/usr/bin/env bash\nprintf tested > "%s/test-ran"\n' "$PROJ" \
+  > "$PROJ/test.sh"
+configure "$PROJ" -DP101_BUILD_LEVEL=2
+if (( RC == 0 )); then
+  build "$PROJ"
+  if (( RC == 0 )) && [[ -f "$PROJ/test-ran" ]] &&
+     grep -q 'checking:.*clang-format' "$PROJ/build.log" &&
+     ! grep -Eq 'clang-tidy|cppcheck|analyze stage' "$PROJ/build.log"; then
+    ok "level-2: retains formatting and adds repository unit tests without full analyzers"
+  else
+    bad "level-2: did not enforce the medium contract" "$PROJ/build.log"
+  fi
+else
+  bad "level-2: configure failed" "$PROJ/configure.log"
 fi
 
 # ---------- case: runtime-only sibling dependency precedence ----------
@@ -313,6 +378,7 @@ EOF
 printf 'int dep_value(void);\nint main(void)\n{\n    return dep_value();\n}\n' \
   > "$PROJ/src/main.c"
 configure "$PROJ" -DP101_RUNTIME_ONLY=ON \
+  -DP101_BUILD_LEVEL=1 \
   -DP101_BUILD_KEY="$runtime_build_key" -DSANITIZER_LIST=
 if (( RC == 0 )); then
   build "$PROJ"
@@ -343,6 +409,7 @@ cp "$runtime_root/libraries/lib_consumer/.clang-format" "$PROJ/.clang-format"
 cp "$runtime_root/libraries/lib_consumer/src/main.c" "$PROJ/src/main.c"
 ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
 configure "$PROJ" -DP101_RUNTIME_ONLY=ON \
+  -DP101_BUILD_LEVEL=1 \
   -DP101_BUILD_KEY=missing-matrix-alias -DSANITIZER_LIST=
 if (( RC == 0 )); then
   build "$PROJ"
@@ -361,7 +428,8 @@ if [[ "$(uname -s)" == "Darwin" ]] &&
    "$c_compiler" --version 2>/dev/null | grep -qi clang &&
    printf 'int main(void){return 0;}\n' |
      "$c_compiler" -x c - -fsanitize=address \
-       -o "$SANDBOX/asan-probe" >/dev/null 2>&1; then
+       -o "$SANDBOX/asan-probe" >/dev/null 2>&1 &&
+   run_with_timeout 5 "$SANDBOX/asan-probe" >/dev/null 2>&1; then
   new_proj macos-asan-order
   cat > "$PROJ/config.cmake" <<'EOF'
 set(PROJECT_NAME sample)
@@ -393,7 +461,7 @@ EOF
     )"
     if (( RC == 0 )) &&
        [[ "$asan_first_dependency" == *libclang_rt.asan_osx_dynamic.dylib* ]] &&
-       "$PROJ/build/hello" >/dev/null 2>&1; then
+       run_with_timeout 5 "$PROJ/build/hello" >/dev/null 2>&1; then
       ok "macos-asan-order: compiler ASan runtime precedes user dylibs"
     elif (( RC == 0 )); then
       bad "macos-asan-order: ASan is not the first Mach-O dependency" \
@@ -405,7 +473,7 @@ EOF
     bad "macos-asan-order: configure failed" "$PROJ/configure.log"
   fi
 else
-  echo "note: macOS Clang ASan unavailable; skipping dylib load-order case."
+  echo "note: macOS Clang ASan unavailable at compile or runtime; skipping dylib load-order case."
 fi
 
 # ---------- case: missing-flags env gate ----------
@@ -933,6 +1001,10 @@ else
 fi
 
 # ---------- sanitized compile DB keeps semantics, drops foreign codegen ----------
+compile_db_helper="$SANDBOX/p101-compile-db"
+"$c_compiler" -std=c17 -Wall -Wextra -Werror -pedantic \
+    "$SCRIPT_DIR/cmake/p101_compile_db.c" \
+  -o "$compile_db_helper"
 sanitize_input="$SANDBOX/sanitize-input.json"
 sanitize_output="$SANDBOX/sanitize-output.json"
 cat > "$sanitize_input" <<'EOF'
@@ -952,7 +1024,7 @@ cat > "$sanitize_input" <<'EOF'
   }
 ]
 EOF
-python3 "$SCRIPT_DIR/cmake/SanitizeCompileCommands.py" \
+"$compile_db_helper" sanitize \
   "$sanitize_input" "$sanitize_output"
 if grep -q -- '"-fwrapv"' "$sanitize_output" \
    && grep -q -- '"-fno-strict-aliasing"' "$sanitize_output" \
@@ -969,7 +1041,7 @@ ctu_root="$SANDBOX/ctu-root"
 ctu_work="$SANDBOX/ctu-work"
 mkdir -p "$ctu_root" "$ctu_work"
 printf '[]\n' > "$SANDBOX/ctu-empty.json"
-if python3 "$SCRIPT_DIR/cmake/RunClangSaCtu.py" \
+if "$compile_db_helper" ctu \
      /bin/false /bin/false "$SANDBOX/ctu-empty.json" "$ctu_work" 1 "$ctu_root" \
      -- > "$SANDBOX/ctu-empty.log" 2>&1; then
   ok "ctu-empty: header-only compile database is a clean optional skip"
@@ -986,7 +1058,7 @@ cat > "$SANDBOX/ctu-filtered.json" <<'EOF'
 ]
 EOF
 ctu_filtered_rc=0
-python3 "$SCRIPT_DIR/cmake/RunClangSaCtu.py" \
+"$compile_db_helper" ctu \
   /bin/false /bin/false "$SANDBOX/ctu-filtered.json" "$ctu_work" 1 "$ctu_root" \
   -- > "$SANDBOX/ctu-filtered.log" 2>&1 || ctu_filtered_rc=$?
 if [[ "$ctu_filtered_rc" -eq 2 ]] \

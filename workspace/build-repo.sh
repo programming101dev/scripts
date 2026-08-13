@@ -26,6 +26,7 @@ build_key=""
 runtime_build_key=""
 repository_build_cache="${P101_REPOSITORY_BUILD_CACHE:-}"
 defer_build_markers="${P101_DEFER_BUILD_MARKERS:-0}"
+build_level="${P101_BUILD_LEVEL:-1}"
 
 usage() {
   cat <<USAGE >&2
@@ -105,6 +106,10 @@ if $defer_install && $finalize_only; then
   echo "Error: --defer-install and --finalize-only are mutually exclusive" >&2
   exit 2
 fi
+case "$build_level" in
+  1|2|3) ;;
+  *) echo "Error: P101_BUILD_LEVEL must be 1, 2, or 3" >&2; exit 2 ;;
+esac
 if [[ -n "$repository_build_cache" ]]; then
   case "$repository_build_cache" in
     /*) ;;
@@ -253,6 +258,7 @@ publish_exact_lane_alias() {
   local lane="$2"
   local alias="build-${lane}"
   local temporary
+  local target="$directory"
 
   # P101Linking resolves workspace dependencies through the stable exact-lane
   # name.  Content addressing is an implementation detail of the cache, so
@@ -260,9 +266,17 @@ publish_exact_lane_alias() {
   # successfully.  A failed build therefore leaves the last qualified alias
   # intact for diagnosis and later reuse.
   [[ "$directory" != "$alias" ]] || return 0
+  # Content-addressed repository paths are convenience links into the external
+  # cache.  The cache collector may remove an unselected convenience link
+  # while retaining the underlying lane for another compiler pair.  Point the
+  # stable compiler-lane alias directly at that underlying directory so it
+  # never becomes dangling merely because another pair became the host lane.
+  if [[ -n "$repository_build_cache" && -L "$directory" ]]; then
+    target="$(CDPATH='' cd -P -- "$directory" && pwd -P)"
+  fi
   temporary="${alias}.tmp.$$"
   rm -f -- "$temporary"
-  ln -s -- "$directory" "$temporary"
+  ln -s -- "$target" "$temporary"
   if [[ -L "$alias" ]]; then
     rm -f -- "$alias"
   elif [[ -d "$alias" ]]; then
@@ -297,6 +311,11 @@ write_lane_receipt() {
     printf 'schema=p101-build-lane-receipt-v1\n'
     printf 'lane=%s\n' "$lane"
     printf 'kind=%s\n' "$kind"
+    if [[ "$kind" == runtime ]]; then
+      printf 'build_level=1\n'
+    else
+      printf 'build_level=%s\n' "$build_level"
+    fi
     printf 'c_compiler=%s\n' "$CC_PATH"
     printf 'cxx_compiler=%s\n' "$CXX_PATH"
     printf 'flags_profile=%s\n' "$flags_profile"
@@ -543,8 +562,17 @@ change_compiler_supports_build_dir() {
 CC_PATH="$(resolve_any "$c_compiler")"
 CXX_PATH="$(resolve_any "$cxx_compiler")"
 CLANG_FORMAT_PATH="$(resolve_any "$clang_format_name")"
-CLANG_TIDY_PATH="$(resolve_any "$clang_tidy_name")"
-CPPCHECK_PATH="$(resolve_any "$cppcheck_name")"
+if [[ "$build_level" -eq 3 ]]; then
+  CLANG_TIDY_PATH="$(resolve_any "$clang_tidy_name")"
+  CPPCHECK_PATH="$(resolve_any "$cppcheck_name")"
+else
+  # change-compiler.sh accepts concrete tool arguments even when the selected
+  # CMake level does not admit those tools. Use a ubiquitous successful
+  # command as an inert value instead of making quick/medium users install the
+  # full analyzer toolchain.
+  CLANG_TIDY_PATH="$(resolve_any true)"
+  CPPCHECK_PATH="$(resolve_any true)"
+fi
 orchestrator_source_identity="$(orchestrator_build_identity)"
 
 env_on() {
@@ -572,11 +600,11 @@ fi
 if [[ -z "$build_key" ]]; then
   build_key="$($BUILD_LANE_SH -c "$CC_PATH" -x "$CXX_PATH" \
     -s "$sanitizers" -F "$flags_profile" -C "$coverage_mode" \
-    -P "$profile_mode" -K quality)"
+    -P "$profile_mode" -K quality -L "$build_level")"
 fi
 if [[ -z "$runtime_build_key" ]]; then
   runtime_build_key="$($BUILD_LANE_SH -c "$CC_PATH" -x "$CXX_PATH" \
-    -F "$flags_profile" -K runtime)"
+    -F "$flags_profile" -K runtime -L 1)"
 fi
 case "$build_key" in
   ''|*[!A-Za-z0-9_.+-]*)
@@ -731,6 +759,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         change_args+=(-R)
       fi
       change_args+=(-- "-DP101_BUILD_KEY=$build_key"
+        "-DP101_BUILD_LEVEL=$build_level"
         "-DP101_COVERAGE_MODE=$([[ "$coverage_mode" -eq 1 ]] && printf ON || printf OFF)"
         "-DP101_PROFILE_MODE=$([[ "$profile_mode" -eq 1 ]] && printf ON || printf OFF)")
       say "Configuring ${dir} in ${quality_build_dir}"
@@ -755,7 +784,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         build_command+=("${build_script_args[@]}")
       fi
       if run_repo_phase "build ${dir} with $([[ "$repo_type" == "cxx" ]] && printf '%s' "$CXX_PATH" || printf '%s' "$CC_PATH")" "${build_command[@]}"; then
-        if [[ -n "$quality_build_dir" ]]; then
+        if ! $make_tree && [[ -n "$quality_build_dir" ]]; then
           publish_exact_lane_alias "$quality_build_dir" "$build_key"
           marker_queue_value .last-build-dir "$quality_build_dir"
         fi
@@ -807,6 +836,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         -b "$runtime_build_dir"
         --
         -DP101_RUNTIME_ONLY=ON
+        -DP101_BUILD_LEVEL=1
         -DP101_DISABLE_INSTRUMENTATION=ON
         -DP101_COVERAGE_MODE=OFF
         -DP101_PROFILE_MODE=OFF

@@ -187,6 +187,7 @@ run_checks() {
   local inspect_capture
   local inspect_tool
   local tool_receipt
+  local audit_workspace
   local -a graph_args
 
   if ! mkdir -p "$run_out_dir"; then
@@ -201,6 +202,7 @@ run_checks() {
   inspect_capture="${P101_INSPECT_CAPTURE:-}"
   inspect_tool="${P101_INSPECT:-}"
   tool_receipt="${P101_TOOL_RECEIPT:-}"
+  audit_workspace="${P101_AUDIT_WORKSPACE:-}"
   if [ -z "$inspect_capture" ]; then
     inspect_capture="$(p101_find_built_tool ../programs/p101-inspect inspect-capture || true)"
   fi
@@ -210,9 +212,13 @@ run_checks() {
   if [ -z "$tool_receipt" ]; then
     tool_receipt="$(p101_find_built_tool ../libraries/lib_tool_event p101-tool-receipt || true)"
   fi
-  if [ -z "$inspect_capture" ] || [ -z "$inspect_tool" ] || [ -z "$tool_receipt" ]; then
-    printf 'Required receipt tools are unavailable: inspect-capture=%s p101-inspect=%s p101-tool-receipt=%s\n' \
-      "${inspect_capture:-missing}" "${inspect_tool:-missing}" "${tool_receipt:-missing}" >&2
+  if [ -z "$audit_workspace" ]; then
+    audit_workspace="$(p101_find_built_tool ../programs/p101-audit audit-workspace || true)"
+  fi
+  if [ -z "$inspect_capture" ] || [ -z "$inspect_tool" ] || [ -z "$tool_receipt" ] || [ -z "$audit_workspace" ]; then
+    printf 'Required host tools are unavailable: inspect-capture=%s p101-inspect=%s p101-tool-receipt=%s audit-workspace=%s\n' \
+      "${inspect_capture:-missing}" "${inspect_tool:-missing}" "${tool_receipt:-missing}" \
+      "${audit_workspace:-missing}" >&2
     return 2
   fi
 
@@ -232,6 +238,7 @@ run_checks() {
     --var "inspect_capture=$inspect_capture"
     --var "p101_inspect=$inspect_tool"
     --var "tool_receipt=$tool_receipt"
+    --var "audit_workspace=$audit_workspace"
     --var "template_no_tests=$template_no_tests_arg"
     --var "playground_skip_quality=$playground_skip_quality_arg"
     --var "playground_skip_coverage=$playground_skip_coverage_arg"

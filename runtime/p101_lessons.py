@@ -9,6 +9,7 @@ import json
 import os
 import platform
 import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -967,32 +968,44 @@ def _run_logged(
 ) -> dict[str, Any]:
     log = output / f"{_safe_name(label)}.log"
     started = time.time_ns()
+    process: subprocess.Popen[str] | None = None
     try:
-        completed = subprocess.run(
+        process = subprocess.Popen(
             command,
             cwd=cwd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            check=False,
-            timeout=timeout_seconds,
             errors="replace",
+            start_new_session=True,
             env={
                 **os.environ,
                 "PYTHONPYCACHEPREFIX": str(output / "pycache"),
             },
         )
-        code = completed.returncode
-        text = completed.stdout
+        text, _ = process.communicate(timeout=timeout_seconds)
+        code = process.returncode
     except subprocess.TimeoutExpired as error:
         code = 2
         captured = error.stdout or ""
         if isinstance(captured, bytes):
             captured = captured.decode("utf-8", errors="replace")
-        text = (
-            str(captured)
-            + f"\ncommand timed out after {timeout_seconds} seconds\n"
-        )
+        if process is not None:
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            try:
+                completed_text, _ = process.communicate(timeout=2)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                completed_text, _ = process.communicate()
+            if completed_text:
+                captured = completed_text
+        text = str(captured) + f"\ncommand timed out after {timeout_seconds} seconds\n"
     except (OSError, UnicodeError) as error:
         code = 2
         text = f"could not run {' '.join(command)}: {error}\n"

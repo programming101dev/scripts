@@ -94,6 +94,7 @@ TOOL_LOCATOR_ENVIRONMENT = {
     "P101_AUDIT_FACTS",
     "P101_AUDIT_MODULES",
     "P101_AUDIT_WRAPPERS",
+    "P101_AUDIT_WORKSPACE",
     "P101_EVENT_MODEL",
     "P101_INSPECT_CAPTURE",
     "P101_INSPECT",
@@ -152,6 +153,10 @@ def repository_source_files(repository: Path) -> list[Path]:
                 repository / relative
                 for relative in relative_paths
                 if not source_path_excluded(relative)
+                and (
+                    (repository / relative).exists()
+                    or (repository / relative).is_symlink()
+                )
             ),
             key=lambda path: os.fspath(path),
         )

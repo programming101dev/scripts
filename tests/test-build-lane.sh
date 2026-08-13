@@ -46,17 +46,19 @@ lane_b="$(P101_BUILD_LANE_FLAGS_ROOT="$flags_root" \
   ./workspace/build-lane.sh -c "$sandbox/clang" -x "$sandbox/clang++" \
   -s ' address, undefined,address ' -P 1)"
 [[ "$lane_a" == "$lane_b" ]]
-[[ "$lane_a" == clang__clang++__quality-maximal-profile-san__* ]]
+[[ "$lane_a" == clang__clang++__quality-level3-maximal-profile-san__* ]]
 
 clean_lane="$(./workspace/build-lane.sh -c "$sandbox/clang" -x "$sandbox/clang++")"
 coverage_lane="$(./workspace/build-lane.sh -c "$sandbox/clang" -x "$sandbox/clang++" -C 1)"
 flags_lane="$(CFLAGS=-fno-common ./workspace/build-lane.sh \
   -c "$sandbox/clang" -x "$sandbox/clang++")"
 gcc_lane="$(./workspace/build-lane.sh -c "$sandbox/gcc" -x "$sandbox/g++")"
+medium_lane="$(./workspace/build-lane.sh -c "$sandbox/clang" -x "$sandbox/clang++" -L 2)"
 [[ "$clean_lane" != "$lane_a" ]]
 [[ "$clean_lane" != "$coverage_lane" ]]
 [[ "$clean_lane" != "$flags_lane" ]]
 [[ "$clean_lane" != "$gcc_lane" ]]
+[[ "$clean_lane" != "$medium_lane" ]]
 
 runtime_a="$(./workspace/build-lane.sh -c "$sandbox/clang" -x "$sandbox/clang++" \
   -s address -C 1 -P 1 -K runtime)"
@@ -66,7 +68,7 @@ runtime_c="$(CFLAGS=-pg LDFLAGS=-pg ./workspace/build-lane.sh \
   -c "$sandbox/clang" -x "$sandbox/clang++" -K runtime)"
 [[ "$runtime_a" == "$runtime_b" ]]
 [[ "$runtime_a" == "$runtime_c" ]]
-[[ "$runtime_a" == clang__clang++__runtime-maximal-clean__* ]]
+[[ "$runtime_a" == clang__clang++__runtime-level1-maximal-clean__* ]]
 
 # Diagnostic logs are not compiler configuration and contain nondeterministic
 # probe paths. They must not invalidate an otherwise identical artifact lane.

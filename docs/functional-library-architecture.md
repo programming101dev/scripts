@@ -54,13 +54,14 @@ example repositories are absent from `repos.txt`.
 library carries its own `api-manifest.tsv`. Run:
 
 ```sh
-./checks/check-functional-library-split.py
+"${P101_AUDIT_WORKSPACE:?set this to the qualified audit-workspace}" \
+    --policy functional-library-split --workspace .. --scripts-root .
 ./checks/check-wrapper-unit-tests.py
 ./checks/check-p101-library-audit.sh
 ./tests/test-cmake.sh -c clang -x clang++
 ```
 
-The first command rejects duplicate or missing ownership, anything other than
+The native workspace policy rejects duplicate or missing ownership, anything other than
 one domain header and one domain source, obsolete standards-origin source
 directories, stale source/header paths, unsupported platform rows, active
 references to retired headers or link targets, and drift between the central

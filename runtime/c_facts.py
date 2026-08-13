@@ -492,6 +492,29 @@ def _compile_database_include_roots(repository: Path) -> set[Path]:
     return roots
 
 
+def _analysis_include_roots(workspace: Path, scope: Path) -> set[Path]:
+    """Return include roots for a repository or one consolidated component.
+
+    Component scopes remain independent so duplicate private header names do
+    not bind to a sibling component. They still inherit their owning
+    repository's public include directory and compilation-database roots,
+    because consolidated executables may deliberately share public headers.
+    """
+    owner = _repository_root(workspace, scope)
+    if owner is None:
+        owner = scope
+    roots = _compile_database_include_roots(owner)
+    for candidate in (
+        owner / "include",
+        scope / "include",
+        owner / "test" / "unity",
+        scope / "test" / "unity",
+    ):
+        if candidate.is_dir():
+            roots.add(candidate.resolve())
+    return roots
+
+
 
 SNAPSHOT_SCHEMA = "p101-facts-snapshot-v3"
 _SNAPSHOT_SKIP_DIRECTORIES = {".git", "__pycache__", ".pytest_cache", ".facts-cache", "_to_delete"}
@@ -896,14 +919,8 @@ def _acquire(
             if repository is not None:
                 if partition_database is None:
                     include_roots.update(
-                        _compile_database_include_roots(repository)
+                        _analysis_include_roots(workspace_root, repository)
                     )
-                local_include = repository / "include"
-                unity = repository / "test" / "unity"
-                if local_include.is_dir():
-                    include_roots.add(local_include.resolve())
-                if unity.is_dir():
-                    include_roots.add(unity.resolve())
             else:
                 for admitted_path in partition_paths:
                     for parent in admitted_path.parents:

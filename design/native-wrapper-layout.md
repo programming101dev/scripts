@@ -36,7 +36,8 @@ smaller compilation and review surface.
 
 ## Enforcement
 
-`checks/check-functional-library-split.py` derives the expected current header
+The native `audit-workspace --policy functional-library-split` checker derives
+the expected current header
 and source from each API manifest’s recorded native header and rejects:
 
 - a wrapper assigned to the wrong native-shaped file;
@@ -44,4 +45,3 @@ and source from each API manifest’s recorded native header and rejects:
 - provenance directories under `include/` or `src/`;
 - a build manifest that omits or invents public headers or implementation
   sources.
-

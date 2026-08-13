@@ -14,8 +14,12 @@ esac
 # land in the scripts repo.
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
+# shellcheck source=../shared/compilers.sh
+. ./shared/compilers.sh
+
 # Detect the operating system
 OS="$(uname)"
+COMPILER_PLATFORM_ARG="$(p101_compiler_platform_argument)"
 
 # ---------------------------------------------------------------------------
 # Durable compiler discovery.
@@ -94,7 +98,8 @@ extra_dirs=(
 CAN_COMPILE_ERR=""
 _can_compile() {
   local cc="$1" lang="$2"
-  local tmpdir rc out
+  local tmpdir rc out default_config_arg
+  local sdk_args=()
   CAN_COMPILE_ERR=""
   tmpdir="$(mktemp -d 2>/dev/null || mktemp -d -t ccprobe)"
 
@@ -105,8 +110,20 @@ _can_compile() {
     printf 'int main(){return 0;}\n' >"$src"
   fi
 
+  default_config_arg="$(p101_compiler_default_config_argument "$cc")"
+  if [[ -n "$default_config_arg" ]]; then
+    sdk_args+=("$default_config_arg")
+  fi
+  if [[ -n "$COMPILER_PLATFORM_ARG" ]]; then
+    # Match the CMake build contract. Homebrew may ship a target-specific
+    # driver config whose versioned SDK path becomes stale after a macOS or
+    # Command Line Tools update; every real workspace build supplies the
+    # active SDK explicitly for the same reason.
+    sdk_args+=("$COMPILER_PLATFORM_ARG")
+  fi
+
   rc=1
-  if out="$("$cc" -x "$lang" "$src" -o "$exe" 2>&1)" && [[ -x "$exe" ]]; then
+  if out="$("$cc" "${sdk_args[@]}" -x "$lang" "$src" -o "$exe" 2>&1)" && [[ -x "$exe" ]]; then
     rc=0
   else
     CAN_COMPILE_ERR="$out"

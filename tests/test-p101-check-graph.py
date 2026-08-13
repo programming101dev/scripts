@@ -147,8 +147,17 @@ class CheckGraphTests(unittest.TestCase):
 
     def test_cycle_is_rejected(self) -> None:
         document = copy.deepcopy(self.document)
-        document["nodes"][0]["depends_on"] = [document["nodes"][-1]["id"]]
+        format_node = next(
+            node for node in document["nodes"] if node["id"] == "format-workspace"
+        )
+        format_node["depends_on"] = [document["nodes"][-1]["id"]]
         with self.assertRaisesRegex(MODULE.GraphError, "cycle"):
+            MODULE.validate(document)
+
+    def test_unknown_command_variable_is_rejected_during_validation(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["nodes"][0]["command"].append("{undeclared_workspace}")
+        with self.assertRaisesRegex(MODULE.GraphError, "unknown variables"):
             MODULE.validate(document)
 
     def test_selection_includes_dependencies(self) -> None:
@@ -157,9 +166,9 @@ class CheckGraphTests(unittest.TestCase):
         self.assertEqual(
             [node["id"] for node in selected],
             [
+                "format-workspace",
                 "repository-lock-tests",
                 "workspace-lock",
-                "format-workspace",
                 "stack-contract-tests",
                 "stack-contract",
                 "check-graph-tests",
@@ -1155,6 +1164,37 @@ class CheckGraphTests(unittest.TestCase):
 
 
 class WorkspaceSourceIndexTests(unittest.TestCase):
+    def test_repository_source_files_ignores_deleted_tracked_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+            subprocess.run(
+                ["git", "init", "-q", os.fspath(repository)], check=True
+            )
+            source = repository / "deleted.c"
+            source.write_text("int deleted(void);\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "-C", os.fspath(repository), "add", "deleted.c"],
+                check=True,
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    os.fspath(repository),
+                    "-c",
+                    "user.name=p101 test",
+                    "-c",
+                    "user.email=p101@example.invalid",
+                    "commit",
+                    "-qm",
+                    "fixture",
+                ],
+                check=True,
+            )
+            source.unlink()
+
+            self.assertEqual(MODULE.repository_source_files(repository), [])
+
     def test_content_manifest_rejects_duplicate_or_escaping_paths(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)

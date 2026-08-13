@@ -10,8 +10,17 @@ set(P101_WORKSPACE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." CACHE PATH
         "Root of the programming101dev workspace")
 get_filename_component(P101_WORKSPACE_ROOT "${P101_WORKSPACE_ROOT}" ABSOLUTE)
 
+set(P101_WORKSPACE_LEVEL "1" CACHE STRING
+        "Workspace depth: 1=format/build only, 2=host/repository tests, 3=full governed acceptance")
+set_property(CACHE P101_WORKSPACE_LEVEL PROPERTY STRINGS 1 2 3)
+if(NOT P101_WORKSPACE_LEVEL MATCHES "^[123]$")
+    message(FATAL_ERROR "P101_WORKSPACE_LEVEL must be 1, 2, or 3")
+endif()
+
 set(P101_RUNTIME_ONLY ON CACHE BOOL
         "Build the host toolchain without repository analyzer targets" FORCE)
+set(P101_BUILD_LEVEL 1 CACHE STRING
+        "Host tools bootstrap at the compile-only repository level" FORCE)
 set(P101_IN_TREE_DEPENDENCIES_ONLY ON CACHE BOOL
         "Do not satisfy host-tool dependencies from stale repository builds" FORCE)
 set(P101_WORKSPACE_AGGREGATE ON CACHE INTERNAL
@@ -109,6 +118,7 @@ add_custom_target(p101_host_tools
         audit_errors
         audit_modules
         audit_doctor
+        audit_workspace
         test_faults
         test_mutation
         inspect_capture
@@ -141,6 +151,7 @@ foreach(host_tool IN ITEMS
         audit_errors
         audit_modules
         audit_doctor
+        audit_workspace
         test_faults
         test_mutation
         inspect_capture
@@ -189,6 +200,7 @@ set(_P101_HOST_TOOL_TARGETS
         audit_errors
         audit_modules
         audit_doctor
+        audit_workspace
         test_faults
         test_mutation
         inspect_capture
@@ -202,7 +214,7 @@ add_custom_command(
         COMMAND "${CMAKE_COMMAND}"
                 -DOUTPUT=${P101_HOST_TOOL_RECEIPT}
                 -DCOMPILER=${CMAKE_C_COMPILER}
-                -DTOOL_COUNT=11
+                -DTOOL_COUNT=12
                 -DTEST_COUNT=${P101_HOST_TEST_COUNT}
                 -P "${CMAKE_CURRENT_SOURCE_DIR}/WriteHostToolReceipt.cmake"
         DEPENDS ${_P101_HOST_TOOL_TARGETS}
@@ -216,12 +228,17 @@ unset(_P101_HOST_TOOL_TARGETS)
 # Keep the mature acceptance graph while its policies migrate into C targets.
 # The important boundary is already enforced: these checks receive the exact
 # receipt executables from this build, never a guessed repository artifact.
-if(P101_ACCEPTANCE_CXX_COMPILER STREQUAL "")
-    message(STATUS
-            "p101_acceptance will qualify host tools only; set "
-            "P101_ACCEPTANCE_CXX_COMPILER to run workspace checks as well.")
+if(P101_WORKSPACE_LEVEL STREQUAL "1")
+    add_custom_target(p101_workspace_checks
+            DEPENDS p101_host_tools)
+elseif(P101_WORKSPACE_LEVEL STREQUAL "2")
     add_custom_target(p101_workspace_checks
             DEPENDS p101_tool_qualification)
+elseif(P101_ACCEPTANCE_CXX_COMPILER STREQUAL "")
+    message(STATUS
+            "P101_WORKSPACE_LEVEL=3 requires P101_ACCEPTANCE_CXX_COMPILER")
+    message(FATAL_ERROR
+            "Set P101_ACCEPTANCE_CXX_COMPILER to the qualified C++ compiler")
 else()
     add_custom_target(p101_workspace_checks
             COMMAND "${CMAKE_COMMAND}"
@@ -237,6 +254,7 @@ else()
                     -DAUDIT_ERRORS=$<TARGET_FILE:audit_errors>
                     -DAUDIT_MODULES=$<TARGET_FILE:audit_modules>
                     -DAUDIT_DOCTOR=$<TARGET_FILE:audit_doctor>
+                    -DAUDIT_WORKSPACE=$<TARGET_FILE:audit_workspace>
                     -DTEST_FAULTS=$<TARGET_FILE:test_faults>
                     -DTEST_MUTATION=$<TARGET_FILE:test_mutation>
                     -DEVENT_MODEL=$<TARGET_FILE:p101_event_model>
@@ -257,7 +275,8 @@ message(STATUS "")
 message(STATUS "p101 workspace host graph")
 message(STATUS "  C compiler        = ${CMAKE_C_COMPILER}")
 message(STATUS "  C++ evidence      = ${P101_ACCEPTANCE_CXX_COMPILER}")
+message(STATUS "  workspace level   = ${P101_WORKSPACE_LEVEL}")
 message(STATUS "  runtime libraries = 16 targets from 15 repositories")
-message(STATUS "  host tools        = 11 targets from 3 repositories")
+message(STATUS "  host tools        = 12 targets from 3 repositories")
 message(STATUS "  acceptance output = ${P101_ACCEPTANCE_OUTPUT_DIR}")
 message(STATUS "")

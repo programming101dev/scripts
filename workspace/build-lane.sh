@@ -13,12 +13,13 @@ flags_profile="maximal"
 coverage=0
 profile=0
 kind="quality"
+build_level="3"
 
 usage() {
   cat <<'EOF' >&2
 Usage: build-lane.sh -c <cc> -x <cxx> [-s <sanitizers>]
                      [-F maximal|standard|none] [-C 0|1] [-P 0|1]
-                     [-K quality|runtime]
+                     [-K quality|runtime] [-L 1|2|3]
 
 Print a stable, path-safe artifact identity for a complete compiler-pair
 configuration. Runtime identities always disable sanitizers, coverage, and
@@ -28,7 +29,7 @@ EOF
   exit 2
 }
 
-while getopts ":c:x:s:F:C:P:K:h" option; do
+while getopts ":c:x:s:F:C:P:K:L:h" option; do
   case "$option" in
     c) c_compiler=$OPTARG ;;
     x) cxx_compiler=$OPTARG ;;
@@ -37,6 +38,7 @@ while getopts ":c:x:s:F:C:P:K:h" option; do
     C) coverage=$OPTARG ;;
     P) profile=$OPTARG ;;
     K) kind=$OPTARG ;;
+    L) build_level=$OPTARG ;;
     h|*) usage ;;
   esac
 done
@@ -46,8 +48,10 @@ case "$flags_profile" in maximal|standard|none) ;; *) usage ;; esac
 case "$coverage" in 0|1) ;; *) usage ;; esac
 case "$profile" in 0|1) ;; *) usage ;; esac
 case "$kind" in quality|runtime) ;; *) usage ;; esac
+case "$build_level" in 1|2|3) ;; *) usage ;; esac
 
 if [[ "$kind" == runtime ]]; then
+  build_level=1
   sanitizers=""
   coverage=0
   profile=0
@@ -128,6 +132,7 @@ cxx_fingerprint="$($COMPILER_FINGERPRINT_SH print "$cxx_compiler")"
 digest="$({
   printf 'schema=p101-build-lane-v1\n'
   printf 'kind=%s\n' "$kind"
+  printf 'build_level=%s\n' "$build_level"
   printf 'flags_profile=%s\n' "$flags_profile"
   printf 'coverage=%s\n' "$coverage"
   printf 'profile=%s\n' "$profile"
@@ -165,6 +170,6 @@ if [[ -n "$canonical_sanitizers" ]]; then
   instrumentation="${instrumentation}-san"
 fi
 
-printf '%s__%s__%s-%s-%s__%s\n' \
-  "$c_name" "$cxx_name" "$kind" "$flags_profile" "$instrumentation" \
+printf '%s__%s__%s-level%s-%s-%s__%s\n' \
+  "$c_name" "$cxx_name" "$kind" "$build_level" "$flags_profile" "$instrumentation" \
   "${digest:0:16}"

@@ -61,6 +61,9 @@ set -u
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." || exit 1
 SCRIPT_DIR="$PWD"
 OUT="$SCRIPT_DIR/toolchain-report"
+# shellcheck source=../shared/compilers.sh
+. "$SCRIPT_DIR/shared/compilers.sh"
+COMPILER_PLATFORM_ARG="$(p101_compiler_platform_argument)"
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
@@ -144,7 +147,8 @@ trivial_check() {
   # trivial_check <compiler>: sets TRIVIAL_ST to OK/BROKEN; on BROKEN the
   # compiler's actual error output is left in TRIVIAL_ERR so the report
   # shows WHY.
-  local cc="$1" tmpdir lang src out
+  local cc="$1" tmpdir lang src out default_config_arg
+  local platform_args=()
   TRIVIAL_ST="BROKEN"
   TRIVIAL_ERR=""
   tmpdir="$(mktemp -d 2>/dev/null || mktemp -d -t ccprobe)" || { TRIVIAL_ST="?"; return; }
@@ -152,7 +156,14 @@ trivial_check() {
     *++*) lang="c++"; src="$tmpdir/t.cpp"; printf 'int main(){return 0;}\n' >"$src" ;;
     *)        lang="c";   src="$tmpdir/t.c";   printf 'int main(void){return 0;}\n' >"$src" ;;
   esac
-  if out="$("$cc" -x "$lang" "$src" -o "$tmpdir/a.out" 2>&1)" && [ -x "$tmpdir/a.out" ]; then
+  default_config_arg="$(p101_compiler_default_config_argument "$cc")"
+  if [ -n "$default_config_arg" ]; then
+    platform_args+=("$default_config_arg")
+  fi
+  if [ -n "$COMPILER_PLATFORM_ARG" ]; then
+    platform_args+=("$COMPILER_PLATFORM_ARG")
+  fi
+  if out="$("$cc" "${platform_args[@]}" -x "$lang" "$src" -o "$tmpdir/a.out" 2>&1)" && [ -x "$tmpdir/a.out" ]; then
     TRIVIAL_ST="OK"
   else
     TRIVIAL_ERR="$out"

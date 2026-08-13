@@ -436,6 +436,53 @@ class SemanticSnapshotTests(unittest.TestCase):
         )
         self.assertEqual(paths, (root_source,))
 
+    def test_component_scope_inherits_owner_and_private_include_roots(self) -> None:
+        workspace = self.root / "workspace"
+        repository = workspace / "programs" / "p101-audit"
+        component = repository / "components" / "workspace"
+        owner_include = repository / "include"
+        component_include = component / "include"
+        component_unity = component / "test" / "unity"
+        database_include = repository / "generated-include"
+        for path in (
+            repository / ".git",
+            owner_include,
+            component_include,
+            component_unity,
+            database_include,
+        ):
+            path.mkdir(parents=True)
+        (repository / "compile_commands.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "directory": str(repository),
+                        "arguments": [
+                            "clang",
+                            "-I",
+                            str(database_include),
+                            "-c",
+                            "source.c",
+                        ],
+                        "file": "source.c",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        roots = C_FACTS_MODULE._analysis_include_roots(workspace, component)
+
+        self.assertEqual(
+            roots,
+            {
+                owner_include.resolve(),
+                component_include.resolve(),
+                component_unity.resolve(),
+                database_include.resolve(),
+            },
+        )
+
     def test_analysis_units_separate_production_test_and_fuzz_scopes(self) -> None:
         workspace = self.root / "workspace"
         repository = workspace / "libraries" / "lib_demo"

@@ -50,9 +50,12 @@ trap cleanup EXIT
 # the bytes and continue successfully so later cache identities see them.
 format_fixture="$sandbox/format-fixture"
 mkdir -p "$format_fixture/scripts/checks" "$format_fixture/bin"
-cp ./checks/format-workspace.py \
-  "$format_fixture/scripts/checks/format-workspace.py"
-chmod +x "$format_fixture/scripts/checks/format-workspace.py"
+cp ./checks/format-workspace.sh \
+  "$format_fixture/scripts/checks/format-workspace.sh"
+mkdir -p "$format_fixture/scripts/cmake"
+cp ./cmake/p101_compile_db.c \
+  "$format_fixture/scripts/cmake/p101_compile_db.c"
+chmod +x "$format_fixture/scripts/checks/format-workspace.sh"
 : > "$format_fixture/scripts/repos.txt"
 : > "$format_fixture/scripts/.clang-format"
 printf '%s\n' 'int badly_formatted;' > "$format_fixture/scripts/sample.c"
@@ -87,7 +90,7 @@ exit "$status"
 EOF
 chmod +x "$format_fixture/bin/clang-format"
 format_check_status=0
-"$format_fixture/scripts/checks/format-workspace.py" \
+"$format_fixture/scripts/checks/format-workspace.sh" \
   --formatter "$format_fixture/bin/clang-format" \
   --receipt "$format_fixture/check.json" --check \
   > "$format_fixture/check.stdout" 2> "$format_fixture/check.stderr" \
@@ -96,7 +99,7 @@ format_check_status=0
 grep -Fxq 'int badly_formatted;' "$format_fixture/scripts/sample.c"
 grep -Fq '"mode": "check"' "$format_fixture/check.json"
 grep -Fq '"passed": false' "$format_fixture/check.json"
-"$format_fixture/scripts/checks/format-workspace.py" \
+"$format_fixture/scripts/checks/format-workspace.sh" \
   --formatter "$format_fixture/bin/clang-format" \
   --receipt "$format_fixture/apply.json" \
   > "$format_fixture/apply.stdout"
@@ -194,18 +197,27 @@ if grep -Fq -- '--clean-first' "$P101_TEST_CMAKE_ARGUMENTS"; then
 fi
 unset P101_TEST_CMAKE_ARGUMENTS
 
-# Sanitizer capability is a link-time property. A target may accept a
-# sanitizer option for compilation while lacking the corresponding runtime.
+# Sanitizer capability is a runtime property. A target may accept a sanitizer
+# option for compilation and linking while its runtime cannot initialize.
 sanitizer_flags="$sandbox/sanitizer-flags"
 mkdir -p "$sanitizer_flags"
 printf '%s\n' '-fsanitize=address' > "$sanitizer_flags/address_sanitizer_flags.txt"
 printf '%s\n' '-fsanitize=leak' > "$sanitizer_flags/leak_sanitizer_flags.txt"
 printf '%s\n' '-fsanitize=undefined' > "$sanitizer_flags/undefined_sanitizer_flags.txt"
 printf '%s\n' '-fsanitize=thread' > "$sanitizer_flags/thread_sanitizer_flags.txt"
+printf '%s\n' '-fsanitize=memory' > "$sanitizer_flags/memory_sanitizer_flags.txt"
 
 cat > "$sandbox/fake-sanitizer-compiler" <<'EOF'
 #!/bin/sh
 args=" $* "
+output=""
+previous=""
+for argument in "$@"; do
+  if [ "$previous" = "-o" ]; then
+    output="$argument"
+  fi
+  previous="$argument"
+done
 case "$args" in
   *" -fsanitize=leak "*) exit 1 ;;
 esac
@@ -216,6 +228,14 @@ case "$args" in
     esac
     ;;
 esac
+if [ -n "$output" ]; then
+  if printf '%s' "$args" | grep -q ' -fsanitize=memory '; then
+    printf '#!/bin/sh\nexit 1\n' > "$output"
+  else
+    printf '#!/bin/sh\nexit 0\n' > "$output"
+  fi
+  chmod +x "$output"
+fi
 exit 0
 EOF
 chmod +x "$sandbox/fake-sanitizer-compiler"
@@ -223,7 +243,7 @@ chmod +x "$sandbox/fake-sanitizer-compiler"
 filtered="$(
   ./workspace/filter-sanitizers.sh \
     "$sandbox/fake-sanitizer-compiler" "$sanitizer_flags" \
-    address,leak,undefined
+    address,leak,undefined,memory
 )"
 [[ "$filtered" == "address,undefined" ]]
 
@@ -334,6 +354,33 @@ set -e
 [[ "$(wc -l < "$sandbox/repo/build-invocations.txt")" -eq 1 ]]
 [[ ! -s "$P101_TEST_REFRESH_LOG" ]]
 grep -Fq 'Aborting at: build' "$sandbox/abort.stderr"
+
+# A Makefile-only repository has no CMake artifact directory. It still uses
+# the selected compiler lane, but must not publish a marker naming a directory
+# that its build never created.
+make_repo="$sandbox/make-repo"
+mkdir -p "$make_repo"
+cat > "$sandbox/scripts/repos.txt" <<EOF
+https://example.invalid/make.git|$make_repo|c
+EOF
+cat > "$make_repo/change-compiler.sh" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+cat > "$make_repo/build.sh" <<'EOF'
+#!/bin/sh
+set -eu
+printf '%s\n' "${CC:?}" > selected-compiler.txt
+EOF
+chmod +x "$make_repo/change-compiler.sh" "$make_repo/build.sh"
+P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
+  "$sandbox/scripts/workspace/build-repo.sh" \
+    -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
+    -B test-quality -U test-runtime -s "" -I \
+    > "$sandbox/make-repo.stdout" 2> "$sandbox/make-repo.stderr"
+[[ "$(cat "$make_repo/selected-compiler.txt")" == "$tool" ]]
+[[ ! -e "$make_repo/.last-build-dir" ]]
+[[ ! -e "$make_repo/build-test-quality" ]]
 
 # An instrumented quality build must be followed by a distinct,
 # instrumentation-free runtime build. The strict marker remains the quality build;
@@ -457,7 +504,8 @@ cached_quality="$(cat "$runtime_repo/.last-build-dir")"
 [[ "$cached_quality" == build-test-quality__???????????????????????????????????????? ]]
 [[ -L "$runtime_repo/$cached_quality" ]]
 [[ -L "$runtime_repo/build-test-quality" ]]
-[[ "$(readlink "$runtime_repo/build-test-quality")" == "$cached_quality" ]]
+[[ "$(CDPATH='' cd -P "$runtime_repo/build-test-quality" && pwd -P)" == \
+   "$(CDPATH='' cd -P "$runtime_repo/$cached_quality" && pwd -P)" ]]
 # This fixture uses -I, so it deliberately exercises only the quality lane.
 # Runtime lanes are covered by the deferred-install matrix case below.
 tail -n 1 "$runtime_repo/configure-raw-invocations.txt" | grep -Eq '(^| )-R( |$)'
@@ -483,7 +531,8 @@ grep -Fq 'Build cache HIT' "$sandbox/cache-hit.stdout"
 grep -Fxq 'cache_state=hit' \
   "$runtime_repo/$cached_quality/p101-build-lane.txt"
 [[ "$(cat "$runtime_repo/.last-build-dir")" == "$cached_quality" ]]
-[[ "$(readlink "$runtime_repo/build-test-quality")" == "$cached_quality" ]]
+[[ "$(CDPATH='' cd -P "$runtime_repo/build-test-quality" && pwd -P)" == \
+   "$(CDPATH='' cd -P "$runtime_repo/$cached_quality" && pwd -P)" ]]
 [[ "$(wc -l < "$runtime_repo/configure-invocations.txt")" -eq 1 ]]
 [[ "$(wc -l < "$runtime_repo/build-invocations.txt")" -eq 1 ]]
 P101_REPOSITORY_BUILD_CACHE="$sandbox/repository-build-cache" \
@@ -506,7 +555,8 @@ grep -Fq 'Build cache MISS' "$sandbox/cache-invalidated.stdout"
 invalidated_quality="$(cat "$runtime_repo/.last-build-dir")"
 [[ "$invalidated_quality" == build-test-quality__???????????????????????????????????????? ]]
 [[ "$invalidated_quality" != "$cached_quality" ]]
-[[ "$(readlink "$runtime_repo/build-test-quality")" == "$invalidated_quality" ]]
+[[ "$(CDPATH='' cd -P "$runtime_repo/build-test-quality" && pwd -P)" == \
+   "$(CDPATH='' cd -P "$runtime_repo/$invalidated_quality" && pwd -P)" ]]
 policy_identity_after="$(grep '^orchestrator_identity=' \
   "$runtime_repo/$invalidated_quality/p101-build-lane.txt")"
 if [[ "$policy_identity_before" == "$policy_identity_after" ]]; then
@@ -532,7 +582,8 @@ set -e
 rm -f "$runtime_repo/fail-build"
 [[ "$cache_failure_status" -eq 7 ]]
 [[ "$(cat "$runtime_repo/.last-build-dir")" == "$invalidated_quality" ]]
-[[ "$(readlink "$runtime_repo/build-test-quality")" == "$invalidated_quality" ]]
+[[ "$(CDPATH='' cd -P "$runtime_repo/build-test-quality" && pwd -P)" == \
+   "$(CDPATH='' cd -P "$runtime_repo/$invalidated_quality" && pwd -P)" ]]
 [[ ! -e "$runtime_repo/.last-runtime-build-dir" ]]
 
 # A stale marker is not qualified state and must not be resurrected by a
@@ -558,14 +609,22 @@ rm -f "$runtime_repo/fail-build"
 printf '%s\n' "$invalidated_quality" > "$runtime_repo/.last-build-dir"
 
 # Collection removes obsolete repository aliases immediately and aged cache
-# content separately. A marker-selected lane survives even with age zero.
+# content separately. A marker-selected lane survives even with age zero. A
+# stable exact-lane alias for a non-host compiler is also a live dependency
+# boundary, so its cache target must survive after its convenience content
+# alias is collected.
+old_cached_target="$(CDPATH='' cd -P "$runtime_repo/$cached_quality" && pwd -P)"
+ln -s "$old_cached_target" "$runtime_repo/build-test-other-compiler"
 "$sandbox/scripts/workspace/gc-build-cache.sh" \
   --cache "$sandbox/repository-build-cache" --max-age-days 0 \
   > "$sandbox/cache-gc.stdout"
 [[ -e "$runtime_repo/$invalidated_quality" ]]
+[[ -d "$runtime_repo/build-test-other-compiler" ]]
+[[ "$(CDPATH='' cd -P "$runtime_repo/build-test-other-compiler" && pwd -P)" == \
+   "$old_cached_target" ]]
 [[ "$(find "$runtime_repo" -maxdepth 1 -type l -name 'build-*__*' | wc -l | tr -d ' ')" -eq 1 ]]
 [[ "$(find "$sandbox/repository-build-cache" -mindepth 2 -maxdepth 2 \
-  -type d -name 'build-*__*' | wc -l | tr -d ' ')" -eq 1 ]]
+  -type d -name 'build-*__*' | wc -l | tr -d ' ')" -eq 2 ]]
 grep -Eq 'Build-cache GC: [1-9][0-9]* alias\(es\), [1-9][0-9]* aged lane\(s\)' \
   "$sandbox/cache-gc.stdout"
 
@@ -710,9 +769,9 @@ if (
   exit 1
 fi
 
-# The strict CMake acceptance phase is the default, and it must use the first
-# compiler pair that actually completed rather than the loop variables left by
-# the last pair (or by the final failed read).
+# Explicit level 3 must run strict CMake acceptance with the first compiler pair
+# that actually completed rather than the loop variables left by the last pair
+# (or by the final failed read).
 acceptance_matrix="$sandbox/acceptance-matrix"
 mkdir -p "$acceptance_matrix/distribution" "$acceptance_matrix/workspace" \
   "$acceptance_matrix/shared" "$acceptance_matrix/bin"
@@ -752,9 +811,8 @@ export P101_TEST_CMAKE_LOG="$acceptance_matrix/cmake-invocations.txt"
   PATH="$acceptance_matrix/bin:$PATH" ./update-all.sh \
     -u ./driver.sh -C c.txt -X cxx.txt \
     -f clang-format -t clang-tidy -k cppcheck \
-    --acceptance-output evidence --acceptance-no-cache > update-all.stdout
+    --level 3 --acceptance-output evidence --acceptance-no-cache > update-all.stdout
 )
-unset P101_TEST_CMAKE_LOG
 [[ "$(wc -l < "$acceptance_matrix/driver-invocations.txt")" -eq 4 ]]
 [[ "$(awk '{ for(i = 1; i <= NF; i++) if($i == "--prepare-only") count++ } END { print count + 0 }' "$acceptance_matrix/driver-invocations.txt")" -eq 1 ]]
 [[ "$(awk '{ for(i = 1; i <= NF; i++) if($i == "--build-only") count++ } END { print count + 0 }' "$acceptance_matrix/driver-invocations.txt")" -eq 2 ]]
@@ -766,6 +824,8 @@ grep -Fq -- "-DCMAKE_C_COMPILER=$acceptance_matrix/bin/clang-a" \
   "$acceptance_matrix/cmake-invocations.txt"
 grep -Fq -- "-DP101_ACCEPTANCE_CXX_COMPILER=$acceptance_matrix/bin/clang++-a" \
   "$acceptance_matrix/cmake-invocations.txt"
+grep -Fq -- '-DP101_WORKSPACE_LEVEL=3' \
+  "$acceptance_matrix/cmake-invocations.txt"
 acceptance_output_abs="$(CDPATH='' cd -- "$acceptance_matrix" && pwd -P)/evidence"
 grep -Fq -- "-DP101_ACCEPTANCE_OUTPUT_DIR=$acceptance_output_abs" \
   "$acceptance_matrix/cmake-invocations.txt"
@@ -773,6 +833,31 @@ grep -Fq -- '-DP101_ACCEPTANCE_NO_CACHE=1' \
   "$acceptance_matrix/cmake-invocations.txt"
 grep -Eq -- '--target p101_acceptance --parallel [1-9][0-9]*' \
   "$acceptance_matrix/cmake-invocations.txt"
+
+# Level 2 retains CMake-owned host qualification but does not request the full
+# governed acceptance graph; level 1 stops after build/install.
+: > "$acceptance_matrix/cmake-invocations.txt"
+(
+  cd "$acceptance_matrix"
+  PATH="$acceptance_matrix/bin:$PATH" ./update-all.sh \
+    -u ./driver.sh -C c.txt -X cxx.txt \
+    -f clang-format -t clang-tidy -k cppcheck \
+    --level 2 --skip-install > update-all-level2.stdout
+)
+grep -Fq -- '-DP101_WORKSPACE_LEVEL=2' \
+  "$acceptance_matrix/cmake-invocations.txt"
+grep -Fq -- '--target p101_acceptance' \
+  "$acceptance_matrix/cmake-invocations.txt"
+: > "$acceptance_matrix/cmake-invocations.txt"
+(
+  cd "$acceptance_matrix"
+  PATH="$acceptance_matrix/bin:$PATH" ./update-all.sh \
+    -u ./driver.sh -C c.txt -X cxx.txt \
+    -f clang-format -t clang-tidy -k cppcheck \
+    --skip-install > update-all-level1.stdout
+)
+[[ ! -s "$acceptance_matrix/cmake-invocations.txt" ]]
+unset P101_TEST_CMAKE_LOG
 
 # Compiler-pair workers start concurrently, keep isolated logs, and report all
 # failures in manifest order instead of losing whichever background job failed
@@ -803,7 +888,8 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 case "$phase" in
-  --prepare-only|--finalize-only) exit 0 ;;
+  --prepare-only) echo "preparing shared workspace"; exit 0 ;;
+  --finalize-only) echo "finalizing shared workspace"; exit 0 ;;
   --build-only)
     if [ "${CMAKE_BUILD_PARALLEL_LEVEL:-0}" -le 0 ]; then
       echo "compiler worker received no positive CMake build budget"
@@ -854,9 +940,26 @@ parallel_status=0
   cd "$parallel_matrix"
   PATH="$parallel_matrix/bin:$PATH" ./update-all.sh \
     -u ./driver.sh -C c.txt -X cxx.txt --skip-install --skip-acceptance \
-    --matrix-output evidence > matrix.stdout 2> matrix.stderr
+    --verbose --matrix-output evidence > matrix.stdout 2> matrix.stderr
 ) || parallel_status=$?
 [[ "$parallel_status" -eq 1 ]]
+grep -Fxq 'preparing shared workspace' "$parallel_matrix/matrix.stdout"
+grep -Fxq 'preparing shared workspace' \
+  "$parallel_matrix/evidence/0000-prepare.log"
+grep -Fq '[START] clang-a : clang++-a -- stage: repository build' \
+  "$parallel_matrix/matrix.stdout"
+grep -Fq '[START] clang-b : clang++-b -- stage: repository build' \
+  "$parallel_matrix/matrix.stdout"
+grep -Fq '[START] clang-c : clang++-c -- stage: repository build' \
+  "$parallel_matrix/matrix.stdout"
+grep -Fq '[clang-a__clang__-a] complete diagnostic for clang-a' \
+  "$parallel_matrix/matrix.stdout"
+grep -Fq '[clang-b__clang__-b] complete diagnostic for clang-b' \
+  "$parallel_matrix/matrix.stdout"
+grep -Fq '[clang-c__clang__-c] complete diagnostic for clang-c' \
+  "$parallel_matrix/matrix.stdout"
+grep -Fxq 'complete diagnostic for clang-a' \
+  "$parallel_matrix/evidence/0001-clang-a__clang__-a.log"
 grep -Fq 'update-all:clang-b__clang__-b: error:' "$parallel_matrix/matrix.stderr"
 grep -Fq 'update-all:clang-c__clang__-c: error:' "$parallel_matrix/matrix.stderr"
 grep -Fq -- '--- failure log: clang-b : clang++-b ---' \
@@ -885,10 +988,14 @@ parallel_retry_status=0
   cd "$parallel_matrix"
   PATH="$parallel_matrix/bin:$PATH" ./update-all.sh \
     -u ./driver.sh -C c.txt -X cxx.txt --interactive \
-    --skip-install --skip-acceptance --matrix-output evidence \
+    --verbose --skip-install --skip-acceptance --matrix-output evidence \
     > matrix-retry.stdout 2> matrix-retry.stderr
 ) || parallel_retry_status=$?
 [[ "$parallel_retry_status" -eq 0 ]]
+grep -Fxq 'finalizing shared workspace' \
+  "$parallel_matrix/matrix-retry.stdout"
+grep -Fxq 'finalizing shared workspace' \
+  "$parallel_matrix/evidence/9999-finalize.log"
 grep -Fq 'interactive repair passed for clang-b' \
   "$parallel_matrix/evidence/0002-clang-b__clang__-b.retry.log"
 grep -Fq $'0002\tclang-b\tclang++-b\tPASS\t0' \
@@ -949,7 +1056,7 @@ for helper in \
   distribution/copy-playground-track-scripts.sh \
   distribution/remove-retired-repos.sh \
   distribution/copy-cmake.sh \
-  checks/format-workspace.py
+  checks/format-workspace.sh
 do
   ln -s ../helper "$snapshot_scripts/$helper"
 done
@@ -976,9 +1083,9 @@ PATH="$snapshot_root/bin:$PATH" \
     --no-flags --skip-self-update --prepare-only > /dev/null
 grep -Fxq 'clone-repos.sh' "$P101_TEST_HELPER_LOG"
 grep -Fxq 'copy-scripts.sh' "$P101_TEST_HELPER_LOG"
-grep -Fxq 'format-workspace.py' "$P101_TEST_HELPER_LOG"
+grep -Fxq 'format-workspace.sh' "$P101_TEST_HELPER_LOG"
 clone_line="$(grep -n -m 1 '^clone-repos.sh$' "$P101_TEST_HELPER_LOG" | cut -d: -f1)"
-format_line="$(grep -n -m 1 '^format-workspace.py$' "$P101_TEST_HELPER_LOG" | cut -d: -f1)"
+format_line="$(grep -n -m 1 '^format-workspace.sh$' "$P101_TEST_HELPER_LOG" | cut -d: -f1)"
 copy_line="$(grep -n -m 1 '^copy-scripts.sh$' "$P101_TEST_HELPER_LOG" | cut -d: -f1)"
 [[ "$clone_line" -lt "$format_line" ]]
 [[ "$format_line" -lt "$copy_line" ]]

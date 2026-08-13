@@ -98,6 +98,23 @@ while IFS= read -r raw || [[ -n "${raw:-}" ]]; do
     case "$target" in "$cache"/*) printf '%s\n' "$target" >> "$protected_targets" ;; esac
   done
 
+  # Exact compiler-lane aliases are the public dependency boundary used by
+  # P101Linking. They deliberately coexist for every compiler pair, whereas
+  # the marker above names only the host pair selected for installation. Keep
+  # every valid stable alias target alive; otherwise an aged cache hit for a
+  # non-host compiler can be collected immediately before its acceptance run.
+  while IFS= read -r stable_alias || [[ -n "$stable_alias" ]]; do
+    [[ -L "$stable_alias" ]] || continue
+    name="$(basename -- "$stable_alias")"
+    if content_alias "$name"; then
+      continue
+    fi
+    target="$(CDPATH='' cd -P -- "$stable_alias" 2>/dev/null && pwd -P || true)"
+    case "$target" in
+      "$cache"/*) printf '%s\n' "$target" >> "$protected_targets" ;;
+    esac
+  done < <(find "$repository" -maxdepth 1 -type l -name 'build-*' -print)
+
   while IFS= read -r alias || [[ -n "$alias" ]]; do
     [[ -L "$alias" ]] || continue
     name="$(basename -- "$alias")"

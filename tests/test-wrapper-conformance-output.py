@@ -92,6 +92,27 @@ class FailureOutputTests(unittest.TestCase):
                 )
         self.assertEqual(results, {"lib_a": "lib_a", "lib_b": "lib_b"})
 
+    def test_library_timeout_names_repository_and_preserves_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = root / "lib_slow"
+            output = root / "output"
+            repo.mkdir()
+            output.mkdir()
+            timeout = subprocess.TimeoutExpired(
+                ["./test.sh"], 600, output=b"last visible finding\n"
+            )
+            with mock.patch.object(
+                CHECKER.subprocess, "run", side_effect=timeout
+            ):
+                with self.assertRaises(subprocess.TimeoutExpired) as raised:
+                    CHECKER.run_library_suite("lib_slow", repo, output)
+            self.assertEqual(raised.exception.cmd, ["lib_slow", "./test.sh"])
+            self.assertEqual(
+                (output / "lib_slow.test.log").read_text(encoding="utf-8"),
+                "last visible finding\n",
+            )
+
 
 class FaultOutcomeTests(unittest.TestCase):
     KEY = ("linux", "lib_io", "p101_read", "errno", "EINTR")

@@ -502,7 +502,7 @@ def clang_ast(
             text=True,
             stdout=subprocess.PIPE,
         ).stdout.strip()
-        platform_flags.extend(("-isysroot", sdk))
+        platform_flags.extend(("--no-default-config", f"--sysroot={sdk}"))
     elif system == "Linux":
         platform_definitions.append("-D_GNU_SOURCE")
     elif system == "FreeBSD":

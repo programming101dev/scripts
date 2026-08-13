@@ -6,6 +6,7 @@ from __future__ import annotations
 import fnmatch
 import os
 import subprocess
+import string
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -99,6 +100,23 @@ def require_text(row: dict[str, Any], key: str, context: str) -> str:
     return value
 
 
+def template_variables(value: str, context: str) -> set[str]:
+    variables: set[str] = set()
+    try:
+        fields = string.Formatter().parse(value)
+        for _literal, field, _format_spec, _conversion in fields:
+            if field is None:
+                continue
+            if not field or not field.replace("_", "").isalnum():
+                raise GraphError(
+                    f"{context} has invalid template variable {field!r}"
+                )
+            variables.add(field)
+    except ValueError as error:
+        raise GraphError(f"{context} has an invalid template: {error}") from error
+    return variables
+
+
 def validate(document: dict[str, Any]) -> list[dict[str, Any]]:
     if document.get("schema") != "p101-check-graph-v1":
         raise GraphError("unexpected check-graph schema")
@@ -110,6 +128,20 @@ def validate(document: dict[str, Any]) -> list[dict[str, Any]]:
         or default_jobs <= 0
     ):
         raise GraphError("default_jobs must be a positive integer")
+    declared_variables = document.get("variables")
+    if (
+        not isinstance(declared_variables, list)
+        or not declared_variables
+        or len(declared_variables) != len(set(declared_variables))
+        or any(
+            not isinstance(name, str)
+            or not name
+            or not name.replace("_", "").isalnum()
+            for name in declared_variables
+        )
+    ):
+        raise GraphError("variables must be unique identifier names")
+    admitted_variables = set(declared_variables)
     capacities = document.get("resource_capacities", {})
     if not isinstance(capacities, dict) or any(
         not isinstance(name, str)
@@ -183,6 +215,7 @@ def validate(document: dict[str, Any]) -> list[dict[str, Any]]:
             )
         ):
             raise GraphError(f"{context} has invalid resources")
+        template_values = [*command, *resources["writes"]]
         for resource, amount in resources["units"].items():
             if resource not in capacities:
                 raise GraphError(f"{context} uses unknown resource {resource!r}")
@@ -208,6 +241,19 @@ def validate(document: dict[str, Any]) -> list[dict[str, Any]]:
             not isinstance(path, str) or not path for path in receipts
         ):
             raise GraphError(f"{context} has invalid receipts")
+        template_values.extend(receipts)
+        referenced_variables = set().union(
+            *(
+                template_variables(value, context)
+                for value in template_values
+            )
+        )
+        unknown_variables = referenced_variables - admitted_variables
+        if unknown_variables:
+            raise GraphError(
+                f"{context} references unknown variables: "
+                f"{sorted(unknown_variables)}"
+            )
         inputs = raw.get("inputs")
         if inputs is not None and (
             not isinstance(inputs, list)

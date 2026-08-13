@@ -184,16 +184,29 @@ def run_library_suite(
             "P101_WRAPPER_OUTCOME_LOG": str(outcome_log),
         }
     )
-    result = subprocess.run(
-        ["./test.sh"],
-        cwd=repo,
-        env=environment,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        check=False,
-        timeout=600,
-    )
+    try:
+        result = subprocess.run(
+            ["./test.sh"],
+            cwd=repo,
+            env=environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+            timeout=600,
+        )
+    except subprocess.TimeoutExpired as error:
+        partial_output = error.stdout or ""
+        if isinstance(partial_output, bytes):
+            partial_output = partial_output.decode("utf-8", errors="replace")
+        (output / f"{library}.test.log").write_text(
+            partial_output, encoding="utf-8"
+        )
+        raise subprocess.TimeoutExpired(
+            [library, "./test.sh"],
+            error.timeout,
+            output=partial_output,
+        ) from error
     (output / f"{library}.test.log").write_text(
         result.stdout, encoding="utf-8"
     )

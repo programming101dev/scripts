@@ -249,7 +249,7 @@ cp "$current_version" "$flags_version"
 # fail on formatting alone. This modifies tracked files, which is why the
 # default setup never does it.
 if $format; then
-  ./checks/format-workspace.py --formatter "$clang_format_name" --receipt "$format_receipt"
+  ./checks/format-workspace.sh --formatter "$clang_format_name" --receipt "$format_receipt"
 fi
 
 build_repo_args=(-c "$CC_PATH" -x "$CXX_PATH" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name" -s "$sanitizers")

@@ -53,6 +53,22 @@ export PATH="${sandbox}:${PATH}"
 . ./shared/artifacts.sh
 [[ "$(p101_derive_cxx_name gcc-16)" == "g++-16" ]]
 [[ "$(p101_derive_cxx_name clang22)" == "clang++22" ]]
+
+# macOS SDK repair is a Clang driver policy. GCC receives the shared sysroot,
+# but never Clang's --no-default-config option.
+sdk="${sandbox}/MacOSX.sdk"
+mkdir -p "$sdk"
+cat > "${sandbox}/xcrun" <<P101_XCRUN
+#!/usr/bin/env bash
+printf '%s\n' '$sdk'
+P101_XCRUN
+chmod +x "${sandbox}/xcrun"
+printf '%s\n' 'Darwin' > "${host}"
+[[ "$(p101_compiler_platform_argument)" == "--sysroot=${sdk}" ]]
+[[ "$(p101_compiler_default_config_argument /opt/homebrew/bin/clang-22)" == "--no-default-config" ]]
+[[ -z "$(p101_compiler_default_config_argument /opt/homebrew/bin/gcc-16)" ]]
+printf '%s\n' 'TestOS 1.0 test-arch' > "${host}"
+
 printf 'test-cc=%s\n' "$compiler" > "$sandbox/compiler_paths.txt"
 [[ "$(p101_resolve_compiler test-cc "$sandbox/compiler_paths.txt")" == "$compiler" ]]
 relative_compiler_dir="$sandbox/relative-compiler"

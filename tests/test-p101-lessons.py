@@ -97,6 +97,23 @@ def make_catalog_fixture(root: Path) -> tuple[Path, dict[str, object]]:
 
 
 class LessonCatalogTests(unittest.TestCase):
+    def test_student_workflow_prefers_doctor_sibling_tools(self) -> None:
+        workflow = (SCRIPTS_ROOT / "runtime" / "student-workflow.sh").read_text(
+            encoding="utf-8"
+        )
+        doctor_directory = workflow.index('doctor_dir="')
+        sibling_wrapper = workflow.index('"$doctor_dir/audit-wrappers"')
+        sibling_errors = workflow.index('"$doctor_dir/audit-errors"')
+        sibling_modules = workflow.index('"$doctor_dir/audit-modules"')
+        legacy_wrapper = workflow.index(
+            '"$workspace_dir/programs/p101-audit/audit-wrappers"'
+        )
+        self.assertLess(doctor_directory, sibling_wrapper)
+        self.assertLess(sibling_wrapper, legacy_wrapper)
+        self.assertLess(doctor_directory, sibling_errors)
+        self.assertLess(doctor_directory, sibling_modules)
+        self.assertNotIn("programs/p101-audit/build-clang", workflow)
+
     def test_native_profile_publishes_reusable_repository_test_evidence(
         self,
     ) -> None:
@@ -779,6 +796,7 @@ class LessonCatalogTests(unittest.TestCase):
                 skipped = p101_lessons._run_profile(
                     self.catalog, profile, output
                 )
+
             self.assertEqual(skipped["status"], "SKIP")
             with patch(
                 "p101_lessons._run_logged", return_value={"status": "PASS"}
@@ -843,6 +861,39 @@ class LessonCatalogTests(unittest.TestCase):
             )
             generated = p101_lessons._output_directory(None, "p101-test.")
             self.assertTrue(generated.is_dir())
+
+    def test_logged_timeout_terminates_the_command_process_group(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "output"
+            output.mkdir()
+            marker = root / "child-terminated"
+            child_source = (
+                "import pathlib,signal,time;"
+                f"marker=pathlib.Path({str(marker)!r});"
+                "signal.signal(signal.SIGTERM,"
+                "lambda *_: (marker.write_text('terminated'),exit(0)));"
+                "time.sleep(30)"
+            )
+            parent_source = (
+                "import signal,subprocess,sys,time;"
+                "signal.signal(signal.SIGTERM,signal.SIG_IGN);"
+                f"subprocess.Popen([sys.executable,'-c',{child_source!r}]);"
+                "time.sleep(30)"
+            )
+            result = p101_lessons._run_logged(
+                [sys.executable, "-c", parent_source],
+                root,
+                output,
+                "timeout-group",
+                timeout_seconds=1,
+            )
+            self.assertEqual(result["status"], "FAIL")
+            self.assertTrue(marker.exists())
+            self.assertIn(
+                "command timed out after 1 seconds",
+                (output / "timeout-group.log").read_text(encoding="utf-8"),
+            )
 
     def test_protocol_pair_rejects_broken_annotation_contracts(self) -> None:
         with patch("p101_lessons.annotate_document", return_value={}):

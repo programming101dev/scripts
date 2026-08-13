@@ -13,4 +13,5 @@ The maintained architecture is:
 - standards provenance remains in `api-manifest.tsv`.
 
 The original migration remains available in Git history. The executable
-contract is `../checks/check-functional-library-split.py`.
+contract is the `functional-library-split` policy in
+`../../programs/p101-audit/components/workspace/src/functional_layout.c`.

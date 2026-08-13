@@ -49,6 +49,7 @@ prepare_only=false
 build_only=false
 finalize_only=false
 defer_install=false
+build_level="${P101_BUILD_LEVEL:-1}"
 
 # Files and helper scripts expected in the current directory
 # CACHE_ROOT / FLAGS_VERSION_FILE are re-pointed for the --standard profile
@@ -399,11 +400,22 @@ for f in "$REFRESH_REPO_SH" "$CHECK_ENV_SH" "$CLONE_REPOS_SH" "$CHECK_COMPILERS_
 done
 
 # ----------------- resolve tool paths -----------------
+case "$build_level" in
+  1|2|3) ;;
+  *) die "P101_BUILD_LEVEL must be 1, 2, or 3" ;;
+esac
+P101_BUILD_LEVEL="$build_level"
+export P101_BUILD_LEVEL
 CC_PATH="$(resolve_compiler "$c_compiler")"
 CXX_PATH="$(resolve_compiler "$cxx_compiler")"
 CLANG_FORMAT_PATH="$(resolve_clang_named_tool "clang-format" "$clang_format_name")"
-CLANG_TIDY_PATH="$(resolve_clang_named_tool "clang-tidy" "$clang_tidy_name")"
-CPPCHECK_PATH="$(resolve_any_tool "$cppcheck_name")"
+if [[ "$build_level" -eq 3 ]]; then
+  CLANG_TIDY_PATH="$(resolve_clang_named_tool "clang-tidy" "$clang_tidy_name")"
+  CPPCHECK_PATH="$(resolve_any_tool "$cppcheck_name")"
+else
+  CLANG_TIDY_PATH="$(resolve_any_tool true)"
+  CPPCHECK_PATH="$(resolve_any_tool true)"
+fi
 
 # ----------------- banner -----------------
 note "Configuring with:"
@@ -413,6 +425,7 @@ note "  clang-format     = $CLANG_FORMAT_PATH"
 note "  clang-tidy       = $CLANG_TIDY_PATH"
 note "  cppcheck         = $CPPCHECK_PATH"
 note "  sanitizers       = ${sanitizers:-<none>}"
+note "  CMake level      = $build_level"
 $dry_run && note "  mode             = DRY RUN"
 
 # ----------------- repo prep -----------------
@@ -485,7 +498,7 @@ if ! $build_only && ! $finalize_only && [[ "$format_mode" != off ]]; then
   if [[ "$format_mode" == check ]]; then
     format_arguments+=(--check)
   fi
-  run_or_echo ./checks/format-workspace.py "${format_arguments[@]}"
+  run_or_echo ./checks/format-workspace.sh "${format_arguments[@]}"
 fi
 
 # ----------------- flags cache management -----------------
