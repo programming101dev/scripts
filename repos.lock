@@ -164,7 +164,7 @@
       "url": "https://github.com/programming101dev/lib_host.git"
     },
     {
-      "commit": "dca1d960ed8402d8dd313221217d873a552a878b",
+      "commit": "650d2852faf6809b84b5f71b29138e3b69cec123",
       "path": "../libraries/lib_fsm",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_fsm.git"
