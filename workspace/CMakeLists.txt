@@ -204,6 +204,11 @@ add_custom_command(
                 -DTOOL_COUNT=${P101_HOST_TOOL_TARGET_COUNT}
                 -DTEST_COUNT=${P101_HOST_TEST_COUNT}
                 -P "${CMAKE_CURRENT_SOURCE_DIR}/WriteHostToolReceipt.cmake"
+        # FreeBSD's CI workspace can expose one-second timestamp resolution.
+        # Make the receipt observably newer than every qualified executable so
+        # bmake does not repeat an unchanged qualification on the next build.
+        COMMAND "${CMAKE_COMMAND}" -E sleep 1
+        COMMAND "${CMAKE_COMMAND}" -E touch "${P101_HOST_TOOL_RECEIPT}"
         DEPENDS ${P101_HOST_TOOL_TARGETS}
         USES_TERMINAL
         COMMENT "Qualifying the in-tree p101 host tools"

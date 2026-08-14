@@ -141,24 +141,24 @@
       "sha256": "4175d922b5bf9bf141922bd8b9d1742efc5913204157d4a5def78094ddb59824"
     },
     {
-      "bytes": 26996,
+      "bytes": 27014,
       "path": "../programs/p101-audit/components/workspace/src/boundaries.c",
-      "sha256": "94bb40c3d39c35aedead859febe4da6e53999c55af91e7421e731b7d6685a032"
+      "sha256": "2a55337ed6084275c0ef939eba6dccff16cb7dbe5346b30ceb3d6f5bca7cd4df"
     },
     {
-      "bytes": 12324,
+      "bytes": 12305,
       "path": "../programs/p101-audit/components/workspace/src/common.c",
-      "sha256": "1fdd7c28dcdd6e2247a3410ac95c318cb52b245658972959b5544c14e9f1969a"
+      "sha256": "5c5c367cb7d2002d2015e8588306d1591211a153b3d19b8fa504a47bf808981d"
     },
     {
-      "bytes": 31339,
+      "bytes": 31372,
       "path": "../programs/p101-audit/components/workspace/src/fault_semantics.c",
-      "sha256": "6c82b40dc0935bb763f899f18f08e9b44ee256a2695c746acd610d9f2c3d6187"
+      "sha256": "f7817c5a886cc02528bd1823ec523eaf95f138893f33b27ca80400171754fc4c"
     },
     {
-      "bytes": 38075,
+      "bytes": 38261,
       "path": "../programs/p101-audit/components/workspace/src/functional_layout.c",
-      "sha256": "764783439878043aed61c7239b398fd5e405a248bede653169941f5155ec8f27"
+      "sha256": "d95c2ba3268c6546641bc567d6831e8b8e1b4fd08bd0eab120808b5910f811d6"
     },
     {
       "bytes": 678,
@@ -166,24 +166,24 @@
       "sha256": "870af9eaf85f68adcf7ded0bc09a4aec56032013c235427e18bffdabf0ea6930"
     },
     {
-      "bytes": 9629,
+      "bytes": 9625,
       "path": "../programs/p101-audit/components/workspace/src/main.c",
-      "sha256": "2035c350d1a9a3acf244325973acbbbdc07ad70b1f07a20e891e3eed5a331e70"
+      "sha256": "a66c684992fac72833d51e5623d4631103689875125c96df528ceb33cabf7846"
     },
     {
-      "bytes": 16937,
+      "bytes": 16966,
       "path": "../programs/p101-audit/components/workspace/src/native_parity.c",
-      "sha256": "0c69ca1bc204d9e4397d439fcb04d809bd130ef4f10dba62c67e1137e0eb6dbe"
+      "sha256": "ad8b3a07b8333cf575b514f99987e3bd6ab169066b03ed93958e5eee635337dd"
     },
     {
-      "bytes": 30527,
+      "bytes": 30577,
       "path": "../programs/p101-audit/components/workspace/src/source_responsibilities.c",
-      "sha256": "929c8003b38ce1ecc5f985a0effd6ea7bcacd6a6265f597ca68ed5c630f8ddd8"
+      "sha256": "27cd2a525869e1f73d489b91afe777d1be8128065c19494eae863b83be8b24dc"
     },
     {
-      "bytes": 26188,
+      "bytes": 26192,
       "path": "../programs/p101-audit/components/workspace/src/test_inventory.c",
-      "sha256": "d04e0d59c2dcfbde18638f8301f190293807478ec9fe12a01484b8ded12cf975"
+      "sha256": "6a88263296e9d1451a461ac4557395241dbe77d9c43348bebefbc917f106e6b5"
     },
     {
       "bytes": 5290,
@@ -493,7 +493,7 @@
     {
       "bytes": 8864,
       "path": "repos.lock",
-      "sha256": "764a1b9ee2caca2d77ee75d54ed06403cd1767a8d01a4a8f84ac49bb9e0d6050"
+      "sha256": "3d4e21b6c9dfeeb4a61030dca1af0c303ebaf3e67e6c814787f03bd019e5bdf4"
     },
     {
       "bytes": 3463,
@@ -591,9 +591,9 @@
       "sha256": "552918abb5bf8ce66469c2a6eefffa42cb66009482f32f2aba9f0801628a5e91"
     },
     {
-      "bytes": 12248,
+      "bytes": 12600,
       "path": "workspace/CMakeLists.txt",
-      "sha256": "d10e5e810a1ae23127461cf0087ffcfc5eae1c494345d427a0231c5c18962298"
+      "sha256": "8f5dc42c80ffada204dcd96841ce6314fa99c3807543d3318b4ffc3b9731164a"
     },
     {
       "bytes": 3561,
