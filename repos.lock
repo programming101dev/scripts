@@ -56,7 +56,7 @@
       "url": "https://github.com/programming101dev/lib_filesystem.git"
     },
     {
-      "commit": "c93f3eea2d9d9d4131211bf0eab3eae456856c04",
+      "commit": "96b3b84532aadfbae65ebdf42c2f9695c7420631",
       "path": "../libraries/lib_c_facts",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_c_facts.git"
@@ -110,7 +110,7 @@
       "url": "https://github.com/programming101dev/lib_identity.git"
     },
     {
-      "commit": "dbba212bf0cdc64e7f9ec86becf1b99399556ed6",
+      "commit": "3dcd9080c2e99644aba83a4d602cd227ee6418e0",
       "path": "../libraries/lib_text",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_text.git"

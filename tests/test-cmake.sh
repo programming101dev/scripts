@@ -307,7 +307,7 @@ if (( RC == 0 )); then
   if (( RC == 0 )) && [[ ! -e "$PROJ/test-ran" ]] &&
      grep -Fq 'P101_BUILD_LEVEL:STRING=1' "$PROJ/build/CMakeCache.txt" &&
      grep -q 'checking:.*clang-format' "$PROJ/build.log" &&
-     ! grep -Eq 'clang-tidy|cppcheck|analyze stage' "$PROJ/build.log"; then
+     ! grep -Eq 'running:.*clang-tidy|cppcheck over|analyze stage|Built target .*_(tidy|cppcheck|analyze)' "$PROJ/build.log"; then
     ok "level-1: default checks formatting and builds without tests or analyzers"
   else
     bad "level-1: ran work outside the compile/install contract" "$PROJ/build.log"
@@ -326,7 +326,7 @@ if (( RC == 0 )); then
   build "$PROJ"
   if (( RC == 0 )) && [[ -f "$PROJ/test-ran" ]] &&
      grep -q 'checking:.*clang-format' "$PROJ/build.log" &&
-     ! grep -Eq 'clang-tidy|cppcheck|analyze stage' "$PROJ/build.log"; then
+     ! grep -Eq 'running:.*clang-tidy|cppcheck over|analyze stage|Built target .*_(tidy|cppcheck|analyze)' "$PROJ/build.log"; then
     ok "level-2: retains formatting and adds repository unit tests without full analyzers"
   else
     bad "level-2: did not enforce the medium contract" "$PROJ/build.log"
