@@ -41,7 +41,12 @@ fi
 }
 
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/p101-sanitizers.XXXXXX")"
+cleanup_owner="${BASHPID:-$$}"
 cleanup() {
+  # Bash 4+ inherits EXIT traps into command substitutions and background
+  # subshells.  Only the process that created the probe directory owns it;
+  # otherwise the timeout watchdog can remove it after the first probe.
+  [[ "${BASHPID:-$$}" == "$cleanup_owner" ]] || return 0
   rm -rf "$tmp_dir"
 }
 trap cleanup EXIT

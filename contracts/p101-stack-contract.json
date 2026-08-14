@@ -626,9 +626,9 @@
       "sha256": "7722c7460fbc32a76115ddf31a78703fe93b0480f49e0a0a3f3a434a4c01530f"
     },
     {
-      "bytes": 3972,
+      "bytes": 4281,
       "path": "workspace/filter-sanitizers.sh",
-      "sha256": "7815a59d22f5ec1597fdb5cde6661e97b2fb33979a7c69ac94f90e974ebdf325"
+      "sha256": "ed57b1bd8c33a474da32ada25e805fecbc3438a7b77948e1c14f109622204ea2"
     },
     {
       "bytes": 5202,
