@@ -3,7 +3,8 @@
 The wrapper generator needs a small amount of statement structure that is not
 part of P101FACT.  This module keeps that exceptional parse shareable and
 receiptable: a warm consumer restores the exact model while every dependency
-still has the size and modification time recorded by the producing parse.
+still has the content recorded by the producing parse. Filesystem metadata is
+only a fast path because restored CI caches have different identities.
 
 This is a performance cache, not a proof boundary.  Callers remain responsible
 for selecting complete compiler arguments and for applying policy to the AST.
@@ -29,7 +30,7 @@ from content_manifest import hash_file
 from semantic_usage import record_usage
 
 
-SCHEMA = "p101-clang-ast-cache-v2"
+SCHEMA = "p101-clang-ast-cache-v3"
 _MATERIALIZED: dict[
     tuple[str, str], tuple[dict[str, Any], list[dict[str, object]]]
 ] = {}
@@ -97,6 +98,7 @@ def _dependency_record(path: Path) -> dict[str, object]:
     return {
         "path": os.fspath(path.resolve()),
         "bytes": status.st_size,
+        "sha256": hash_file(path).hex(),
         "modified_ns": status.st_mtime_ns,
         "changed_ns": status.st_ctime_ns,
         "device": status.st_dev,
@@ -112,6 +114,7 @@ def _dependencies_valid(records: object) -> bool:
             return False
         path_text = record.get("path")
         size = record.get("bytes")
+        digest = record.get("sha256")
         modified_ns = record.get("modified_ns")
         changed_ns = record.get("changed_ns")
         device = record.get("device")
@@ -119,6 +122,8 @@ def _dependencies_valid(records: object) -> bool:
         if (
             not isinstance(path_text, str)
             or not isinstance(size, int)
+            or not isinstance(digest, str)
+            or len(digest) != 64
             or not isinstance(modified_ns, int)
             or not isinstance(changed_ns, int)
             or not isinstance(device, int)
@@ -126,18 +131,46 @@ def _dependencies_valid(records: object) -> bool:
         ):
             return False
         try:
+            bytes.fromhex(digest)
             status = Path(path_text).stat()
-        except OSError:
+        except (OSError, ValueError):
             return False
-        if (
-            status.st_size != size
-            or status.st_mtime_ns != modified_ns
-            or status.st_ctime_ns != changed_ns
-            or status.st_dev != device
-            or status.st_ino != inode
-        ):
-            return False
+        metadata_matches = (
+            status.st_size == size
+            and status.st_mtime_ns == modified_ns
+            and status.st_ctime_ns == changed_ns
+            and status.st_dev == device
+            and status.st_ino == inode
+        )
+        if not metadata_matches:
+            try:
+                content_matches = (
+                    status.st_size == size
+                    and hash_file(Path(path_text)).hex() == digest
+                )
+            except OSError:
+                return False
+            if not content_matches:
+                return False
     return True
+
+
+def cache_entry_available(root: Path, key: str) -> bool:
+    """Return whether an AST entry is intact for the current dependency bytes."""
+    entry = root / "ast" / key
+    manifest_path = entry / "manifest.json"
+    payload = entry / "ast.json.gz"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        return bool(
+            manifest.get("schema") == SCHEMA
+            and manifest.get("key") == key
+            and payload.stat().st_size == manifest.get("payload_bytes")
+            and hash_file(payload).hex() == manifest.get("payload_sha256")
+            and _dependencies_valid(manifest.get("dependencies"))
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError, AttributeError):
+        return False
 
 
 def _decode_entry(entry: Path, key: str) -> dict[str, Any] | None:

@@ -296,9 +296,9 @@
       "sha256": "2944382b8bc30de1948ee926b673ce58e32f697c265e200349917bde6bc6df0b"
     },
     {
-      "bytes": 74516,
+      "bytes": 74800,
       "path": "checks/p101-check-graph.py",
-      "sha256": "58a2ca330c75e05126c0236410257f443c488e714bd2fb77c941a32a1f325de6"
+      "sha256": "0e45b36141f96f0be174c0b62b7f4bf693f947a019060b47bd2a58e942f3ce62"
     },
     {
       "bytes": 8508,
@@ -306,9 +306,9 @@
       "sha256": "1645e8cd66ceaf02c9caf4d61255f4c4237218ea261bcd8d1eae097e65a26270"
     },
     {
-      "bytes": 14193,
+      "bytes": 14894,
       "path": "checks/p101-semantic-snapshot.py",
-      "sha256": "52cf8e39a6c2dc8f48e91d7bdb2af11c7cd12228a740ec94336db350d33742ae"
+      "sha256": "5cf1326858879f29e2117a83118a2dc1fd691b73453256f9bbc518cb6bd6afff"
     },
     {
       "bytes": 16921,
@@ -511,9 +511,9 @@
       "sha256": "da04e08ce881675373f1f90aff20512e049913153ce524c4bc4189ae5958b422"
     },
     {
-      "bytes": 11968,
+      "bytes": 13337,
       "path": "runtime/clang_ast.py",
-      "sha256": "73d2f2d5f0d35ea42b6077ea492b5861fb8b728a9c62236ca71f014a3ec6ee71"
+      "sha256": "3b4abfd9f78098cf51eed76f4b2e18db58e6b8ca7807cf48919bf3ae5abf8192"
     },
     {
       "bytes": 5304,
@@ -571,9 +571,9 @@
       "sha256": "55651c503ba25f9f3cc0e06dab3f7fb891adacfb5c60514646e2d363f1059e4e"
     },
     {
-      "bytes": 56458,
+      "bytes": 58467,
       "path": "tests/test-p101-check-graph.py",
-      "sha256": "58d7d9e346114f502be28abe4ee8a0a1e32db0c85da3ed4154af58039d79e396"
+      "sha256": "06c946a78ac048391dcc9d27f49302190ffabd5848f835f83f1f7c41754463b7"
     },
     {
       "bytes": 4509,
@@ -581,9 +581,9 @@
       "sha256": "88b86415b0e19f1166eaa092483a764ea8d912a850ad00d7bb1d8ec2b6c5a218"
     },
     {
-      "bytes": 24020,
+      "bytes": 24955,
       "path": "tests/test-p101-semantic-snapshot.py",
-      "sha256": "f7299f6af7ea07b90c93a9a111cc745b34831f16dea4a5ae26b931cbda2dedeb"
+      "sha256": "5f8a7e3adf280e3a0a02784063218468a85ae96080f2257552580e8eb49065da"
     },
     {
       "bytes": 6361,

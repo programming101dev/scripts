@@ -129,6 +129,7 @@ class SemanticSnapshotTests(unittest.TestCase):
                 {
                     "path": str(dependency),
                     "bytes": status.st_size,
+                    "sha256": MODULE.hash_file(dependency),
                     "modified_ns": status.st_mtime_ns,
                     "changed_ns": status.st_ctime_ns,
                     "device": status.st_dev,
@@ -140,6 +141,29 @@ class SemanticSnapshotTests(unittest.TestCase):
             json.dumps(manifest), encoding="utf-8"
         )
         return payload
+
+    def test_ast_dependency_metadata_change_is_portable(self) -> None:
+        self.write_ast_entry()
+        dependency = self.root / "demo.c"
+        status = dependency.stat()
+        os.utime(
+            dependency,
+            ns=(status.st_atime_ns, status.st_mtime_ns + 1_000_000),
+        )
+        self.record_usage("clang-ast", "c" * 64)
+
+        entries = MODULE.inspect(self.cache, self.usage)
+
+        self.assertEqual(entries[0]["kind"], "clang-ast")
+
+    def test_ast_dependency_content_change_is_rejected(self) -> None:
+        self.write_ast_entry()
+        dependency = self.root / "demo.c"
+        dependency.write_text("int demo(void) { return 1; }\n", encoding="utf-8")
+        self.record_usage("clang-ast", "c" * 64)
+
+        with self.assertRaisesRegex(MODULE.SnapshotError, "dependency changed"):
+            MODULE.inspect(self.cache, self.usage)
 
     def test_mixed_snapshot_is_verified_and_receipted(self) -> None:
         self.write_runtime_entry()

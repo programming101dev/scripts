@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import copy
+import gzip
+import hashlib
 import importlib.util
 import json
 import os
@@ -448,6 +450,50 @@ class CheckGraphTests(unittest.TestCase):
             self.assertFalse(MODULE.semantic_usage_available(usage, root))
             (root / "entries" / key).mkdir(parents=True)
             self.assertTrue(MODULE.semantic_usage_available(usage, root))
+
+    def test_semantic_usage_validates_clang_ast_dependency_content(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            key = "c" * 64
+            usage = root / "usage.jsonl"
+            usage.write_text(
+                json.dumps({"kind": "clang-ast", "key": key}) + "\n",
+                encoding="utf-8",
+            )
+            entry = root / "ast" / key
+            entry.mkdir(parents=True)
+            dependency = root / "demo.c"
+            dependency.write_text("int demo(void) { return 0; }\n", encoding="utf-8")
+            payload = entry / "ast.json.gz"
+            with gzip.open(payload, "wt", encoding="utf-8") as stream:
+                json.dump({"kind": "TranslationUnitDecl"}, stream)
+            status = dependency.stat()
+            manifest = {
+                "schema": "p101-clang-ast-cache-v3",
+                "key": key,
+                "payload_bytes": payload.stat().st_size,
+                "payload_sha256": hashlib.sha256(payload.read_bytes()).hexdigest(),
+                "dependencies": [
+                    {
+                        "path": str(dependency),
+                        "bytes": status.st_size,
+                        "sha256": hashlib.sha256(
+                            dependency.read_bytes()
+                        ).hexdigest(),
+                        "modified_ns": status.st_mtime_ns,
+                        "changed_ns": status.st_ctime_ns,
+                        "device": status.st_dev,
+                        "inode": status.st_ino,
+                    }
+                ],
+            }
+            (entry / "manifest.json").write_text(
+                json.dumps(manifest), encoding="utf-8"
+            )
+
+            self.assertTrue(MODULE.semantic_usage_available(usage, root))
+            dependency.write_text("int demo(void) { return 1; }\n", encoding="utf-8")
+            self.assertFalse(MODULE.semantic_usage_available(usage, root))
 
     def test_impact_selection_is_conservative_and_flows_downstream(self) -> None:
         nodes = [

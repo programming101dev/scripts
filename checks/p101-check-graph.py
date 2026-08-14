@@ -38,6 +38,12 @@ from p101_check_reporting import log_result, write_profile, write_summary
 
 
 SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
+RUNTIME_DIR = SCRIPTS_ROOT / "runtime"
+if os.fspath(RUNTIME_DIR) not in sys.path:
+    sys.path.insert(0, os.fspath(RUNTIME_DIR))
+
+from clang_ast import cache_entry_available as clang_ast_cache_entry_available
+
 DEFAULT_GRAPH = SCRIPTS_ROOT / "contracts" / "p101-check-graph.json"
 CACHE_RECEIPT_SCHEMA = "p101-check-evidence-cache-v1"
 RUN_RECEIPT_SCHEMA = "p101-check-graph-receipt-v2"
@@ -829,7 +835,9 @@ def semantic_usage_available(path: Path, semantic_cache: Path) -> bool:
         elif kind == "compile-database-facts":
             entry = semantic_cache / "entries" / key
         elif kind == "clang-ast":
-            entry = semantic_cache / "ast" / key
+            if not clang_ast_cache_entry_available(semantic_cache, key):
+                return False
+            continue
         else:
             return False
         if not entry.exists():

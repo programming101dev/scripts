@@ -20,7 +20,7 @@ from typing import Any
 RECEIPT_SCHEMA = "p101-semantic-snapshot-receipt-v1"
 RUNTIME_SCHEMA = "p101-facts-snapshot-v3"
 RAW_SCHEMA = "p101-facts-cache-v1"
-AST_SCHEMA = "p101-clang-ast-cache-v2"
+AST_SCHEMA = "p101-clang-ast-cache-v3"
 USAGE_SCHEMA = "p101-semantic-usage-v1"
 DOES_NOT_PROVE = (
     "This receipt proves the identity and integrity of materialized semantic "
@@ -134,6 +134,7 @@ def ast_entry(path: Path) -> dict[str, Any]:
             raise SnapshotError(f"AST dependency is malformed: {path}")
         dependency_path = dependency.get("path")
         dependency_bytes = dependency.get("bytes")
+        dependency_sha256 = dependency.get("sha256")
         dependency_modified = dependency.get("modified_ns")
         dependency_changed = dependency.get("changed_ns")
         dependency_device = dependency.get("device")
@@ -141,6 +142,8 @@ def ast_entry(path: Path) -> dict[str, Any]:
         if (
             not isinstance(dependency_path, str)
             or not isinstance(dependency_bytes, int)
+            or not isinstance(dependency_sha256, str)
+            or len(dependency_sha256) != 64
             or not isinstance(dependency_modified, int)
             or not isinstance(dependency_changed, int)
             or not isinstance(dependency_device, int)
@@ -148,19 +151,31 @@ def ast_entry(path: Path) -> dict[str, Any]:
         ):
             raise SnapshotError(f"AST dependency is malformed: {path}")
         try:
+            bytes.fromhex(dependency_sha256)
             dependency_status = Path(dependency_path).stat()
-        except OSError as error:
+        except (OSError, ValueError) as error:
             raise SnapshotError(
                 f"AST dependency is unavailable: {dependency_path}: {error}"
             ) from error
-        if (
-            dependency_status.st_size != dependency_bytes
-            or dependency_status.st_mtime_ns != dependency_modified
-            or dependency_status.st_ctime_ns != dependency_changed
-            or dependency_status.st_dev != dependency_device
-            or dependency_status.st_ino != dependency_inode
-        ):
-            raise SnapshotError(f"AST dependency changed: {dependency_path}")
+        metadata_matches = (
+            dependency_status.st_size == dependency_bytes
+            and dependency_status.st_mtime_ns == dependency_modified
+            and dependency_status.st_ctime_ns == dependency_changed
+            and dependency_status.st_dev == dependency_device
+            and dependency_status.st_ino == dependency_inode
+        )
+        if not metadata_matches:
+            try:
+                content_matches = (
+                    dependency_status.st_size == dependency_bytes
+                    and hash_file(Path(dependency_path)) == dependency_sha256
+                )
+            except OSError as error:
+                raise SnapshotError(
+                    f"AST dependency is unavailable: {dependency_path}: {error}"
+                ) from error
+            if not content_matches:
+                raise SnapshotError(f"AST dependency changed: {dependency_path}")
     if (
         not payload_path.is_file()
         or payload_path.stat().st_size != manifest.get("payload_bytes")
