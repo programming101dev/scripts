@@ -102,6 +102,7 @@ DEFAULT_PATHS = (
     "../libraries/lib_c_facts/include/p101_c_facts/facts.h",
     "../libraries/lib_env/include/p101_env/env.h",
     "../libraries/lib_fsm/include/p101_fsm/fsm.h",
+    "../libraries/lib_transition/include/p101_transition/transition.h",
     "../libraries/lib_record/include/p101_record/event.h",
     "../libraries/lib_record/include/p101_record/record.h",
     "../libraries/lib_tool_event/include/p101_tool_event/event.h",

@@ -254,7 +254,7 @@ if [ "$skip_wrapper" -eq 0 ]; then
       fi
 
       wrapper_args=(-e --compile-db "$compile_db" --compile-db-only --facts-output "$facts" --input-manifest "$inputs")
-      for foundational_library in lib_error lib_record lib_json lib_tool_support lib_env lib_tool_event; do
+      for foundational_library in lib_error lib_transition lib_record lib_json lib_tool_support lib_env lib_tool_event; do
         foundational_include="$workspace_dir/libraries/$foundational_library/include"
         if [ -d "$foundational_include" ]; then
           wrapper_args+=("--cflag=-I$foundational_include")

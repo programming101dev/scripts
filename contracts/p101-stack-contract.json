@@ -131,6 +131,11 @@
       "sha256": "21aaeec2a995fbc5c893532dc4a7e75d6a8282ea0b509d83856ddbb52b49cc6d"
     },
     {
+      "bytes": 2538,
+      "path": "../libraries/lib_transition/include/p101_transition/transition.h",
+      "sha256": "d8df15ecc6f0aa6f318d80003c2d721b7ff260ba26a28878925ed45dba0dd055"
+    },
+    {
       "bytes": 13451,
       "path": "../playgrounds/lessons/manifest.json",
       "sha256": "50693f8eed39191ef80efdfa452704f2d70441e615f116ab08a783aa26ab7eb8"
@@ -261,9 +266,9 @@
       "sha256": "dc30f457a815ddc3605302a0c1c82fb9bc92a84581d32228f68a4ddee07715cd"
     },
     {
-      "bytes": 14606,
+      "bytes": 14621,
       "path": "checks/check-p101-tool-audit.sh",
-      "sha256": "88171b6bf4852a75dc41ff56dbf93bf592bdc489c8856c6270785bd864b32425"
+      "sha256": "2a2ff71f59214c02279b6487a668cf653ecf1ff4371e2612f72c093f6f1ee922"
     },
     {
       "bytes": 6289,
@@ -491,14 +496,14 @@
       "sha256": "ed7a8831ad8779c0101f634fcd56a5f52b1808037ec9f6763a40f0f64c3ab261"
     },
     {
-      "bytes": 8864,
+      "bytes": 9072,
       "path": "repos.lock",
-      "sha256": "0b5601f16b7da4a3e3ffab98ef46d46935d89e2155a4e8fd4c1ae0d90ee77b8a"
+      "sha256": "ab76e91fbefab6b76cc583aaeafaf4901d69d45d7613772ae6887700026c1d29"
     },
     {
-      "bytes": 3463,
+      "bytes": 3549,
       "path": "repos.txt",
-      "sha256": "0fc82e1b9e520e92f630527f6bd480fa1824548ce222badc0f40d418df90348d"
+      "sha256": "8fe344acebcef5139712a1c7e29279903afa3e69bc71e70bcfe91c2b4a8c58a3"
     },
     {
       "bytes": 42612,
@@ -591,9 +596,9 @@
       "sha256": "552918abb5bf8ce66469c2a6eefffa42cb66009482f32f2aba9f0801628a5e91"
     },
     {
-      "bytes": 12766,
+      "bytes": 13122,
       "path": "workspace/CMakeLists.txt",
-      "sha256": "e012b0e354d4e358b46d47f359a7468b3668d7e3cc435aca2cc33cb4f91181dd"
+      "sha256": "9adf08d2a8e123156283069a617ebf3bb2de24956d6dd6739d2996836a800133"
     },
     {
       "bytes": 3561,
@@ -631,9 +636,9 @@
       "sha256": "c9d47f4246c06bdfe1b5c79237a2637f5e3c3d94cd20fe04fa57453eec598161"
     },
     {
-      "bytes": 13703,
+      "bytes": 13775,
       "path": "workspace/stack-contract.py",
-      "sha256": "10ca6212236de24e7ebb4a371e2031e478e54ec2f1248c9a9d9a329a22ef66d6"
+      "sha256": "e7ee227662df042b5a7272d309cd0fad31ceff46f23eb904944e2a44e0e48272"
     },
     {
       "bytes": 28303,

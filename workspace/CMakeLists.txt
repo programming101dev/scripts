@@ -49,10 +49,11 @@ function(p101_add_host_repository relative_path binary_name)
     endif()
     add_subdirectory("${source_dir}"
             "${CMAKE_CURRENT_BINARY_DIR}/host/${binary_name}")
+    set_property(GLOBAL APPEND PROPERTY P101_HOST_REPOSITORIES "${relative_path}")
 endfunction()
 
 # Child repositories are intentionally verbose when configured alone.  In the
-# aggregate graph that repeats the same compiler and tool details fifteen
+# aggregate graph that repeats the same compiler and tool details twenty
 # times, so retain errors and warnings while the children are admitted and
 # restore normal status output for this graph's own summary.
 set(_P101_PARENT_MESSAGE_LOG_LEVEL "${CMAKE_MESSAGE_LOG_LEVEL}")
@@ -66,6 +67,7 @@ p101_add_host_repository(libraries/lib_record lib_record)
 p101_add_host_repository(libraries/lib_json lib_json)
 p101_add_host_repository(libraries/lib_tool_support lib_tool_support)
 p101_add_host_repository(libraries/lib_env lib_env)
+p101_add_host_repository(libraries/lib_transition lib_transition)
 p101_add_host_repository(libraries/lib_tool_event lib_tool_event)
 p101_add_host_repository(libraries/lib_c lib_c)
 
@@ -88,6 +90,7 @@ set(P101_HOST_RUNTIME_TARGETS
         p101_record
         p101_json
         p101_tool_support
+        p101_transition
         p101_tool_event
         p101_env
         p101_c
@@ -97,6 +100,7 @@ set(P101_HOST_RUNTIME_TARGETS
         p101_process
         p101_time
         p101_host
+        p101_text
         p101_network
         p101_ipc
         p101_convert
@@ -276,7 +280,9 @@ message(STATUS "  C compiler        = ${CMAKE_C_COMPILER}")
 message(STATUS "  C++ evidence      = ${P101_ACCEPTANCE_CXX_COMPILER}")
 message(STATUS "  workspace level   = ${P101_WORKSPACE_LEVEL}")
 list(LENGTH P101_HOST_RUNTIME_TARGETS P101_HOST_RUNTIME_TARGET_COUNT)
-message(STATUS "  runtime libraries = ${P101_HOST_RUNTIME_TARGET_COUNT} targets from 15 repositories")
+get_property(P101_HOST_REPOSITORIES GLOBAL PROPERTY P101_HOST_REPOSITORIES)
+list(LENGTH P101_HOST_REPOSITORIES P101_HOST_REPOSITORY_COUNT)
+message(STATUS "  runtime libraries = ${P101_HOST_RUNTIME_TARGET_COUNT} targets from ${P101_HOST_REPOSITORY_COUNT} repositories")
 message(STATUS "  host tools        = ${P101_HOST_TOOL_TARGET_COUNT} targets from 3 repositories")
 message(STATUS "  acceptance output = ${P101_ACCEPTANCE_OUTPUT_DIR}")
 message(STATUS "")

@@ -1,11 +1,17 @@
 {
-  "manifest_sha256": "0fc82e1b9e520e92f630527f6bd480fa1824548ce222badc0f40d418df90348d",
+  "manifest_sha256": "8fe344acebcef5139712a1c7e29279903afa3e69bc71e70bcfe91c2b4a8c58a3",
   "repositories": [
     {
       "commit": "e84cb2331f5739ba83b76f1ca74a5c4b0b3932ab",
       "path": "../libraries/lib_error",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_error.git"
+    },
+    {
+      "commit": "26c814ae3c49965f06567ee51734b9482e9b5b3c",
+      "path": "../libraries/lib_transition",
+      "type": "c",
+      "url": "https://github.com/programming101dev/lib_transition.git"
     },
     {
       "commit": "15c713ccd4bd9d538486906747fbf223ca320c07",
@@ -26,7 +32,7 @@
       "url": "https://github.com/programming101dev/lib_tool_support.git"
     },
     {
-      "commit": "7b1dd47781286bbac5455e92bd86e39280b77767",
+      "commit": "ae5defa7e8eeb87b58589662b32b2c519f907387",
       "path": "../libraries/lib_tool_event",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_tool_event.git"
@@ -158,7 +164,7 @@
       "url": "https://github.com/programming101dev/lib_host.git"
     },
     {
-      "commit": "ebbe21ff94ce4cea3784abbd02d2b002e31db5ea",
+      "commit": "dca1d960ed8402d8dd313221217d873a552a878b",
       "path": "../libraries/lib_fsm",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_fsm.git"
@@ -218,7 +224,7 @@
       "url": "https://github.com/programming101dev/template-c.git"
     },
     {
-      "commit": "ae46bb8b3d41306bf205f1f7734176b9a1af959f",
+      "commit": "ca1a88b6c402f546de0db3eed9751e7cc57ae368",
       "path": "../templates/template-c-program",
       "type": "c",
       "url": "https://github.com/programming101dev/template-c-program.git"

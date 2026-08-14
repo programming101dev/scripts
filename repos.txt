@@ -1,4 +1,5 @@
 https://github.com/programming101dev/lib_error.git|../libraries/lib_error|c
+https://github.com/programming101dev/lib_transition.git|../libraries/lib_transition|c
 https://github.com/programming101dev/lib_record.git|../libraries/lib_record|c
 https://github.com/programming101dev/lib_json.git|../libraries/lib_json|c
 https://github.com/programming101dev/lib_tool_support.git|../libraries/lib_tool_support|c
