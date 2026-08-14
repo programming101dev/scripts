@@ -52,6 +52,20 @@
   },
   "typed_outcome_sets": [
     {
+      "source": "libraries/lib_transition/include/p101_transition/transition.h",
+      "type": "p101_transition_status",
+      "owner": "lib_transition",
+      "oracle": "repository-tests",
+      "variants": [
+        "P101_TRANSITION_OK",
+        "P101_TRANSITION_NOT_FOUND",
+        "P101_TRANSITION_INVALID_ARGUMENT",
+        "P101_TRANSITION_INSUFFICIENT_CAPACITY",
+        "P101_TRANSITION_DUPLICATE_RULE"
+      ],
+      "type_usr": "c:@EA@p101_transition_status"
+    },
+    {
       "source": "libraries/lib_error/include/p101_error/error.h",
       "type": "p101_error_type",
       "owner": "lib_error",

@@ -381,9 +381,9 @@
       "sha256": "0dfc17712b7896ef4fd8ab862d455f99f3158a6bcf09bc970279e50209b78a3b"
     },
     {
-      "bytes": 22068,
+      "bytes": 22550,
       "path": "contracts/p101-quality-contract.json",
-      "sha256": "2bafe1b93512c398c1f188dc9671fe8440235db5172811ce3a977f429a909b14"
+      "sha256": "b795fd62484fe71e1a8486db920aa398b13abc4aef2a40d57bf608721a5c8c02"
     },
     {
       "bytes": 3264,
