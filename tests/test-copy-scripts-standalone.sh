@@ -114,6 +114,53 @@ chmod +x "$sandbox/fake-bin/cmake" "$sandbox/fake-bin/ctest"
 [[ -f "$sandbox/test-cache/cache-repo/root/build-clang/CMakeCache.txt" ]]
 [[ ! -e "$sandbox/cache-repo/test/build-clang" ]]
 
+# A restored CMake cache can retain archive/link utilities from a previous
+# runner image even when the compiler path itself is unchanged. The shared
+# test harness must discard that cache before CMake tries to invoke a tool that
+# no longer exists.
+cached_test_build="$sandbox/test-cache/cache-repo/root/build-clang"
+printf 'CMAKE_AR:FILEPATH=%s\n' "$sandbox/missing-llvm-ar" \
+  >> "$cached_test_build/CMakeCache.txt"
+: > "$cached_test_build/stale-toolchain-marker"
+(
+  cd "$sandbox/cache-repo"
+  PATH="$sandbox/fake-bin:$PATH" \
+    P101_TEST_BUILD_CACHE="$sandbox/test-cache" ./test.sh >/dev/null
+)
+[[ ! -e "$cached_test_build/stale-toolchain-marker" ]]
+
+# Exercise the independently maintained C++ harness as well; it selects a
+# different compiler cache key but must reject the same stale archive state.
+cxx_repo="$sandbox/cache-repo-cxx"
+cxx_main_build="$cxx_repo/build-clang++"
+cxx_test_build="$sandbox/test-cache/cache-repo-cxx/root/build-clang++"
+mkdir -p "$cxx_repo/test" "$cxx_main_build" "$cxx_test_build"
+cp ../templates/template-cxx/test.sh "$cxx_repo/test.sh"
+chmod +x "$cxx_repo/test.sh"
+printf 'set(PROJECT_LANGUAGE CXX)\n' > "$cxx_repo/config.cmake"
+printf 'project(example CXX)\n' > "$cxx_repo/test/CMakeLists.txt"
+printf 'build-clang++\n' > "$cxx_repo/.last-build-dir"
+cat > "$cxx_main_build/CMakeCache.txt" <<EOF
+CMAKE_CXX_COMPILER:FILEPATH=$(command -v clang++)
+DETECTED_SANITIZERS:STRING=
+P101_PUBLIC_INCLUDE_DIRS:STRING=
+P101_PUBLIC_LINK_DIRS:STRING=
+EOF
+cat > "$cxx_test_build/CMakeCache.txt" <<EOF
+CMAKE_HOME_DIRECTORY:INTERNAL=$(CDPATH='' cd -- "$cxx_repo/test" && pwd)
+CMAKE_CXX_COMPILER:FILEPATH=$(command -v clang++)
+CMAKE_AR:FILEPATH=$sandbox/missing-llvm-ar
+EOF
+printf '%s\n' "$(CDPATH='' cd -- "$cxx_main_build" && pwd -P)" \
+  > "$cxx_test_build/.p101-main-build"
+: > "$cxx_test_build/stale-toolchain-marker"
+(
+  cd "$cxx_repo"
+  PATH="$sandbox/fake-bin:$PATH" \
+    P101_TEST_BUILD_CACHE="$sandbox/test-cache" ./test.sh >/dev/null
+)
+[[ ! -e "$cxx_test_build/stale-toolchain-marker" ]]
+
 # An exact workspace lane must never be mixed with an arbitrary historical
 # build directory. The old broad build-* scan could load a stale dylib whose
 # ABI no longer matched the dependency selected for the current lane.
