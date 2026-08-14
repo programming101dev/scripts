@@ -14,7 +14,7 @@
       "url": "https://github.com/programming101dev/lib_record.git"
     },
     {
-      "commit": "42bc7dcde2a679ca89f219a1ca91fe0066731634",
+      "commit": "6fe05755227ff68bc4dc2871a93a2b929cc09e11",
       "path": "../libraries/lib_json",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_json.git"
