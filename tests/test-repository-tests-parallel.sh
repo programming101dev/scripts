@@ -195,7 +195,7 @@ requested="${P101_TEST_CC:-$cached}"
   exit 1
 }
 cmake -S test -B test/build -DCMAKE_C_COMPILER="$cached"
-cmake --build test/build
+MAKEFLAGS='' MFLAGS='' cmake --build test/build
 ctest --test-dir test/build --output-on-failure
 EOF
 chmod +x "$launcher/test.sh"

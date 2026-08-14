@@ -38,7 +38,8 @@ cmake -S "$scripts_dir/workspace" -B "$work/host-build" \
     -DP101_WORKSPACE_ROOT="$workspace_dir" \
     -DP101_WORKSPACE_LEVEL=2 \
     -DP101_ACCEPTANCE_CXX_COMPILER= >"$work/configure.log"
-cmake --build "$work/host-build" --target help >"$work/targets.log"
+MAKEFLAGS='' MFLAGS='' cmake --build "$work/host-build" --target help \
+    >"$work/targets.log"
 
 for target in p101_record p101_json p101_tool_support p101_tool_event \
     p101_subprocess p101_host_runtime p101_host_tools \
@@ -50,10 +51,12 @@ done
 # Building the receipt target must first build the executable targets. This
 # catches generators that would otherwise interpret TARGET_FILE paths as
 # unrelated source files with no producing rule.
-cmake --build "$work/host-build" --target p101_tool_qualification \
+MAKEFLAGS='' MFLAGS='' cmake --build "$work/host-build" \
+    --target p101_tool_qualification \
     --parallel 2 >"$work/qualification.log"
 test -f "$work/host-build/host-tool-qualification.json"
-cmake --build "$work/host-build" --target p101_tool_qualification \
+MAKEFLAGS='' MFLAGS='' cmake --build "$work/host-build" \
+    --target p101_tool_qualification \
     --parallel 2 >"$work/incremental-qualification.log"
 if grep -Fq 'Qualifying the in-tree p101 host tools' \
     "$work/incremental-qualification.log"

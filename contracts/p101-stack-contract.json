@@ -493,7 +493,7 @@
     {
       "bytes": 8864,
       "path": "repos.lock",
-      "sha256": "0d4f80a4b30d32f00e84b0b8de220e8d13f953dda01f658c2675461b7e516dd5"
+      "sha256": "764a1b9ee2caca2d77ee75d54ed06403cd1767a8d01a4a8f84ac49bb9e0d6050"
     },
     {
       "bytes": 3463,
@@ -581,9 +581,9 @@
       "sha256": "f7299f6af7ea07b90c93a9a111cc745b34831f16dea4a5ae26b931cbda2dedeb"
     },
     {
-      "bytes": 6198,
+      "bytes": 6285,
       "path": "tests/test-workspace-cmake.sh",
-      "sha256": "99f392c72613755ea9adc44882a806933f0ed86d06f850683b6191258b65a3d7"
+      "sha256": "4e9a10b56de20286ab50e5774d21f25f8f5b12d97cef87ac228ec3776839fb84"
     },
     {
       "bytes": 25968,

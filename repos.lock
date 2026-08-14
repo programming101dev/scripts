@@ -50,7 +50,7 @@
       "url": "https://github.com/programming101dev/lib_io.git"
     },
     {
-      "commit": "4204487c3dc3401136e113115c51ff511009d36d",
+      "commit": "66056561bea9ff83b052ab6c1d63d96094fee45d",
       "path": "../libraries/lib_filesystem",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_filesystem.git"
@@ -194,7 +194,7 @@
       "url": "https://github.com/programming101dev/p101-inspect.git"
     },
     {
-      "commit": "61ff18b4ab1b41f0e0c273184e0d95c730062be4",
+      "commit": "d4f12527db07e4501a359a3395df80eb89f0eb68",
       "path": "../programs/p101-test",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-test.git"
