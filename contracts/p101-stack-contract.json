@@ -176,9 +176,9 @@
       "sha256": "0c69ca1bc204d9e4397d439fcb04d809bd130ef4f10dba62c67e1137e0eb6dbe"
     },
     {
-      "bytes": 29935,
+      "bytes": 30527,
       "path": "../programs/p101-audit/components/workspace/src/source_responsibilities.c",
-      "sha256": "b327ee37b2a3c860b71f026efb9305529f43bdee560d6f47e2d3608231f07857"
+      "sha256": "929c8003b38ce1ecc5f985a0effd6ea7bcacd6a6265f597ca68ed5c630f8ddd8"
     },
     {
       "bytes": 26188,
@@ -493,7 +493,7 @@
     {
       "bytes": 8864,
       "path": "repos.lock",
-      "sha256": "82e0c0838ef9c14899237c206f2e3f7512c023e2b968daa9b62445f22454cad5"
+      "sha256": "0d4f80a4b30d32f00e84b0b8de220e8d13f953dda01f658c2675461b7e516dd5"
     },
     {
       "bytes": 3463,

@@ -26,7 +26,7 @@
       "url": "https://github.com/programming101dev/lib_tool_support.git"
     },
     {
-      "commit": "3b066773a9527d35000eb2ecd665c8543078f19a",
+      "commit": "6737941ac2cee285e5b530485354b63cb60272a9",
       "path": "../libraries/lib_tool_event",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_tool_event.git"
@@ -194,13 +194,13 @@
       "url": "https://github.com/programming101dev/p101-inspect.git"
     },
     {
-      "commit": "a4eb9722ce788d6f6c110f64aa18d3225bd42767",
+      "commit": "61ff18b4ab1b41f0e0c273184e0d95c730062be4",
       "path": "../programs/p101-test",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-test.git"
     },
     {
-      "commit": "f96f933d5a3b098ec267c901c5d3e1cd46d9ceb4",
+      "commit": "8a3c76e5b16d04a1ce3b796d18a4972b2f119996",
       "path": "../programs/p101-audit",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-audit.git"
