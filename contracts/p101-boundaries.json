@@ -59,7 +59,7 @@
       "refusal": "p101_tool_event_parse_status",
       "evidence": "versioned plain-text event stream",
       "authority_owner": "The event schema owns admission; producers do not define consumer policy.",
-      "mechanism_owner": "lib_tool_event owns record encoding, bounded parsing, and schema validation.",
+      "mechanism_owner": "p101_record owns bounded wire encoding; p101_tool_event owns bounded parsing and schema validation.",
       "effects": "Parsing is memory-local; writing appends one complete record to the caller-owned stream.",
       "resource_budget": "One record is bounded by the protocol line and field limits.",
       "composition": [
@@ -148,14 +148,14 @@
     },
     {
       "id": "boundary:durable-tool-receipt",
-      "owner_repo": "libraries/lib_tool_event",
-      "owner_source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "owner_repo": "libraries/lib_tool_support",
+      "owner_source": "libraries/lib_tool_support/include/p101_tool_support/receipt.h",
       "input": "one bounded p101-tool-run-receipt-v4 JSON document",
       "output": "typed receipt validation status and admitted outcome summary",
       "refusal": "p101_tool_receipt_validation_status or p101_error for I/O failure",
       "evidence": "semantic receipt digest plus optional admitted-artifact fingerprint",
       "authority_owner": "The receipt schema owns admission; the producing tool owns its declared outcome.",
-      "mechanism_owner": "lib_tool_event owns bounded receipt serialization, hashing, and validation.",
+      "mechanism_owner": "lib_tool_support owns bounded receipt serialization, hashing, and validation.",
       "effects": "Reads or writes one caller-selected receipt file and fingerprints only admitted artifacts.",
       "resource_budget": "Receipt bytes, record counts, and artifact admission are explicitly bounded.",
       "composition": [
@@ -168,27 +168,27 @@
       ],
       "tests": {
         "clean": {
-          "path": "libraries/lib_tool_event/test/test_receipt_cli.sh",
+          "path": "libraries/lib_tool_support/test/test_receipt_cli.sh",
           "marker": "P101_BOUNDARY_CASE boundary:durable-tool-receipt:clean"
         },
         "typed_refusal": {
-          "path": "libraries/lib_tool_event/test/test_receipt_cli.sh",
+          "path": "libraries/lib_tool_support/test/test_receipt_cli.sh",
           "marker": "P101_BOUNDARY_CASE boundary:durable-tool-receipt:typed_refusal"
         },
         "binding_swap": {
-          "path": "libraries/lib_tool_event/test/test_receipt_cli.sh",
+          "path": "libraries/lib_tool_support/test/test_receipt_cli.sh",
           "marker": "P101_BOUNDARY_CASE boundary:durable-tool-receipt:binding_swap"
         },
         "identity_mismatch": {
-          "path": "libraries/lib_tool_event/test/test_receipt.c",
+          "path": "libraries/lib_tool_support/test/test_receipt.c",
           "semantic_role": "p101:boundary-case:boundary:durable-tool-receipt:identity_mismatch"
         },
         "resource_limit": {
-          "path": "libraries/lib_tool_event/test/test_receipt.c",
+          "path": "libraries/lib_tool_support/test/test_receipt.c",
           "semantic_role": "p101:boundary-case:boundary:durable-tool-receipt:resource_limit"
         },
         "stale_version": {
-          "path": "libraries/lib_tool_event/test/test_receipt_cli.sh",
+          "path": "libraries/lib_tool_support/test/test_receipt_cli.sh",
           "marker": "P101_BOUNDARY_CASE boundary:durable-tool-receipt:stale_version"
         }
       },
@@ -196,14 +196,14 @@
     },
     {
       "id": "boundary:subprocess-execution",
-      "owner_repo": "libraries/lib_util",
-      "owner_source": "libraries/lib_util/include/p101_util/tool_run.h",
+      "owner_repo": "libraries/lib_subprocess",
+      "owner_source": "libraries/lib_subprocess/include/p101_subprocess/tool_run.h",
       "input": "argv vector and bounded execution options",
       "output": "child exit status and redirected artifacts",
       "refusal": "p101_error",
       "evidence": "explicit argv and output files",
       "authority_owner": "The caller owns argv, environment policy, and the meaning of the child result.",
-      "mechanism_owner": "lib_util owns fork/exec, descriptor plumbing, bounded capture, and wait semantics.",
+      "mechanism_owner": "lib_subprocess owns fork/exec, descriptor plumbing, bounded capture, and wait semantics.",
       "effects": "Creates a child process and caller-declared output files without invoking a shell.",
       "resource_budget": "Capture limits and process completion policy are supplied in bounded execution options.",
       "composition": [
@@ -215,23 +215,23 @@
       ],
       "tests": {
         "clean": {
-          "path": "libraries/lib_util/test/test_lib_util.c",
+          "path": "libraries/lib_subprocess/test/test_subprocess.c",
           "semantic_role": "p101:boundary-case:boundary:subprocess-execution:clean"
         },
         "typed_refusal": {
-          "path": "libraries/lib_util/test/test_lib_util.c",
+          "path": "libraries/lib_subprocess/test/test_subprocess.c",
           "semantic_role": "p101:boundary-case:boundary:subprocess-execution:typed_refusal"
         },
         "binding_swap": {
-          "path": "libraries/lib_util/test/test_lib_util.c",
+          "path": "libraries/lib_subprocess/test/test_subprocess.c",
           "semantic_role": "p101:boundary-case:boundary:subprocess-execution:binding_swap"
         },
         "identity_mismatch": {
-          "path": "libraries/lib_util/test/test_lib_util.c",
+          "path": "libraries/lib_subprocess/test/test_subprocess.c",
           "semantic_role": "p101:boundary-case:boundary:subprocess-execution:identity_mismatch"
         },
         "resource_limit": {
-          "path": "libraries/lib_util/test/test_lib_util.c",
+          "path": "libraries/lib_subprocess/test/test_subprocess.c",
           "semantic_role": "p101:boundary-case:boundary:subprocess-execution:resource_limit"
         },
         "stale_version": {

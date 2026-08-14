@@ -7,7 +7,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/stdlib.c"
+      "source": "libraries/lib_text/src/p101_text/stdlib.c"
     },
     "p101_abs": {
       "accepts_error": true,
@@ -184,28 +184,28 @@
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_arc4random",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_random/src/stdlib.c"
+      "source": "libraries/lib_numeric/src/p101_random/stdlib.c"
     },
     "p101_arc4random_buf": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_arc4random_buf",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_random/src/stdlib.c"
+      "source": "libraries/lib_numeric/src/p101_random/stdlib.c"
     },
     "p101_arc4random_uniform": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_arc4random_uniform",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_random/src/stdlib.c"
+      "source": "libraries/lib_numeric/src/p101_random/stdlib.c"
     },
     "p101_asin": {
       "accepts_error": true,
@@ -607,28 +607,28 @@
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_be16toh",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_be32toh": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_be32toh",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_be64toh": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_be64toh",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_bind": {
       "accepts_error": true,
@@ -652,28 +652,28 @@
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_bswap16",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_bswap32": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_bswap32",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_bswap64": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_bswap64",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_btowc": {
       "accepts_error": false,
@@ -1012,28 +1012,28 @@
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_catclose",
-      "library": "lib_locale",
+      "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_locale/src/nl_types.c"
+      "source": "libraries/lib_text/src/p101_locale/nl_types.c"
     },
     "p101_catgets": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_catgets",
-      "library": "lib_locale",
+      "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_locale/src/nl_types.c"
+      "source": "libraries/lib_text/src/p101_locale/nl_types.c"
     },
     "p101_catopen": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_catopen",
-      "library": "lib_locale",
+      "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_locale/src/nl_types.c"
+      "source": "libraries/lib_text/src/p101_locale/nl_types.c"
     },
     "p101_cbrt": {
       "accepts_error": false,
@@ -1867,10 +1867,10 @@
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_duplocale",
-      "library": "lib_locale",
+      "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_locale/src/locale.c"
+      "source": "libraries/lib_text/src/p101_locale/locale.c"
     },
     "p101_endhostent": {
       "accepts_error": false,
@@ -2410,7 +2410,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/strings.c"
+      "source": "libraries/lib_text/src/p101_text/strings.c"
     },
     "p101_fgetc": {
       "accepts_error": true,
@@ -2758,10 +2758,10 @@
       "accepts_error": false,
       "classification": "non-returning-cleanup",
       "function_usr": "c:@F@p101_freelocale",
-      "library": "lib_locale",
+      "library": "lib_text",
       "rationale": "The API is non-returning or cleanup-only and has no error channel through which an injected failure could be reported.",
       "role": "native-wrapper",
-      "source": "libraries/lib_locale/src/locale.c"
+      "source": "libraries/lib_text/src/p101_locale/locale.c"
     },
     "p101_freopen": {
       "accepts_error": true,
@@ -3739,55 +3739,55 @@
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_htobe16",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_htobe32": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_htobe32",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_htobe64": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_htobe64",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_htole16": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_htole16",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_htole32": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_htole32",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_htole64": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_htole64",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_htonl": {
       "accepts_error": false,
@@ -3838,28 +3838,28 @@
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_iconv",
-      "library": "lib_locale",
+      "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_locale/src/iconv.c"
+      "source": "libraries/lib_text/src/p101_locale/iconv.c"
     },
     "p101_iconv_close": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_iconv_close",
-      "library": "lib_locale",
+      "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_locale/src/iconv.c"
+      "source": "libraries/lib_text/src/p101_locale/iconv.c"
     },
     "p101_iconv_open": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_iconv_open",
-      "library": "lib_locale",
+      "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_locale/src/iconv.c"
+      "source": "libraries/lib_text/src/p101_locale/iconv.c"
     },
     "p101_if_freenameindex": {
       "accepts_error": false,
@@ -4045,10 +4045,10 @@
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_initstate",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_random/src/stdlib.c"
+      "source": "libraries/lib_numeric/src/p101_random/stdlib.c"
     },
     "p101_insque": {
       "accepts_error": false,
@@ -4063,10 +4063,10 @@
       "accepts_error": false,
       "classification": "deterministic-rejection",
       "function_usr": "c:@F@p101_is_little_endian",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_isalnum": {
       "accepts_error": false,
@@ -4084,7 +4084,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_isalpha": {
       "accepts_error": false,
@@ -4102,7 +4102,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_isatty": {
       "accepts_error": true,
@@ -4129,7 +4129,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_iscntrl": {
       "accepts_error": false,
@@ -4147,7 +4147,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_isdigit": {
       "accepts_error": false,
@@ -4165,7 +4165,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_isgraph": {
       "accepts_error": false,
@@ -4183,7 +4183,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_islower": {
       "accepts_error": false,
@@ -4201,7 +4201,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_isprint": {
       "accepts_error": false,
@@ -4219,7 +4219,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_ispunct": {
       "accepts_error": false,
@@ -4237,7 +4237,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_isspace": {
       "accepts_error": false,
@@ -4255,7 +4255,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_isupper": {
       "accepts_error": false,
@@ -4273,7 +4273,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_iswalnum": {
       "accepts_error": false,
@@ -4291,7 +4291,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_iswalpha": {
       "accepts_error": false,
@@ -4309,7 +4309,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_iswblank": {
       "accepts_error": false,
@@ -4327,7 +4327,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_iswcntrl": {
       "accepts_error": false,
@@ -4345,7 +4345,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_iswctype": {
       "accepts_error": false,
@@ -4363,7 +4363,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_iswdigit": {
       "accepts_error": false,
@@ -4381,7 +4381,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_iswgraph": {
       "accepts_error": false,
@@ -4399,7 +4399,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_iswlower": {
       "accepts_error": false,
@@ -4417,7 +4417,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_iswprint": {
       "accepts_error": false,
@@ -4435,7 +4435,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_iswpunct": {
       "accepts_error": false,
@@ -4453,7 +4453,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_iswspace": {
       "accepts_error": false,
@@ -4471,7 +4471,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_iswupper": {
       "accepts_error": false,
@@ -4489,7 +4489,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_iswxdigit": {
       "accepts_error": false,
@@ -4507,7 +4507,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_isxdigit": {
       "accepts_error": false,
@@ -4525,34 +4525,34 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter; a negative or sentinel result is a deterministic input/state outcome covered by behavior tests.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_j0": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_j0",
-      "library": "lib_math",
+      "library": "lib_numeric",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_math/src/math.c"
+      "source": "libraries/lib_numeric/src/p101_math/math.c"
     },
     "p101_j1": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_j1",
-      "library": "lib_math",
+      "library": "lib_numeric",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_math/src/math.c"
+      "source": "libraries/lib_numeric/src/p101_math/math.c"
     },
     "p101_jn": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_jn",
-      "library": "lib_math",
+      "library": "lib_numeric",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_math/src/math.c"
+      "source": "libraries/lib_numeric/src/p101_math/math.c"
     },
     "p101_kill": {
       "accepts_error": true,
@@ -4579,7 +4579,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/stdlib.c"
+      "source": "libraries/lib_text/src/p101_text/stdlib.c"
     },
     "p101_labs": {
       "accepts_error": true,
@@ -4639,28 +4639,28 @@
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_le16toh",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_le32toh": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_le32toh",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_le64toh": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_le64toh",
-      "library": "lib_util",
+      "library": "lib_endian",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/endian.c"
+      "source": "libraries/lib_endian/src/endian.c"
     },
     "p101_lfind": {
       "accepts_error": false,
@@ -5110,7 +5110,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_mbsrtowcs": {
       "accepts_error": true,
@@ -5146,7 +5146,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_memchr": {
       "accepts_error": false,
@@ -5458,10 +5458,10 @@
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_newlocale",
-      "library": "lib_locale",
+      "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_locale/src/locale.c"
+      "source": "libraries/lib_text/src/p101_locale/locale.c"
     },
     "p101_nextafter": {
       "accepts_error": true,
@@ -5539,19 +5539,19 @@
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_nl_langinfo",
-      "library": "lib_locale",
+      "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_locale/src/langinfo.c"
+      "source": "libraries/lib_text/src/p101_locale/langinfo.c"
     },
     "p101_nl_langinfo_l": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_nl_langinfo_l",
-      "library": "lib_locale",
+      "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_locale/src/langinfo.c"
+      "source": "libraries/lib_text/src/p101_locale/langinfo.c"
     },
     "p101_ntohl": {
       "accepts_error": false,
@@ -5596,7 +5596,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_openat": {
       "accepts_error": true,
@@ -6259,685 +6259,685 @@
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_atfork",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_destroy": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_destroy",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_getdetachstate": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_getdetachstate",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_getguardsize": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_getguardsize",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_getinheritsched": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_getinheritsched",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_getschedparam": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_getschedparam",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_getschedpolicy": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_getschedpolicy",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_getscope": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_getscope",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_getstack": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_getstack",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_getstacksize": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_getstacksize",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_init": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_init",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_setdetachstate": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_setdetachstate",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_setguardsize": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_setguardsize",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_setinheritsched": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_setinheritsched",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_setschedparam": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_setschedparam",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_setschedpolicy": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_setschedpolicy",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_setscope": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_setscope",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_setstack": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_setstack",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_attr_setstacksize": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_attr_setstacksize",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_cancel": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_cancel",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_cond_broadcast": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_cond_broadcast",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_cond_destroy": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_cond_destroy",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_cond_init": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_cond_init",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_cond_signal": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_cond_signal",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_cond_timedwait": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_cond_timedwait",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_cond_wait": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_cond_wait",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_condattr_destroy": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_condattr_destroy",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_condattr_getpshared": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_condattr_getpshared",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_condattr_init": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_condattr_init",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_condattr_setpshared": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_condattr_setpshared",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_create": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_create",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_detach": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_detach",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_equal": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_pthread_equal",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_exit": {
       "accepts_error": false,
       "classification": "non-returning-cleanup",
       "function_usr": "c:@F@p101_pthread_exit",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API terminates the calling thread and therefore has no returning failure result.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_getschedparam": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_getschedparam",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_getspecific": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_pthread_getspecific",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_join": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_join",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_key_create": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_key_create",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_key_delete": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_key_delete",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_kill": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_kill",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/signal.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/signal.c"
     },
     "p101_pthread_mutex_destroy": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutex_destroy",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutex_getprioceiling": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutex_getprioceiling",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutex_init": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutex_init",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutex_lock": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutex_lock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutex_setprioceiling": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutex_setprioceiling",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutex_trylock": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutex_trylock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutex_unlock": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutex_unlock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutexattr_destroy": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutexattr_destroy",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutexattr_getprioceiling": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutexattr_getprioceiling",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutexattr_getprotocol": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutexattr_getprotocol",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutexattr_getpshared": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutexattr_getpshared",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutexattr_gettype": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutexattr_gettype",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutexattr_init": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutexattr_init",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutexattr_setprioceiling": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutexattr_setprioceiling",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutexattr_setprotocol": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutexattr_setprotocol",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutexattr_setpshared": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutexattr_setpshared",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_mutexattr_settype": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_mutexattr_settype",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_once": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_once",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_rwlock_destroy": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_rwlock_destroy",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_rwlock_init": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_rwlock_init",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_rwlock_rdlock": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_rwlock_rdlock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_rwlock_tryrdlock": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_rwlock_tryrdlock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_rwlock_trywrlock": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_rwlock_trywrlock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_rwlock_unlock": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_rwlock_unlock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_rwlock_wrlock": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_rwlock_wrlock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_rwlockattr_destroy": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_rwlockattr_destroy",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_rwlockattr_getpshared": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_rwlockattr_getpshared",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_rwlockattr_init": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_rwlockattr_init",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_rwlockattr_setpshared": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_rwlockattr_setpshared",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/pthread.c"
     },
     "p101_pthread_self": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_pthread_self",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_setcancelstate": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_setcancelstate",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_setcanceltype": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_setcanceltype",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_setschedparam": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_setschedparam",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_setspecific": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_setspecific",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_pthread_sigmask": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_pthread_sigmask",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/signal.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/signal.c"
     },
     "p101_pthread_testcancel": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_pthread_testcancel",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_thread/src/pthread.c"
+      "source": "libraries/lib_concurrency/src/p101_thread/pthread.c"
     },
     "p101_ptsname": {
       "accepts_error": true,
@@ -7153,7 +7153,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/regex.c"
+      "source": "libraries/lib_text/src/p101_text/regex.c"
     },
     "p101_regerror": {
       "accepts_error": false,
@@ -7162,7 +7162,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/regex.c"
+      "source": "libraries/lib_text/src/p101_text/regex.c"
     },
     "p101_regexec": {
       "accepts_error": true,
@@ -7171,7 +7171,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/regex.c"
+      "source": "libraries/lib_text/src/p101_text/regex.c"
     },
     "p101_regfree": {
       "accepts_error": false,
@@ -7180,7 +7180,7 @@
       "library": "lib_text",
       "rationale": "The API is non-returning or cleanup-only and has no error channel through which an injected failure could be reported.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/regex.c"
+      "source": "libraries/lib_text/src/p101_text/regex.c"
     },
     "p101_remainder": {
       "accepts_error": true,
@@ -7351,7 +7351,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/stdlib.c"
+      "source": "libraries/lib_text/src/p101_text/stdlib.c"
     },
     "p101_scalbln": {
       "accepts_error": true,
@@ -7456,10 +7456,10 @@
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_seed48",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_random/src/stdlib.c"
+      "source": "libraries/lib_numeric/src/p101_random/stdlib.c"
     },
     "p101_seekdir": {
       "accepts_error": false,
@@ -7483,55 +7483,55 @@
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_sem_close",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/semaphore.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/semaphore.c"
     },
     "p101_sem_open": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_sem_open",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/semaphore.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/semaphore.c"
     },
     "p101_sem_post": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_sem_post",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/semaphore.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/semaphore.c"
     },
     "p101_sem_trywait": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_sem_trywait",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/semaphore.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/semaphore.c"
     },
     "p101_sem_unlink": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_sem_unlink",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/semaphore.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/semaphore.c"
     },
     "p101_sem_wait": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_sem_wait",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_sync/src/semaphore.c"
+      "source": "libraries/lib_concurrency/src/p101_sync/semaphore.c"
     },
     "p101_semctl": {
       "accepts_error": true,
@@ -7780,10 +7780,10 @@
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_setstate",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_random/src/stdlib.c"
+      "source": "libraries/lib_numeric/src/p101_random/stdlib.c"
     },
     "p101_setuid": {
       "accepts_error": true,
@@ -8131,19 +8131,19 @@
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_srand48",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_random/src/stdlib.c"
+      "source": "libraries/lib_numeric/src/p101_random/stdlib.c"
     },
     "p101_srandom": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_srandom",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_random/src/stdlib.c"
+      "source": "libraries/lib_numeric/src/p101_random/stdlib.c"
     },
     "p101_sscanf": {
       "accepts_error": true,
@@ -8179,7 +8179,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_stpncpy": {
       "accepts_error": false,
@@ -8188,7 +8188,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_strcasecmp": {
       "accepts_error": false,
@@ -8197,7 +8197,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/strings.c"
+      "source": "libraries/lib_text/src/p101_text/strings.c"
     },
     "p101_strcasecmp_l": {
       "accepts_error": false,
@@ -8206,7 +8206,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/strings.c"
+      "source": "libraries/lib_text/src/p101_text/strings.c"
     },
     "p101_strcasestr": {
       "accepts_error": false,
@@ -8215,7 +8215,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_strchr": {
       "accepts_error": false,
@@ -8233,7 +8233,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_strcmp": {
       "accepts_error": false,
@@ -8260,7 +8260,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_strcspn": {
       "accepts_error": false,
@@ -8278,7 +8278,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_strerror": {
       "accepts_error": true,
@@ -8296,7 +8296,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_strftime": {
       "accepts_error": true,
@@ -8332,7 +8332,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/strings.c"
+      "source": "libraries/lib_text/src/p101_text/strings.c"
     },
     "p101_strncasecmp_l": {
       "accepts_error": false,
@@ -8341,7 +8341,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/strings.c"
+      "source": "libraries/lib_text/src/p101_text/strings.c"
     },
     "p101_strncat": {
       "accepts_error": false,
@@ -8377,7 +8377,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_strnlen": {
       "accepts_error": false,
@@ -8386,7 +8386,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_strpbrk": {
       "accepts_error": false,
@@ -8422,7 +8422,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_strsignal": {
       "accepts_error": true,
@@ -8431,7 +8431,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_strspn": {
       "accepts_error": false,
@@ -8485,7 +8485,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_strtol": {
       "accepts_error": true,
@@ -8557,7 +8557,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/string.c"
+      "source": "libraries/lib_text/src/p101_text/string.c"
     },
     "p101_swab": {
       "accepts_error": false,
@@ -8566,7 +8566,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/unistd.c"
+      "source": "libraries/lib_text/src/p101_text/unistd.c"
     },
     "p101_swprintf": {
       "accepts_error": true,
@@ -8872,79 +8872,79 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_tool_argv_append": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_tool_argv_append",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/tool_run.c"
+      "source": "libraries/lib_subprocess/src/tool_run.c"
     },
     "p101_tool_argv_append_prefixed": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_tool_argv_append_prefixed",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/tool_run.c"
+      "source": "libraries/lib_subprocess/src/tool_run.c"
     },
     "p101_tool_argv_destroy": {
       "accepts_error": false,
       "classification": "non-returning-cleanup",
       "function_usr": "c:@F@p101_tool_argv_destroy",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "rationale": "The API is non-returning or cleanup-only and has no error channel through which an injected failure could be reported.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/tool_run.c"
+      "source": "libraries/lib_subprocess/src/tool_run.c"
     },
     "p101_tool_argv_init": {
       "accepts_error": false,
       "classification": "genuinely-infallible",
       "function_usr": "c:@F@p101_tool_argv_init",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/tool_run.c"
+      "source": "libraries/lib_subprocess/src/tool_run.c"
     },
     "p101_tool_read_pipe_close": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_tool_read_pipe_close",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/tool_run.c"
+      "source": "libraries/lib_subprocess/src/tool_run.c"
     },
     "p101_tool_read_pipe_open": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_tool_read_pipe_open",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/tool_run.c"
+      "source": "libraries/lib_subprocess/src/tool_run.c"
     },
     "p101_tool_run_capture": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_tool_run_capture",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/tool_run.c"
+      "source": "libraries/lib_subprocess/src/tool_run.c"
     },
     "p101_tool_run_redirect": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_tool_run_redirect",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "traced-api",
-      "source": "libraries/lib_util/src/tool_run.c"
+      "source": "libraries/lib_subprocess/src/tool_run.c"
     },
     "p101_toupper": {
       "accepts_error": false,
@@ -8962,7 +8962,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/ctype.c"
+      "source": "libraries/lib_text/src/p101_text/ctype.c"
     },
     "p101_towctrans": {
       "accepts_error": true,
@@ -8980,7 +8980,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_towlower": {
       "accepts_error": false,
@@ -8998,7 +8998,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_towupper": {
       "accepts_error": false,
@@ -9016,7 +9016,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_trunc": {
       "accepts_error": false,
@@ -9166,10 +9166,10 @@
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_uselocale",
-      "library": "lib_locale",
+      "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_locale/src/locale.c"
+      "source": "libraries/lib_text/src/p101_locale/locale.c"
     },
     "p101_utimensat": {
       "accepts_error": true,
@@ -9367,7 +9367,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_wcpncpy": {
       "accepts_error": false,
@@ -9376,7 +9376,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_wcrtomb": {
       "accepts_error": true,
@@ -9394,7 +9394,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_wcschr": {
       "accepts_error": false,
@@ -9430,7 +9430,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_wcscspn": {
       "accepts_error": false,
@@ -9448,7 +9448,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_wcsftime": {
       "accepts_error": true,
@@ -9475,7 +9475,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_wcsncat": {
       "accepts_error": false,
@@ -9511,7 +9511,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_wcsnrtombs": {
       "accepts_error": true,
@@ -9520,7 +9520,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_wcspbrk": {
       "accepts_error": false,
@@ -9673,7 +9673,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_wcsxfrm": {
       "accepts_error": true,
@@ -9691,7 +9691,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_wctob": {
       "accepts_error": false,
@@ -9727,7 +9727,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_wctype": {
       "accepts_error": true,
@@ -9745,7 +9745,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wctype.c"
+      "source": "libraries/lib_text/src/p101_text/wctype.c"
     },
     "p101_wcwidth": {
       "accepts_error": false,
@@ -9754,7 +9754,7 @@
       "library": "lib_text",
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wchar.c"
+      "source": "libraries/lib_text/src/p101_text/wchar.c"
     },
     "p101_wmemchr": {
       "accepts_error": false,
@@ -9808,7 +9808,7 @@
       "library": "lib_text",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wordexp.c"
+      "source": "libraries/lib_text/src/p101_text/wordexp.c"
     },
     "p101_wordfree": {
       "accepts_error": false,
@@ -9817,7 +9817,7 @@
       "library": "lib_text",
       "rationale": "The API is non-returning or cleanup-only and has no error channel through which an injected failure could be reported.",
       "role": "native-wrapper",
-      "source": "libraries/lib_text/src/wordexp.c"
+      "source": "libraries/lib_text/src/p101_text/wordexp.c"
     },
     "p101_wprintf": {
       "accepts_error": true,
@@ -9859,28 +9859,28 @@
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_y0",
-      "library": "lib_math",
+      "library": "lib_numeric",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_math/src/math.c"
+      "source": "libraries/lib_numeric/src/p101_math/math.c"
     },
     "p101_y1": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_y1",
-      "library": "lib_math",
+      "library": "lib_numeric",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_math/src/math.c"
+      "source": "libraries/lib_numeric/src/p101_math/math.c"
     },
     "p101_yn": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
       "function_usr": "c:@F@p101_yn",
-      "library": "lib_math",
+      "library": "lib_numeric",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "native-wrapper",
-      "source": "libraries/lib_math/src/math.c"
+      "source": "libraries/lib_numeric/src/p101_math/math.c"
     }
   },
   "classifications": {

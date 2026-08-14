@@ -339,8 +339,16 @@ printf 'Repository test workers: %s\n' "$jobs"
 printf 'Repository fuzz targets unavailable on this toolchain: %s\n' \
   "$fuzz_unavailable"
 printf 'Repository test summary: %s\n' "$summary"
+receipt_writer=${P101_TEST_REPOSITORY_RECEIPT:-}
+if [ -z "$receipt_writer" ]; then
+  receipt_writer=$(command -v test-repository-receipt 2>/dev/null || true)
+fi
+if [ -z "$receipt_writer" ] || [ ! -x "$receipt_writer" ]; then
+  printf 'FAIL: test-repository-receipt is required; build the qualified host tools first\n' >&2
+  exit 2
+fi
 receipt_status=0
-./checks/write-repository-test-receipt.py \
+"$receipt_writer" \
   --results "$results_dir" \
   --output "$out_dir/receipt.json" || receipt_status=$?
 if [ "$receipt_status" -ne 0 ] && [ "$failed" -eq 0 ]; then

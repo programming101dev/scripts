@@ -78381,21 +78381,21 @@
     "p101_arc4random": {
       "function": "arc4random",
       "function_usr": "c:@F@p101_arc4random",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "provenance": "common-Unix",
       "role": "native-wrapper"
     },
     "p101_arc4random_buf": {
       "function": "arc4random_buf",
       "function_usr": "c:@F@p101_arc4random_buf",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "provenance": "common-Unix",
       "role": "native-wrapper"
     },
     "p101_arc4random_uniform": {
       "function": "arc4random_uniform",
       "function_usr": "c:@F@p101_arc4random_uniform",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "provenance": "common-Unix",
       "role": "native-wrapper"
     },
@@ -78710,21 +78710,21 @@
     "p101_be16toh": {
       "function": null,
       "function_usr": "c:@F@p101_be16toh",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_be32toh": {
       "function": null,
       "function_usr": "c:@F@p101_be32toh",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_be64toh": {
       "function": null,
       "function_usr": "c:@F@p101_be64toh",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
@@ -78745,21 +78745,21 @@
     "p101_bswap16": {
       "function": null,
       "function_usr": "c:@F@p101_bswap16",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_bswap32": {
       "function": null,
       "function_usr": "c:@F@p101_bswap32",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_bswap64": {
       "function": null,
       "function_usr": "c:@F@p101_bswap64",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
@@ -79025,21 +79025,21 @@
     "p101_catclose": {
       "function": "catclose",
       "function_usr": "c:@F@p101_catclose",
-      "library": "lib_locale",
+      "library": "lib_text",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_catgets": {
       "function": "catgets",
       "function_usr": "c:@F@p101_catgets",
-      "library": "lib_locale",
+      "library": "lib_text",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_catopen": {
       "function": "catopen",
       "function_usr": "c:@F@p101_catopen",
-      "library": "lib_locale",
+      "library": "lib_text",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
@@ -79690,7 +79690,7 @@
     "p101_duplocale": {
       "function": "duplocale",
       "function_usr": "c:@F@p101_duplocale",
-      "library": "lib_locale",
+      "library": "lib_text",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
@@ -80383,7 +80383,7 @@
     "p101_freelocale": {
       "function": "freelocale",
       "function_usr": "c:@F@p101_freelocale",
-      "library": "lib_locale",
+      "library": "lib_text",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
@@ -81146,42 +81146,42 @@
     "p101_htobe16": {
       "function": null,
       "function_usr": "c:@F@p101_htobe16",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_htobe32": {
       "function": null,
       "function_usr": "c:@F@p101_htobe32",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_htobe64": {
       "function": null,
       "function_usr": "c:@F@p101_htobe64",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_htole16": {
       "function": null,
       "function_usr": "c:@F@p101_htole16",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_htole32": {
       "function": null,
       "function_usr": "c:@F@p101_htole32",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_htole64": {
       "function": null,
       "function_usr": "c:@F@p101_htole64",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
@@ -81223,21 +81223,21 @@
     "p101_iconv": {
       "function": "iconv",
       "function_usr": "c:@F@p101_iconv",
-      "library": "lib_locale",
+      "library": "lib_text",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_iconv_close": {
       "function": "iconv_close",
       "function_usr": "c:@F@p101_iconv_close",
-      "library": "lib_locale",
+      "library": "lib_text",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_iconv_open": {
       "function": "iconv_open",
       "function_usr": "c:@F@p101_iconv_open",
-      "library": "lib_locale",
+      "library": "lib_text",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
@@ -81384,7 +81384,7 @@
     "p101_initstate": {
       "function": "initstate",
       "function_usr": "c:@F@p101_initstate",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "provenance": "XSI",
       "role": "native-wrapper"
     },
@@ -81398,7 +81398,7 @@
     "p101_is_little_endian": {
       "function": null,
       "function_usr": "c:@F@p101_is_little_endian",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
@@ -81762,21 +81762,21 @@
     "p101_j0": {
       "function": "j0",
       "function_usr": "c:@F@p101_j0",
-      "library": "lib_math",
+      "library": "lib_numeric",
       "provenance": "XSI",
       "role": "native-wrapper"
     },
     "p101_j1": {
       "function": "j1",
       "function_usr": "c:@F@p101_j1",
-      "library": "lib_math",
+      "library": "lib_numeric",
       "provenance": "XSI",
       "role": "native-wrapper"
     },
     "p101_jn": {
       "function": "jn",
       "function_usr": "c:@F@p101_jn",
-      "library": "lib_math",
+      "library": "lib_numeric",
       "provenance": "XSI",
       "role": "native-wrapper"
     },
@@ -81846,21 +81846,21 @@
     "p101_le16toh": {
       "function": null,
       "function_usr": "c:@F@p101_le16toh",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_le32toh": {
       "function": null,
       "function_usr": "c:@F@p101_le32toh",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_le64toh": {
       "function": null,
       "function_usr": "c:@F@p101_le64toh",
-      "library": "lib_util",
+      "library": "lib_endian",
       "provenance": "",
       "role": "traced-api"
     },
@@ -82483,7 +82483,7 @@
     "p101_newlocale": {
       "function": "newlocale",
       "function_usr": "c:@F@p101_newlocale",
-      "library": "lib_locale",
+      "library": "lib_text",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
@@ -82546,14 +82546,14 @@
     "p101_nl_langinfo": {
       "function": "nl_langinfo",
       "function_usr": "c:@F@p101_nl_langinfo",
-      "library": "lib_locale",
+      "library": "lib_text",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_nl_langinfo_l": {
       "function": "nl_langinfo_l",
       "function_usr": "c:@F@p101_nl_langinfo_l",
-      "library": "lib_locale",
+      "library": "lib_text",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
@@ -83106,532 +83106,532 @@
     "p101_pthread_atfork": {
       "function": "pthread_atfork",
       "function_usr": "c:@F@p101_pthread_atfork",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_destroy": {
       "function": "pthread_attr_destroy",
       "function_usr": "c:@F@p101_pthread_attr_destroy",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_getdetachstate": {
       "function": "pthread_attr_getdetachstate",
       "function_usr": "c:@F@p101_pthread_attr_getdetachstate",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_getguardsize": {
       "function": "pthread_attr_getguardsize",
       "function_usr": "c:@F@p101_pthread_attr_getguardsize",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_getinheritsched": {
       "function": "pthread_attr_getinheritsched",
       "function_usr": "c:@F@p101_pthread_attr_getinheritsched",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_getschedparam": {
       "function": "pthread_attr_getschedparam",
       "function_usr": "c:@F@p101_pthread_attr_getschedparam",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_getschedpolicy": {
       "function": "pthread_attr_getschedpolicy",
       "function_usr": "c:@F@p101_pthread_attr_getschedpolicy",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_getscope": {
       "function": "pthread_attr_getscope",
       "function_usr": "c:@F@p101_pthread_attr_getscope",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_getstack": {
       "function": "pthread_attr_getstack",
       "function_usr": "c:@F@p101_pthread_attr_getstack",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_getstacksize": {
       "function": "pthread_attr_getstacksize",
       "function_usr": "c:@F@p101_pthread_attr_getstacksize",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_init": {
       "function": "pthread_attr_init",
       "function_usr": "c:@F@p101_pthread_attr_init",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_setdetachstate": {
       "function": "pthread_attr_setdetachstate",
       "function_usr": "c:@F@p101_pthread_attr_setdetachstate",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_setguardsize": {
       "function": "pthread_attr_setguardsize",
       "function_usr": "c:@F@p101_pthread_attr_setguardsize",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_setinheritsched": {
       "function": "pthread_attr_setinheritsched",
       "function_usr": "c:@F@p101_pthread_attr_setinheritsched",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_setschedparam": {
       "function": "pthread_attr_setschedparam",
       "function_usr": "c:@F@p101_pthread_attr_setschedparam",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_setschedpolicy": {
       "function": "pthread_attr_setschedpolicy",
       "function_usr": "c:@F@p101_pthread_attr_setschedpolicy",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_setscope": {
       "function": "pthread_attr_setscope",
       "function_usr": "c:@F@p101_pthread_attr_setscope",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_setstack": {
       "function": "pthread_attr_setstack",
       "function_usr": "c:@F@p101_pthread_attr_setstack",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_attr_setstacksize": {
       "function": "pthread_attr_setstacksize",
       "function_usr": "c:@F@p101_pthread_attr_setstacksize",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_cancel": {
       "function": "pthread_cancel",
       "function_usr": "c:@F@p101_pthread_cancel",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_cond_broadcast": {
       "function": "pthread_cond_broadcast",
       "function_usr": "c:@F@p101_pthread_cond_broadcast",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_cond_destroy": {
       "function": "pthread_cond_destroy",
       "function_usr": "c:@F@p101_pthread_cond_destroy",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_cond_init": {
       "function": "pthread_cond_init",
       "function_usr": "c:@F@p101_pthread_cond_init",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_cond_signal": {
       "function": "pthread_cond_signal",
       "function_usr": "c:@F@p101_pthread_cond_signal",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_cond_timedwait": {
       "function": "pthread_cond_timedwait",
       "function_usr": "c:@F@p101_pthread_cond_timedwait",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_cond_wait": {
       "function": "pthread_cond_wait",
       "function_usr": "c:@F@p101_pthread_cond_wait",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_condattr_destroy": {
       "function": "pthread_condattr_destroy",
       "function_usr": "c:@F@p101_pthread_condattr_destroy",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_condattr_getpshared": {
       "function": "pthread_condattr_getpshared",
       "function_usr": "c:@F@p101_pthread_condattr_getpshared",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_condattr_init": {
       "function": "pthread_condattr_init",
       "function_usr": "c:@F@p101_pthread_condattr_init",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_condattr_setpshared": {
       "function": "pthread_condattr_setpshared",
       "function_usr": "c:@F@p101_pthread_condattr_setpshared",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_create": {
       "function": "pthread_create",
       "function_usr": "c:@F@p101_pthread_create",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_detach": {
       "function": "pthread_detach",
       "function_usr": "c:@F@p101_pthread_detach",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_equal": {
       "function": "pthread_equal",
       "function_usr": "c:@F@p101_pthread_equal",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_exit": {
       "function": "pthread_exit",
       "function_usr": "c:@F@p101_pthread_exit",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_getschedparam": {
       "function": "pthread_getschedparam",
       "function_usr": "c:@F@p101_pthread_getschedparam",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_getspecific": {
       "function": "pthread_getspecific",
       "function_usr": "c:@F@p101_pthread_getspecific",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_join": {
       "function": "pthread_join",
       "function_usr": "c:@F@p101_pthread_join",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_key_create": {
       "function": "pthread_key_create",
       "function_usr": "c:@F@p101_pthread_key_create",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_key_delete": {
       "function": "pthread_key_delete",
       "function_usr": "c:@F@p101_pthread_key_delete",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_kill": {
       "function": "pthread_kill",
       "function_usr": "c:@F@p101_pthread_kill",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_mutex_destroy": {
       "function": "pthread_mutex_destroy",
       "function_usr": "c:@F@p101_pthread_mutex_destroy",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_mutex_getprioceiling": {
       "function": "pthread_mutex_getprioceiling",
       "function_usr": "c:@F@p101_pthread_mutex_getprioceiling",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_mutex_init": {
       "function": "pthread_mutex_init",
       "function_usr": "c:@F@p101_pthread_mutex_init",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_mutex_lock": {
       "function": "pthread_mutex_lock",
       "function_usr": "c:@F@p101_pthread_mutex_lock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_mutex_setprioceiling": {
       "function": "pthread_mutex_setprioceiling",
       "function_usr": "c:@F@p101_pthread_mutex_setprioceiling",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_mutex_trylock": {
       "function": "pthread_mutex_trylock",
       "function_usr": "c:@F@p101_pthread_mutex_trylock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_mutex_unlock": {
       "function": "pthread_mutex_unlock",
       "function_usr": "c:@F@p101_pthread_mutex_unlock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_mutexattr_destroy": {
       "function": "pthread_mutexattr_destroy",
       "function_usr": "c:@F@p101_pthread_mutexattr_destroy",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_mutexattr_getprioceiling": {
       "function": "pthread_mutexattr_getprioceiling",
       "function_usr": "c:@F@p101_pthread_mutexattr_getprioceiling",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_mutexattr_getprotocol": {
       "function": "pthread_mutexattr_getprotocol",
       "function_usr": "c:@F@p101_pthread_mutexattr_getprotocol",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_mutexattr_getpshared": {
       "function": "pthread_mutexattr_getpshared",
       "function_usr": "c:@F@p101_pthread_mutexattr_getpshared",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_mutexattr_gettype": {
       "function": "pthread_mutexattr_gettype",
       "function_usr": "c:@F@p101_pthread_mutexattr_gettype",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_mutexattr_init": {
       "function": "pthread_mutexattr_init",
       "function_usr": "c:@F@p101_pthread_mutexattr_init",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_mutexattr_setprioceiling": {
       "function": "pthread_mutexattr_setprioceiling",
       "function_usr": "c:@F@p101_pthread_mutexattr_setprioceiling",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_mutexattr_setprotocol": {
       "function": "pthread_mutexattr_setprotocol",
       "function_usr": "c:@F@p101_pthread_mutexattr_setprotocol",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_mutexattr_setpshared": {
       "function": "pthread_mutexattr_setpshared",
       "function_usr": "c:@F@p101_pthread_mutexattr_setpshared",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_mutexattr_settype": {
       "function": "pthread_mutexattr_settype",
       "function_usr": "c:@F@p101_pthread_mutexattr_settype",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_once": {
       "function": "pthread_once",
       "function_usr": "c:@F@p101_pthread_once",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_rwlock_destroy": {
       "function": "pthread_rwlock_destroy",
       "function_usr": "c:@F@p101_pthread_rwlock_destroy",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_rwlock_init": {
       "function": "pthread_rwlock_init",
       "function_usr": "c:@F@p101_pthread_rwlock_init",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_rwlock_rdlock": {
       "function": "pthread_rwlock_rdlock",
       "function_usr": "c:@F@p101_pthread_rwlock_rdlock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_rwlock_tryrdlock": {
       "function": "pthread_rwlock_tryrdlock",
       "function_usr": "c:@F@p101_pthread_rwlock_tryrdlock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_rwlock_trywrlock": {
       "function": "pthread_rwlock_trywrlock",
       "function_usr": "c:@F@p101_pthread_rwlock_trywrlock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_rwlock_unlock": {
       "function": "pthread_rwlock_unlock",
       "function_usr": "c:@F@p101_pthread_rwlock_unlock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_rwlock_wrlock": {
       "function": "pthread_rwlock_wrlock",
       "function_usr": "c:@F@p101_pthread_rwlock_wrlock",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_rwlockattr_destroy": {
       "function": "pthread_rwlockattr_destroy",
       "function_usr": "c:@F@p101_pthread_rwlockattr_destroy",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_rwlockattr_getpshared": {
       "function": "pthread_rwlockattr_getpshared",
       "function_usr": "c:@F@p101_pthread_rwlockattr_getpshared",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_rwlockattr_init": {
       "function": "pthread_rwlockattr_init",
       "function_usr": "c:@F@p101_pthread_rwlockattr_init",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_rwlockattr_setpshared": {
       "function": "pthread_rwlockattr_setpshared",
       "function_usr": "c:@F@p101_pthread_rwlockattr_setpshared",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_self": {
       "function": "pthread_self",
       "function_usr": "c:@F@p101_pthread_self",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_setcancelstate": {
       "function": "pthread_setcancelstate",
       "function_usr": "c:@F@p101_pthread_setcancelstate",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_setcanceltype": {
       "function": "pthread_setcanceltype",
       "function_usr": "c:@F@p101_pthread_setcanceltype",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_setschedparam": {
       "function": "pthread_setschedparam",
       "function_usr": "c:@F@p101_pthread_setschedparam",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX-optional",
       "role": "native-wrapper"
     },
     "p101_pthread_setspecific": {
       "function": "pthread_setspecific",
       "function_usr": "c:@F@p101_pthread_setspecific",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_sigmask": {
       "function": "pthread_sigmask",
       "function_usr": "c:@F@p101_pthread_sigmask",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_pthread_testcancel": {
       "function": "pthread_testcancel",
       "function_usr": "c:@F@p101_pthread_testcancel",
-      "library": "lib_thread",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
@@ -84037,7 +84037,7 @@
     "p101_seed48": {
       "function": "seed48",
       "function_usr": "c:@F@p101_seed48",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "provenance": "XSI",
       "role": "native-wrapper"
     },
@@ -84058,42 +84058,42 @@
     "p101_sem_close": {
       "function": "sem_close",
       "function_usr": "c:@F@p101_sem_close",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_sem_open": {
       "function": "sem_open",
       "function_usr": "c:@F@p101_sem_open",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_sem_post": {
       "function": "sem_post",
       "function_usr": "c:@F@p101_sem_post",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_sem_trywait": {
       "function": "sem_trywait",
       "function_usr": "c:@F@p101_sem_trywait",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_sem_unlink": {
       "function": "sem_unlink",
       "function_usr": "c:@F@p101_sem_unlink",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
     "p101_sem_wait": {
       "function": "sem_wait",
       "function_usr": "c:@F@p101_sem_wait",
-      "library": "lib_sync",
+      "library": "lib_concurrency",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
@@ -84289,7 +84289,7 @@
     "p101_setstate": {
       "function": "setstate",
       "function_usr": "c:@F@p101_setstate",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "provenance": "XSI",
       "role": "native-wrapper"
     },
@@ -84562,14 +84562,14 @@
     "p101_srand48": {
       "function": "srand48",
       "function_usr": "c:@F@p101_srand48",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "provenance": "XSI",
       "role": "native-wrapper"
     },
     "p101_srandom": {
       "function": "srandom",
       "function_usr": "c:@F@p101_srandom",
-      "library": "lib_random",
+      "library": "lib_numeric",
       "provenance": "XSI",
       "role": "native-wrapper"
     },
@@ -85143,56 +85143,56 @@
     "p101_tool_argv_append": {
       "function": null,
       "function_usr": "c:@F@p101_tool_argv_append",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_tool_argv_append_prefixed": {
       "function": null,
       "function_usr": "c:@F@p101_tool_argv_append_prefixed",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_tool_argv_destroy": {
       "function": null,
       "function_usr": "c:@F@p101_tool_argv_destroy",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_tool_argv_init": {
       "function": null,
       "function_usr": "c:@F@p101_tool_argv_init",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_tool_read_pipe_close": {
       "function": null,
       "function_usr": "c:@F@p101_tool_read_pipe_close",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_tool_read_pipe_open": {
       "function": null,
       "function_usr": "c:@F@p101_tool_read_pipe_open",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_tool_run_capture": {
       "function": null,
       "function_usr": "c:@F@p101_tool_run_capture",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "provenance": "",
       "role": "traced-api"
     },
     "p101_tool_run_redirect": {
       "function": null,
       "function_usr": "c:@F@p101_tool_run_redirect",
-      "library": "lib_util",
+      "library": "lib_subprocess",
       "provenance": "",
       "role": "traced-api"
     },
@@ -85367,7 +85367,7 @@
     "p101_uselocale": {
       "function": "uselocale",
       "function_usr": "c:@F@p101_uselocale",
-      "library": "lib_locale",
+      "library": "lib_text",
       "provenance": "POSIX",
       "role": "native-wrapper"
     },
@@ -85906,21 +85906,21 @@
     "p101_y0": {
       "function": "y0",
       "function_usr": "c:@F@p101_y0",
-      "library": "lib_math",
+      "library": "lib_numeric",
       "provenance": "XSI",
       "role": "native-wrapper"
     },
     "p101_y1": {
       "function": "y1",
       "function_usr": "c:@F@p101_y1",
-      "library": "lib_math",
+      "library": "lib_numeric",
       "provenance": "XSI",
       "role": "native-wrapper"
     },
     "p101_yn": {
       "function": "yn",
       "function_usr": "c:@F@p101_yn",
-      "library": "lib_math",
+      "library": "lib_numeric",
       "provenance": "XSI",
       "role": "native-wrapper"
     }

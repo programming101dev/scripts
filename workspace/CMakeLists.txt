@@ -62,8 +62,11 @@ set(CMAKE_MESSAGE_LOG_LEVEL WARNING)
 # The order is intentional.  The shared link resolver binds a logical p101_*
 # token to an existing in-tree target before it considers an installed library.
 p101_add_host_repository(libraries/lib_error lib_error)
-p101_add_host_repository(libraries/lib_tool_event lib_tool_event)
+p101_add_host_repository(libraries/lib_record lib_record)
+p101_add_host_repository(libraries/lib_json lib_json)
+p101_add_host_repository(libraries/lib_tool_support lib_tool_support)
 p101_add_host_repository(libraries/lib_env lib_env)
+p101_add_host_repository(libraries/lib_tool_event lib_tool_event)
 p101_add_host_repository(libraries/lib_c lib_c)
 
 p101_add_host_repository(libraries/lib_filesystem lib_filesystem)
@@ -72,17 +75,19 @@ p101_add_host_repository(libraries/lib_cli lib_cli)
 p101_add_host_repository(libraries/lib_process lib_process)
 p101_add_host_repository(libraries/lib_time lib_time)
 p101_add_host_repository(libraries/lib_host lib_host)
+p101_add_host_repository(libraries/lib_text lib_text)
 p101_add_host_repository(libraries/lib_network lib_network)
 p101_add_host_repository(libraries/lib_ipc lib_ipc)
 
 p101_add_host_repository(libraries/lib_convert lib_convert)
-p101_add_host_repository(libraries/lib_util lib_util)
+p101_add_host_repository(libraries/lib_subprocess lib_subprocess)
 p101_add_host_repository(libraries/lib_c_facts lib_c_facts)
 
-add_custom_target(p101_host_runtime
-        DEPENDS
+set(P101_HOST_RUNTIME_TARGETS
         p101_error
         p101_record
+        p101_json
+        p101_tool_support
         p101_tool_event
         p101_env
         p101_c
@@ -95,8 +100,10 @@ add_custom_target(p101_host_runtime
         p101_network
         p101_ipc
         p101_convert
-        p101_util
+        p101_subprocess
         p101_c_facts)
+add_custom_target(p101_host_runtime
+        DEPENDS ${P101_HOST_RUNTIME_TARGETS})
 
 # Stage 2: the actual audit, test, and inspection programs.  They are part of
 # this CMake graph rather than prebuilt executables discovered by shell code.
@@ -111,20 +118,24 @@ else()
 endif()
 unset(_P101_PARENT_MESSAGE_LOG_LEVEL)
 
-add_custom_target(p101_host_tools
-        DEPENDS
+set(P101_HOST_TOOL_TARGETS
         audit_wrappers
         audit_facts
         audit_errors
         audit_modules
         audit_doctor
         audit_workspace
+        audit_api
         test_faults
         test_mutation
+        test_repository_receipt
+        test_wrapper_conformance
         inspect_capture
         p101_inspect
         p101_event_model
         p101_receipt)
+add_custom_target(p101_host_tools
+        DEPENDS ${P101_HOST_TOOL_TARGETS})
 
 enable_testing()
 
@@ -145,19 +156,7 @@ function(p101_qualify_tool target_name)
             WILL_FAIL TRUE)
 endfunction()
 
-foreach(host_tool IN ITEMS
-        audit_wrappers
-        audit_facts
-        audit_errors
-        audit_modules
-        audit_doctor
-        audit_workspace
-        test_faults
-        test_mutation
-        inspect_capture
-        p101_inspect
-        p101_event_model
-        p101_receipt)
+foreach(host_tool IN LISTS P101_HOST_TOOL_TARGETS)
     p101_qualify_tool("${host_tool}")
 endforeach()
 
@@ -193,20 +192,8 @@ set_tests_properties(
 get_property(_P101_HOST_TESTS DIRECTORY PROPERTY TESTS)
 list(LENGTH _P101_HOST_TESTS P101_HOST_TEST_COUNT)
 unset(_P101_HOST_TESTS)
+list(LENGTH P101_HOST_TOOL_TARGETS P101_HOST_TOOL_TARGET_COUNT)
 
-set(_P101_HOST_TOOL_TARGETS
-        audit_wrappers
-        audit_facts
-        audit_errors
-        audit_modules
-        audit_doctor
-        audit_workspace
-        test_faults
-        test_mutation
-        inspect_capture
-        p101_inspect
-        p101_event_model
-        p101_receipt)
 add_custom_command(
         OUTPUT "${P101_HOST_TOOL_RECEIPT}"
         COMMAND "${CMAKE_CTEST_COMMAND}" --test-dir "${CMAKE_BINARY_DIR}"
@@ -214,16 +201,15 @@ add_custom_command(
         COMMAND "${CMAKE_COMMAND}"
                 -DOUTPUT=${P101_HOST_TOOL_RECEIPT}
                 -DCOMPILER=${CMAKE_C_COMPILER}
-                -DTOOL_COUNT=12
+                -DTOOL_COUNT=${P101_HOST_TOOL_TARGET_COUNT}
                 -DTEST_COUNT=${P101_HOST_TEST_COUNT}
                 -P "${CMAKE_CURRENT_SOURCE_DIR}/WriteHostToolReceipt.cmake"
-        DEPENDS ${_P101_HOST_TOOL_TARGETS}
+        DEPENDS ${P101_HOST_TOOL_TARGETS}
         USES_TERMINAL
         COMMENT "Qualifying the in-tree p101 host tools"
         VERBATIM)
 add_custom_target(p101_tool_qualification
         DEPENDS "${P101_HOST_TOOL_RECEIPT}")
-unset(_P101_HOST_TOOL_TARGETS)
 
 # Keep the mature acceptance graph while its policies migrate into C targets.
 # The important boundary is already enforced: these checks receive the exact
@@ -255,8 +241,11 @@ else()
                     -DAUDIT_MODULES=$<TARGET_FILE:audit_modules>
                     -DAUDIT_DOCTOR=$<TARGET_FILE:audit_doctor>
                     -DAUDIT_WORKSPACE=$<TARGET_FILE:audit_workspace>
+                    -DAUDIT_API=$<TARGET_FILE:audit_api>
                     -DTEST_FAULTS=$<TARGET_FILE:test_faults>
                     -DTEST_MUTATION=$<TARGET_FILE:test_mutation>
+                    -DTEST_REPOSITORY_RECEIPT=$<TARGET_FILE:test_repository_receipt>
+                    -DTEST_WRAPPER_CONFORMANCE=$<TARGET_FILE:test_wrapper_conformance>
                     -DEVENT_MODEL=$<TARGET_FILE:p101_event_model>
                     -DNO_CACHE=${P101_ACCEPTANCE_NO_CACHE}
                     -DVERIFY_INCREMENTAL=${P101_VERIFY_INCREMENTAL_ACCEPTANCE}
@@ -276,7 +265,8 @@ message(STATUS "p101 workspace host graph")
 message(STATUS "  C compiler        = ${CMAKE_C_COMPILER}")
 message(STATUS "  C++ evidence      = ${P101_ACCEPTANCE_CXX_COMPILER}")
 message(STATUS "  workspace level   = ${P101_WORKSPACE_LEVEL}")
-message(STATUS "  runtime libraries = 16 targets from 15 repositories")
-message(STATUS "  host tools        = 12 targets from 3 repositories")
+list(LENGTH P101_HOST_RUNTIME_TARGETS P101_HOST_RUNTIME_TARGET_COUNT)
+message(STATUS "  runtime libraries = ${P101_HOST_RUNTIME_TARGET_COUNT} targets from 15 repositories")
+message(STATUS "  host tools        = ${P101_HOST_TOOL_TARGET_COUNT} targets from 3 repositories")
 message(STATUS "  acceptance output = ${P101_ACCEPTANCE_OUTPUT_DIR}")
 message(STATUS "")

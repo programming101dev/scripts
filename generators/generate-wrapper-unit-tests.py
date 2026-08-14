@@ -25,8 +25,8 @@ that a real kernel can produce every condition on the current machine. Portable
 input rules cover only values that are unconditionally invalid on at least one
 supported platform; context-dependent values are deliberately delegated to the
 native implementation.
-check-wrapper-unit-tests.py and each repository's test.sh are the executable
-receipts for the generated and handwritten cases.
+The native audit-workspace wrapper-unit-tests policy and each repository's
+test.sh are the executable receipts for the generated and handwritten cases.
 """
 
 from __future__ import annotations
@@ -73,8 +73,10 @@ sys.path.insert(0, str(SCRIPTS_ROOT / "runtime"))
 from wrapper_fault_contract import (  # noqa: E402
     effective_fault_selection,
     fault_domain,
+    fault_symbol_header,
     header_conditional_fault_symbols,
     has_documented_faults,
+    injected_fault_cases,
     load_contract,
 )
 from c_facts import CFactError, acquire  # noqa: E402
@@ -100,6 +102,9 @@ NATIVE_SMOKE_CONTRACT_PATH = (
 )
 PORTABLE_INPUT_CONTRACT_PATH = (
     SCRIPTS_ROOT / "contracts" / "wrapper-portable-input-contract.json"
+)
+CONFORMANCE_CONTRACT_PATH = (
+    SCRIPTS_ROOT / "contracts" / "wrapper-conformance-contract.json"
 )
 REPOS_PATH = SCRIPTS_ROOT / "repos.txt"
 AGGREGATE_TYPEDEFS = {
@@ -5640,6 +5645,24 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
     outcome_contract = json.loads(
         OUTCOME_CONTRACT_PATH.read_text(encoding="utf-8")
     )
+    conformance_contract = json.loads(
+        CONFORMANCE_CONTRACT_PATH.read_text(encoding="utf-8")
+    )
+    if (
+        conformance_contract.get("schema")
+        != "p101-wrapper-conformance-contract-v4"
+    ):
+        raise RuntimeError("unsupported wrapper conformance contract")
+    conformance_logging = conformance_contract.get("logging")
+    if not isinstance(conformance_logging, dict) or set(conformance_logging) != {
+        "argument_wrapper_usrs",
+        "result_wrapper_usrs",
+    }:
+        raise RuntimeError("wrapper conformance logging contract is incomplete")
+    required_argument_usrs = set(
+        conformance_logging["argument_wrapper_usrs"]
+    )
+    required_result_usrs = set(conformance_logging["result_wrapper_usrs"])
     if outcome_contract.get("schema") != "p101-wrapper-outcome-contract-v2":
         raise RuntimeError("unsupported wrapper outcome contract")
     outcome_apis = outcome_contract.get("apis", {})
@@ -6286,6 +6309,8 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                                 "const char *"
                             )
         manifest_path = repo / "test" / "unit-test-manifest.tsv"
+        outcome_manifest_path = repo / "test" / "fault-outcome-manifest.tsv"
+        conformance_manifest_path = repo / "test" / "conformance-manifest.tsv"
         faultable = {
             name
             for name in declarations
@@ -6632,6 +6657,92 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
                 drift.append(manifest_path)
         else:
             atomic_write_text(manifest_path, expected_manifest)
+
+        outcome_manifest = [
+            "function\tfunction_usr\tdomain\tsymbol_header\t"
+            "linux_faults\tmacos_faults\tfreebsd_faults\tposix_faults\t"
+            "linux_conditional\tmacos_conditional\tfreebsd_conditional\n"
+        ]
+        for name in fault_names:
+            wrapper_usr = function_usrs[name]
+            native_function = fault_wrappers_by_usr[wrapper_usr].get("function")
+            symbol_header = fault_symbol_header(
+                fault_contract,
+                native_function,
+            )
+            platform_faults = {
+                platform_name: injected_fault_cases(
+                    fault_contract,
+                    native_function,
+                    platform_name if platform_name != "posix" else None,
+                )
+                for platform_name in ("linux", "macos", "freebsd", "posix")
+            }
+            conditional_faults = {
+                platform_name: sorted(
+                    header_conditional_fault_symbols(
+                        fault_contract,
+                        platform_name,
+                        symbol_header,
+                    ).intersection(platform_faults[platform_name])
+                )
+                for platform_name in ("linux", "macos", "freebsd")
+            }
+            outcome_manifest.append(
+                "\t".join(
+                    (
+                        name,
+                        wrapper_usr,
+                        fault_domain(fault_contract, native_function),
+                        symbol_header,
+                        ",".join(platform_faults["linux"]),
+                        ",".join(platform_faults["macos"]),
+                        ",".join(platform_faults["freebsd"]),
+                        ",".join(platform_faults["posix"]),
+                        ",".join(conditional_faults["linux"]),
+                        ",".join(conditional_faults["macos"]),
+                        ",".join(conditional_faults["freebsd"]),
+                    )
+                )
+                + "\n"
+            )
+        expected_outcome_manifest = "".join(outcome_manifest)
+        if check:
+            actual_outcome_manifest = (
+                outcome_manifest_path.read_text(encoding="utf-8")
+                if outcome_manifest_path.is_file()
+                else None
+            )
+            if actual_outcome_manifest != expected_outcome_manifest:
+                drift.append(outcome_manifest_path)
+        else:
+            atomic_write_text(
+                outcome_manifest_path,
+                expected_outcome_manifest,
+            )
+        conformance_manifest = [
+            "function\tfunction_usr\trequire_arguments\trequire_result\n"
+        ]
+        conformance_manifest.extend(
+            f"{name}\t{function_usrs[name]}\t"
+            f"{str(function_usrs[name] in required_argument_usrs).lower()}\t"
+            f"{str(function_usrs[name] in required_result_usrs).lower()}\n"
+            for name in sorted(admitted)
+        )
+        expected_conformance_manifest = "".join(conformance_manifest)
+        if check:
+            actual_conformance_manifest = (
+                conformance_manifest_path.read_text(encoding="utf-8")
+                if conformance_manifest_path.is_file()
+                else None
+            )
+            if actual_conformance_manifest != expected_conformance_manifest:
+                drift.append(conformance_manifest_path)
+        else:
+            atomic_write_text(
+                conformance_manifest_path,
+                expected_conformance_manifest,
+            )
         print(
             f"{library}: {len(fault_names)} injected-failure, "
             f"{len(behavior_names)} behavior tests"
@@ -6657,6 +6768,14 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         raise RuntimeError(
             "wrapper portable-input contract contains non-public APIs: "
             + ", ".join(sorted(extra_portable_input_rules))
+        )
+    unknown_logging_usrs = (
+        required_argument_usrs | required_result_usrs
+    ) - admitted_usrs
+    if unknown_logging_usrs:
+        raise RuntimeError(
+            "wrapper conformance logging contract contains non-public APIs: "
+            + ", ".join(sorted(unknown_logging_usrs))
         )
     expected_contract = (
         json.dumps(failure_contract, indent=2, sort_keys=True) + "\n"

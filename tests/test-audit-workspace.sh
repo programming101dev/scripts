@@ -297,10 +297,110 @@ run_architecture_controls()
     expect_failure boundary-owner boundaries
     cp "$scripts_root/contracts/p101-boundaries.json" "$temporary_root/contracts/p101-boundaries.json"
 
+    awk '
+        /"owner_source":/ { source_count++ }
+        /"owner_usr":/ { usr_count++ }
+        source_count == 2 && !source_changed {
+            sub(/"owner_source": "[^"]*"/, "\"owner_source\": \"libraries/lib_c_facts/include/p101_c_facts/compile_command.h\"")
+            source_changed = 1
+        }
+        usr_count == 2 && !usr_changed {
+            sub(/"owner_usr": "[^"]*"/, "\"owner_usr\": \"c:@F@p101_c_facts_with_compile_command\"")
+            usr_changed = 1
+        }
+        { print }
+    ' "$scripts_root/contracts/p101-boundaries.json" \
+        >"$temporary_root/contracts/p101-boundaries.json"
+    expect_failure boundary-duplicate-owner boundaries
+    cp "$scripts_root/contracts/p101-boundaries.json" "$temporary_root/contracts/p101-boundaries.json"
+
+    sed 's/p101:boundary-case:boundary:c-fact-analysis:identity_mismatch/p101:boundary-case:boundary:c-fact-analysis:binding_swap/' \
+        "$scripts_root/contracts/p101-boundaries.json" \
+        >"$temporary_root/contracts/p101-boundaries.json"
+    expect_failure boundary-reused-evidence boundaries
+    cp "$scripts_root/contracts/p101-boundaries.json" "$temporary_root/contracts/p101-boundaries.json"
+
+    awk '!changed && /"resource_limit":/ { sub(/"resource_limit":/, "\"missing_resource_limit\":"); changed = 1 } { print }' \
+        "$scripts_root/contracts/p101-boundaries.json" \
+        >"$temporary_root/contracts/p101-boundaries.json"
+    expect_failure boundary-missing-case boundaries
+    cp "$scripts_root/contracts/p101-boundaries.json" "$temporary_root/contracts/p101-boundaries.json"
+
+    awk '!changed && /"does_not_prove":/ { sub(/: "[^"]*"/, ": \"\""); changed = 1 } { print }' \
+        "$scripts_root/contracts/p101-boundaries.json" \
+        >"$temporary_root/contracts/p101-boundaries.json"
+    expect_failure boundary-empty-limitation boundaries
+    cp "$scripts_root/contracts/p101-boundaries.json" "$temporary_root/contracts/p101-boundaries.json"
+
     sed 's/p101-quality-contract-v3/p101-quality-contract-v2/' \
         "$scripts_root/contracts/p101-quality-contract.json" \
         >"$temporary_root/contracts/p101-quality-contract.json"
     expect_failure quality-schema quality-contract
+    cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
+
+    awk '!changed && /"mode": "local"/ { sub(/"local"/, "\"ambient\""); changed = 1 } { print }' \
+        "$scripts_root/contracts/p101-quality-contract.json" \
+        >"$temporary_root/contracts/p101-quality-contract.json"
+    expect_failure quality-audit-mode quality-contract
+    cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
+
+    awk '!changed && /"oracle":/ { sub(/"oracle": "[^"]*"/, "\"oracle\": \"missing-quality-oracle\""); changed = 1 } { print }' \
+        "$scripts_root/contracts/p101-quality-contract.json" \
+        >"$temporary_root/contracts/p101-quality-contract.json"
+    expect_failure quality-oracle quality-contract
+    cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
+
+    sed 's/"P101_ERROR_NONE"/"P101_ERROR_NOT_A_VARIANT"/' \
+        "$scripts_root/contracts/p101-quality-contract.json" \
+        >"$temporary_root/contracts/p101-quality-contract.json"
+    expect_failure quality-enum-variant quality-contract
+    cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
+
+    sed 's/c:@E@p101_c_analysis_kind/c:@E@p101_missing_analysis_kind/' \
+        "$scripts_root/contracts/p101-quality-contract.json" \
+        >"$temporary_root/contracts/p101-quality-contract.json"
+    expect_failure quality-enum-classification quality-contract
+    cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
+
+    sed 's/boundary:c-fact-analysis/boundary:missing-c-fact-analysis/' \
+        "$scripts_root/contracts/p101-quality-contract.json" \
+        >"$temporary_root/contracts/p101-quality-contract.json"
+    expect_failure quality-boundary quality-contract
+    cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
+
+    sed 's/"allowed_caller_usr": "c:@F@main"/"allowed_caller_usr": "c:@F@worker"/' \
+        "$scripts_root/contracts/p101-quality-contract.json" \
+        >"$temporary_root/contracts/p101-quality-contract.json"
+    expect_failure quality-termination-owner quality-contract
+    cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
+
+    sed 's/p101:test:negative-control:process-termination//g' \
+        "$scripts_root/contracts/p101-quality-contract.json" \
+        >"$temporary_root/contracts/p101-quality-contract.json"
+    expect_failure quality-empty-termination-role quality-contract
+    cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
+
+    sed 's/"freebsd"/"unsupported-platform"/' \
+        "$scripts_root/contracts/p101-quality-contract.json" \
+        >"$temporary_root/contracts/p101-quality-contract.json"
+    expect_failure quality-platform quality-contract
+    cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
+
+    awk '!changed && /"does_not_prove":/ { sub(/: "[^"]*"/, ": \"\""); changed = 1 } { print }' \
+        "$scripts_root/contracts/p101-quality-contract.json" \
+        >"$temporary_root/contracts/p101-quality-contract.json"
+    expect_failure quality-empty-limitation quality-contract
+    cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
+
+    awk '
+        !changed && /"patterns": \[/ { in_patterns = 1; print; next }
+        in_patterns && /]/ { in_patterns = 0; changed = 1; print; next }
+        in_patterns { sub(/"[^"]*"/, "\"P101_NOT_A_DOCUMENTED_CONCEPT\"") }
+        { print }
+    ' \
+        "$scripts_root/contracts/p101-quality-contract.json" \
+        >"$temporary_root/contracts/p101-quality-contract.json"
+    expect_failure quality-documentation quality-contract
     cp "$scripts_root/contracts/p101-quality-contract.json" "$temporary_root/contracts/p101-quality-contract.json"
 
     awk '!changed && /"lib_cli": "native-wrapper"/ { sub(/"lib_cli": "native-wrapper"/, "\"lib_missing\": \"native-wrapper\""); changed = 1 } { print }' \

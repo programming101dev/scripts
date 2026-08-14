@@ -10,9 +10,11 @@ standard that first documented an interface.
   and FreeBSD.
 - POSIX, XSI, optional-POSIX, and common-Unix origins are provenance metadata
   in each `api-manifest.tsv`; they do not select the repository.
-- Each functional library has one installed public header,
-  `include/p101_<domain>/<domain>.h`, and one implementation translation unit,
-  `src/<domain>.c`. The source tree does not repeat standards provenance.
+- Installed headers mirror the native C/POSIX/Unix API families, under the
+  owning namespace (for example `include/p101_text/p101_regex.h`).
+- C translation units mirror those public headers. A repository that owns more
+  than one namespace keeps each target under `src/p101_<domain>/`; provenance
+  such as POSIX, XSI, optional-POSIX, or Unix does not create source layers.
 - Unsupported designs may be retained under `design/unsupported`, but they are
   neither compiled nor installed.
 - Consumers include and link only functional libraries.
@@ -31,18 +33,13 @@ information.
 
 ## Tradeoff
 
-Functional ownership creates more repositories, makes some programs link
-several small libraries, and creates larger translation units inside the
-domain repositories. In return, students can discover an API by purpose,
-dependencies describe actual capabilities, platform availability is explicit,
-private implementation pieces can cooperate without artificial standards
-boundaries, and standards provenance can change without moving code.
-
-The single-source rule deliberately trades fine-grained incremental
-compilation for a smaller and more truthful teaching surface. These libraries
-are small enough that the compilation cost is acceptable. If a domain grows
-large enough to invalidate that tradeoff, it should split by a real functional
-boundary rather than by standards origin.
+Functional ownership makes some programs link several small targets. The
+native-shaped files add a little structure, but students can find a wrapper by
+the header where the native function is declared and can inspect its matching
+implementation file. Repository consolidation is used only where the runtime
+concepts share a lifecycle and dependency boundary: thread/synchronization,
+text/locale, and math/random. Each public namespace and CMake target remains
+separate inside its consolidated repository.
 
 The former `lib_posix`, `lib_posix_optional`, `lib_posix_xsi`, and `lib_unix`
 repositories are retained only as migration history. They and their wrapper
@@ -56,13 +53,14 @@ library carries its own `api-manifest.tsv`. Run:
 ```sh
 "${P101_AUDIT_WORKSPACE:?set this to the qualified audit-workspace}" \
     --policy functional-library-split --workspace .. --scripts-root .
-./checks/check-wrapper-unit-tests.py
+"${P101_AUDIT_WORKSPACE:?set this to the qualified audit-workspace}" \
+    --policy wrapper-unit-tests --workspace .. --scripts-root .
 ./checks/check-p101-library-audit.sh
 ./tests/test-cmake.sh -c clang -x clang++
 ```
 
-The native workspace policy rejects duplicate or missing ownership, anything other than
-one domain header and one domain source, obsolete standards-origin source
+The native workspace policy rejects duplicate or missing ownership,
+non-native-shaped headers or source files, obsolete standards-origin source
 directories, stale source/header paths, unsupported platform rows, active
 references to retired headers or link targets, and drift between the central
 and per-library manifests. The second rejects wrappers without a unique

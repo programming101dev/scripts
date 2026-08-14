@@ -2,10 +2,9 @@
 # check-p101-tool-audit.sh — audit the p101 tools as a teaching toolchain.
 #
 # This is a replayable local gate for the tool design work. It checks:
-#   1. the governed quality and documentation contract;
-#   2. wrapper coverage for C p101 tools in strict mode;
-#   3. error-object contracts for C p101 tools;
-#   4. module-map design notes for C p101 tools.
+#   1. wrapper coverage for C p101 tools in strict mode;
+#   2. error-object contracts for C p101 tools;
+#   3. module-map design notes for C p101 tools.
 #
 # Wrapper-audit findings are hard failures because direct/unmapped calls make
 # the observer/reporting tools silently under-report. Module-map notes are hard
@@ -19,7 +18,6 @@ CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 programs_dir="../programs"
 out_dir=""
 fail_module_notes=1
-skip_contracts=0
 skip_wrapper=0
 skip_error_contract=0
 skip_module_map=0
@@ -29,8 +27,8 @@ usage() {
   cat <<'USAGE'
 Usage: ./check-p101-tool-audit.sh [options]
 
-Audit p101-* tools for README contracts, strict wrapper use, error handling,
-and module design notes. This script does not build tools; run the normal
+Audit p101-* tools for strict wrapper use, error handling, and module design
+notes. This script does not build tools; run the normal
 build/update scripts first.
 
 Options:
@@ -38,7 +36,6 @@ Options:
   -o <dir>              Artifact directory. Default: /tmp/p101-tool-audit-<pid>
   --facts-cache <dir>   Publish content-addressed Clang fact evidence.
   --allow-module-notes  Report audit-modules design notes without failing.
-  --skip-contracts      Skip README/tool-contract checks.
   --skip-wrapper        Skip strict audit-wrappers checks.
   --skip-error-contract Skip audit-errors checks.
   --skip-module-map     Skip audit-modules design-note reports.
@@ -53,7 +50,6 @@ while [ "$#" -gt 0 ]; do
     -o) out_dir="${2:?}"; shift 2 ;;
     --facts-cache) facts_cache="${2:?}"; shift 2 ;;
     --allow-module-notes) fail_module_notes=0; shift ;;
-    --skip-contracts) skip_contracts=1; shift ;;
     --skip-wrapper) skip_wrapper=1; shift ;;
     --skip-error-contract) skip_error_contract=1; shift ;;
     --skip-module-map) skip_module_map=1; shift ;;
@@ -222,16 +218,6 @@ EOF
 
 say "p101 tool audit output: $out_dir"
 failed=0
-
-if [ "$skip_contracts" -eq 0 ]; then
-  if ! run_logged "p101 tool documentation contract" "$log_dir/check-p101-quality-contract.log" "$workspace_dir/scripts/checks/check-p101-quality-contract.py" --allow-no-facts; then
-    failed=1
-  fi
-else
-  say "==> p101 README/tool contract checks"
-  say "    SKIP"
-  printf '| SKIP | p101 README/tool contract checks | --skip-contracts |\n' >> "$summary"
-fi
 
 if [ "$skip_wrapper" -eq 0 ]; then
   if [ ! -x "$wrapper_audit" ]; then

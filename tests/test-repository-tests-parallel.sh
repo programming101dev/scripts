@@ -10,7 +10,6 @@ mkdir -p "$work/scripts/checks" "$work/scripts/contracts" "$work/scripts/shared"
   "$work/repos/alpha/test" "$work/repos/bravo/test" \
   "$work/repos/charlie/test" "$work/probe"
 cp "$scripts_root/checks/check-repository-tests.sh" "$work/scripts/checks/"
-cp "$scripts_root/checks/write-repository-test-receipt.py" "$work/scripts/checks/"
 cp "$scripts_root/shared/compilers.sh" "$work/scripts/shared/"
 cat > "$work/scripts/contracts/repository-test-costs.tsv" <<'EOF'
 # Repository|Expected seconds
@@ -55,7 +54,8 @@ chmod +x "$work/repos/charlie/test.sh"
 set +e
 (
   cd "$work/scripts"
-  P101_TEST_PROBE_DIR="$work/probe" ./checks/check-repository-tests.sh \
+  P101_TEST_REPOSITORY_RECEIPT="${P101_TEST_REPOSITORY_RECEIPT:?}" \
+    P101_TEST_PROBE_DIR="$work/probe" ./checks/check-repository-tests.sh \
     -j 2 --skip-fuzz -o "$work/output"
 ) > "$work/stdout.txt" 2>&1
 status=$?
@@ -121,7 +121,8 @@ EOF
 chmod +x "$work/repos/charlie/test.sh"
 (
   cd "$work/scripts"
-  ./checks/check-repository-tests.sh -j 2 --skip-fuzz \
+  P101_TEST_REPOSITORY_RECEIPT="${P101_TEST_REPOSITORY_RECEIPT:?}" \
+    ./checks/check-repository-tests.sh -j 2 --skip-fuzz \
     --unit-evidence "$work/unit-evidence.tsv" \
     --unit-evidence "$work/conflicting-unit-evidence.tsv" \
     -o "$work/reused-output"
@@ -144,7 +145,8 @@ printf 'broken|not-a-number\n' >> "$work/scripts/contracts/repository-test-costs
 set +e
 (
   cd "$work/scripts"
-  ./checks/check-repository-tests.sh -j 1 --skip-fuzz -o "$work/invalid-cost-output"
+  P101_TEST_REPOSITORY_RECEIPT="${P101_TEST_REPOSITORY_RECEIPT:?}" \
+    ./checks/check-repository-tests.sh -j 1 --skip-fuzz -o "$work/invalid-cost-output"
 ) > "$work/invalid-cost.log" 2>&1
 invalid_cost_status=$?
 set -e

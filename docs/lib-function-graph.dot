@@ -891,8 +891,8 @@ digraph p101_lib_functions {
   "p101_record_parse_size" [label="p101_record_parse_size\ntooling/event-protocol"];
   "p101_record_split" [label="p101_record_split\ntooling/event-protocol"];
   "p101_record_unescape_field" [label="p101_record_unescape_field\ntooling/event-protocol"];
-  "p101_record_write_json_string" [label="p101_record_write_json_string\ntooling/event-protocol"];
-  "p101_record_write_json_string_contents" [label="p101_record_write_json_string_contents\ntooling/event-protocol"];
+  "p101_json_write_string" [label="p101_json_write_string\ntooling/event-protocol"];
+  "p101_json_write_string_contents" [label="p101_json_write_string_contents\ntooling/event-protocol"];
   "p101_recv" [label="p101_recv\nnetwork/io"];
   "p101_recvfrom" [label="p101_recvfrom\nnetwork/io"];
   "p101_recvmsg" [label="p101_recvmsg\nnetwork/io"];
@@ -2080,7 +2080,7 @@ digraph p101_lib_functions {
   "p101_realloc" -> "realloc" [label="wrapped-native", style=dashed];
   "p101_realpath" -> "p101_strlen" [label="wrapper-call", style=solid];
   "p101_realpath" -> "realpath" [label="wrapped-native", style=dashed];
-  "p101_record_write_json_string" -> "p101_record_write_json_string_contents" [label="wrapper-call", style=solid];
+  "p101_json_write_string" -> "p101_json_write_string_contents" [label="wrapper-call", style=solid];
   "p101_recv" -> "recv" [label="wrapped-native", style=dashed];
   "p101_recvfrom" -> "recvfrom" [label="wrapped-native", style=dashed];
   "p101_recvmsg" -> "recvmsg" [label="wrapped-native", style=dashed];

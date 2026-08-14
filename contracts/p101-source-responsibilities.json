@@ -10,21 +10,35 @@
     },
     {
       "id": "record-parser",
-      "owner": "libraries/lib_tool_event",
+      "owner": "libraries/lib_record",
       "marker_usrs": ["c:@F@p101_record_split"],
       "consumer_roots": ["libraries/lib_c_facts", "programs"],
       "forbidden_definition_usrs": ["c:@F@p101_record_split"]
     },
     {
+      "id": "json-parser",
+      "owner": "libraries/lib_json",
+      "marker_usrs": ["c:@F@p101_json_parse"],
+      "consumer_roots": ["programs"],
+      "forbidden_definition_usrs": ["c:@F@p101_json_parse"]
+    },
+    {
       "id": "event-parser",
       "owner": "libraries/lib_tool_event",
-      "marker_usrs": ["c:@F@p101_tool_event_parse_line", "c:@F@p101_tool_event_lifecycle_ingest", "c:@F@p101_tool_run_receipt_validate_file"],
+      "marker_usrs": ["c:@F@p101_tool_event_parse_line", "c:@F@p101_tool_event_lifecycle_ingest"],
       "consumer_roots": ["programs"],
-      "forbidden_definition_usrs": ["c:@F@p101_tool_event_parse_line", "c:@F@p101_tool_event_lifecycle_ingest", "c:@F@p101_tool_run_receipt_validate_file"]
+      "forbidden_definition_usrs": ["c:@F@p101_tool_event_parse_line", "c:@F@p101_tool_event_lifecycle_ingest"]
+    },
+    {
+      "id": "tool-support",
+      "owner": "libraries/lib_tool_support",
+      "marker_usrs": ["c:@F@p101_tool_diagnostic_write", "c:@F@p101_tool_report_begin", "c:@F@p101_tool_run_receipt_validate_file"],
+      "consumer_roots": ["programs"],
+      "forbidden_definition_usrs": ["c:@F@p101_tool_diagnostic_write", "c:@F@p101_tool_report_begin", "c:@F@p101_tool_run_receipt_validate_file"]
     },
     {
       "id": "tool-subprocess",
-      "owner": "libraries/lib_util",
+      "owner": "libraries/lib_subprocess",
       "marker_usrs": ["c:@F@p101_tool_run_capture"],
       "consumer_roots": ["programs/p101-inspect", "programs/p101-test", "programs/p101-audit"],
       "forbidden_call_usrs": ["c:@F@system", "c:@F@popen", "c:@F@fork", "c:@F@execvp"]
@@ -32,12 +46,22 @@
   ],
   "facades": [
     {
+      "path": "libraries/lib_json/include/p101_json/json.h",
+      "maximum_lines": 80,
+      "reason": "the reusable JSON DOM must remain separate from record and tool policy"
+    },
+    {
       "path": "libraries/lib_tool_event/include/p101_tool_event/event.h",
       "maximum_lines": 240,
       "reason": "event representation must not absorb lifecycle or report policy"
     },
     {
-      "path": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "path": "libraries/lib_tool_support/include/p101_tool_support/diagnostic.h",
+      "maximum_lines": 85,
+      "reason": "shared diagnostic transport must not absorb tool-specific findings policy"
+    },
+    {
+      "path": "libraries/lib_tool_support/include/p101_tool_support/receipt.h",
       "maximum_lines": 140,
       "reason": "receipt transport and validation must not absorb producer policy"
     },
@@ -47,7 +71,7 @@
       "reason": "fact representation must remain separate from tool policy"
     },
     {
-      "path": "libraries/lib_util/include/p101_util/tool_run.h",
+      "path": "libraries/lib_subprocess/include/p101_subprocess/tool_run.h",
       "maximum_lines": 100,
       "reason": "subprocess mechanics should expose a narrow argv API"
     }

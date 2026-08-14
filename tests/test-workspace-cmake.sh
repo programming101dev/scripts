@@ -40,8 +40,9 @@ cmake -S "$scripts_dir/workspace" -B "$work/host-build" \
     -DP101_ACCEPTANCE_CXX_COMPILER= >"$work/configure.log"
 cmake --build "$work/host-build" --target help >"$work/targets.log"
 
-for target in p101_host_runtime p101_host_tools p101_tool_qualification \
-    p101_workspace_checks p101_acceptance
+for target in p101_record p101_json p101_tool_support p101_tool_event \
+    p101_subprocess p101_host_runtime p101_host_tools \
+    p101_tool_qualification p101_workspace_checks p101_acceptance
 do
     grep -Eq "(^|[[:space:]])${target}([[:space:]]|$)" "$work/targets.log"
 done

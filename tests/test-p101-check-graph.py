@@ -162,7 +162,7 @@ class CheckGraphTests(unittest.TestCase):
 
     def test_selection_includes_dependencies(self) -> None:
         ordered = MODULE.validate(copy.deepcopy(self.document))
-        selected = MODULE.select_nodes(ordered, {"boundary-tests"}, set(), None)
+        selected = MODULE.select_nodes(ordered, {"boundaries"}, set(), None)
         self.assertEqual(
             [node["id"] for node in selected],
             [
@@ -177,9 +177,79 @@ class CheckGraphTests(unittest.TestCase):
                 "semantic-prime-tests",
                 "semantic-prime",
                 "boundaries",
-                "boundary-tests",
             ],
         )
+
+    @staticmethod
+    def graph_receipt(system: str) -> dict[str, object]:
+        receipt: dict[str, object] = {
+            "schema": MODULE.RUN_RECEIPT_SCHEMA,
+            "host": {"system": system},
+            "input": {"schema": "p101-check-graph-v1", "identity": "graph"},
+            "outcome": "clean",
+            "checks": {"attempted": 2, "completed": 2},
+            "stack_contract": {
+                "valid": True,
+                "contract_sha256": "sha256:stack",
+            },
+        }
+        receipt["receipt_digest"] = MODULE.canonical_sha256(receipt)
+        return receipt
+
+    def test_quality_platform_receipts_are_digest_and_identity_bound(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            paths = []
+            for system in ("Darwin", "FreeBSD", "Linux"):
+                path = Path(temporary) / f"{system}.json"
+                path.write_text(
+                    json.dumps(self.graph_receipt(system)), encoding="utf-8"
+                )
+                paths.append(path)
+            with redirect_stdout(StringIO()) as output:
+                MODULE.merge_quality_receipts(
+                    paths, {"freebsd", "linux", "macos"}
+                )
+            self.assertIn("3 receipts", output.getvalue())
+
+            tampered = json.loads(paths[0].read_text(encoding="utf-8"))
+            tampered["outcome"] = "tool-error"
+            paths[0].write_text(json.dumps(tampered), encoding="utf-8")
+            with self.assertRaisesRegex(MODULE.GraphError, "digest mismatch"):
+                MODULE.merge_quality_receipts(
+                    paths, {"freebsd", "linux", "macos"}
+                )
+
+    def test_instrumentation_platform_receipts_require_one_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            paths = []
+            for system in ("Darwin", "FreeBSD", "Linux"):
+                path = Path(temporary) / f"{system}.json"
+                path.write_text(
+                    json.dumps(
+                        {
+                            "schema": "p101-instrumentation-platform-receipt-v1",
+                            "platform": system,
+                            "passed": True,
+                            "contract_sha256": "contract",
+                            "functions": [f"{system}:function"],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                paths.append(path)
+            with redirect_stdout(StringIO()) as output:
+                MODULE.merge_instrumentation_receipts(
+                    paths, {"Darwin", "FreeBSD", "Linux"}
+                )
+            self.assertIn("union instrumented functions: 3", output.getvalue())
+
+            receipt = json.loads(paths[0].read_text(encoding="utf-8"))
+            receipt["contract_sha256"] = "different"
+            paths[0].write_text(json.dumps(receipt), encoding="utf-8")
+            with self.assertRaisesRegex(MODULE.GraphError, "different instrumentation"):
+                MODULE.merge_instrumentation_receipts(
+                    paths, {"Darwin", "FreeBSD", "Linux"}
+                )
 
     def test_semantic_prime_precedes_all_direct_semantic_consumers(self) -> None:
         nodes = {node["id"]: node for node in self.document["nodes"]}

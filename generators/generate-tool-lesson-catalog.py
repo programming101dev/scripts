@@ -91,8 +91,8 @@ def header(entries: list[tuple[str, str, str, str]], source_label: str) -> str:
     enum_lines.append(f"        P101_TOOL_FINDING_COUNT = {len(entries)}")
     return "\n".join(
         [
-            "#ifndef P101_TOOL_EVENT_LESSON_CATALOG_H",
-            "#define P101_TOOL_EVENT_LESSON_CATALOG_H",
+            "#ifndef P101_TOOL_SUPPORT_LESSON_CATALOG_H",
+            "#define P101_TOOL_SUPPORT_LESSON_CATALOG_H",
             "",
             f"/* Generated from {source_label}; do not edit. */",
             "",
@@ -139,7 +139,7 @@ def source(entries: list[tuple[str, str, str, str]], source_label: str) -> str:
     return "\n".join(
         [
             "#include <errno.h>",
-            "#include <p101_tool_event/lesson_catalog.h>",
+            "#include <p101_tool_support/lesson_catalog.h>",
             "#include <stddef.h>",
             "#include <string.h>",
             "",
@@ -216,7 +216,7 @@ def main() -> int:
     root = workspace_root()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", type=Path, default=root / "playgrounds" / "lessons" / "manifest.json")
-    parser.add_argument("--header", type=Path, default=root / "libraries" / "lib_tool_event" / "include" / "p101_tool_event" / "lesson_catalog.h")
+    parser.add_argument("--header", type=Path, default=root / "libraries" / "lib_tool_event" / "include" / "p101_tool_support" / "lesson_catalog.h")
     parser.add_argument("--source", type=Path, default=root / "libraries" / "lib_tool_event" / "src" / "lesson_catalog.c")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()

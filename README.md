@@ -58,10 +58,11 @@ remain usable after being copied outside this workspace.
 
 Governed advanced checks are direct scripts:
 
-- `runtime/p101-fault-campaign.py` derives every admitted synthetic mode and documented
-  errno/system code from the current host platform's wrapper contract;
+- `test-faults` runs the native executable fault campaign; the wrapper
+  conformance and failure-semantics gates derive its admitted platform modes
+  and error outcomes from the shared contracts;
 - `p101-inspect interleaving` explores bounded synchronization reorderings;
-- `runtime/p101-api-diff.py` compares public-API manifests;
+- `audit-api` snapshots and compares public-API manifests;
 - each repository's `fuzz.sh` runs that repository's declared fuzz contract.
 
 ## **Prerequisites**
@@ -466,10 +467,13 @@ identity-mismatch, resource-limit, and stale-version tests.
 `contracts/p101-test-inventory.json` prevents a repository or scripts verification entry
 point from silently falling outside the runners.
 
-Three narrower checks enforce contracts that used to be implicit:
+The native workspace audit enforces contracts that used to be implicit:
 
 ```bash
-./checks/check-p101-instrumentation.py
+"${P101_AUDIT_WORKSPACE}" --policy instrumentation \
+    --workspace "$(pwd -P)/.." --scripts-root "$(pwd -P)" \
+    --facts /path/to/semantic-facts.tsv \
+    --receipt /path/to/instrumentation-receipt.json
 ./checks/check-repository-tests.sh
 ./checks/check-workspace-public-api.sh
 "${P101_AUDIT_WORKSPACE}" --policy wrapper-fault-semantics \
@@ -715,14 +719,17 @@ blind spots, deterministic receipts, shared mechanisms, and small public APIs.
 See [docs/p101-tool-design-contract.md](docs/p101-tool-design-contract.md).
 The source/runtime ownership map and the consolidation tradeoff are recorded in
 [docs/p101-tool-responsibilities.md](docs/p101-tool-responsibilities.md).
-To check that each `p101-*` README exposes the minimum contract surface, run:
+To check the governed quality catalog, including the minimum documentation
+surface for every `p101-*` tool, run:
 
 ```bash
-./checks/check-p101-quality-contract.py --allow-no-facts
+"${P101_AUDIT_WORKSPACE}" --policy quality-contract \
+    --workspace "$(pwd -P)/.." --scripts-root "$(pwd -P)" \
+    --facts /path/to/semantic-facts.tsv
 ```
 
-To replay the broader p101 tool audit — README contract checks, strict
-wrapper-audit checks over the C tools, and module-map design reports — run:
+To replay the source-level p101 tool audit — strict wrapper-audit checks over
+the C tools and module-map design reports — run:
 
 ```bash
 ./checks/check-p101-tool-audit.sh
@@ -872,7 +879,8 @@ functions.
 
 Every accepted wrapper must also acquire a unit-test row. This is a
 workspace-wide contract, including `lib_c`, `lib_c_facts`, `lib_convert`,
-`lib_fsm`, and `lib_util` as well as the functional wrapper libraries.
+`lib_fsm`, `lib_endian`, and `lib_subprocess` as well as the functional wrapper
+libraries.
 `wrapper-platform-faults.json` is the single source of truth for platform
 failure outcomes.
 It retains the POSIX.1-2024 `shall fail` and `may fail` sets separately, plus
@@ -917,7 +925,8 @@ complete contract:
 ./generators/generate-wrapper-unit-tests.py --clang clang
 ./generators/generate-wrapper-unit-tests.py --check --clang clang
 ./tests/test-wrapper-platform-faults.py
-./checks/check-wrapper-unit-tests.py
+"${P101_AUDIT_WORKSPACE}" --policy wrapper-unit-tests \
+    --workspace "$(pwd -P)/.." --scripts-root "$(pwd -P)"
 ```
 
 For each fault-capable wrapper, the generator injects every documented fault
@@ -985,7 +994,9 @@ The executable 10x contract replays every library test suite with call and
 resource logging enabled:
 
 ```bash
-./checks/check-wrapper-conformance.py -o /tmp/p101-wrapper-conformance
+./checks/check-wrapper-conformance.sh \
+    --instrumentation-receipt /path/to/instrumentation-receipt.json \
+    -o /tmp/p101-wrapper-conformance
 ```
 
 It combines `api-manifest.tsv`, `unit-test-manifest.tsv`, and the

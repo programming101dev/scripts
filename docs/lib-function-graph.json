@@ -7105,7 +7105,7 @@
       "name": "p101_record_parse_size",
       "library": "lib_tool_event",
       "domain": "tooling/event-protocol",
-      "header": "libraries/lib_tool_event/include/p101_record/record.h",
+      "header": "libraries/lib_record/include/p101_record/record.h",
       "source": "libraries/lib_tool_event/src/record.c",
       "native_guess": "record_parse_size"
     },
@@ -7113,7 +7113,7 @@
       "name": "p101_record_split",
       "library": "lib_tool_event",
       "domain": "tooling/event-protocol",
-      "header": "libraries/lib_tool_event/include/p101_record/record.h",
+      "header": "libraries/lib_record/include/p101_record/record.h",
       "source": "libraries/lib_tool_event/src/record.c",
       "native_guess": "record_split"
     },
@@ -7121,24 +7121,24 @@
       "name": "p101_record_unescape_field",
       "library": "lib_tool_event",
       "domain": "tooling/event-protocol",
-      "header": "libraries/lib_tool_event/include/p101_record/record.h",
+      "header": "libraries/lib_record/include/p101_record/record.h",
       "source": "libraries/lib_tool_event/src/record.c",
       "native_guess": "record_unescape_field"
     },
     {
-      "name": "p101_record_write_json_string",
+      "name": "p101_json_write_string",
       "library": "lib_tool_event",
       "domain": "tooling/event-protocol",
-      "header": "libraries/lib_tool_event/include/p101_record/record.h",
-      "source": "libraries/lib_tool_event/src/record.c",
+      "header": "libraries/lib_json/include/p101_json/json.h",
+      "source": "libraries/lib_tool_event/src/json.c",
       "native_guess": "record_write_json_string"
     },
     {
-      "name": "p101_record_write_json_string_contents",
+      "name": "p101_json_write_string_contents",
       "library": "lib_tool_event",
       "domain": "tooling/event-protocol",
-      "header": "libraries/lib_tool_event/include/p101_record/record.h",
-      "source": "libraries/lib_tool_event/src/record.c",
+      "header": "libraries/lib_json/include/p101_json/json.h",
+      "source": "libraries/lib_tool_event/src/json.c",
       "native_guess": "record_write_json_string_contents"
     },
     {
@@ -8705,7 +8705,7 @@
       "name": "p101_tool_argv_append",
       "library": "lib_util",
       "domain": "c/byte-utility",
-      "header": "libraries/lib_util/include/p101_util/tool_run.h",
+      "header": "libraries/lib_subprocess/include/p101_subprocess/tool_run.h",
       "source": "libraries/lib_util/src/tool_run.c",
       "native_guess": "tool_argv_append"
     },
@@ -8713,7 +8713,7 @@
       "name": "p101_tool_argv_append_prefixed",
       "library": "lib_util",
       "domain": "c/byte-utility",
-      "header": "libraries/lib_util/include/p101_util/tool_run.h",
+      "header": "libraries/lib_subprocess/include/p101_subprocess/tool_run.h",
       "source": "libraries/lib_util/src/tool_run.c",
       "native_guess": "tool_argv_append_prefixed"
     },
@@ -8721,7 +8721,7 @@
       "name": "p101_tool_argv_destroy",
       "library": "lib_util",
       "domain": "c/byte-utility",
-      "header": "libraries/lib_util/include/p101_util/tool_run.h",
+      "header": "libraries/lib_subprocess/include/p101_subprocess/tool_run.h",
       "source": "libraries/lib_util/src/tool_run.c",
       "native_guess": "tool_argv_destroy"
     },
@@ -8729,7 +8729,7 @@
       "name": "p101_tool_argv_init",
       "library": "lib_util",
       "domain": "c/byte-utility",
-      "header": "libraries/lib_util/include/p101_util/tool_run.h",
+      "header": "libraries/lib_subprocess/include/p101_subprocess/tool_run.h",
       "source": "libraries/lib_util/src/tool_run.c",
       "native_guess": "tool_argv_init"
     },
@@ -8737,7 +8737,7 @@
       "name": "p101_tool_event_fingerprint_file",
       "library": "lib_tool_event",
       "domain": "tooling/event-protocol",
-      "header": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "header": "libraries/lib_tool_support/include/p101_tool_support/receipt.h",
       "source": "libraries/lib_tool_event/src/receipt.c",
       "native_guess": "tool_event_fingerprint_file"
     },
@@ -8937,7 +8937,7 @@
       "name": "p101_tool_failure_reason_name",
       "library": "lib_tool_event",
       "domain": "tooling/event-protocol",
-      "header": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "header": "libraries/lib_tool_support/include/p101_tool_support/receipt.h",
       "source": "libraries/lib_tool_event/src/receipt.c",
       "native_guess": "tool_failure_reason_name"
     },
@@ -9017,7 +9017,7 @@
       "name": "p101_tool_outcome_exit_status",
       "library": "lib_tool_event",
       "domain": "tooling/event-protocol",
-      "header": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "header": "libraries/lib_tool_support/include/p101_tool_support/receipt.h",
       "source": "libraries/lib_tool_event/src/receipt.c",
       "native_guess": "tool_outcome_exit_status"
     },
@@ -9025,7 +9025,7 @@
       "name": "p101_tool_outcome_name",
       "library": "lib_tool_event",
       "domain": "tooling/event-protocol",
-      "header": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "header": "libraries/lib_tool_support/include/p101_tool_support/receipt.h",
       "source": "libraries/lib_tool_event/src/receipt.c",
       "native_guess": "tool_outcome_name"
     },
@@ -9033,7 +9033,7 @@
       "name": "p101_tool_read_pipe_close",
       "library": "lib_util",
       "domain": "c/byte-utility",
-      "header": "libraries/lib_util/include/p101_util/tool_run.h",
+      "header": "libraries/lib_subprocess/include/p101_subprocess/tool_run.h",
       "source": "libraries/lib_util/src/tool_run.c",
       "native_guess": "tool_read_pipe_close"
     },
@@ -9041,7 +9041,7 @@
       "name": "p101_tool_read_pipe_open",
       "library": "lib_util",
       "domain": "c/byte-utility",
-      "header": "libraries/lib_util/include/p101_util/tool_run.h",
+      "header": "libraries/lib_subprocess/include/p101_subprocess/tool_run.h",
       "source": "libraries/lib_util/src/tool_run.c",
       "native_guess": "tool_read_pipe_open"
     },
@@ -9049,7 +9049,7 @@
       "name": "p101_tool_run_capture",
       "library": "lib_util",
       "domain": "c/byte-utility",
-      "header": "libraries/lib_util/include/p101_util/tool_run.h",
+      "header": "libraries/lib_subprocess/include/p101_subprocess/tool_run.h",
       "source": "libraries/lib_util/src/tool_run.c",
       "native_guess": "tool_run_capture"
     },
@@ -9057,7 +9057,7 @@
       "name": "p101_tool_run_receipt_write_json",
       "library": "lib_tool_event",
       "domain": "tooling/event-protocol",
-      "header": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "header": "libraries/lib_tool_support/include/p101_tool_support/receipt.h",
       "source": "libraries/lib_tool_event/src/receipt.c",
       "native_guess": "tool_run_receipt_write_json"
     },
@@ -9065,7 +9065,7 @@
       "name": "p101_tool_run_redirect",
       "library": "lib_util",
       "domain": "c/byte-utility",
-      "header": "libraries/lib_util/include/p101_util/tool_run.h",
+      "header": "libraries/lib_subprocess/include/p101_subprocess/tool_run.h",
       "source": "libraries/lib_util/src/tool_run.c",
       "native_guess": "tool_run_redirect"
     },
@@ -17189,27 +17189,27 @@
       "kind": "wrapped-native"
     },
     {
-      "source": "p101_record_write_json_string",
+      "source": "p101_json_write_string",
       "target": "fputc",
       "kind": "native-call"
     },
     {
-      "source": "p101_record_write_json_string",
-      "target": "p101_record_write_json_string_contents",
+      "source": "p101_json_write_string",
+      "target": "p101_json_write_string_contents",
       "kind": "wrapper-call"
     },
     {
-      "source": "p101_record_write_json_string_contents",
+      "source": "p101_json_write_string_contents",
       "target": "fprintf",
       "kind": "native-call"
     },
     {
-      "source": "p101_record_write_json_string_contents",
+      "source": "p101_json_write_string_contents",
       "target": "fputc",
       "kind": "native-call"
     },
     {
-      "source": "p101_record_write_json_string_contents",
+      "source": "p101_json_write_string_contents",
       "target": "fputs",
       "kind": "native-call"
     },
@@ -21731,8 +21731,8 @@
         "p101_record_parse_size",
         "p101_record_split",
         "p101_record_unescape_field",
-        "p101_record_write_json_string",
-        "p101_record_write_json_string_contents",
+        "p101_json_write_string",
+        "p101_json_write_string_contents",
         "p101_tool_event_fingerprint_file",
         "p101_tool_event_lifecycle_create",
         "p101_tool_event_lifecycle_destroy",

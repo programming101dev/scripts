@@ -82,7 +82,10 @@ c:@F@p101_c_fact_parse_line	p101_c_fact_parse_line	tooling/c-facts
 c:@F@p101_c_fact_status_name	p101_c_fact_status_name	tooling/c-facts
 c:@F@p101_c_facts_find_clang_compile_database	p101_c_facts_find_clang_compile_database	tooling/c-facts
 c:@F@p101_c_facts_with_compile_command	p101_c_facts_with_compile_command	tooling/c-facts
+c:@F@p101_c_mutation_kind_from_name	p101_c_mutation_kind_from_name	tooling/c-facts
 c:@F@p101_c_mutation_kind_name	p101_c_mutation_kind_name	tooling/c-facts
+c:@F@p101_c_note_kind_from_name	p101_c_note_kind_from_name	tooling/c-facts
+c:@F@p101_c_note_kind_name	p101_c_note_kind_name	tooling/c-facts
 c:@F@p101_cabs	p101_cabs	c/complex-components
 c:@F@p101_cabsf	p101_cabsf	c/complex-components
 c:@F@p101_cabsl	p101_cabsl	c/complex-components

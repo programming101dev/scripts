@@ -421,20 +421,28 @@ jobs:
           digest-mismatch: error
       - name: Verify supported-platform instrumentation coverage
         id: instrumentation
-        run: >-
-          python3 scripts/checks/check-p101-instrumentation.py
-          --merge-receipts instrumentation-receipts/*/instrumentation-receipt.json
-          --require-platform Darwin
-          --require-platform Linux
-          --require-platform FreeBSD
+        run: |
+          arguments=()
+          while IFS= read -r receipt; do
+            arguments+=(--receipt "$receipt")
+          done < <(find instrumentation-receipts -mindepth 2 -maxdepth 2 -name instrumentation-receipt.json -type f -print | sort)
+          python3 scripts/checks/p101-check-graph.py merge-platform-evidence \
+            --kind instrumentation "${arguments[@]}" \
+            --require-platform Darwin \
+            --require-platform Linux \
+            --require-platform FreeBSD
       - name: Verify supported-platform governed quality receipts
         id: quality
-        run: >-
-          python3 scripts/checks/check-p101-quality-contract.py
-          --merge-platform-receipts instrumentation-receipts/*/receipt.json
-          --require-platform macos
-          --require-platform linux
-          --require-platform freebsd
+        run: |
+          arguments=()
+          while IFS= read -r receipt; do
+            arguments+=(--receipt "$receipt")
+          done < <(find instrumentation-receipts -mindepth 2 -maxdepth 2 -name receipt.json -type f -print | sort)
+          python3 scripts/checks/p101-check-graph.py merge-platform-evidence \
+            --kind quality "${arguments[@]}" \
+            --require-platform macos \
+            --require-platform linux \
+            --require-platform freebsd
       - name: Aggregate immutable workspace candidate qualification
         if: ${{ inputs.candidate_id != '' }}
         env:

@@ -111,6 +111,152 @@ def canonical_sha256(value: Any) -> str:
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
+def normalized_platform(system: str) -> str:
+    return {
+        "Darwin": "macos",
+        "FreeBSD": "freebsd",
+        "Linux": "linux",
+    }.get(system, system.lower())
+
+
+def read_json_receipt(path: Path) -> dict[str, Any]:
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise GraphError(f"{path}: unreadable receipt: {error}") from error
+    if not isinstance(document, dict):
+        raise GraphError(f"{path}: receipt is not a JSON object")
+    return document
+
+
+def verified_graph_receipt(path: Path) -> dict[str, Any]:
+    receipt = read_json_receipt(path)
+    if receipt.get("schema") != RUN_RECEIPT_SCHEMA:
+        raise GraphError(f"{path}: unsupported receipt schema")
+    claimed_digest = receipt.get("receipt_digest")
+    unsigned = dict(receipt)
+    unsigned.pop("receipt_digest", None)
+    if claimed_digest != canonical_sha256(unsigned):
+        raise GraphError(f"{path}: receipt digest mismatch")
+    return receipt
+
+
+def merge_instrumentation_receipts(
+    paths: list[Path], required_platforms: set[str]
+) -> None:
+    receipts: list[dict[str, Any]] = []
+    platforms: dict[str, Path] = {}
+    contract_identities: set[str] = set()
+    functions: set[str] = set()
+    for path in paths:
+        receipt = read_json_receipt(path)
+        if receipt.get("schema") != "p101-instrumentation-platform-receipt-v1":
+            raise GraphError(f"{path}: unsupported instrumentation receipt schema")
+        platform_name = receipt.get("platform")
+        if not isinstance(platform_name, str) or not platform_name:
+            raise GraphError(f"{path}: instrumentation receipt has no platform")
+        if platform_name in platforms:
+            raise GraphError(
+                f"duplicate platform receipt: {platform_name} "
+                f"({platforms[platform_name]}, {path})"
+            )
+        if receipt.get("passed") is not True:
+            raise GraphError(
+                f"{path}: platform instrumentation audit did not pass"
+            )
+        contract_identity = receipt.get("contract_sha256")
+        if not isinstance(contract_identity, str) or not contract_identity:
+            raise GraphError(f"{path}: instrumentation contract has no identity")
+        function_rows = receipt.get("functions")
+        if not isinstance(function_rows, list) or any(
+            not isinstance(row, str) or not row for row in function_rows
+        ):
+            raise GraphError(f"{path}: instrumentation function inventory is invalid")
+        platforms[platform_name] = path
+        contract_identities.add(contract_identity)
+        functions.update(function_rows)
+        receipts.append(receipt)
+    missing = required_platforms - set(platforms)
+    extra = set(platforms) - required_platforms
+    if missing:
+        raise GraphError(
+            "missing required platforms: " + ", ".join(sorted(missing))
+        )
+    if extra:
+        raise GraphError(
+            "unexpected platforms: " + ", ".join(sorted(extra))
+        )
+    if len(contract_identities) != 1:
+        raise GraphError(
+            "platform receipts used different instrumentation contracts"
+        )
+    print(f"platform receipts: {len(receipts)}")
+    print(f"platforms covered: {', '.join(sorted(platforms))}")
+    print(f"union instrumented functions: {len(functions)}")
+    print("cross-platform instrumentation receipts passed")
+
+
+def merge_quality_receipts(paths: list[Path], required_platforms: set[str]) -> None:
+    platforms: dict[str, Path] = {}
+    stack_identities: set[str] = set()
+    graph_identities: set[str] = set()
+    for path in paths:
+        receipt = verified_graph_receipt(path)
+        host = receipt.get("host")
+        system = host.get("system") if isinstance(host, dict) else None
+        if not isinstance(system, str) or not system:
+            raise GraphError(f"{path}: missing host system")
+        platform_name = normalized_platform(system)
+        if platform_name in platforms:
+            raise GraphError(
+                f"duplicate platform receipt: {platform_name} "
+                f"({platforms[platform_name]}, {path})"
+            )
+        platforms[platform_name] = path
+        checks = receipt.get("checks")
+        if (
+            receipt.get("outcome") != "clean"
+            or not isinstance(checks, dict)
+            or checks.get("attempted") != checks.get("completed")
+        ):
+            raise GraphError(f"{path}: governed graph did not complete cleanly")
+        stack = receipt.get("stack_contract")
+        if not isinstance(stack, dict) or stack.get("valid") is not True:
+            raise GraphError(f"{path}: stack contract is absent or invalid")
+        stack_identity = stack.get("contract_sha256")
+        if not isinstance(stack_identity, str) or not stack_identity:
+            raise GraphError(f"{path}: stack contract has no identity")
+        input_value = receipt.get("input")
+        if not isinstance(input_value, dict):
+            raise GraphError(f"{path}: input identity is absent")
+        input_schema = input_value.get("schema")
+        input_identity = input_value.get("identity")
+        if not isinstance(input_schema, str) or not isinstance(input_identity, str):
+            raise GraphError(f"{path}: graph identity is invalid")
+        stack_identities.add(stack_identity)
+        graph_identities.add(f"{input_schema}:{input_identity}")
+    missing = required_platforms - set(platforms)
+    extra = set(platforms) - required_platforms
+    if missing:
+        raise GraphError(
+            "missing required platforms: " + ", ".join(sorted(missing))
+        )
+    if extra:
+        raise GraphError(
+            "unexpected platforms: " + ", ".join(sorted(extra))
+        )
+    if len(stack_identities) != 1:
+        raise GraphError("platform receipts used different stack contracts")
+    if len(graph_identities) != 1:
+        raise GraphError("platform receipts used different check graphs")
+    print(
+        "p101 platform quality receipts: "
+        f"{len(platforms)} receipts, "
+        f"platforms={','.join(sorted(platforms))}, "
+        f"stack={next(iter(stack_identities))}"
+    )
+
+
 def file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -1698,6 +1844,12 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="operation", required=True)
     subparsers.add_parser("check")
     subparsers.add_parser("list")
+    merge_parser = subparsers.add_parser("merge-platform-evidence")
+    merge_parser.add_argument(
+        "--kind", choices=("instrumentation", "quality"), required=True
+    )
+    merge_parser.add_argument("--receipt", action="append", type=Path, required=True)
+    merge_parser.add_argument("--require-platform", action="append", default=[])
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("--out", type=Path, required=True)
     run_parser.add_argument("--var", action="append", default=[])
@@ -1726,6 +1878,23 @@ def main() -> int:
         ),
     )
     arguments = parser.parse_args()
+
+    if arguments.operation == "merge-platform-evidence":
+        if arguments.kind == "instrumentation":
+            required_platforms = set(arguments.require_platform) or {
+                "Darwin",
+                "FreeBSD",
+                "Linux",
+            }
+            merge_instrumentation_receipts(arguments.receipt, required_platforms)
+        else:
+            required_platforms = set(arguments.require_platform) or {
+                "freebsd",
+                "linux",
+                "macos",
+            }
+            merge_quality_receipts(arguments.receipt, required_platforms)
+        return 0
 
     document = json.loads(arguments.graph.read_text(encoding="utf-8"))
     ordered = validate(document)

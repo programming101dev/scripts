@@ -117,7 +117,7 @@
       "type_usr": "c:@EA@p101_tool_event_parse_status"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "source": "libraries/lib_tool_support/include/p101_tool_support/receipt.h",
       "type": "p101_tool_outcome",
       "owner": "lib_tool_event",
       "oracle": "tool-receipt-contract",
@@ -132,7 +132,7 @@
       "type_usr": "c:@EA@p101_tool_outcome"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "source": "libraries/lib_tool_support/include/p101_tool_support/receipt.h",
       "type": "p101_tool_failure_reason",
       "owner": "lib_tool_event",
       "oracle": "tool-receipt-contract",
@@ -147,7 +147,7 @@
       "type_usr": "c:@EA@p101_tool_failure_reason"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "source": "libraries/lib_tool_support/include/p101_tool_support/receipt.h",
       "type": "p101_tool_receipt_validation_status",
       "owner": "lib_tool_event",
       "oracle": "tool-receipt-contract",
@@ -411,21 +411,21 @@
       "type_usr": "c:@EA@p101_tool_event_resource_kind"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/diagnostic.h",
+      "source": "libraries/lib_tool_support/include/p101_tool_support/diagnostic.h",
       "type": "p101_tool_diagnostic_severity",
       "owner": "lib_tool_event",
       "reason": "diagnostic presentation severity, not an operation outcome",
       "type_usr": "c:@EA@p101_tool_diagnostic_severity"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/diagnostic.h",
+      "source": "libraries/lib_tool_support/include/p101_tool_support/diagnostic.h",
       "type": "p101_tool_diagnostic_format",
       "owner": "lib_tool_event",
       "reason": "diagnostic output encoding selection, not an operation outcome",
       "type_usr": "c:@EA@p101_tool_diagnostic_format"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/lesson_catalog.h",
+      "source": "libraries/lib_tool_support/include/p101_tool_support/lesson_catalog.h",
       "type": "p101_tool_finding",
       "owner": "lib_tool_event",
       "reason": "generated stable finding identifier catalog, not an operation outcome",
@@ -502,7 +502,7 @@
       "id": "audit:event-and-receipt-integrity",
       "owner": "lib_tool_event",
       "mode": "delegated",
-      "source": "libraries/lib_tool_event/include/p101_tool_event/receipt.h",
+      "source": "libraries/lib_tool_support/include/p101_tool_support/receipt.h",
       "evidence": {
         "kind": "function-usr",
         "value": "c:@F@p101_tool_run_receipt_validate_file"
