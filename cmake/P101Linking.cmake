@@ -4,6 +4,8 @@
 # config.cmake link tokens into concrete libraries. Target construction remains
 # in the root orchestration file.
 
+include("${CMAKE_CURRENT_LIST_DIR}/P101TargetOwnership.cmake")
+
 if(NOT TARGET p101::iconv)
     add_library(p101::iconv INTERFACE IMPORTED)
 endif()
@@ -50,11 +52,7 @@ function(_p101_resolve_link_items OUT)
         # falling through to /usr/local or another build directory would mix
         # profiling, sanitizer, coverage, or compiler runtimes.
         if(_P101_EXPLICIT_BUILD_KEY AND _L MATCHES "^p101_")
-            set(_p101_owner "lib_${_L}")
-            string(REGEX REPLACE "^lib_p101_" "lib_" _p101_owner "${_p101_owner}")
-            if(_L STREQUAL "p101_record")
-                set(_p101_owner "lib_tool_event")
-            endif()
+            _p101_workspace_target_owner(_p101_owner "${_L}")
             set(_p101_lane_dir
                     "${_P101_WORKSPACE_ROOT}/libraries/${_p101_owner}/build-${P101_BUILD_KEY}")
             unset(_P101_LANE_LIB CACHE)

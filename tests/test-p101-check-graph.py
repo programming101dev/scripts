@@ -413,6 +413,42 @@ class CheckGraphTests(unittest.TestCase):
                 ],
             )
 
+    def test_obsolete_semantic_usage_logs_are_pruned(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            usage_directory = output / "semantic-usage"
+            usage_directory.mkdir()
+            current = usage_directory / "current.jsonl"
+            retired = usage_directory / "retired.jsonl"
+            current.write_text("current\n", encoding="utf-8")
+            retired.write_text("retired\n", encoding="utf-8")
+
+            MODULE.prune_obsolete_usage_logs(output, [{"id": "current"}])
+
+            self.assertTrue(current.is_file())
+            self.assertFalse(retired.exists())
+
+    def test_semantic_usage_requires_its_cache_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            usage = root / "usage.jsonl"
+            key = "a" * 64
+            usage.write_text(
+                json.dumps(
+                    {
+                        "schema": "p101-semantic-usage-v1",
+                        "kind": "compile-database-facts",
+                        "key": key,
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            self.assertFalse(MODULE.semantic_usage_available(usage, root))
+            (root / "entries" / key).mkdir(parents=True)
+            self.assertTrue(MODULE.semantic_usage_available(usage, root))
+
     def test_impact_selection_is_conservative_and_flows_downstream(self) -> None:
         nodes = [
             self.node("scoped", "pass"),
@@ -900,7 +936,7 @@ class CheckGraphTests(unittest.TestCase):
                     "value=int(counter.read_text())+1 if counter.exists() else 1; "
                     "counter.write_text(str(value)); "
                     f"Path({str(artifact)!r}).write_text('evidence'); "
-                    "Path(os.environ['P101_SEMANTIC_USAGE_LOG']).write_text('usage\\n')"
+                    "Path(os.environ['P101_SEMANTIC_USAGE_LOG']).write_text('')"
                 )
                 node = self.node(
                     "cached", code, writes=["{out}/artifact.txt"]
@@ -920,7 +956,7 @@ class CheckGraphTests(unittest.TestCase):
                 self.assertEqual(artifact.read_text(), "evidence")
                 self.assertEqual(
                     (output / "semantic-usage" / "cached.jsonl").read_text(),
-                    "usage\n",
+                    "",
                 )
                 return json.loads((output / "receipt.json").read_text())
 

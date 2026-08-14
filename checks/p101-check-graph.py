@@ -800,6 +800,43 @@ def copy_output(source: Path, destination: Path) -> None:
         shutil.copytree(source, destination)
 
 
+def prune_obsolete_usage_logs(output: Path, nodes: list[dict[str, Any]]) -> None:
+    usage_directory = output / "semantic-usage"
+    if not usage_directory.is_dir():
+        return
+    admitted = {node["id"] for node in nodes}
+    for path in usage_directory.glob("*.jsonl"):
+        if path.stem not in admitted:
+            path.unlink()
+
+
+def semantic_usage_available(path: Path, semantic_cache: Path) -> bool:
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError):
+        return False
+    for line in lines:
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            return False
+        kind = record.get("kind")
+        key = record.get("key")
+        if not isinstance(key, str):
+            return False
+        if kind == "runtime-facts":
+            entry = semantic_cache / f"{key}.json.gz"
+        elif kind == "compile-database-facts":
+            entry = semantic_cache / "entries" / key
+        elif kind == "clang-ast":
+            entry = semantic_cache / "ast" / key
+        else:
+            return False
+        if not entry.exists():
+            return False
+    return True
+
+
 def expanded_writes(
     node: dict[str, Any], variables: dict[str, str], output: Path
 ) -> list[Path]:
@@ -886,6 +923,7 @@ def restore_cache_entry(
     variables: dict[str, str],
     output: Path,
     log_path: Path,
+    semantic_cache: Path,
 ) -> dict[str, Any] | None:
     entry, receipt_path, cached_log = cache_entry_paths(cache_directory, key)
     try:
@@ -902,9 +940,14 @@ def restore_cache_entry(
         if not isinstance(cached_outputs, list) or len(cached_outputs) != len(writes):
             return None
         pairs = []
+        usage_destination = output / "semantic-usage" / f"{node['id']}.jsonl"
         for index, (destination, expected) in enumerate(zip(writes, cached_outputs)):
             stored = entry / "outputs" / str(index)
             if expected.get("manifest") != output_manifest(stored):
+                return None
+            if destination == usage_destination and not semantic_usage_available(
+                stored, semantic_cache
+            ):
                 return None
             pairs.append((destination, expected, stored))
         for destination, expected, stored in pairs:
@@ -1669,6 +1712,10 @@ def run_graph(
                     and declared_outputs_match(
                         previous_record, node, variables, output
                     )
+                    and semantic_usage_available(
+                        output / "semantic-usage" / f"{identifier}.jsonl",
+                        semantic_cache,
+                    )
                 ):
                     record = reused_record(
                         node,
@@ -1700,6 +1747,7 @@ def run_graph(
                         variables,
                         output,
                         log_path,
+                        semantic_cache,
                     )
                     is not None
                 ):
@@ -1974,6 +2022,7 @@ def main() -> int:
         raise GraphError("selection contains no check nodes")
     output = arguments.out.resolve()
     output.mkdir(parents=True, exist_ok=True)
+    prune_obsolete_usage_logs(output, ordered)
     variables.setdefault("out", str(output))
     variables.setdefault(
         "graph_identity", "sha256:" + file_sha256(arguments.graph.resolve())

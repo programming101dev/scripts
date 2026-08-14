@@ -297,6 +297,12 @@ run_architecture_controls()
     expect_failure boundary-owner boundaries
     cp "$scripts_root/contracts/p101-boundaries.json" "$temporary_root/contracts/p101-boundaries.json"
 
+    awk '!changed && /"evidence_usr":/ { sub(/"evidence_usr": "[^"]*"/, "\"evidence_usr\": \"c:@F@p101_missing_boundary_evidence\""); changed = 1 } { print }' \
+        "$scripts_root/contracts/p101-boundaries.json" \
+        >"$temporary_root/contracts/p101-boundaries.json"
+    expect_failure boundary-evidence-identity boundaries
+    cp "$scripts_root/contracts/p101-boundaries.json" "$temporary_root/contracts/p101-boundaries.json"
+
     awk '
         /"owner_source":/ { source_count++ }
         /"owner_usr":/ { usr_count++ }

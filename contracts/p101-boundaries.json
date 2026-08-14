@@ -1,6 +1,6 @@
 {
-  "schema": "p101-boundary-register-v3",
-  "does_not_prove": "This register proves that each declared boundary has one owner and a complete clean, refusal, binding, identity, resource, and version-applicability matrix. It does not prove that every workspace boundary was discovered or that one named test completely establishes its axis.",
+  "schema": "p101-boundary-register-v4",
+  "does_not_prove": "This register proves that each declared boundary has one owner, a complete clean, refusal, binding, identity, resource, and version-applicability matrix, and semantic evidence that reaches its declared function directly or through one helper. It does not prove that every workspace boundary was discovered or that one named test completely establishes its axis.",
   "boundaries": [
     {
       "id": "boundary:c-fact-analysis",
@@ -25,23 +25,28 @@
       "tests": {
         "clean": {
           "path": "libraries/lib_c_facts/test/test_analysis.c",
-          "semantic_role": "p101:boundary-case:boundary:c-fact-analysis:clean"
+          "semantic_role": "p101:boundary-case:boundary:c-fact-analysis:clean",
+          "evidence_usr": "c:@F@p101_c_facts_with_compile_command"
         },
         "typed_refusal": {
           "path": "libraries/lib_c_facts/test/test_analysis.c",
-          "semantic_role": "p101:boundary-case:boundary:c-fact-analysis:typed_refusal"
+          "semantic_role": "p101:boundary-case:boundary:c-fact-analysis:typed_refusal",
+          "evidence_usr": "c:@F@p101_c_analysis_scan"
         },
         "binding_swap": {
           "path": "libraries/lib_c_facts/test/test_analysis.c",
-          "semantic_role": "p101:boundary-case:boundary:c-fact-analysis:binding_swap"
+          "semantic_role": "p101:boundary-case:boundary:c-fact-analysis:binding_swap",
+          "evidence_usr": "c:@F@p101_c_analysis_scan"
         },
         "identity_mismatch": {
           "path": "libraries/lib_c_facts/test/test_analysis.c",
-          "semantic_role": "p101:boundary-case:boundary:c-fact-analysis:identity_mismatch"
+          "semantic_role": "p101:boundary-case:boundary:c-fact-analysis:identity_mismatch",
+          "evidence_usr": "c:@F@p101_c_analysis_scan"
         },
         "resource_limit": {
           "path": "libraries/lib_c_facts/test/test_analysis.c",
-          "semantic_role": "p101:boundary-case:boundary:c-fact-analysis:resource_limit"
+          "semantic_role": "p101:boundary-case:boundary:c-fact-analysis:resource_limit",
+          "evidence_usr": "c:@F@p101_c_analysis_scan"
         },
         "stale_version": {
           "not_applicable": true,
@@ -73,27 +78,33 @@
       "tests": {
         "clean": {
           "path": "libraries/lib_tool_event/test/test_event_protocol.c",
-          "semantic_role": "p101:boundary-case:boundary:tool-event-record:clean"
+          "semantic_role": "p101:boundary-case:boundary:tool-event-record:clean",
+          "evidence_usr": "c:@F@p101_tool_event_parse_line"
         },
         "typed_refusal": {
           "path": "libraries/lib_tool_event/test/test_event_protocol.c",
-          "semantic_role": "p101:boundary-case:boundary:tool-event-record:typed_refusal"
+          "semantic_role": "p101:boundary-case:boundary:tool-event-record:typed_refusal",
+          "evidence_usr": "c:@F@p101_tool_event_parse_line"
         },
         "binding_swap": {
           "path": "libraries/lib_tool_event/test/test_event_protocol.c",
-          "semantic_role": "p101:boundary-case:boundary:tool-event-record:binding_swap"
+          "semantic_role": "p101:boundary-case:boundary:tool-event-record:binding_swap",
+          "evidence_usr": "c:@F@p101_tool_event_write"
         },
         "identity_mismatch": {
           "path": "libraries/lib_tool_event/test/test_health.c",
-          "semantic_role": "p101:boundary-case:boundary:tool-event-record:identity_mismatch"
+          "semantic_role": "p101:boundary-case:boundary:tool-event-record:identity_mismatch",
+          "evidence_usr": "c:@F@p101_tool_event_stream_health_observe"
         },
         "resource_limit": {
           "path": "libraries/lib_tool_event/test/test_event_protocol.c",
-          "semantic_role": "p101:boundary-case:boundary:tool-event-record:resource_limit"
+          "semantic_role": "p101:boundary-case:boundary:tool-event-record:resource_limit",
+          "evidence_usr": "c:@F@p101_tool_event_write"
         },
         "stale_version": {
           "path": "libraries/lib_tool_event/test/test_event_protocol.c",
-          "semantic_role": "p101:boundary-case:boundary:tool-event-record:stale_version"
+          "semantic_role": "p101:boundary-case:boundary:tool-event-record:stale_version",
+          "evidence_usr": "c:@F@p101_tool_event_parse_line"
         }
       },
       "owner_usr": "c:@F@p101_tool_event_parse_line"
@@ -121,23 +132,28 @@
       "tests": {
         "clean": {
           "path": "libraries/lib_tool_event/test/test_lifecycle.c",
-          "semantic_role": "p101:boundary-case:boundary:resource-lifecycle-replay:clean"
+          "semantic_role": "p101:boundary-case:boundary:resource-lifecycle-replay:clean",
+          "evidence_usr": "c:@F@p101_tool_event_lifecycle_ingest"
         },
         "typed_refusal": {
           "path": "libraries/lib_tool_event/test/test_lifecycle.c",
-          "semantic_role": "p101:boundary-case:boundary:resource-lifecycle-replay:typed_refusal"
+          "semantic_role": "p101:boundary-case:boundary:resource-lifecycle-replay:typed_refusal",
+          "evidence_usr": "c:@F@p101_tool_event_lifecycle_ingest"
         },
         "binding_swap": {
           "path": "libraries/lib_tool_event/test/test_lifecycle.c",
-          "semantic_role": "p101:boundary-case:boundary:resource-lifecycle-replay:binding_swap"
+          "semantic_role": "p101:boundary-case:boundary:resource-lifecycle-replay:binding_swap",
+          "evidence_usr": "c:@F@p101_tool_event_lifecycle_ingest"
         },
         "identity_mismatch": {
           "path": "libraries/lib_tool_event/test/test_lifecycle.c",
-          "semantic_role": "p101:boundary-case:boundary:resource-lifecycle-replay:identity_mismatch"
+          "semantic_role": "p101:boundary-case:boundary:resource-lifecycle-replay:identity_mismatch",
+          "evidence_usr": "c:@F@p101_tool_event_lifecycle_ingest"
         },
         "resource_limit": {
           "path": "libraries/lib_tool_event/test/test_lifecycle.c",
-          "semantic_role": "p101:boundary-case:boundary:resource-lifecycle-replay:resource_limit"
+          "semantic_role": "p101:boundary-case:boundary:resource-lifecycle-replay:resource_limit",
+          "evidence_usr": "c:@F@p101_tool_event_lifecycle_ingest"
         },
         "stale_version": {
           "not_applicable": true,
@@ -181,11 +197,13 @@
         },
         "identity_mismatch": {
           "path": "libraries/lib_tool_support/test/test_receipt.c",
-          "semantic_role": "p101:boundary-case:boundary:durable-tool-receipt:identity_mismatch"
+          "semantic_role": "p101:boundary-case:boundary:durable-tool-receipt:identity_mismatch",
+          "evidence_usr": "c:@F@p101_tool_run_receipt_validate_file"
         },
         "resource_limit": {
           "path": "libraries/lib_tool_support/test/test_receipt.c",
-          "semantic_role": "p101:boundary-case:boundary:durable-tool-receipt:resource_limit"
+          "semantic_role": "p101:boundary-case:boundary:durable-tool-receipt:resource_limit",
+          "evidence_usr": "c:@F@p101_tool_event_fingerprint_file"
         },
         "stale_version": {
           "path": "libraries/lib_tool_support/test/test_receipt_cli.sh",
@@ -216,23 +234,28 @@
       "tests": {
         "clean": {
           "path": "libraries/lib_subprocess/test/test_subprocess.c",
-          "semantic_role": "p101:boundary-case:boundary:subprocess-execution:clean"
+          "semantic_role": "p101:boundary-case:boundary:subprocess-execution:clean",
+          "evidence_usr": "c:@F@p101_tool_run_capture"
         },
         "typed_refusal": {
           "path": "libraries/lib_subprocess/test/test_subprocess.c",
-          "semantic_role": "p101:boundary-case:boundary:subprocess-execution:typed_refusal"
+          "semantic_role": "p101:boundary-case:boundary:subprocess-execution:typed_refusal",
+          "evidence_usr": "c:@F@p101_tool_run_capture"
         },
         "binding_swap": {
           "path": "libraries/lib_subprocess/test/test_subprocess.c",
-          "semantic_role": "p101:boundary-case:boundary:subprocess-execution:binding_swap"
+          "semantic_role": "p101:boundary-case:boundary:subprocess-execution:binding_swap",
+          "evidence_usr": "c:@F@p101_tool_run_capture"
         },
         "identity_mismatch": {
           "path": "libraries/lib_subprocess/test/test_subprocess.c",
-          "semantic_role": "p101:boundary-case:boundary:subprocess-execution:identity_mismatch"
+          "semantic_role": "p101:boundary-case:boundary:subprocess-execution:identity_mismatch",
+          "evidence_usr": "c:@F@p101_tool_run_capture"
         },
         "resource_limit": {
           "path": "libraries/lib_subprocess/test/test_subprocess.c",
-          "semantic_role": "p101:boundary-case:boundary:subprocess-execution:resource_limit"
+          "semantic_role": "p101:boundary-case:boundary:subprocess-execution:resource_limit",
+          "evidence_usr": "c:@F@p101_tool_run_capture"
         },
         "stale_version": {
           "not_applicable": true,
@@ -264,27 +287,33 @@
       "tests": {
         "clean": {
           "path": "libraries/lib_env/test/test_env.c",
-          "semantic_role": "p101:boundary-case:boundary:wrapper-observation:clean"
+          "semantic_role": "p101:boundary-case:boundary:wrapper-observation:clean",
+          "evidence_usr": "c:@F@p101_env_track_resource"
         },
         "typed_refusal": {
           "path": "libraries/lib_env/test/test_env.c",
-          "semantic_role": "p101:boundary-case:boundary:wrapper-observation:typed_refusal"
+          "semantic_role": "p101:boundary-case:boundary:wrapper-observation:typed_refusal",
+          "evidence_usr": "c:@F@p101_env_track_resource"
         },
         "binding_swap": {
           "path": "libraries/lib_env/test/test_env.c",
-          "semantic_role": "p101:boundary-case:boundary:wrapper-observation:binding_swap"
+          "semantic_role": "p101:boundary-case:boundary:wrapper-observation:binding_swap",
+          "evidence_usr": "c:@F@p101_env_set_fd_log"
         },
         "identity_mismatch": {
           "path": "libraries/lib_env/test/test_env.c",
-          "semantic_role": "p101:boundary-case:boundary:wrapper-observation:identity_mismatch"
+          "semantic_role": "p101:boundary-case:boundary:wrapper-observation:identity_mismatch",
+          "evidence_usr": "c:@F@p101_env_track_open"
         },
         "resource_limit": {
           "path": "libraries/lib_env/test/test_env.c",
-          "semantic_role": "p101:boundary-case:boundary:wrapper-observation:resource_limit"
+          "semantic_role": "p101:boundary-case:boundary:wrapper-observation:resource_limit",
+          "evidence_usr": "c:@F@p101_env_track_open"
         },
         "stale_version": {
           "path": "libraries/lib_env/test/test_env.c",
-          "semantic_role": "p101:boundary-case:boundary:wrapper-observation:stale_version"
+          "semantic_role": "p101:boundary-case:boundary:wrapper-observation:stale_version",
+          "evidence_usr": "c:@F@p101_tool_event_parse_line"
         }
       },
       "owner_usr": "c:@F@p101_env_set_resource_observer"
@@ -312,23 +341,28 @@
       "tests": {
         "clean": {
           "path": "libraries/lib_fsm/test/test_fsm.c",
-          "semantic_role": "p101:boundary-case:boundary:fsm-transition:clean"
+          "semantic_role": "p101:boundary-case:boundary:fsm-transition:clean",
+          "evidence_usr": "c:@F@p101_fsm_step"
         },
         "typed_refusal": {
           "path": "libraries/lib_fsm/test/test_fsm.c",
-          "semantic_role": "p101:boundary-case:boundary:fsm-transition:typed_refusal"
+          "semantic_role": "p101:boundary-case:boundary:fsm-transition:typed_refusal",
+          "evidence_usr": "c:@F@p101_fsm_step"
         },
         "binding_swap": {
           "path": "libraries/lib_fsm/test/test_fsm.c",
-          "semantic_role": "p101:boundary-case:boundary:fsm-transition:binding_swap"
+          "semantic_role": "p101:boundary-case:boundary:fsm-transition:binding_swap",
+          "evidence_usr": "c:@F@p101_fsm_run"
         },
         "identity_mismatch": {
           "path": "libraries/lib_fsm/test/test_fsm.c",
-          "semantic_role": "p101:boundary-case:boundary:fsm-transition:identity_mismatch"
+          "semantic_role": "p101:boundary-case:boundary:fsm-transition:identity_mismatch",
+          "evidence_usr": "c:@F@p101_fsm_step"
         },
         "resource_limit": {
           "path": "libraries/lib_fsm/test/test_fsm.c",
-          "semantic_role": "p101:boundary-case:boundary:fsm-transition:resource_limit"
+          "semantic_role": "p101:boundary-case:boundary:fsm-transition:resource_limit",
+          "evidence_usr": "c:@F@p101_fsm_info_create"
         },
         "stale_version": {
           "not_applicable": true,

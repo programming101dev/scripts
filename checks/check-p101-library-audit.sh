@@ -196,9 +196,11 @@ for repo in "${repository_rows[@]}"; do
     pids=()
   fi
 done
-for pid in "${pids[@]}"; do
-  wait "$pid" || true
-done
+if [ "${#pids[@]}" -gt 0 ]; then
+  for pid in "${pids[@]}"; do
+    wait "$pid" || true
+  done
+fi
 
 index=0
 while [ "$index" -lt "$found" ]; do

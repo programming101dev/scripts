@@ -2256,41 +2256,6 @@ def native_contract_fixture(
     if function_usr == "c:@F@p101_fsm_effect_batch_create" and index in {2, 3}:
         return [], "1U", [], []
 
-    if function_usr == "c:@F@p101_fsm_effect_batch_finish_step":
-        if index == 2:
-            declarations = [
-                f"            struct p101_fsm_effect_batch *{fixture};",
-                f"            {fixture} = p101_fsm_effect_batch_create(",
-                "                native_env, native_err, 1U, 16U);",
-                f"            if({fixture} == NULL)",
-                "            {",
-                "                native_child_status = 77;",
-                "                goto native_child_done_;",
-                "            }",
-            ]
-            cleanup = [
-                f"            p101_fsm_effect_batch_destroy(native_env, &{fixture});"
-            ]
-            return declarations, fixture, [], cleanup
-        if index == 4:
-            declarations = [
-                f"            struct p101_fsm_effect_batch *{fixture}_batch;",
-                f"            struct p101_fsm_effect_sink {fixture};",
-                f"            {fixture}_batch = p101_fsm_effect_batch_create(",
-                "                native_env, native_err, 1U, 16U);",
-                f"            if({fixture}_batch == NULL)",
-                "            {",
-                "                native_child_status = 77;",
-                "                goto native_child_done_;",
-                "            }",
-                f"            p101_fsm_effect_batch_sink({fixture}_batch, &{fixture});",
-            ]
-            cleanup = [
-                "            p101_fsm_effect_batch_destroy(",
-                f"                native_env, &{fixture}_batch);",
-            ]
-            return declarations, f"&{fixture}", [], cleanup
-
     if function_usr == "c:@F@p101_fsm_info_create":
         if index == 5:
             declarations = [
@@ -6019,7 +5984,7 @@ def write_outputs(clang: str, clang_format: str, check: bool) -> int:
         behavior_sources = sorted(
             source.resolve()
             for pattern in ("*.c", "*.C", "*.cc", "*.cpp", "*.cxx")
-            for source in (repo / "test").glob(pattern)
+            for source in (repo / "test").rglob(pattern)
             if not source.name.startswith("test_fault_wrappers")
         )
         library_facts = facts_by_repository[repo.resolve()]

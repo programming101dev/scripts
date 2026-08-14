@@ -80485,9 +80485,9 @@
       "provenance": "",
       "role": "traced-api"
     },
-    "p101_fsm_effect_batch_finish_step": {
+    "p101_fsm_effect_batch_finish_receipt": {
       "function": null,
-      "function_usr": "c:@F@p101_fsm_effect_batch_finish_step",
+      "function_usr": "c:@F@p101_fsm_effect_batch_finish_receipt",
       "library": "lib_fsm",
       "provenance": "",
       "role": "traced-api"
@@ -80656,6 +80656,20 @@
     "p101_fsm_step": {
       "function": null,
       "function_usr": "c:@F@p101_fsm_step",
+      "library": "lib_fsm",
+      "provenance": "",
+      "role": "traced-api"
+    },
+    "p101_fsm_step_receipt_effect": {
+      "function": null,
+      "function_usr": "c:@F@p101_fsm_step_receipt_effect",
+      "library": "lib_fsm",
+      "provenance": "",
+      "role": "traced-api"
+    },
+    "p101_fsm_step_with_receipt": {
+      "function": null,
+      "function_usr": "c:@F@p101_fsm_step_with_receipt",
       "library": "lib_fsm",
       "provenance": "",
       "role": "traced-api"

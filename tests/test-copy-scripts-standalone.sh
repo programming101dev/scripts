@@ -82,6 +82,9 @@ cat > "$sandbox/fake-bin/cmake" <<'EOF'
 #!/bin/sh
 set -eu
 if [ "$1" = "-S" ]; then
+  if [ -n "${P101_CAPTURE_ARGS:-}" ]; then
+    printf '%s\n' "$@" > "$P101_CAPTURE_ARGS"
+  fi
   source_dir=$2
   shift 2
   [ "$1" = "-B" ]
@@ -110,5 +113,77 @@ chmod +x "$sandbox/fake-bin/cmake" "$sandbox/fake-bin/ctest"
 )
 [[ -f "$sandbox/test-cache/cache-repo/root/build-clang/CMakeCache.txt" ]]
 [[ ! -e "$sandbox/cache-repo/test/build-clang" ]]
+
+# An exact workspace lane must never be mixed with an arbitrary historical
+# build directory. The old broad build-* scan could load a stale dylib whose
+# ABI no longer matched the dependency selected for the current lane.
+workspace="$sandbox/exact-workspace"
+exact_key="clang__clang++__quality-level3"
+repo="$workspace/libraries/example"
+dependency="$workspace/libraries/dependency"
+main_build="$repo/build-${exact_key}__source-identity"
+mkdir -p "$workspace/scripts" "$repo/test" "$main_build" \
+  "$dependency/build-$exact_key" "$dependency/build-stale"
+: > "$workspace/scripts/repos.txt"
+cp ../templates/template-c/test.sh "$repo/test.sh"
+chmod +x "$repo/test.sh"
+printf 'project(example C)\n' > "$repo/test/CMakeLists.txt"
+printf '%s\n' "${main_build##*/}" > "$repo/.last-build-dir"
+cat > "$main_build/CMakeCache.txt" <<EOF
+CMAKE_C_COMPILER:FILEPATH=$(command -v clang)
+DETECTED_SANITIZERS:STRING=
+P101_BUILD_KEY:UNINITIALIZED=$exact_key
+P101_PUBLIC_INCLUDE_DIRS:STRING=
+P101_PUBLIC_LINK_DIRS:STRING=
+EOF
+(
+  cd "$repo"
+  PATH="$sandbox/fake-bin:$PATH" \
+    P101_CAPTURE_ARGS="$sandbox/exact-cmake-args" ./test.sh >/dev/null
+)
+if ! grep -Fq "/libraries/dependency/build-$exact_key" "$sandbox/exact-cmake-args"; then
+  echo "FAIL: exact dependency lane was not admitted" >&2
+  sed 's/^/  /' "$sandbox/exact-cmake-args" >&2
+  exit 1
+fi
+if ! grep -Fq "/libraries/example/${main_build##*/}" "$sandbox/exact-cmake-args"; then
+  echo "FAIL: repository under test did not admit its active build directory" >&2
+  sed 's/^/  /' "$sandbox/exact-cmake-args" >&2
+  exit 1
+fi
+if grep -Fq "/libraries/dependency/build-stale" "$sandbox/exact-cmake-args"; then
+  echo "FAIL: exact-lane test admitted a stale dependency lane" >&2
+  exit 1
+fi
+if ! grep -Fxq -- '-U' "$sandbox/exact-cmake-args" ||
+   ! grep -Fxq -- 'P101_*_LIBRARY' "$sandbox/exact-cmake-args"; then
+  echo "FAIL: standalone test configure did not invalidate cached library paths" >&2
+  exit 1
+fi
+
+# CMake-owned test targets identify their exact parent build. That identity
+# takes precedence over stale .last-build-dir state for the same compiler.
+alternate_build="$repo/build-alternate-source-identity"
+mkdir -p "$alternate_build"
+alternate_build="$(CDPATH='' cd -- "$alternate_build" && pwd -P)"
+cat > "$alternate_build/CMakeCache.txt" <<EOF
+CMAKE_C_COMPILER:FILEPATH=$(command -v clang)
+DETECTED_SANITIZERS:STRING=
+P101_BUILD_KEY:UNINITIALIZED=$exact_key
+P101_PUBLIC_INCLUDE_DIRS:STRING=
+P101_PUBLIC_LINK_DIRS:STRING=
+EOF
+(
+  cd "$repo"
+  PATH="$sandbox/fake-bin:$PATH" \
+    P101_TEST_MAIN_BUILD="$alternate_build" \
+    P101_CAPTURE_ARGS="$sandbox/explicit-cmake-args" ./test.sh >/dev/null
+)
+if ! grep -Fq -- "/libraries/example/${alternate_build##*/}" \
+  "$sandbox/explicit-cmake-args"; then
+  echo "FAIL: explicit parent build was not admitted to the test link lane" >&2
+  sed 's/^/  /' "$sandbox/explicit-cmake-args" >&2
+  exit 1
+fi
 
 printf 'PASS: scripts-only distribution does not require ../setup.\n'

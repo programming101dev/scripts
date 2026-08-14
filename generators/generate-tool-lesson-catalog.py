@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate lib_tool_event's typed lesson lookup from the playground catalog."""
+"""Generate lib_tool_support's typed lesson lookup from the playground catalog."""
 
 from __future__ import annotations
 
@@ -216,8 +216,8 @@ def main() -> int:
     root = workspace_root()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", type=Path, default=root / "playgrounds" / "lessons" / "manifest.json")
-    parser.add_argument("--header", type=Path, default=root / "libraries" / "lib_tool_event" / "include" / "p101_tool_support" / "lesson_catalog.h")
-    parser.add_argument("--source", type=Path, default=root / "libraries" / "lib_tool_event" / "src" / "lesson_catalog.c")
+    parser.add_argument("--header", type=Path, default=root / "libraries" / "lib_tool_support" / "include" / "p101_tool_support" / "lesson_catalog.h")
+    parser.add_argument("--source", type=Path, default=root / "libraries" / "lib_tool_support" / "src" / "lesson_catalog.c")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     try:

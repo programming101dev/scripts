@@ -297,8 +297,8 @@ fi
 new_proj quick-level
 write_c_config_exe "$PROJ"
 printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
-printf '#!/usr/bin/env bash\nprintf tested > "%s/test-ran"\n' "$PROJ" \
-  > "$PROJ/test.sh"
+printf '#!/usr/bin/env bash\ntest "${P101_TEST_MAIN_BUILD:-}" = "%s/build"\nprintf tested > "%s/test-ran"\n' \
+  "$PROJ" "$PROJ" > "$PROJ/test.sh"
 RC=0
 cmake -S "$PROJ" -B "$PROJ/build" -DCMAKE_C_COMPILER="$c_compiler" \
   > "$PROJ/configure.log" 2>&1 || RC=$?
@@ -396,6 +396,180 @@ if (( RC == 0 )); then
   fi
 else
   bad "runtime-link: configure failed" "$PROJ/configure.log"
+fi
+
+# A formerly co-owned target must resolve from its extracted repository, even
+# when a stale artifact with the same filename remains under the old owner.
+record_dep="$runtime_root/libraries/lib_record"
+legacy_record_owner="$runtime_root/libraries/lib_tool_event"
+record_dep_build="$record_dep/build-${runtime_build_key}"
+legacy_record_build="$legacy_record_owner/build-${runtime_build_key}"
+mkdir -p "$record_dep_build" "$legacy_record_build"
+case "$(uname -s)" in
+  Darwin) record_library_name="libp101_record.dylib" ;;
+  *) record_library_name="libp101_record.so" ;;
+esac
+printf 'int record_value(void)\n{\n    return 42;\n}\n' > "$record_dep/record.c"
+"$c_compiler" -shared -fPIC "$record_dep/record.c" \
+  -o "$record_dep_build/$record_library_name"
+printf 'int record_value(void)\n{\n    return 0;\n}\n' > "$legacy_record_owner/record.c"
+"$c_compiler" -shared -fPIC "$legacy_record_owner/record.c" \
+  -o "$legacy_record_build/$record_library_name"
+PROJ="$runtime_root/libraries/lib_record_consumer"
+mkdir -p "$PROJ/src" "$PROJ/include" "$PROJ/.flags/$(basename "$c_compiler")"
+cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
+ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
+printf 'BasedOnStyle: LLVM\nIndentWidth: 4\nBreakBeforeBraces: Allman\nAllowShortFunctionsOnASingleLine: None\n' > "$PROJ/.clang-format"
+cat > "$PROJ/config.cmake" <<'EOF'
+set(PROJECT_NAME record_link)
+set(PROJECT_VERSION 1.0.0)
+set(PROJECT_DESCRIPTION "extracted record dependency ownership")
+set(PROJECT_LANGUAGE C)
+set(STANDARD_FLAGS -std=c17 -Werror)
+set(EXECUTABLE_TARGETS hello)
+set(hello_SOURCES src/main.c)
+set(hello_LINK_LIBRARIES p101_record)
+EOF
+printf 'int record_value(void);\nint main(void)\n{\n    int value;\n\n    value = record_value();\n    return value == 42 ? 0 : 1;\n}\n' \
+  > "$PROJ/src/main.c"
+configure "$PROJ" -DP101_RUNTIME_ONLY=ON \
+  -DP101_BUILD_LEVEL=1 \
+  -DP101_BUILD_KEY="$runtime_build_key" -DSANITIZER_LIST=
+if (( RC == 0 )); then
+  build "$PROJ"
+  if (( RC == 0 )) &&
+     grep -q "$record_dep_build/$record_library_name" "$PROJ/configure.log" &&
+     ! grep -q "$legacy_record_build/$record_library_name" "$PROJ/configure.log" &&
+     "$PROJ/build/hello"; then
+    ok "runtime-link: extracted p101_record owner wins over legacy artifact"
+  elif (( RC == 0 )); then
+    bad "runtime-link: p101_record resolved from its former owner" \
+      "$PROJ/configure.log"
+  else
+    bad "runtime-link: extracted p101_record consumer failed to build" \
+      "$PROJ/build.log"
+  fi
+else
+  bad "runtime-link: extracted p101_record consumer failed to configure" \
+    "$PROJ/configure.log"
+fi
+
+# A consumer of a public header needs the complete declared dependency include
+# closure, even when it links only the outer library directly.
+outer_dep="$runtime_root/libraries/lib_outer"
+outer_dep_build="$outer_dep/build-${runtime_build_key}"
+mkdir -p "$outer_dep/include/p101_outer" "$runtime_dep/include/p101_dep" \
+  "$outer_dep_build"
+cat > "$outer_dep/config.cmake" <<'EOF'
+set(LIBRARY_TARGETS p101_outer)
+set(p101_outer_LINK_LIBRARIES p101_dep)
+EOF
+cat > "$runtime_dep/config.cmake" <<'EOF'
+set(LIBRARY_TARGETS p101_dep)
+set(p101_dep_LINK_LIBRARIES "")
+EOF
+printf '#ifndef P101_DEP_DEP_H\n#define P101_DEP_DEP_H\n#define P101_DEP_VALUE 42\n#endif\n' \
+  > "$runtime_dep/include/p101_dep/dep.h"
+printf '#ifndef P101_OUTER_OUTER_H\n#define P101_OUTER_OUTER_H\n#include <p101_dep/dep.h>\n#endif\n' \
+  > "$outer_dep/include/p101_outer/outer.h"
+case "$(uname -s)" in
+  Darwin) outer_library_name="libp101_outer.dylib" ;;
+  *) outer_library_name="libp101_outer.so" ;;
+esac
+printf 'int outer_value(void)\n{\n    return 42;\n}\n' > "$outer_dep/outer.c"
+"$c_compiler" -shared -fPIC "$outer_dep/outer.c" \
+  -o "$outer_dep_build/$outer_library_name"
+PROJ="$runtime_root/libraries/lib_outer_consumer"
+mkdir -p "$PROJ/src" "$PROJ/include" "$PROJ/.flags/$(basename "$c_compiler")"
+cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
+ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
+printf 'BasedOnStyle: LLVM\nIndentWidth: 4\nBreakBeforeBraces: Allman\nAllowShortFunctionsOnASingleLine: None\n' > "$PROJ/.clang-format"
+cat > "$PROJ/config.cmake" <<'EOF'
+set(PROJECT_NAME outer_link)
+set(PROJECT_VERSION 1.0.0)
+set(PROJECT_DESCRIPTION "transitive public include closure")
+set(PROJECT_LANGUAGE C)
+set(STANDARD_FLAGS -std=c17 -Werror)
+set(EXECUTABLE_TARGETS hello)
+set(hello_SOURCES src/main.c)
+set(hello_LINK_LIBRARIES p101_outer)
+EOF
+printf '#include <p101_outer/outer.h>\nint main(void)\n{\n    return P101_DEP_VALUE == 42 ? 0 : 1;\n}\n' \
+  > "$PROJ/src/main.c"
+configure "$PROJ" -DP101_RUNTIME_ONLY=ON \
+  -DP101_BUILD_LEVEL=1 \
+  -DP101_BUILD_KEY="$runtime_build_key" -DSANITIZER_LIST=
+if (( RC == 0 )); then
+  build "$PROJ"
+  if (( RC == 0 )) &&
+     grep -q "$outer_dep/include" "$PROJ/build/compile_commands.json" &&
+     grep -q "$runtime_dep/include" "$PROJ/build/compile_commands.json" &&
+     "$PROJ/build/hello"; then
+    ok "include-closure: consumer receives transitive public dependency headers"
+  elif (( RC == 0 )); then
+    bad "include-closure: transitive dependency header was omitted" \
+      "$PROJ/build/compile_commands.json"
+  else
+    bad "include-closure: consumer failed to build" "$PROJ/build.log"
+  fi
+else
+  bad "include-closure: consumer failed to configure" "$PROJ/configure.log"
+fi
+
+# A repository may own multiple narrow public targets. Exact-lane resolution
+# must use declared workspace ownership rather than synthesizing lib_<target>.
+numeric_dep="$runtime_root/libraries/lib_numeric"
+retired_random_owner="$runtime_root/libraries/lib_random"
+numeric_dep_build="$numeric_dep/build-${runtime_build_key}"
+retired_random_build="$retired_random_owner/build-${runtime_build_key}"
+mkdir -p "$numeric_dep_build" "$retired_random_build"
+case "$(uname -s)" in
+  Darwin) random_library_name="libp101_random.dylib" ;;
+  *) random_library_name="libp101_random.so" ;;
+esac
+printf 'int random_value(void)\n{\n    return 42;\n}\n' > "$numeric_dep/random.c"
+"$c_compiler" -shared -fPIC "$numeric_dep/random.c" \
+  -o "$numeric_dep_build/$random_library_name"
+printf 'int random_value(void)\n{\n    return 0;\n}\n' > "$retired_random_owner/random.c"
+"$c_compiler" -shared -fPIC "$retired_random_owner/random.c" \
+  -o "$retired_random_build/$random_library_name"
+PROJ="$runtime_root/libraries/lib_random_consumer"
+mkdir -p "$PROJ/src" "$PROJ/include" "$PROJ/.flags/$(basename "$c_compiler")"
+cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
+ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
+printf 'BasedOnStyle: LLVM\nIndentWidth: 4\nBreakBeforeBraces: Allman\nAllowShortFunctionsOnASingleLine: None\n' > "$PROJ/.clang-format"
+cat > "$PROJ/config.cmake" <<'EOF'
+set(PROJECT_NAME random_link)
+set(PROJECT_VERSION 1.0.0)
+set(PROJECT_DESCRIPTION "combined repository dependency ownership")
+set(PROJECT_LANGUAGE C)
+set(STANDARD_FLAGS -std=c17 -Werror)
+set(EXECUTABLE_TARGETS hello)
+set(hello_SOURCES src/main.c)
+set(hello_LINK_LIBRARIES p101_random)
+EOF
+printf 'int random_value(void);\nint main(void)\n{\n    int value;\n\n    value = random_value();\n    return value == 42 ? 0 : 1;\n}\n' \
+  > "$PROJ/src/main.c"
+configure "$PROJ" -DP101_RUNTIME_ONLY=ON \
+  -DP101_BUILD_LEVEL=1 \
+  -DP101_BUILD_KEY="$runtime_build_key" -DSANITIZER_LIST=
+if (( RC == 0 )); then
+  build "$PROJ"
+  if (( RC == 0 )) &&
+     grep -q "$numeric_dep_build/$random_library_name" "$PROJ/configure.log" &&
+     ! grep -q "$retired_random_build/$random_library_name" "$PROJ/configure.log" &&
+     "$PROJ/build/hello"; then
+    ok "runtime-link: combined p101_random owner resolves from lib_numeric"
+  elif (( RC == 0 )); then
+    bad "runtime-link: p101_random resolved from its retired repository" \
+      "$PROJ/configure.log"
+  else
+    bad "runtime-link: combined p101_random consumer failed to build" \
+      "$PROJ/build.log"
+  fi
+else
+  bad "runtime-link: combined p101_random consumer failed to configure" \
+    "$PROJ/configure.log"
 fi
 
 # An explicit matrix identity is a hard isolation boundary. If its sibling
@@ -956,7 +1130,7 @@ nested_root="$SANDBOX/nested-workspace"
 PROJ="$nested_root/playgrounds/tracks/sample"
 mkdir -p "$PROJ/src" "$PROJ/include" "$PROJ/.flags/$(basename "$c_compiler")"
 mkdir -p "$nested_root/libraries/lib_fixture/include"
-mkdir -p "$nested_root/libraries/lib_tool_event/include"
+mkdir -p "$nested_root/libraries/lib_record/include"
 mkdir -p "$nested_root/libraries/lib_unrelated/include"
 cp "$CMAKE_FILE" "$PROJ/CMakeLists.txt"
 ln -sfn "$(CDPATH='' cd "$(dirname "$CMAKE_FILE")" && pwd)/cmake" "$PROJ/cmake"
@@ -978,7 +1152,7 @@ printf '#include <local_only.h>\nint fixture_anchor(void)\n{\n    return 0;\n}\n
 printf '#include "record_decl.h"\nint record_anchor(void)\n{\n    return 0;\n}\n' > "$PROJ/src/record.c"
 printf '#ifndef RECORD_DECL_H\n#define RECORD_DECL_H\nint record_anchor(void);\n#endif\n' > "$PROJ/include/record_decl.h"
 printf '#ifndef LOCAL_ONLY_H\n#define LOCAL_ONLY_H\n#define LOCAL_VALUE 0\nint fixture_anchor(void);\n#endif\n' > "$nested_root/libraries/lib_fixture/include/local_only.h"
-printf '#ifndef RECORD_ONLY_H\n#define RECORD_ONLY_H\nint record_anchor(void);\n#endif\n' > "$nested_root/libraries/lib_tool_event/include/record_only.h"
+printf '#ifndef RECORD_ONLY_H\n#define RECORD_ONLY_H\nint record_anchor(void);\n#endif\n' > "$nested_root/libraries/lib_record/include/record_only.h"
 printf '#ifndef UNRELATED_H\n#define UNRELATED_H\n#endif\n' > "$nested_root/libraries/lib_unrelated/include/unrelated.h"
 printf '#include <local_only.h>\n#include <record_only.h>\nint main(void)\n{\n    return LOCAL_VALUE + fixture_anchor() + record_anchor();\n}\n' > "$PROJ/src/main.c"
 configure "$PROJ"
@@ -987,7 +1161,7 @@ if (( RC == 0 )); then
   nested_compile_db="$PROJ/build/compile_commands.json"
   if (( RC == 0 )) && [ -f "$nested_compile_db" ] \
      && grep -q -- "-I$nested_root/libraries/lib_fixture/include" "$nested_compile_db" \
-     && grep -q -- "-I$nested_root/libraries/lib_tool_event/include" "$nested_compile_db" \
+     && grep -q -- "-I$nested_root/libraries/lib_record/include" "$nested_compile_db" \
      && ! grep -q -- "-isystem $nested_root/libraries/lib_fixture/include" "$nested_compile_db" \
      && ! grep -q -- "$nested_root/libraries/lib_unrelated/include" "$nested_compile_db"; then
     ok "nested-local-precedence: declared workspace headers use -I; unrelated roots stay hidden"

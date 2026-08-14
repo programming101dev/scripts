@@ -2889,10 +2889,10 @@
       "role": "traced-api",
       "source": "libraries/lib_fsm/src/effect.c"
     },
-    "p101_fsm_effect_batch_finish_step": {
+    "p101_fsm_effect_batch_finish_receipt": {
       "accepts_error": true,
       "classification": "direct-hard-failure",
-      "function_usr": "c:@F@p101_fsm_effect_batch_finish_step",
+      "function_usr": "c:@F@p101_fsm_effect_batch_finish_receipt",
       "library": "lib_fsm",
       "rationale": "The API accepts p101_error and has an explicit pre-work hard-failure injection boundary.",
       "role": "traced-api",
@@ -3113,6 +3113,24 @@
       "rationale": "The API has no error parameter or injected-failure channel and is covered as deterministic behavior.",
       "role": "traced-api",
       "source": "libraries/lib_fsm/src/fsm.c"
+    },
+    "p101_fsm_step_receipt_effect": {
+      "accepts_error": false,
+      "classification": "deterministic-rejection",
+      "function_usr": "c:@F@p101_fsm_step_receipt_effect",
+      "library": "lib_fsm",
+      "rationale": "The borrowed effect lookup returns false for a null, stale, mismatched, or out-of-range receipt without an error channel.",
+      "role": "traced-api",
+      "source": "libraries/lib_fsm/src/effect.c"
+    },
+    "p101_fsm_step_with_receipt": {
+      "accepts_error": false,
+      "classification": "deterministic-rejection",
+      "function_usr": "c:@F@p101_fsm_step_with_receipt",
+      "library": "lib_fsm",
+      "rationale": "The API returns a typed error or refusal disposition for invalid inputs, machine state, or callback outcomes without adding a separate error parameter.",
+      "role": "traced-api",
+      "source": "libraries/lib_fsm/src/effect.c"
     },
     "p101_fstat": {
       "accepts_error": true,

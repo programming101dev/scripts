@@ -118,8 +118,14 @@ run_library() {
     printf '%s\tFAIL\t0\t0\t0\t%s\n' "$library" "$test_status" > "$result"
     return
   fi
+  # Libraries without traced or fault-capable APIs legitimately emit no files.
+  # Feed the policy engines explicit empty evidence rather than a missing path.
+  [ -f "$calls" ] || : > "$calls"
   [ -f "$resources" ] || : > "$resources"
-  if ! "$event_model" -r "$resources" -c "$calls" -o "$model" > "$model_log" 2>&1; then
+  [ -f "$outcomes" ] || : > "$outcomes"
+  if [ ! -s "$calls" ] && [ ! -s "$resources" ]; then
+    printf '{"schema":"p101-run-model-v1","nodes":[]}\n' > "$model"
+  elif ! "$event_model" -r "$resources" -c "$calls" -o "$model" > "$model_log" 2>&1; then
     printf '%s\tFAIL\t0\t0\t0\t2\n' "$library" > "$result"
     return
   fi

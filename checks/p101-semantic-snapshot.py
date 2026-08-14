@@ -20,7 +20,7 @@ from typing import Any
 RECEIPT_SCHEMA = "p101-semantic-snapshot-receipt-v1"
 RUNTIME_SCHEMA = "p101-facts-snapshot-v3"
 RAW_SCHEMA = "p101-facts-cache-v1"
-AST_SCHEMA = "p101-clang-ast-cache-v1"
+AST_SCHEMA = "p101-clang-ast-cache-v2"
 USAGE_SCHEMA = "p101-semantic-usage-v1"
 DOES_NOT_PROVE = (
     "This receipt proves the identity and integrity of materialized semantic "

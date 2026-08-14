@@ -803,29 +803,18 @@ list(REMOVE_DUPLICATES _P101_LOCAL_FALLBACK_LINK_DIRS)
 list(APPEND _P101_LOCAL_LINK_DIRS ${_P101_LOCAL_FALLBACK_LINK_DIRS})
 list(REMOVE_DUPLICATES _P101_LOCAL_LINK_DIRS)
 
+include("${P101_CMAKE_DIR}/P101TargetOwnership.cmake")
+
 function(_p101_target_local_include_dirs OUT TARGET_NAME)
     set(_p101_target_dirs "")
     if (_P101_WORKSPACE_ROOT)
         foreach (_p101_link_token IN LISTS ${TARGET_NAME}_LINK_LIBRARIES)
             if (_p101_link_token MATCHES "^p101_([A-Za-z0-9_]+)$")
-                set(_p101_dependency_repo "lib_${CMAKE_MATCH_1}")
-                # Some repositories own several focused public targets. The
-                # target remains narrow even when repository ownership is
-                # shared by one coherent subsystem.
-                if (_p101_link_token STREQUAL "p101_thread" OR
-                        _p101_link_token STREQUAL "p101_sync")
-                    set(_p101_dependency_repo "lib_concurrency")
-                elseif (_p101_link_token STREQUAL "p101_math" OR
-                        _p101_link_token STREQUAL "p101_random")
-                    set(_p101_dependency_repo "lib_numeric")
-                elseif (_p101_link_token STREQUAL "p101_locale")
-                    set(_p101_dependency_repo "lib_text")
-                endif ()
-                set(_p101_dependency_include
-                        "${_P101_WORKSPACE_ROOT}/libraries/${_p101_dependency_repo}/include")
-                if (IS_DIRECTORY "${_p101_dependency_include}")
-                    list(APPEND _p101_target_dirs "${_p101_dependency_include}")
-                endif ()
+                _p101_workspace_target_include_closure(
+                        _p101_dependency_dirs
+                        "${_P101_WORKSPACE_ROOT}"
+                        "${_p101_link_token}")
+                list(APPEND _p101_target_dirs ${_p101_dependency_dirs})
             endif ()
         endforeach ()
     endif ()
@@ -1267,6 +1256,7 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test.sh")
     add_custom_target(${PROJECT_NAME}_test_all ALL
             COMMAND "${CMAKE_COMMAND}" -E env
                     "${_P101_TEST_COMPILER_ENV}"
+                    "P101_TEST_MAIN_BUILD=${CMAKE_BINARY_DIR}"
                     "${P101_TEST_BASH_EXECUTABLE}"
                     "${CMAKE_CURRENT_SOURCE_DIR}/test.sh"
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"

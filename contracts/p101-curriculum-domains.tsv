@@ -320,7 +320,7 @@ c:@F@p101_fsm_decide_transition	p101_fsm_decide_transition	support/fsm
 c:@F@p101_fsm_effect_batch_count	p101_fsm_effect_batch_count	support/fsm
 c:@F@p101_fsm_effect_batch_create	p101_fsm_effect_batch_create	support/fsm
 c:@F@p101_fsm_effect_batch_destroy	p101_fsm_effect_batch_destroy	support/fsm
-c:@F@p101_fsm_effect_batch_finish_step	p101_fsm_effect_batch_finish_step	support/fsm
+c:@F@p101_fsm_effect_batch_finish_receipt	p101_fsm_effect_batch_finish_receipt	support/fsm
 c:@F@p101_fsm_effect_batch_sink	p101_fsm_effect_batch_sink	support/fsm
 c:@F@p101_fsm_emit_effect	p101_fsm_emit_effect	support/fsm
 c:@F@p101_fsm_exit_immediately	p101_fsm_exit_immediately	support/fsm
@@ -345,6 +345,8 @@ c:@F@p101_fsm_info_set_step_observer	p101_fsm_info_set_step_observer	support/fsm
 c:@F@p101_fsm_info_set_will_change_state_notifier	p101_fsm_info_set_will_change_state_notifier	support/fsm
 c:@F@p101_fsm_run	p101_fsm_run	support/fsm
 c:@F@p101_fsm_step	p101_fsm_step	support/fsm
+c:@F@p101_fsm_step_receipt_effect	p101_fsm_step_receipt_effect	support/fsm
+c:@F@p101_fsm_step_with_receipt	p101_fsm_step_with_receipt	support/fsm
 c:@F@p101_fstat	p101_fstat	systems/filesystem-paths
 c:@F@p101_fstatat	p101_fstatat	systems/filesystem-paths
 c:@F@p101_fstatvfs	p101_fstatvfs	systems/filesystem-paths

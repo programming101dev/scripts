@@ -104,6 +104,15 @@
       "function_usr": "c:@F@p101_catopen"
     },
     {
+      "error_code": "P101_FSM_ERROR_EFFECT",
+      "error_domain": "user",
+      "outcome": "error",
+      "rationale": "A receipt without an admitted batch binding is deterministically rejected before any effect delivery or caller-owned batch mutation.",
+      "result_expression": "-1",
+      "result_kind": "equals",
+      "function_usr": "c:@F@p101_fsm_effect_batch_finish_receipt"
+    },
+    {
       "error_code": "P101_FSM_ERROR_UNKNOWN_TRANSITION",
       "error_domain": "user",
       "outcome": "error",

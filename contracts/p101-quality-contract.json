@@ -260,6 +260,19 @@
         "P101_FSM_RUN_REFUSED"
       ],
       "type_usr": "c:@EA@p101_fsm_run_result"
+    },
+    {
+      "source": "libraries/lib_fsm/include/p101_fsm/fsm.h",
+      "type": "p101_fsm_transition_disposition",
+      "owner": "lib_fsm",
+      "oracle": "boundaries",
+      "variants": [
+        "P101_FSM_TRANSITION_APPLIED_CHANGED",
+        "P101_FSM_TRANSITION_APPLIED_NO_CHANGE",
+        "P101_FSM_TRANSITION_REFUSED",
+        "P101_FSM_TRANSITION_ERROR"
+      ],
+      "type_usr": "c:@EA@p101_fsm_transition_disposition"
     }
   ],
   "typed_outcome_exclusions": [
@@ -369,6 +382,13 @@
       "type_usr": "c:@EA@p101_fsm_decision_kind"
     },
     {
+      "source": "libraries/lib_json/include/p101_json/json.h",
+      "type": "p101_json_kind",
+      "owner": "lib_json",
+      "reason": "JSON token classification, not an operation outcome",
+      "type_usr": "c:@E@p101_json_kind"
+    },
+    {
       "source": "libraries/lib_tool_event/include/p101_tool_event/analysis.h",
       "type": "p101_tool_analysis_policy",
       "owner": "lib_tool_event",
@@ -376,37 +396,37 @@
       "type_usr": "c:@EA@p101_tool_analysis_policy"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_record/include/p101_record/event.h",
       "type": "p101_tool_event_record_kind",
-      "owner": "lib_tool_event",
+      "owner": "lib_record",
       "reason": "event record classification",
       "type_usr": "c:@EA@p101_tool_event_record_kind"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_record/include/p101_record/event.h",
       "type": "p101_tool_event_fd_kind",
-      "owner": "lib_tool_event",
+      "owner": "lib_record",
       "reason": "descriptor event classification",
       "type_usr": "c:@EA@p101_tool_event_fd_kind"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_record/include/p101_record/event.h",
       "type": "p101_tool_event_alloc_kind",
-      "owner": "lib_tool_event",
+      "owner": "lib_record",
       "reason": "allocation event classification",
       "type_usr": "c:@EA@p101_tool_event_alloc_kind"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_record/include/p101_record/event.h",
       "type": "p101_tool_event_call_kind",
-      "owner": "lib_tool_event",
+      "owner": "lib_record",
       "reason": "call event classification",
       "type_usr": "c:@EA@p101_tool_event_call_kind"
     },
     {
-      "source": "libraries/lib_tool_event/include/p101_tool_event/event.h",
+      "source": "libraries/lib_record/include/p101_record/event.h",
       "type": "p101_tool_event_resource_kind",
-      "owner": "lib_tool_event",
+      "owner": "lib_record",
       "reason": "resource event classification",
       "type_usr": "c:@EA@p101_tool_event_resource_kind"
     },

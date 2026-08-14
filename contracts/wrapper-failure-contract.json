@@ -3214,14 +3214,14 @@
       "runtime_canary_arguments": [],
       "writable_arguments": "unchanged"
     },
-    "p101_fsm_effect_batch_finish_step": {
+    "p101_fsm_effect_batch_finish_receipt": {
       "errno": "preserved",
       "error_domain": "errno",
       "fault_boundary": "after-entry-trace-before-native-work",
       "fault_modes": [
         "error"
       ],
-      "function_usr": "c:@F@p101_fsm_effect_batch_finish_step",
+      "function_usr": "c:@F@p101_fsm_effect_batch_finish_receipt",
       "library": "lib_fsm",
       "resource_events": "none",
       "return_expression": "-1",
