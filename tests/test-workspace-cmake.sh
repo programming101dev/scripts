@@ -55,6 +55,7 @@ MAKEFLAGS='' MFLAGS='' cmake --build "$work/host-build" \
     --target p101_tool_qualification \
     --parallel 2 >"$work/qualification.log"
 test -f "$work/host-build/host-tool-qualification.json"
+grep -Fq 'Qualifying the in-tree p101 host tools' "$work/qualification.log"
 MAKEFLAGS='' MFLAGS='' cmake --build "$work/host-build" \
     --target p101_tool_qualification \
     --parallel 2 >"$work/incremental-qualification.log"

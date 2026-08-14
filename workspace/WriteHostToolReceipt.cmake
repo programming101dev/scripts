@@ -1,6 +1,8 @@
-if(NOT DEFINED OUTPUT OR OUTPUT STREQUAL "")
-    message(FATAL_ERROR "Host-tool receipt output is required.")
-endif()
+foreach(required OUTPUT COMPILER TOOL_COUNT TEST_COUNT INPUT_SHA256)
+    if(NOT DEFINED ${required} OR "${${required}}" STREQUAL "")
+        message(FATAL_ERROR "${required} is required for the host-tool receipt")
+    endif()
+endforeach()
 
 get_filename_component(output_directory "${OUTPUT}" DIRECTORY)
 file(MAKE_DIRECTORY "${output_directory}")
@@ -12,6 +14,7 @@ set(temporary "${OUTPUT}.tmp")
 file(WRITE "${temporary}"
         "{\"schema\":\"p101-host-tool-qualification-v1\","
         "\"passed\":true,"
+        "\"input_sha256\":\"${INPUT_SHA256}\","
         "\"compiler\":\"${compiler_json}\","
         "\"tool_count\":${TOOL_COUNT},"
         "\"test_count\":${TEST_COUNT},"

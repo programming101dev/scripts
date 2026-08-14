@@ -134,6 +134,16 @@ set(P101_HOST_TOOL_TARGETS
         p101_inspect
         p101_event_model
         p101_receipt)
+set(P101_HOST_TOOL_FILES)
+set(P101_HOST_TOOL_QUALIFICATION_ARGUMENTS)
+set(host_tool_index 0)
+foreach(host_tool IN LISTS P101_HOST_TOOL_TARGETS)
+    list(APPEND P101_HOST_TOOL_FILES "$<TARGET_FILE:${host_tool}>")
+    list(APPEND P101_HOST_TOOL_QUALIFICATION_ARGUMENTS
+            "-DTOOL_${host_tool_index}=$<TARGET_FILE:${host_tool}>")
+    math(EXPR host_tool_index "${host_tool_index} + 1")
+endforeach()
+unset(host_tool_index)
 add_custom_target(p101_host_tools
         DEPENDS ${P101_HOST_TOOL_TARGETS})
 
@@ -194,27 +204,22 @@ list(LENGTH _P101_HOST_TESTS P101_HOST_TEST_COUNT)
 unset(_P101_HOST_TESTS)
 list(LENGTH P101_HOST_TOOL_TARGETS P101_HOST_TOOL_TARGET_COUNT)
 
-add_custom_command(
-        OUTPUT "${P101_HOST_TOOL_RECEIPT}"
-        COMMAND "${CMAKE_CTEST_COMMAND}" --test-dir "${CMAKE_BINARY_DIR}"
-                --output-on-failure -L host-tool
+add_custom_target(p101_tool_qualification
         COMMAND "${CMAKE_COMMAND}"
                 -DOUTPUT=${P101_HOST_TOOL_RECEIPT}
                 -DCOMPILER=${CMAKE_C_COMPILER}
                 -DTOOL_COUNT=${P101_HOST_TOOL_TARGET_COUNT}
                 -DTEST_COUNT=${P101_HOST_TEST_COUNT}
-                -P "${CMAKE_CURRENT_SOURCE_DIR}/WriteHostToolReceipt.cmake"
-        # FreeBSD's CI workspace can expose one-second timestamp resolution.
-        # Make the receipt observably newer than every qualified executable so
-        # bmake does not repeat an unchanged qualification on the next build.
-        COMMAND "${CMAKE_COMMAND}" -E sleep 1
-        COMMAND "${CMAKE_COMMAND}" -E touch "${P101_HOST_TOOL_RECEIPT}"
-        DEPENDS ${P101_HOST_TOOL_TARGETS}
+                -DCTEST_COMMAND=${CMAKE_CTEST_COMMAND}
+                -DBUILD_DIRECTORY=${CMAKE_BINARY_DIR}
+                -DRECEIPT_WRITER=${CMAKE_CURRENT_SOURCE_DIR}/WriteHostToolReceipt.cmake
+                ${P101_HOST_TOOL_QUALIFICATION_ARGUMENTS}
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/QualifyHostTools.cmake"
+        BYPRODUCTS "${P101_HOST_TOOL_RECEIPT}"
         USES_TERMINAL
-        COMMENT "Qualifying the in-tree p101 host tools"
+        COMMENT "Checking in-tree p101 host-tool qualification"
         VERBATIM)
-add_custom_target(p101_tool_qualification
-        DEPENDS "${P101_HOST_TOOL_RECEIPT}")
+add_dependencies(p101_tool_qualification p101_host_tools)
 
 # Keep the mature acceptance graph while its policies migrate into C targets.
 # The important boundary is already enforced: these checks receive the exact

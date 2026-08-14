@@ -493,7 +493,7 @@
     {
       "bytes": 8864,
       "path": "repos.lock",
-      "sha256": "3d4e21b6c9dfeeb4a61030dca1af0c303ebaf3e67e6c814787f03bd019e5bdf4"
+      "sha256": "f62e249e209599db32b205691f7770319713fed4b53ef6e89bd92c9c9056ecae"
     },
     {
       "bytes": 3463,
@@ -581,9 +581,9 @@
       "sha256": "f7299f6af7ea07b90c93a9a111cc745b34831f16dea4a5ae26b931cbda2dedeb"
     },
     {
-      "bytes": 6285,
+      "bytes": 6361,
       "path": "tests/test-workspace-cmake.sh",
-      "sha256": "4e9a10b56de20286ab50e5774d21f25f8f5b12d97cef87ac228ec3776839fb84"
+      "sha256": "8bb214333710bbe709ff671a9325b4182bfc77f6cdb820822393dda5dcab7dfc"
     },
     {
       "bytes": 25968,
@@ -591,9 +591,9 @@
       "sha256": "552918abb5bf8ce66469c2a6eefffa42cb66009482f32f2aba9f0801628a5e91"
     },
     {
-      "bytes": 12600,
+      "bytes": 12766,
       "path": "workspace/CMakeLists.txt",
-      "sha256": "8f5dc42c80ffada204dcd96841ce6314fa99c3807543d3318b4ffc3b9731164a"
+      "sha256": "e012b0e354d4e358b46d47f359a7468b3668d7e3cc435aca2cc33cb4f91181dd"
     },
     {
       "bytes": 3561,
@@ -606,9 +606,9 @@
       "sha256": "b111d14a3640d53af25503769222c90a1bd52e2c8c62e276ff5a60bb9a008579"
     },
     {
-      "bytes": 928,
+      "bytes": 1097,
       "path": "workspace/WriteHostToolReceipt.cmake",
-      "sha256": "084b0d1dec135cf1b6f7b101a247ee977f01c38a602503d8b04f3709c98726e9"
+      "sha256": "6566d7f9cf2dedafc0d813f6795913fdb5d1d24db8a286ccfb79ca360491edab"
     },
     {
       "bytes": 5403,
