@@ -194,13 +194,13 @@
       "url": "https://github.com/programming101dev/p101-inspect.git"
     },
     {
-      "commit": "9c63cfbc4357995e8efea2a7a25ebe66130f93aa",
+      "commit": "a4eb9722ce788d6f6c110f64aa18d3225bd42767",
       "path": "../programs/p101-test",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-test.git"
     },
     {
-      "commit": "bd5cf10877dc8d7888b2c657a8a254c43ab7c1df",
+      "commit": "bdbd0596bef79a80081e0f7333116757b9ecebc6",
       "path": "../programs/p101-audit",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-audit.git"
