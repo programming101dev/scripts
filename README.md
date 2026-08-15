@@ -185,6 +185,21 @@ Actions restores separate operating-system/architecture caches for repository
 lanes and governed check evidence, then saves partial progress even when a
 later phase fails.
 
+For a completely cold workspace, first inspect and then apply the manifest-
+driven cleanup:
+
+```bash
+./workspace/clean-workspace.sh --dry-run
+./workspace/clean-workspace.sh --all
+```
+
+It checks every present repository in `repos.txt` plus `scripts`, refuses the
+entire operation if any worktree is dirty, and removes only explicit ignored
+build, test, analysis, dependency-cache, marker, and receipt paths. A narrow
+allowlist also removes workspace-root `.flags`, `.coverage`,
+`compile_commands.json`, and `.p101-audit-debug*` paths. It does not use
+`git clean`, alter installed files, or remove the committed fuzz corpus.
+
 Preparation owns every operation whose result is shared by compiler pairs:
 the scripts refresh, all managed-repository pulls, retired-repository cleanup,
 default local formatting, flag-cache version comparison, compiler discovery,

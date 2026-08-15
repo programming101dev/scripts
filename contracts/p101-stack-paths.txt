@@ -107,6 +107,7 @@ shared/library/install.sh
 tests/test-audit-workspace.sh
 tests/test-build-lane.sh
 tests/test-build-repo-interactive.sh
+tests/test-clean-workspace.sh
 tests/test-github-actions-summary.sh
 tests/test-p101-check-graph.py
 tests/test-p101-semantic-prime.py
@@ -119,6 +120,7 @@ workspace/VerifyAcceptancePerformance.cmake
 workspace/WriteHostToolReceipt.cmake
 workspace/build-lane.sh
 workspace/build-repo.sh
+workspace/clean-workspace.sh
 workspace/filter-sanitizers.sh
 workspace/gc-build-cache.sh
 workspace/stack-contract.sh

@@ -127,6 +127,7 @@ class CheckGraphTests(unittest.TestCase):
             environment["P101_INSPECT_CAPTURE"] = "/usr/bin/true"
             environment["P101_INSPECT"] = "/usr/bin/true"
             environment["P101_TOOL_RECEIPT"] = "/usr/bin/true"
+            environment["P101_AUDIT_WORKSPACE"] = "/usr/bin/true"
             result = subprocess.run(
                 [
                     str(SCRIPTS_ROOT / "check-after-update-all.sh"),

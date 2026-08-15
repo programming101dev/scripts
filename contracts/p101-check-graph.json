@@ -48,6 +48,7 @@
       "compiler-cache-tests",
       "build-lane-tests",
       "retired-repository-cleanup",
+      "workspace-cleanup-tests",
       "interactive-build-retry",
       "github-workflow-drift",
       "github-summary-tests",
@@ -348,6 +349,18 @@
       "guarantee": "Manifest-retired repositories are removed only when clean and fully represented by their configured upstream."
     },
     {
+      "id": "workspace-cleanup-tests",
+      "title": "transient workspace cleanup safety",
+      "group": "distribution",
+      "required": true,
+      "command": ["./tests/test-clean-workspace.sh"],
+      "inputs": ["scripts/tests/test-clean-workspace.sh", "scripts/workspace/clean-workspace.sh", "scripts/repos.txt", "scripts/.gitignore", "scripts/target/.gitignore"],
+      "inputs_complete": true,
+      "depends_on": ["retired-repository-cleanup"],
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
+      "guarantee": "A cold workspace cleanup is manifest-bound with an explicit workspace-root allowlist, all-or-nothing for dirty worktrees, limited to ignored untracked repository paths, and preserves tracked sources and fuzz seeds."
+    },
+    {
       "id": "interactive-build-retry",
       "title": "parallel compiler matrix and interactive retry",
       "group": "distribution",
@@ -355,7 +368,7 @@
       "command": ["./tests/test-build-repo-interactive.sh"],
       "inputs": ["scripts/tests/test-build-repo-interactive.sh", "scripts/update-all.sh", "scripts/checks/format-workspace.sh", "scripts/cmake/p101_compile_db.c", "scripts/workspace/build-repo.sh", "scripts/workspace/gc-build-cache.sh", "scripts/workspace/update.sh", "scripts/distribution/clone-repos.sh", "scripts/distribution/refresh-repo.sh", "templates/template-c/build.sh", "templates/template-cxx/build.sh", "scripts/CMakeLists.txt", "scripts/shared/**"],
       "inputs_complete": true,
-      "depends_on": ["retired-repository-cleanup"],
+      "depends_on": ["workspace-cleanup-tests"],
       "resources": {"writes": ["{temporary_root}"], "units": {}},
       "guarantee": "Local preparation applies formatting before source identity while CI checks without mutation; compiler pairs then build concurrently in immutable source/policy-addressed artifact directories, failed transactions restore qualified marker state, only the host finalizer publishes shared markers, and unreferenced cache lanes are collected without removing selected artifacts."
     },

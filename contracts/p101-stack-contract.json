@@ -336,9 +336,9 @@
       "sha256": "c2a97d6d1432d8254ad16557e13c44032937a1336044518bcfec466547101d97"
     },
     {
-      "bytes": 59079,
+      "bytes": 59879,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "ea6272c525eba279cdc909e155da34a6289310a540d4133a82a6ce913da774b6"
+      "sha256": "d2ae46d31020894f2e7f596ab5a8a3f71ba496518ba92a9dee0dec03b18ca0a3"
     },
     {
       "bytes": 63097,
@@ -366,9 +366,9 @@
       "sha256": "a9aec64abe3674712989ee5093eddb8fb6ee92e2edfaa8212594c02d6d92b402"
     },
     {
-      "bytes": 4911,
+      "bytes": 4970,
       "path": "contracts/p101-stack-paths.txt",
-      "sha256": "dc631e17f97830184b222a6fdd2c4e0416a8355ecf66f9f2cbfd629cfd1709c9"
+      "sha256": "076fbb29796b5a98cf0cf6716da685ebbb808ef648d56823bd2143e4cbd3862d"
     },
     {
       "bytes": 1995,
@@ -546,14 +546,19 @@
       "sha256": "79615ebd3ebafc994cecb3554fd3824b0f100cf3ffc5fc4ed9f6b41f7256fb14"
     },
     {
+      "bytes": 5252,
+      "path": "tests/test-clean-workspace.sh",
+      "sha256": "ce465565c53c50fbe9eb19a7ff1ba04a00fae8c36860d1d5b37f4e112b6d40fa"
+    },
+    {
       "bytes": 8995,
       "path": "tests/test-github-actions-summary.sh",
       "sha256": "bf2207fac12d9ca04c30810d0588569331684fc0bfc297bf0f899e012dd00bff"
     },
     {
-      "bytes": 58467,
+      "bytes": 58533,
       "path": "tests/test-p101-check-graph.py",
-      "sha256": "06c946a78ac048391dcc9d27f49302190ffabd5848f835f83f1f7c41754463b7"
+      "sha256": "1bab68c13186874d7afba38081287e150f8fc17e1b8691db4b553555d75aca4f"
     },
     {
       "bytes": 4509,
@@ -604,6 +609,11 @@
       "bytes": 32329,
       "path": "workspace/build-repo.sh",
       "sha256": "9b5e19aea0c859198de24f2749788b660866d041aca387ccfbd77d18716d5322"
+    },
+    {
+      "bytes": 6946,
+      "path": "workspace/clean-workspace.sh",
+      "sha256": "007df3ed782d59f754f0c50aa62e0919304901edcbf61624809162b0716417fc"
     },
     {
       "bytes": 4281,
