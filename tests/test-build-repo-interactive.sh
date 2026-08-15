@@ -23,7 +23,7 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$sandbox/scripts/workspace" "$sandbox/scripts/distribution" \
-  "$sandbox/scripts/shared" "$sandbox/bin" "$sandbox/cmake-repo" \
+  "$sandbox/scripts/shared" "$sandbox/bin" "$sandbox/libraries/cmake-repo" \
   "$sandbox/retry-repo"
 cp ./workspace/build-repo.sh ./workspace/build-lane.sh \
   ./workspace/gc-build-cache.sh "$sandbox/scripts/workspace/"
@@ -71,24 +71,27 @@ chmod +x "$sandbox/bin/cmake"
 export P101_TEST_CMAKE_LOG="$sandbox/cmake-invocations.txt"
 export P101_TEST_SANDBOX="$sandbox"
 
-cat > "$sandbox/cmake-repo/CMakeLists.txt" <<'EOF'
+cat > "$sandbox/libraries/cmake-repo/CMakeLists.txt" <<'EOF'
 cmake_minimum_required(VERSION 3.20)
 project(fixture C)
 EOF
 cat > "$sandbox/scripts/repos.txt" <<EOF
-https://example.invalid/cmake.git|$sandbox/cmake-repo|c
+https://example.invalid/cmake.git|../libraries/cmake-repo|c
 EOF
 
 tool="/usr/bin/true"
 [[ -x "$tool" ]] || tool="$(command -v true)"
 PATH="$sandbox/bin:$PATH" "$sandbox/scripts/workspace/build-repo.sh" \
   -c "$tool" -x "$tool" -f "$tool" -t "$tool" -k "$tool" \
-  -B test-quality -U test-runtime -s "" -I \
+  -B test-quality -U test-runtime -s "" --defer-install \
   > "$sandbox/cmake.stdout" 2> "$sandbox/cmake.stderr"
 grep -Fq -- '-DP101_BUILD_LEVEL=1' "$P101_TEST_CMAKE_LOG"
+grep -Fq -- '-DP101_RUNTIME_ONLY=ON' "$P101_TEST_CMAKE_LOG"
 grep -Fq -- '--build build-test-quality' "$P101_TEST_CMAKE_LOG"
-[[ -f "$sandbox/cmake-repo/.last-build-dir" ]]
-if find "$sandbox/cmake-repo" -maxdepth 1 -name '*.sh' -print -quit | grep -q .; then
+grep -Fq -- '--build build-test-runtime' "$P101_TEST_CMAKE_LOG"
+[[ -f "$sandbox/libraries/cmake-repo/.last-build-dir" ]]
+[[ -f "$sandbox/libraries/cmake-repo/.last-runtime-build-dir" ]]
+if find "$sandbox/libraries/cmake-repo" -maxdepth 1 -name '*.sh' -print -quit | grep -q .; then
   printf 'CMake repository unexpectedly required a local shell wrapper\n' >&2
   exit 1
 fi

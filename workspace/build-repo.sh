@@ -599,6 +599,22 @@ configure_cmake_repository() {
   cmake "${cmake_args[@]}"
 }
 
+configure_runtime_cmake_repository() {
+  local repo_type="$1"
+  local build_directory="$2"
+  local lane_key="$3"
+
+  (
+    export P101_COVERAGE=0
+    export P101_PROFILE=0
+    export CFLAGS=
+    export CXXFLAGS=
+    export CPPFLAGS=
+    export LDFLAGS=
+    configure_cmake_repository "$repo_type" "$build_directory" runtime "$lane_key"
+  )
+}
+
 build_cmake_repository() {
   local build_directory="$1"
   local build_args=(cmake --build "$build_directory")
@@ -875,9 +891,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       fi
       say "Configuring instrumentation-free runtime artifact: ${dir}"
       if run_repo_phase "configure runtime artifact ${dir}" \
-          env P101_COVERAGE=0 P101_PROFILE=0 \
-          CFLAGS= CXXFLAGS= CPPFLAGS= LDFLAGS= \
-          configure_cmake_repository "$repo_type" "$runtime_build_dir" runtime "$runtime_build_key"; then
+          configure_runtime_cmake_repository "$repo_type" "$runtime_build_dir" "$runtime_build_key"; then
         write_lane_receipt "$runtime_build_dir" "$runtime_build_key" runtime "${runtime_cache_state:-disabled}"
         marker_restore_current_repository
       else
