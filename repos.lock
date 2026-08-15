@@ -248,19 +248,19 @@
       "url": "https://github.com/programming101dev/lib_error_examples.git"
     },
     {
-      "commit": "4c1eb1efa22cc3e08f5e390a371dd6584c014cb2",
+      "commit": "20649cef36dc045874f789ac0366e9c152b7fdba",
       "path": "../examples/lib_transition_examples",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_transition_examples.git"
     },
     {
-      "commit": "2b78e0e2c2652710bfab3bf95ea5e52d85aec859",
+      "commit": "d318971c2b2981756cdf38ec85e7d376524e7087",
       "path": "../examples/lib_record_examples",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_record_examples.git"
     },
     {
-      "commit": "14e52e6952a07fc91a9df6632f72f322b40a3e32",
+      "commit": "35a0dd5b7f97cd48d74e91fa23dd8dff5a628933",
       "path": "../examples/lib_json_examples",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_json_examples.git"
@@ -410,7 +410,7 @@
       "url": "https://github.com/programming101dev/lib_fsm_examples.git"
     },
     {
-      "commit": "bcf5ddb4ff47eca3bfb32b5ee448e1b36cc2a579",
+      "commit": "fcd774f07d3b5d378a27b97b97f9a9d1512bad6a",
       "path": "../examples/lib_endian_examples",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_endian_examples.git"
