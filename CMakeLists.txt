@@ -830,6 +830,16 @@ foreach (_p101_target IN LISTS LIBRARY_TARGETS EXECUTABLE_TARGETS)
 endforeach ()
 list(REMOVE_DUPLICATES _P101_REQUIRED_LOCAL_INCLUDE_DIRS)
 
+# Standalone tests can exercise support libraries that production targets do
+# not use. Keep that extra closure out of production compilation while making
+# the dependency explicit and available to the separately configured test
+# tree.
+set(_P101_TEST_LOCAL_INCLUDE_DIRS "")
+if (P101_TEST_LINK_LIBRARIES)
+    _p101_target_local_include_dirs(
+            _P101_TEST_LOCAL_INCLUDE_DIRS P101_TEST)
+endif ()
+
 set(_INC_CANDIDATES
         "${PUBLIC_INC_DIR}"
         ${_P101_REQUIRED_LOCAL_INCLUDE_DIRS}
@@ -1256,8 +1266,12 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/CMakeLists.txt"
     endif ()
     string(REPLACE ";" " " _P101_TEST_SANITIZER_FLAGS
             "${DETECTED_SANITIZERS}")
+    set(_P101_TEST_INCLUDE_DIRS
+            ${P101_PUBLIC_INCLUDE_DIRS_EXISTING}
+            ${_P101_TEST_LOCAL_INCLUDE_DIRS})
+    list(REMOVE_DUPLICATES _P101_TEST_INCLUDE_DIRS)
     string(REPLACE ";" " " _P101_TEST_PUBLIC_INCLUDE_DIRS
-            "${P101_PUBLIC_INCLUDE_DIRS_EXISTING}")
+            "${_P101_TEST_INCLUDE_DIRS}")
     set(_P101_TEST_LINK_DIRS
             "${CMAKE_BINARY_DIR}"
             ${P101_PUBLIC_LINK_DIRS_EXISTING})

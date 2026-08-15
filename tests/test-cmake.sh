@@ -502,8 +502,9 @@ fi
 # closure, even when it links only the outer library directly.
 outer_dep="$runtime_root/libraries/lib_outer"
 outer_dep_build="$outer_dep/build-${runtime_build_key}"
+test_only_dep="$runtime_root/libraries/lib_testonly"
 mkdir -p "$outer_dep/include/p101_outer" "$runtime_dep/include/p101_dep" \
-  "$outer_dep_build"
+  "$outer_dep_build" "$test_only_dep/include/p101_testonly"
 cat > "$outer_dep/config.cmake" <<'EOF'
 set(LIBRARY_TARGETS p101_outer)
 set(p101_outer_LINK_LIBRARIES p101_dep)
@@ -512,10 +513,16 @@ cat > "$runtime_dep/config.cmake" <<'EOF'
 set(LIBRARY_TARGETS p101_dep)
 set(p101_dep_LINK_LIBRARIES "")
 EOF
+cat > "$test_only_dep/config.cmake" <<'EOF'
+set(LIBRARY_TARGETS p101_testonly)
+set(p101_testonly_LINK_LIBRARIES "")
+EOF
 printf '#ifndef P101_DEP_DEP_H\n#define P101_DEP_DEP_H\n#define P101_DEP_VALUE 42\n#endif\n' \
   > "$runtime_dep/include/p101_dep/dep.h"
 printf '#ifndef P101_OUTER_OUTER_H\n#define P101_OUTER_OUTER_H\n#include <p101_dep/dep.h>\n#endif\n' \
   > "$outer_dep/include/p101_outer/outer.h"
+printf '#ifndef P101_TESTONLY_TEST_H\n#define P101_TESTONLY_TEST_H\n#endif\n' \
+  > "$test_only_dep/include/p101_testonly/test.h"
 case "$(uname -s)" in
   Darwin) outer_library_name="libp101_outer.dylib" ;;
   *) outer_library_name="libp101_outer.so" ;;
@@ -537,21 +544,33 @@ set(STANDARD_FLAGS -std=c17 -Werror)
 set(EXECUTABLE_TARGETS hello)
 set(hello_SOURCES src/main.c)
 set(hello_LINK_LIBRARIES p101_outer)
+set(P101_TEST_LINK_LIBRARIES p101_testonly)
 EOF
 printf '#include <p101_outer/outer.h>\nint main(void)\n{\n    return P101_DEP_VALUE == 42 ? 0 : 1;\n}\n' \
   > "$PROJ/src/main.c"
-configure "$PROJ" -DP101_RUNTIME_ONLY=ON \
-  -DP101_BUILD_LEVEL=1 \
+mkdir -p "$PROJ/test"
+cat > "$PROJ/test/CMakeLists.txt" <<EOF
+cmake_minimum_required(VERSION 3.20)
+project(test_only_dependency NONE)
+enable_testing()
+file(WRITE "$PROJ/test-only-include-dirs" "\${P101_PUBLIC_INCLUDE_DIRS}")
+add_test(NAME test_only_dependency_receipt
+  COMMAND "${CMAKE_COMMAND:-cmake}" -E touch "$PROJ/test-only-ran")
+EOF
+configure "$PROJ" -DP101_BUILD_LEVEL=2 \
   -DP101_BUILD_KEY="$runtime_build_key" -DSANITIZER_LIST=
 if (( RC == 0 )); then
   build "$PROJ"
   if (( RC == 0 )) &&
      grep -q "$outer_dep/include" "$PROJ/build/compile_commands.json" &&
      grep -q "$runtime_dep/include" "$PROJ/build/compile_commands.json" &&
+     ! grep -q "$test_only_dep/include" "$PROJ/build/compile_commands.json" &&
+     grep -q "$test_only_dep/include" "$PROJ/test-only-include-dirs" &&
+     [[ -f "$PROJ/test-only-ran" ]] &&
      "$PROJ/build/hello"; then
-    ok "include-closure: consumer receives transitive public dependency headers"
+    ok "include-closure: production and test-only dependencies stay separated"
   elif (( RC == 0 )); then
-    bad "include-closure: transitive dependency header was omitted" \
+    bad "include-closure: production and test-only dependencies were not separated" \
       "$PROJ/build/compile_commands.json"
   else
     bad "include-closure: consumer failed to build" "$PROJ/build.log"
