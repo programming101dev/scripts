@@ -235,13 +235,34 @@ set(P101_CLANG_SA_EXTRA_ARGS "" CACHE STRING "Extra --analyze args for clang (sp
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Export compile_commands.json" FORCE)
 
 # Surface compile_commands.json at the repo root so clangd / IDEs find it with
-# no configuration. Points at whichever build dir was configured most recently;
-# overwriting is harmless. (compile_commands.json is already in .gitignore.)
-if (CMAKE_EXPORT_COMPILE_COMMANDS AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    file(CREATE_LINK
-            "${CMAKE_BINARY_DIR}/compile_commands.json"
-            "${CMAKE_SOURCE_DIR}/compile_commands.json"
-            SYMBOLIC)
+# no configuration. Parallel workspace lanes disable this source-tree mutation;
+# build-repo publishes the selected lane atomically after the matrix finishes.
+# Standalone repository builds keep the convenience behavior by default.
+option(P101_LINK_COMPILE_COMMANDS
+        "Link the repository-root compile_commands.json to this build tree"
+        ON)
+if (CMAKE_EXPORT_COMPILE_COMMANDS
+        AND P101_LINK_COMPILE_COMMANDS
+        AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(_P101_ROOT_COMPILE_COMMANDS "${CMAKE_SOURCE_DIR}/compile_commands.json")
+    if (IS_SYMLINK "${_P101_ROOT_COMPILE_COMMANDS}"
+            OR NOT EXISTS "${_P101_ROOT_COMPILE_COMMANDS}")
+        file(REMOVE "${_P101_ROOT_COMPILE_COMMANDS}")
+        file(CREATE_LINK
+                "${CMAKE_BINARY_DIR}/compile_commands.json"
+                "${_P101_ROOT_COMPILE_COMMANDS}"
+                SYMBOLIC
+                RESULT _P101_COMPILE_COMMANDS_LINK_RESULT)
+        if (NOT _P101_COMPILE_COMMANDS_LINK_RESULT STREQUAL "0")
+            message(WARNING
+                    "Could not publish compile_commands.json convenience link: "
+                    "${_P101_COMPILE_COMMANDS_LINK_RESULT}")
+        endif ()
+    else ()
+        message(STATUS
+                "Keeping non-symlink repository compile_commands.json: "
+                "${_P101_ROOT_COMPILE_COMMANDS}")
+    endif ()
 endif ()
 
 include(GNUInstallDirs)

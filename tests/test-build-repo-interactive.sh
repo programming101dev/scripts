@@ -66,6 +66,7 @@ done
 mkdir -p "$build_dir"
 printf 'CMAKE_INSTALL_PREFIX:PATH=%s/install\n' "$P101_TEST_SANDBOX" \
   > "$build_dir/CMakeCache.txt"
+printf '[]\n' > "$build_dir/compile_commands.json"
 EOF
 chmod +x "$sandbox/bin/cmake"
 export P101_TEST_CMAKE_LOG="$sandbox/cmake-invocations.txt"
@@ -87,10 +88,14 @@ PATH="$sandbox/bin:$PATH" "$sandbox/scripts/workspace/build-repo.sh" \
   > "$sandbox/cmake.stdout" 2> "$sandbox/cmake.stderr"
 grep -Fq -- '-DP101_BUILD_LEVEL=1' "$P101_TEST_CMAKE_LOG"
 grep -Fq -- '-DP101_RUNTIME_ONLY=ON' "$P101_TEST_CMAKE_LOG"
+grep -Fq -- '-DP101_LINK_COMPILE_COMMANDS=OFF' "$P101_TEST_CMAKE_LOG"
 grep -Fq -- '--build build-test-quality' "$P101_TEST_CMAKE_LOG"
 grep -Fq -- '--build build-test-runtime' "$P101_TEST_CMAKE_LOG"
 [[ -f "$sandbox/libraries/cmake-repo/.last-build-dir" ]]
 [[ -f "$sandbox/libraries/cmake-repo/.last-runtime-build-dir" ]]
+[[ -L "$sandbox/libraries/cmake-repo/compile_commands.json" ]]
+[[ "$(readlink "$sandbox/libraries/cmake-repo/compile_commands.json")" == \
+   "$sandbox/libraries/cmake-repo/build-test-quality/compile_commands.json" ]]
 if find "$sandbox/libraries/cmake-repo" -maxdepth 1 -name '*.sh' -print -quit | grep -q .; then
   printf 'CMake repository unexpectedly required a local shell wrapper\n' >&2
   exit 1

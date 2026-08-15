@@ -221,9 +221,9 @@
       "sha256": "34d094e14dabc688e9d63f6eeae490c245d9357e4803aa69ef4eecac01a72463"
     },
     {
-      "bytes": 88611,
+      "bytes": 89588,
       "path": "CMakeLists.txt",
-      "sha256": "761baaa8c6fcf0843fb20bc882cadf90ed07ea9da577787dbaeefff34aaad135"
+      "sha256": "311282a94dea12340cbc7f0e8d6121d6a52554d14bd08c06dbb58c71f26eda14"
     },
     {
       "bytes": 14841,
@@ -541,9 +541,9 @@
       "sha256": "ae1ec88e860f0cb00d89601cdccb5bce0f1f43123843ea6235f8cf586bbd238f"
     },
     {
-      "bytes": 4631,
+      "bytes": 4970,
       "path": "tests/test-build-repo-interactive.sh",
-      "sha256": "2b2335c5723f6967266993d115b2d5461ad84cc554d5d8d7703ef052e49a1f58"
+      "sha256": "6f1818c3cc0935eeb1340ddaed02e03c5a60029b30ebc89eca5482d00ecf55b3"
     },
     {
       "bytes": 8995,
@@ -601,9 +601,9 @@
       "sha256": "346c4bfd5311aabb11c3481797b9951cfa3c07db659f4f3e384ba4e92028f588"
     },
     {
-      "bytes": 31634,
+      "bytes": 32329,
       "path": "workspace/build-repo.sh",
-      "sha256": "0a355010091bfac11789ce7af478c247bdf70c1a5410afed4289bda52f7045b4"
+      "sha256": "9b5e19aea0c859198de24f2749788b660866d041aca387ccfbd77d18716d5322"
     },
     {
       "bytes": 4281,

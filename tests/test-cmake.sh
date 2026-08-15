@@ -29,6 +29,10 @@
 #                      regex has no \s)
 #   zero-targets       a config.cmake with no targets must still configure
 #                      (regression: bare add_dependencies was fatal)
+#   nested-cxx-driver  a C repository's nested C++ tests inherit the macOS
+#                      deterministic Clang driver configuration
+#   compile-db-link    sequential standalone configurations safely replace
+#                      the repository-root compile database convenience link
 #   missing-config     no config.cmake -> configure MUST fail
 #   out-of-tree        an absolute source outside the project dir MUST fail
 #                      configure (regression: out-of-tree paths were silently
@@ -377,6 +381,75 @@ if (( RC == 0 )); then
   fi
 else
   bad "level-2: configure failed" "$PROJ/configure.log"
+fi
+
+# A C repository can still own C++ public-header tests. On macOS the outer C
+# project initializes only its C driver, so the nested test runner must apply
+# the deterministic Clang configuration argument to the supplied C++ driver.
+# The wrapper makes that contract observable without depending on whether the
+# host's package-managed Clang currently has a stale SDK configuration.
+if [[ "$(uname -s)" == Darwin ]] && [[ -n "$cxx_compiler" ]] &&
+   have "$cxx_compiler" && [[ "$(basename "$cxx_compiler")" == *clang* ]]; then
+  new_proj c-project-cxx-tests
+  write_c_config_exe "$PROJ"
+  printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
+  mkdir -p "$PROJ/test"
+  real_cxx="$(command -v "$cxx_compiler")"
+  guarded_cxx="$SANDBOX/clang++-requires-clean-config"
+  cat > "$guarded_cxx" <<EOF
+#!/bin/sh
+if [ "\${1:-}" != --no-default-config ]; then
+  echo 'missing deterministic Clang driver argument' >&2
+  exit 97
+fi
+exec "$real_cxx" "\$@"
+EOF
+  chmod +x "$guarded_cxx"
+  cat > "$PROJ/test/CMakeLists.txt" <<'EOF'
+cmake_minimum_required(VERSION 3.20)
+project(c_project_cxx_tests CXX)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_executable(cxx_header_test test.cpp)
+enable_testing()
+add_test(NAME cxx_header_test COMMAND cxx_header_test)
+EOF
+  printf 'auto main() -> int\n{\n    return 0;\n}\n' > "$PROJ/test/test.cpp"
+  configure "$PROJ" -DP101_BUILD_LEVEL=2 \
+    -DCMAKE_CXX_COMPILER="$guarded_cxx" -DSANITIZER_LIST=
+  if (( RC == 0 )); then
+    build "$PROJ"
+    if (( RC == 0 )); then
+      ok "nested-cxx-driver: C repository tests receive deterministic Clang configuration"
+    else
+      bad "nested-cxx-driver: nested C++ test build failed" "$PROJ/build.log"
+    fi
+  else
+    bad "nested-cxx-driver: outer C project failed to configure" "$PROJ/configure.log"
+  fi
+fi
+
+# Standalone configurations retain the root compile-database convenience link,
+# but a second build directory must replace it rather than failing with
+# "File exists". Workspace matrix lanes disable this mutation separately.
+new_proj compile-db-link
+write_c_config_exe "$PROJ"
+printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
+compile_db_first_status=0
+compile_db_second_status=0
+cmake -S "$PROJ" -B "$PROJ/build-first" \
+  -DCMAKE_C_COMPILER="$c_compiler" -DP101_BUILD_LEVEL=1 \
+  > "$PROJ/compile-db-first.log" 2>&1 || compile_db_first_status=$?
+cmake -S "$PROJ" -B "$PROJ/build-second" \
+  -DCMAKE_C_COMPILER="$c_compiler" -DP101_BUILD_LEVEL=1 \
+  > "$PROJ/compile-db-second.log" 2>&1 || compile_db_second_status=$?
+if (( compile_db_first_status == 0 && compile_db_second_status == 0 )) &&
+   [[ -L "$PROJ/compile_commands.json" ]] &&
+   [[ "$(readlink "$PROJ/compile_commands.json")" == "$PROJ/build-second/compile_commands.json" ]]; then
+  ok "compile-db-link: later standalone configuration replaces convenience link"
+else
+  bad "compile-db-link: repeated configuration did not safely replace link" \
+    "$PROJ/compile-db-second.log"
 fi
 
 # ---------- case: runtime-only sibling dependency precedence ----------

@@ -131,6 +131,24 @@ marker_transaction_committed=false
 marker_queue=""
 current_marker_snapshot=""
 
+publish_compile_commands_link() {
+  local build_directory="$1"
+  local source="$PWD/$build_directory/compile_commands.json"
+  local destination="$PWD/compile_commands.json"
+  local temporary="$PWD/.compile_commands.json.tmp.$$"
+
+  [[ -f "$source" ]] || return 0
+  rm -f -- "$temporary"
+  if ! ln -s -- "$source" "$temporary"; then
+    rm -f -- "$temporary"
+    return 2
+  fi
+  if ! mv -f -- "$temporary" "$destination"; then
+    rm -f -- "$temporary"
+    return 2
+  fi
+}
+
 marker_write_atomic() {
   local repository="$1"
   local marker="$2"
@@ -584,6 +602,7 @@ configure_cmake_repository() {
     -DP101_RUNTIME_ONLY="$runtime_only"
     -DP101_COVERAGE_MODE="$coverage_value"
     -DP101_PROFILE_MODE="$profile_value"
+    -DP101_LINK_COMPILE_COMMANDS=OFF
     -DCMAKE_BUILD_TYPE=Debug
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
   )
@@ -856,6 +875,9 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         if [[ -n "$quality_build_dir" ]]; then
           publish_exact_lane_alias "$quality_build_dir" "$build_key"
           marker_queue_value .last-build-dir "$quality_build_dir"
+          if [[ "$defer_build_markers" != 1 ]]; then
+            publish_compile_commands_link "$quality_build_dir"
+          fi
         fi
       else
         status=$?
@@ -926,6 +948,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     else
       publish_exact_lane_alias "$quality_build_dir" "$build_key"
       marker_queue_value .last-build-dir "$quality_build_dir"
+      publish_compile_commands_link "$quality_build_dir"
       runtime_candidate="$(content_addressed_build_directory "build-${runtime_build_key}")"
       if [[ -f "$runtime_candidate/CMakeCache.txt" ]] &&
          lane_receipt_matches "$runtime_candidate" "$runtime_build_key" runtime; then
