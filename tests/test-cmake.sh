@@ -348,20 +348,29 @@ new_proj medium-level
 write_c_config_exe "$PROJ"
 printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
 mkdir -p "$PROJ/test"
+mkdir -p "$PROJ/exact-include" "$PROJ/exact-lib"
 cat > "$PROJ/test/CMakeLists.txt" <<EOF
 cmake_minimum_required(VERSION 3.20)
 project(medium_level_tests NONE)
 enable_testing()
+file(WRITE "$PROJ/test-include-dirs" "\${P101_PUBLIC_INCLUDE_DIRS}")
+file(WRITE "$PROJ/test-link-dirs" "\${P101_PUBLIC_LINK_DIRS}")
 add_test(NAME medium_level_receipt
   COMMAND "${CMAKE_COMMAND:-cmake}" -E touch "$PROJ/test-ran")
 EOF
-configure "$PROJ" -DP101_BUILD_LEVEL=2
+configure "$PROJ" -DP101_BUILD_LEVEL=2 \
+  "-DP101_PUBLIC_INCLUDE_DIRS=$PROJ/exact-include;$PROJ/missing-include" \
+  "-DP101_PUBLIC_LINK_DIRS=$PROJ/exact-lib;$PROJ/missing-lib"
 if (( RC == 0 )); then
   build "$PROJ"
   if (( RC == 0 )) && [[ -f "$PROJ/test-ran" ]] &&
+     grep -Fq "$PROJ/exact-include" "$PROJ/test-include-dirs" &&
+     ! grep -Fq "$PROJ/missing-include" "$PROJ/test-include-dirs" &&
+     grep -Fq "$PROJ/exact-lib" "$PROJ/test-link-dirs" &&
+     ! grep -Fq "$PROJ/missing-lib" "$PROJ/test-link-dirs" &&
      grep -q 'checking:.*clang-format' "$PROJ/build.log" &&
      ! grep -Eq 'running:.*clang-tidy|cppcheck over|analyze stage|Built target .*_(tidy|cppcheck|analyze)' "$PROJ/build.log"; then
-    ok "level-2: retains formatting and adds repository unit tests without full analyzers"
+    ok "level-2: tests inherit resolved exact dependency paths without full analyzers"
   else
     bad "level-2: did not enforce the medium contract" "$PROJ/build.log"
   fi
