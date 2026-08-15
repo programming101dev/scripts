@@ -2,235 +2,235 @@
   "manifest_sha256": "2756246097366a5a475a4f4c383bb41db20329ebb21b773685787f4b47a896f5",
   "repositories": [
     {
-      "commit": "f913e253cac4b4193ebf73a08c00ad418dbab10a",
+      "commit": "3cc6d2e4a171db64d9d32fa43d79fd32a81a35a3",
       "path": "../libraries/lib_error",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_error.git"
     },
     {
-      "commit": "f1258965e15174c359439e14f85be58419a49fd0",
+      "commit": "1facf079d2173f2ae3b57912fc542d25bdaf5b14",
       "path": "../libraries/lib_transition",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_transition.git"
     },
     {
-      "commit": "08c207938c7256453dbb9407e07e2cc6b6539767",
+      "commit": "37392255bb53992a0503a34722458da489659533",
       "path": "../libraries/lib_record",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_record.git"
     },
     {
-      "commit": "1eaae1f21a891c1e1b24b6f3178ce4fb00ccdde6",
+      "commit": "ca831b517d6012b2268d7e85db36380a423dfe83",
       "path": "../libraries/lib_json",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_json.git"
     },
     {
-      "commit": "ef7ee62b4cd389e32bbd1badd7e7d08503db9835",
+      "commit": "3a669102cf6452f80448bf81c279dac650aa21b9",
       "path": "../libraries/lib_tool_support",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_tool_support.git"
     },
     {
-      "commit": "d7649d89983face2248b1ee24ea33cfd8bfa2346",
+      "commit": "080c49237bf9161726d8f0bdd567b80ac00fcca3",
       "path": "../libraries/lib_tool_event",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_tool_event.git"
     },
     {
-      "commit": "92350a89b28895b1fb4ceec2d03f018ede504359",
+      "commit": "d242175cca78335a9d3993df84c3db598125bb35",
       "path": "../libraries/lib_env",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_env.git"
     },
     {
-      "commit": "f6a7eff2a6072b62d4de8b393e627230956adad8",
+      "commit": "82d20fe561b8926661e650ba2c7312a9cb8b2777",
       "path": "../libraries/lib_c",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_c.git"
     },
     {
-      "commit": "9f6b365176b642bf1410b524471bf1ae62ac029d",
+      "commit": "ad4b34443ddd8cbd307a11acaba6e8b5322f3781",
       "path": "../libraries/lib_io",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_io.git"
     },
     {
-      "commit": "52aa0acaeccca91c66974970797c5661386cb8ed",
+      "commit": "bbf09ffc795af3e1b2799d364af48e668eb6f73a",
       "path": "../libraries/lib_filesystem",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_filesystem.git"
     },
     {
-      "commit": "b0865cbc95f0a9379022c714bc902020b31d1fe1",
+      "commit": "8605963c04246bc6db13822d3124a5a26127de81",
       "path": "../libraries/lib_c_facts",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_c_facts.git"
     },
     {
-      "commit": "fbd36045c7aafef372f10629185c05786a412cd5",
+      "commit": "34d05712172c533ebad709593d6b4db6dacdd1d9",
       "path": "../libraries/lib_memory",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_memory.git"
     },
     {
-      "commit": "c7f26c84baabc0a4eb3ce4004547d71c4afa81c2",
+      "commit": "1cc4186a7b6fbb354e34ec68eff0574c4befc19d",
       "path": "../libraries/lib_process",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_process.git"
     },
     {
-      "commit": "8e1500af5a355247d1c33e677b1cf6550b6a730a",
+      "commit": "d55a744b7a45b08b2b3e82f6fdbfba3a96942170",
       "path": "../libraries/lib_concurrency",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_concurrency.git"
     },
     {
-      "commit": "9311309273a2e888eacfe93f6f0fc977f194c8f0",
+      "commit": "25fc9d675d73169610b35f7b28f90db634c112b1",
       "path": "../libraries/lib_ipc",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_ipc.git"
     },
     {
-      "commit": "c74bb3046996fb3a96b2d99769dfea9b04a412b8",
+      "commit": "a110ebd8f1ed72974a7c4ace6a4a5e9351c5e903",
       "path": "../libraries/lib_network",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_network.git"
     },
     {
-      "commit": "5e1d30a1338eade0f48618d1150d7fd3f0f63656",
+      "commit": "de9e696327b1f9a6a682332fc2241d6b2af1a2dd",
       "path": "../libraries/lib_terminal",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_terminal.git"
     },
     {
-      "commit": "60a20dfa7a919b98674bd9adf7c757c3415bfbb9",
+      "commit": "c22d91e0be08c475842210992169c3e1d7dc88c9",
       "path": "../libraries/lib_time",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_time.git"
     },
     {
-      "commit": "f7d9984d1d0b0bd2e57668cd4c1cc6ef8d9c4a43",
+      "commit": "ca3ac2233d8cefc6681c155ebeb0b54950cb6b44",
       "path": "../libraries/lib_identity",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_identity.git"
     },
     {
-      "commit": "38ac26c987eff0f8cfb130946515960b997ab9a2",
+      "commit": "1f2109e49de7b3d58dc765820e692d5a5cd08830",
       "path": "../libraries/lib_text",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_text.git"
     },
     {
-      "commit": "c57304811509f16db4f1162d2f00cab3a4fe8625",
+      "commit": "29655f425fbb5561b96a80f94ac512dcc3510ac9",
       "path": "../libraries/lib_numeric",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_numeric.git"
     },
     {
-      "commit": "944d668489b22019bfc00328ff88f9d4010fdf04",
+      "commit": "5b77037e7f5c235a0969b0a0726bfdfb269a6aba",
       "path": "../libraries/lib_search",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_search.git"
     },
     {
-      "commit": "21938a48c32c4f7295c77370754b7d20ab4abe64",
+      "commit": "4f3d255bd2a9cbf61f9545ecaac248b74e489ee5",
       "path": "../libraries/lib_dynamic_linking",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_dynamic_linking.git"
     },
     {
-      "commit": "0abc8f4e3941f042c28e95034837738a725a2981",
+      "commit": "c320b184ff1337796a5a2f3773bb43162c8819d1",
       "path": "../libraries/lib_diagnostics",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_diagnostics.git"
     },
     {
-      "commit": "11756d29c91a8f913b29cdd4bbcc7b7de7813b1a",
+      "commit": "f27c298ed5801fb796b3567406e8a634a030b09e",
       "path": "../libraries/lib_database",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_database.git"
     },
     {
-      "commit": "0e56d401e1fb30f5f1ab315e24dbcce519623434",
+      "commit": "516e1632ed545bdcb1c9b7d4aceaf6d4ba097aa1",
       "path": "../libraries/lib_cli",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_cli.git"
     },
     {
-      "commit": "80787af5e660176f53823e48d4b6ccf1fd84ddf1",
+      "commit": "2c9264a941a710ae98fa71e692c42310096269be",
       "path": "../libraries/lib_host",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_host.git"
     },
     {
-      "commit": "eabc86fe207cecb2cdb1dc793f83a31f7754bf8f",
+      "commit": "fc0276c034ff92750688e7888c8bcff1316cae70",
       "path": "../libraries/lib_fsm",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_fsm.git"
     },
     {
-      "commit": "689c4154f5b2c5753ca002f5352838dcaddbd40d",
+      "commit": "468f7359a9fefc1e88a1fe22be6c0d76fecae55c",
       "path": "../libraries/lib_endian",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_endian.git"
     },
     {
-      "commit": "0a3f9b4d5724d354a07d4c2508126d21ce61dbac",
+      "commit": "03b069762872a1eb06d255cff7b98021b778cbd4",
       "path": "../libraries/lib_subprocess",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_subprocess.git"
     },
     {
-      "commit": "c7975c3bc2bdb4ac97fbfa7fef06e6cbb055a023",
+      "commit": "ddca7241677d76cb076b6e1e54d997fe6a15ef0b",
       "path": "../libraries/lib_convert",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_convert.git"
     },
     {
-      "commit": "89b57d03e3eb684e9a7689abd1440e0b6a156ffb",
+      "commit": "7da8b0f1bed542faabde645779cebcf31ab99c20",
       "path": "../programs/p101-port-forwarder",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-port-forwarder.git"
     },
     {
-      "commit": "c6d3eb15b9b0d787c224193315efa9063aff036d",
+      "commit": "da9fde78594f3abd0a4860e671cc97d136e47db6",
       "path": "../programs/p101-inspect",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-inspect.git"
     },
     {
-      "commit": "dc9f9d5d3aee37283b443d9cfff7d80ee9a78f56",
+      "commit": "7cf86998f636bd69f4c49753f8cc8aa5d02f4cfe",
       "path": "../programs/p101-test",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-test.git"
     },
     {
-      "commit": "9b36b8ece2547b83ad8c68b57bde90cbfb3c1710",
+      "commit": "9a3004a9955990fa0501abf14c9f0a3c429179db",
       "path": "../programs/p101-audit",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-audit.git"
     },
     {
-      "commit": "a14d60994235452bb4cd7d5bdb0dc43846960949",
+      "commit": "6567994ffe705e857a9aa51bc27094a5e83cea42",
       "path": "../playgrounds",
       "type": "c",
       "url": "https://github.com/programming101dev/playgrounds.git"
     },
     {
-      "commit": "d6a54e141475c08b2094656697356503fe0ac8ce",
+      "commit": "67d7968b292519cf6a45dea6ed7782242327a42e",
       "path": "../templates/template-c",
       "type": "c",
       "url": "https://github.com/programming101dev/template-c.git"
     },
     {
-      "commit": "e7add513e1d906aa19c21173dc47f310d2dc964e",
+      "commit": "02df6bb9316b46e6c24861b7c41e884e3d3103a2",
       "path": "../templates/template-c-program",
       "type": "c",
       "url": "https://github.com/programming101dev/template-c-program.git"
     },
     {
-      "commit": "bc964907fc4f30ce5d7b09d5d6825a387185e520",
+      "commit": "665275cca115979239b67a34a19c524ecb22907e",
       "path": "../templates/template-cxx",
       "type": "cxx",
       "url": "https://github.com/programming101dev/template-cpp.git"
@@ -242,25 +242,25 @@
       "url": "https://github.com/programming101dev/c-examples.git"
     },
     {
-      "commit": "fb9217364cb7357d49c80ae34d995ae8d598a338",
+      "commit": "13179d6c41eb5ff392335643d08b00f99fa0a953",
       "path": "../examples/lib_error_examples",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_error_examples.git"
     },
     {
-      "commit": "20649cef36dc045874f789ac0366e9c152b7fdba",
+      "commit": "b77e2c04e196a4888482942de72ec0760f91b295",
       "path": "../examples/lib_transition_examples",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_transition_examples.git"
     },
     {
-      "commit": "d318971c2b2981756cdf38ec85e7d376524e7087",
+      "commit": "b0f54119b6ea296444fc4c0d668c56b6bd6308e2",
       "path": "../examples/lib_record_examples",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_record_examples.git"
     },
     {
-      "commit": "35a0dd5b7f97cd48d74e91fa23dd8dff5a628933",
+      "commit": "2e0b3bf4afb6fdfd252f47e41804c84a74f83679",
       "path": "../examples/lib_json_examples",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_json_examples.git"
@@ -278,13 +278,13 @@
       "url": "https://github.com/programming101dev/lib_tool_event_examples.git"
     },
     {
-      "commit": "8b577c0025c6c1a0cd2fa85e08caa092f1f9fc85",
+      "commit": "6f612fa8cf600f83773ac175e721494fd3cf39a1",
       "path": "../examples/lib_env_examples",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_env_examples.git"
     },
     {
-      "commit": "bd848bde77d306a9e835d4075084878b5bc62b4d",
+      "commit": "734f4950e92200e4d9ec15d90faefaa7d748ae01",
       "path": "../examples/lib_c_examples",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_c_examples.git"
@@ -404,13 +404,13 @@
       "url": "https://github.com/programming101dev/lib_host_examples.git"
     },
     {
-      "commit": "8a65fa202b744ea80550f6996d229ba5372dea03",
+      "commit": "8d4046b7c658c40021af38ae81b3de9bfb05234a",
       "path": "../examples/lib_fsm_examples",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_fsm_examples.git"
     },
     {
-      "commit": "fcd774f07d3b5d378a27b97b97f9a9d1512bad6a",
+      "commit": "06e49a293bf44a6a222cabcd19cf331e7188a52a",
       "path": "../examples/lib_endian_examples",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_endian_examples.git"
