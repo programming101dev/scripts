@@ -216,9 +216,9 @@
       "sha256": "72a5a03e237fdd8cc4c7ab0a42791763ac83f30bfb34ea4263f76ef6ccd40eaa"
     },
     {
-      "bytes": 14337,
+      "bytes": 14401,
       "path": "../templates/template-c/test.sh",
-      "sha256": "0bf191fd47e582dc4e7ab32e741799a34187b5c0d4b3f0763f4eef431d2d3b3d"
+      "sha256": "34d094e14dabc688e9d63f6eeae490c245d9357e4803aa69ef4eecac01a72463"
     },
     {
       "bytes": 87870,
@@ -478,7 +478,7 @@
     {
       "bytes": 14319,
       "path": "repos.lock",
-      "sha256": "01ad2d460595e535a3245b3a2846ab50f6d5916b5b95393fb983a678e9731f56"
+      "sha256": "e00001f2edc60c24cea34d17037c4df35f190c4f1973d2334f7fd19023c7c0b2"
     },
     {
       "bytes": 6422,
