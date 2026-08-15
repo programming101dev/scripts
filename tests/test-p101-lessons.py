@@ -148,6 +148,40 @@ class LessonCatalogTests(unittest.TestCase):
                 "library\tstatus\np101-audit\tPASS\n",
             )
 
+    def test_native_profile_binds_the_declared_repository_and_local_cache(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            repository = workspace / "programs" / "p101-example"
+            repository.mkdir(parents=True)
+            probe = repository / "probe.sh"
+            probe.write_text(
+                "#!/bin/sh\n"
+                "test \"$P101_REPOSITORY_ROOT\" = \"$PWD\" || exit 3\n"
+                "test -z \"$P101_TEST_BUILD_CACHE\" || exit 4\n",
+                encoding="utf-8",
+            )
+            probe.chmod(0o755)
+            output = workspace / "output"
+            output.mkdir()
+            catalog = Namespace(workspace=workspace)
+            profile = p101_lessons.AcceptanceProfile(
+                profile_id="example",
+                kind="native-tool-suite",
+                description="example",
+                finding_ids=(),
+                command=("./probe.sh",),
+                cwd="programs/p101-example",
+                evidence_paths=(),
+                platforms=(p101_lessons.host_platform(),),
+                quick=True,
+            )
+
+            result = p101_lessons._run_profile(catalog, profile, output)
+
+            self.assertEqual(result["status"], "PASS")
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.workspace = Path(__file__).resolve().parents[2]

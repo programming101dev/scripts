@@ -965,6 +965,7 @@ def _run_logged(
     output: Path,
     label: str,
     timeout_seconds: int = 900,
+    environment: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     log = output / f"{_safe_name(label)}.log"
     started = time.time_ns()
@@ -981,6 +982,7 @@ def _run_logged(
             env={
                 **os.environ,
                 "PYTHONPYCACHEPREFIX": str(output / "pycache"),
+                **(environment or {}),
             },
         )
         text, _ = process.communicate(timeout=timeout_seconds)
@@ -1033,11 +1035,19 @@ def _run_profile(
             "status": "SKIP",
             "reason": f"{current} is not in the profile platform contract",
         }
+    repository = (catalog.workspace / profile.cwd).resolve()
     return _run_logged(
         list(profile.command),
-        (catalog.workspace / profile.cwd).resolve(),
+        repository,
         output,
         "profile-" + profile.profile_id,
+        environment={
+            "P101_REPOSITORY_ROOT": str(repository),
+            # Native tools discover workspace contracts from their build-tree
+            # ancestry.  Keep lesson builds below the declared repository even
+            # when a surrounding CI campaign exports a shared test cache.
+            "P101_TEST_BUILD_CACHE": "",
+        },
     )
 
 
