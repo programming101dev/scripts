@@ -642,6 +642,10 @@ locked_entries="$(./workspace/repos-lock.py entries)"
 drift=0
 while IFS='|' read -r _url relative_path _kind locked_commit <&3; do
     [[ -n "${relative_path:-}" ]] || continue
+    # An admitted c-bootstrap repository may intentionally be unborn. Its
+    # empty lock revision is the contract; there is no HEAD or upstream to
+    # compare until the repository receives its first commit.
+    [[ -n "${locked_commit:-}" ]] || continue
     head_commit="$(git -C "$relative_path" rev-parse HEAD)"
     upstream="$(git -C "$relative_path" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
     if [[ "$head_commit" != "$locked_commit" ]]; then

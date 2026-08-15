@@ -40,6 +40,12 @@ if grep -Fq 'changed_paths" !=' distribution/publish-workspace.sh; then
   printf 'FAIL: qualification verification must admit an already-current lock contract\n' >&2
   exit 1
 fi
+
+if ! grep -Fq '[[ -n "${locked_commit:-}" ]] || continue' \
+  distribution/publish-workspace.sh; then
+  echo "FAIL: publisher audit must admit unborn c-bootstrap lock entries" >&2
+  exit 1
+fi
 if ! grep -Fq 'qualification commit changes forbidden path' \
   distribution/publish-workspace.sh; then
   printf 'FAIL: qualification verification must reject paths outside the lock contract\n' >&2
