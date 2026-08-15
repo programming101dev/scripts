@@ -12,6 +12,14 @@ case " $* " in
 esac
 [[ "$#" -eq 0 ]] || { printf 'Usage: %s\n' "$0" >&2; exit 2; }
 
+# This fixture verifies build-repo's default, repository-local lane behavior.
+# Acceptance runs export level-3 and shared-cache settings for the real
+# workspace; inheriting those settings changes the fixture's build-directory
+# names and makes the assertions depend on the caller rather than the contract
+# under test.
+unset P101_BUILD_LEVEL P101_REPOSITORY_BUILD_CACHE P101_TEST_BUILD_CACHE
+unset P101_DEFER_BUILD_MARKERS
+
 sandbox="$(mktemp -d "${TMPDIR:-/tmp}/p101-interactive-build.XXXXXX")"
 cleanup() {
   if [[ "${P101_KEEP_TEST_SANDBOX:-0}" == 1 ]]; then
