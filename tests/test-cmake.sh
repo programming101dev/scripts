@@ -366,6 +366,7 @@ if (( RC == 0 )); then
   if (( RC == 0 )) && [[ -f "$PROJ/test-ran" ]] &&
      grep -Fq "$PROJ/exact-include" "$PROJ/test-include-dirs" &&
      ! grep -Fq "$PROJ/missing-include" "$PROJ/test-include-dirs" &&
+     grep -Fq "$PROJ/build" "$PROJ/test-link-dirs" &&
      grep -Fq "$PROJ/exact-lib" "$PROJ/test-link-dirs" &&
      ! grep -Fq "$PROJ/missing-lib" "$PROJ/test-link-dirs" &&
      grep -q 'checking:.*clang-format' "$PROJ/build.log" &&

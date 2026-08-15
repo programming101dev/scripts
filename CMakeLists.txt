@@ -1258,8 +1258,12 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/CMakeLists.txt"
             "${DETECTED_SANITIZERS}")
     string(REPLACE ";" " " _P101_TEST_PUBLIC_INCLUDE_DIRS
             "${P101_PUBLIC_INCLUDE_DIRS_EXISTING}")
+    set(_P101_TEST_LINK_DIRS
+            "${CMAKE_BINARY_DIR}"
+            ${P101_PUBLIC_LINK_DIRS_EXISTING})
+    list(REMOVE_DUPLICATES _P101_TEST_LINK_DIRS)
     string(REPLACE ";" " " _P101_TEST_PUBLIC_LINK_DIRS
-            "${P101_PUBLIC_LINK_DIRS_EXISTING}")
+            "${_P101_TEST_LINK_DIRS}")
     add_custom_target(${PROJECT_NAME}_test_all ALL
             COMMAND "${CMAKE_COMMAND}"
                     "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
