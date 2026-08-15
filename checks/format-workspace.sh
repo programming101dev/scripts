@@ -2,9 +2,6 @@
 set -euo pipefail
 
 scripts_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
-source_file="$scripts_root/cmake/p101_compile_db.c"
-bootstrap_dir="$scripts_root/target/bootstrap"
-bootstrap="$bootstrap_dir/p101-bootstrap"
 compiler="${CC:-cc}"
 formatter=""
 receipt=""
@@ -45,16 +42,9 @@ if [[ -z "$formatter" || -z "$receipt" ]]; then
     exit 2
 fi
 
-mkdir -p "$bootstrap_dir"
-if [[ ! -x "$bootstrap" || "$source_file" -nt "$bootstrap" ]]; then
-    temporary="$bootstrap.tmp.$$"
-    trap 'rm -f "$temporary"' EXIT
-    "$compiler" -std=c17 -Wall -Wextra -Werror -pedantic \
-        "$source_file" -o "$temporary"
-    chmod +x "$temporary"
-    mv "$temporary" "$bootstrap"
-    trap - EXIT
-fi
+# shellcheck source=../shared/bootstrap.sh
+. "$scripts_root/shared/bootstrap.sh"
+bootstrap="$(p101_bootstrap_build "$scripts_root" "$compiler")"
 
 exec "$bootstrap" format-workspace \
     "$formatter" "$receipt" "$mode" "$scripts_root"

@@ -123,7 +123,7 @@ trim() {
 }
 
 # ---------- per-family override deny-lists ----------
-# render-flags.py can mark a selected flag as off for one compiler family
+# The C bootstrap flag renderer can mark a selected flag as off for one compiler family
 # (flag-selection.json: "gcc": false / "clang": false). That renders into
 # flags/overrides-<family>.txt; any probe unit containing a denied token is
 # skipped for compilers of that family.

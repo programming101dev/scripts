@@ -1,0 +1,58 @@
+#!/bin/sh
+set -eu
+
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)
+sandbox=$(mktemp -d "${TMPDIR:-/tmp}/p101-lesson-catalog.XXXXXX")
+cleanup()
+{
+  rm -rf "$sandbox"
+}
+trap cleanup EXIT HUP INT TERM
+
+lessons=$sandbox/playgrounds/lessons
+catalog=$lessons/manifest.json
+header=$sandbox/lesson_catalog.h
+source=$sandbox/lesson_catalog.c
+mkdir -p "$lessons"
+printf '# Sample\n\nSubstantive guidance.\n' > "$lessons/sample.md"
+
+write_catalog()
+{
+  duplicate=$1
+  {
+    printf '%s\n' '{"schema":"p101-finding-lesson-catalog-v2","url_base":"https://example.test/","lessons":['
+    printf '%s' '{"lesson_id":"P101-LESSON-SAMPLE","path":"sample.md","finding_ids":["P101-SAMPLE-001"]}'
+    if [ "$duplicate" = yes ]; then
+      printf '%s' ',{"lesson_id":"P101-LESSON-SECOND","path":"sample.md","finding_ids":["P101-SAMPLE-001"]}'
+    fi
+    printf '%s\n' ']}'
+  } > "$catalog"
+}
+
+run_generator()
+{
+  "$root/generators/generate-tool-lesson-catalog.sh" \
+    --catalog "$catalog" --header "$header" --source "$source" "$@"
+}
+
+write_catalog no
+run_generator >/dev/null
+grep -q 'P101_TOOL_FINDING_SAMPLE_001' "$header"
+grep -q '"P101-SAMPLE-001"' "$source"
+grep -q '"P101-LESSON-SAMPLE"' "$source"
+grep -q '"lessons/sample.md"' "$source"
+grep -q '"https://example.test/lessons/sample.md"' "$source"
+run_generator --check >/dev/null
+printf 'drift\n' >> "$source"
+status=0
+run_generator --check >"$sandbox/drift.out" 2>"$sandbox/drift.err" || status=$?
+[ "$status" -eq 1 ]
+grep -q 'generated lesson catalog drift' "$sandbox/drift.err"
+
+write_catalog yes
+status=0
+run_generator >"$sandbox/duplicate.out" 2>"$sandbox/duplicate.err" || status=$?
+[ "$status" -eq 2 ]
+grep -q 'malformed catalog' "$sandbox/duplicate.err"
+
+printf 'PASS: native lesson catalog generation, drift, and duplicate rejection\n'

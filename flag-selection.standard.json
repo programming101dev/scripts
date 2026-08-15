@@ -1,5 +1,5 @@
 {
-  "_doc": "STANDARD tier — a reasonable safe build: high-signal warnings, cheap hardening, -O2, -g, linker hardening. A subset of the maximal flag-selection.json, authored (not bootstrapped). Rendered by 'render-flags.py --selection flag-selection.standard.json --out flags-standard', probed into .flags-standard/<cc>/, selected by update.sh --standard. No sanitizers (a safe BUILD, not a test run) and none of the analyzer/exhaustive machinery. Every flag is probed per compiler, so unsupported ones (e.g. -Wl,-z,* on macOS ld64, -fstack-clash-protection on unsupported targets) are dropped automatically.",
+  "_doc": "STANDARD tier — a reasonable safe build: high-signal warnings, cheap hardening, -O2, -g, linker hardening. A subset of the maximal flag-selection.json, authored directly. Rendered by the dependency-free C bootstrap helper, probed into .flags-standard/<cc>/, and selected by update.sh --standard. No sanitizers (a safe BUILD, not a test run) and none of the analyzer/exhaustive machinery. Every flag is probed per compiler, so unsupported ones (e.g. -Wl,-z,* on macOS ld64, -fstack-clash-protection on unsupported targets) are dropped automatically.",
   "files": {
     "warning_flags.txt": {
       "header": ["Standard warnings: the widely-agreed baseline plus the few extras that catch real bugs at low noise. Portable across gcc and clang."],

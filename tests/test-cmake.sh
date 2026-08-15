@@ -1210,6 +1210,105 @@ else
   bad "tidy-db-flags: sanitized compile DB changed the admitted flag policy" "$sanitize_output"
 fi
 
+# ---------- dependency-free flag selection renderer ----------
+flag_selection="$SANDBOX/flag-selection.json"
+flag_output="$SANDBOX/rendered-flags"
+cat > "$flag_selection" <<'EOF'
+{
+  "files": {
+    "warning_flags.txt": {
+      "header": ["fixture"],
+      "entries": [
+        {"flags": "-Wall", "enabled": true},
+        {"flags": "-Wextra", "enabled": true, "c": false,
+         "comment": "C++-only fixture"},
+        {"flags": "-Wconversion", "enabled": false,
+         "comment": "disabled fixture"}
+      ]
+    }
+  }
+}
+EOF
+mkdir -p "$flag_output"
+if "$compile_db_helper" flags-render \
+     "$flag_selection" "$flag_output" write \
+   && "$compile_db_helper" flags-render \
+     "$flag_selection" "$flag_output" check \
+   && grep -q -- '"-Wall"' "$flag_output/warning_flags.txt" \
+   && grep -q -- '^#.*"-Wconversion"' "$flag_output/warning_flags.txt" \
+   && grep -q -- '^-Wextra$' "$flag_output/overrides-c.txt"; then
+  ok "flag-render: libc-only helper writes and verifies selected flags"
+else
+  bad "flag-render: libc-only renderer did not preserve selection semantics" \
+      "$flag_output/warning_flags.txt"
+fi
+printf '        "-Wpedantic"\n' >> "$flag_output/warning_flags.txt"
+flag_check_rc=0
+"$compile_db_helper" flags-render \
+  "$flag_selection" "$flag_output" check >/dev/null 2>&1 || flag_check_rc=$?
+if [[ "$flag_check_rc" -eq 1 ]]; then
+  ok "flag-render-drift: rendered active flag drift is rejected"
+else
+  bad "flag-render-drift: changed rendered flags were accepted" \
+      "$flag_output/warning_flags.txt"
+fi
+if "$compile_db_helper" flags-lint "$flag_output" >/dev/null 2>&1; then
+  ok "flag-lint: libc-only helper accepts a clean ordered flag set"
+else
+  bad "flag-lint: libc-only helper rejected a clean ordered flag set" \
+      "$flag_output/warning_flags.txt"
+fi
+printf '        "-Wno-all"\n' >> "$flag_output/warning_flags.txt"
+flag_lint_rc=0
+"$compile_db_helper" flags-lint "$flag_output" \
+  >"$SANDBOX/flag-lint.log" 2>&1 || flag_lint_rc=$?
+if [[ "$flag_lint_rc" -eq 1 ]] && grep -q 'NEGATION' "$SANDBOX/flag-lint.log"; then
+  ok "flag-lint-conflict: final negation is rejected"
+else
+  bad "flag-lint-conflict: final negation was not rejected" \
+      "$SANDBOX/flag-lint.log"
+fi
+
+# ---------- dependency-free inspection rule catalog ----------
+rule_directory="$SANDBOX/rules"
+rule_output="$SANDBOX/rule_catalog.inc"
+mkdir -p "$rule_directory"
+cat > "$rule_directory/sample.json" <<'EOF'
+{
+  "schema": "p101-rule-pack-v1",
+  "name": "sample-pack",
+  "rules": [
+    {
+      "id": "P101-POLICY-SAMPLE-001",
+      "kind": "forbid-finding",
+      "pattern": "P101-SAMPLE-*",
+      "title": "Sample finding",
+      "lesson": "docs/sample.md"
+    }
+  ]
+}
+EOF
+if "$compile_db_helper" inspect-rule-catalog \
+     "$rule_directory" "$rule_output" write \
+   && "$compile_db_helper" inspect-rule-catalog \
+     "$rule_directory" "$rule_output" check \
+   && grep -q 'rule_pack_sample_pack' "$rule_output" \
+   && grep -q 'P101-POLICY-SAMPLE-001' "$rule_output"; then
+  ok "inspect-rule-catalog: libc-only helper writes and verifies rule packs"
+else
+  bad "inspect-rule-catalog: native rule-pack generation failed" "$rule_output"
+fi
+printf 'drift\n' >> "$rule_output"
+rule_check_rc=0
+"$compile_db_helper" inspect-rule-catalog \
+  "$rule_directory" "$rule_output" check >/dev/null 2>&1 || rule_check_rc=$?
+if [[ "$rule_check_rc" -eq 1 ]]; then
+  ok "inspect-rule-catalog-drift: generated rule drift is rejected"
+else
+  bad "inspect-rule-catalog-drift: changed rule catalog was accepted" \
+      "$rule_output"
+fi
+
 # ---------- CTU distinguishes header-only from filtered source evidence ----------
 ctu_root="$SANDBOX/ctu-root"
 ctu_work="$SANDBOX/ctu-work"

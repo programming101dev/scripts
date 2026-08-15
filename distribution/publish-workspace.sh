@@ -137,7 +137,7 @@ prepare_qualification_stack_contract()
     git worktree add --quiet --detach "$worktree" "$parent_commit"
     if ! cp -- "$candidate_lock_file" "$worktree/repos.lock"; then
         status=2
-    elif ! "$worktree/workspace/stack-contract.py" \
+    elif ! "$worktree/workspace/stack-contract.sh" \
         --scripts-root "$worktree" \
         --contract "$output_contract" refresh; then
         status=2
@@ -599,7 +599,7 @@ fi
 
 printf '== refreshing workspace lock and stack contract\n'
 ./workspace/repos-lock.py refresh
-./workspace/stack-contract.py refresh
+./workspace/stack-contract.sh refresh
 
 if [[ -n "$(git status --porcelain -- repos.lock contracts/p101-stack-contract.json)" ]]; then
     git add repos.lock contracts/p101-stack-contract.json
@@ -636,7 +636,7 @@ fi
 
 printf '== auditing published workspace\n'
 ./workspace/repos-lock.py verify --require-clean
-./workspace/stack-contract.py verify
+./workspace/stack-contract.sh verify
 
 locked_entries="$(./workspace/repos-lock.py entries)"
 drift=0

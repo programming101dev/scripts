@@ -14,11 +14,7 @@ failures=0
 workspace="$(CDPATH='' cd .. && pwd -P)"
 
 canonical_path() {
-  python3 - "$1" <<'PY'
-import os
-import sys
-print(os.path.realpath(sys.argv[1]))
-PY
+  realpath "$1"
 }
 
 check_link() {

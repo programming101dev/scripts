@@ -221,9 +221,9 @@
       "sha256": "29ce621dae9439ba62aa34e9cc0b0d8ef633a3e3bdab1439e817c3b742a293c8"
     },
     {
-      "bytes": 1856,
+      "bytes": 1840,
       "path": "../programs/p101-inspect/src/rule_catalog.inc",
-      "sha256": "4d49e3f331fbdca01e27b462715f288747d48213539e6293ad7c877efb8b3dca"
+      "sha256": "72a5a03e237fdd8cc4c7ab0a42791763ac83f30bfb34ea4263f76ef6ccd40eaa"
     },
     {
       "bytes": 1158,
@@ -291,9 +291,9 @@
       "sha256": "e3c746b069fcf67592a53424ac7690113fe07088ee0dec1cb2b493b512a44095"
     },
     {
-      "bytes": 1397,
+      "bytes": 1062,
       "path": "checks/format-workspace.sh",
-      "sha256": "2944382b8bc30de1948ee926b673ce58e32f697c265e200349917bde6bc6df0b"
+      "sha256": "75e2fce0b3a0bf204382bd66d2e832b0d4bd8ef678b4ab0946c5f1d9c3f0e3d6"
     },
     {
       "bytes": 74800,
@@ -346,9 +346,9 @@
       "sha256": "5e3ca02a1ea5102f866ccf185ddbf2faf6f918286d828cfacb4225c3f177b653"
     },
     {
-      "bytes": 70860,
+      "bytes": 167934,
       "path": "cmake/p101_compile_db.c",
-      "sha256": "6e619e7ed550d4fcd5c1a726ecbfcfee31ed55a2f094cdd546eef9e729e80dbd"
+      "sha256": "9db0fb55b2d2a4b719c5f3db420d32c20b4793272d1e5aecd59427f053e5a400"
     },
     {
       "bytes": 12553,
@@ -361,9 +361,9 @@
       "sha256": "c2a97d6d1432d8254ad16557e13c44032937a1336044518bcfec466547101d97"
     },
     {
-      "bytes": 59959,
+      "bytes": 60333,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "726d086abaa3bed57aa4dcc463b078cceaaa6f3c46a190f263bef9ffb8f62033"
+      "sha256": "5da094b3f2dd4587765b55021daa91c50fda459839412d31103e2e2f2eabbcde"
     },
     {
       "bytes": 63097,
@@ -389,6 +389,11 @@
       "bytes": 3264,
       "path": "contracts/p101-source-responsibilities.json",
       "sha256": "a9aec64abe3674712989ee5093eddb8fb6ee92e2edfaa8212594c02d6d92b402"
+    },
+    {
+      "bytes": 5127,
+      "path": "contracts/p101-stack-paths.txt",
+      "sha256": "f5e87577017cbd0f52d5cdd35620686ae4f02e79b2874647b9029d5432937967"
     },
     {
       "bytes": 1952,
@@ -451,14 +456,14 @@
       "sha256": "154a60da95a17701cde42282b9d9d61cf8f8d1a029061d4ae4b33bff91e2d794"
     },
     {
-      "bytes": 159166,
+      "bytes": 159196,
       "path": "flag-selection.json",
-      "sha256": "53e5119a72e7b1857fd4ba9cc81d4c6863e28972c62c16c752e3de5e0f51c435"
+      "sha256": "fc4894380fdbe5e04e381a44f847299df74e2c1e45e3c2dd63155b017e4840ba"
     },
     {
-      "bytes": 3084,
+      "bytes": 3037,
       "path": "flag-selection.standard.json",
-      "sha256": "5ed623756eb22b375eeb8c4a93336076db6667baa1c39e01341b8859c2687234"
+      "sha256": "90f9da50b7153fceb5e9067319638ed79539d588b7814a79e5330d5f26ff75b2"
     },
     {
       "bytes": 14583,
@@ -466,9 +471,9 @@
       "sha256": "42339a01aa77858bcb294e7edeb6c61c5828086d88d87be80b62633982f38448"
     },
     {
-      "bytes": 3479,
-      "path": "generators/generate-inspect-rule-catalog.py",
-      "sha256": "0bc2709640c08e472aa0e7bb2c42897896f327efe0e39ed91d95a95c0ea64ca5"
+      "bytes": 583,
+      "path": "generators/generate-inspect-rule-catalog.sh",
+      "sha256": "ceb95e09417953eedcded3e9d1cd7703309d1403b60eb05140fb176a17ac3d4b"
     },
     {
       "bytes": 258266,
@@ -493,12 +498,12 @@
     {
       "bytes": 13887,
       "path": "github-actions/preflight.sh",
-      "sha256": "ed7a8831ad8779c0101f634fcd56a5f52b1808037ec9f6763a40f0f64c3ab261"
+      "sha256": "0b325298a6b1756143e52456b2a6fa1ea5c907f635d0a65267e935c3cf1458f5"
     },
     {
       "bytes": 9072,
       "path": "repos.lock",
-      "sha256": "5de97549bb45900c5895e9b98cd5bc091c1a360ee54527715c6b47828555f789"
+      "sha256": "8709c28fcf48803f1520437d742f6f48000faa581414e3165a9de5c9ff5be189"
     },
     {
       "bytes": 3549,
@@ -536,6 +541,11 @@
       "sha256": "7aad63eb3b4affdf59418d16574d1b5ab4beece6007186faa69f0bdec7dd66ee"
     },
     {
+      "bytes": 1041,
+      "path": "shared/bootstrap.sh",
+      "sha256": "32a58d7c281b35d31bce33edda4dd8329697271cb336115205de6c6249b03f6d"
+    },
+    {
       "bytes": 3771,
       "path": "shared/compilers.sh",
       "sha256": "75889218972614b3f951a9170cc158112630c0a79d8f8f1e9c851f8e8f781c2d"
@@ -556,9 +566,9 @@
       "sha256": "ae1ec88e860f0cb00d89601cdccb5bce0f1f43123843ea6235f8cf586bbd238f"
     },
     {
-      "bytes": 49197,
+      "bytes": 49374,
       "path": "tests/test-build-repo-interactive.sh",
-      "sha256": "f8553c9edac0d4681b164b95f95de5835560f1ee112d5e5d4822243025ed9b27"
+      "sha256": "8b8f8ddb6e686191897281b64173f7da2038dad5c825e01e6cd5f0c21a0d5b57"
     },
     {
       "bytes": 9542,
@@ -636,14 +646,14 @@
       "sha256": "c9d47f4246c06bdfe1b5c79237a2637f5e3c3d94cd20fe04fa57453eec598161"
     },
     {
-      "bytes": 13775,
-      "path": "workspace/stack-contract.py",
-      "sha256": "e7ee227662df042b5a7272d309cd0fad31ceff46f23eb904944e2a44e0e48272"
+      "bytes": 1196,
+      "path": "workspace/stack-contract.sh",
+      "sha256": "682e76bcc9ad0a64a2c32f3615980fb6359aed26f81afd4feea229895d769ef0"
     },
     {
-      "bytes": 28303,
+      "bytes": 28425,
       "path": "workspace/update.sh",
-      "sha256": "8bcc1fc8431c02e4c84e751b0163f74c5360c0dc37d7509525654def2f6b4a9b"
+      "sha256": "ac7d04b6540b7624f8a121456cff77a5c3be55842198ab50f26a9ecd76554e76"
     }
   ],
   "does_not_prove": "This contract binds the declared stack policy bytes. It does not prove that the policy is complete, correct, or sufficient for an undeclared platform.",

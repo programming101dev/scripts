@@ -151,7 +151,7 @@ grep -Fq 'review and commit it before publication' "$sandbox/dirty-publish.log"
 git -C "$repository" checkout -- value.txt
 mkdir -p "$sandbox/scripts/workspace"
 cp workspace/repos-lock.py "$sandbox/scripts/workspace/repos-lock.py"
-cat > "$sandbox/scripts/workspace/stack-contract.py" <<'EOF'
+cat > "$sandbox/scripts/workspace/stack-contract.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 contract=""
@@ -181,7 +181,7 @@ done
 exit 2
 EOF
 chmod +x "$sandbox/scripts/workspace/repos-lock.py"
-chmod +x "$sandbox/scripts/workspace/stack-contract.py"
+chmod +x "$sandbox/scripts/workspace/stack-contract.sh"
 printf 'target/\n' > "$sandbox/scripts/.gitignore"
 scripts_remote="$sandbox/scripts.git"
 git init --quiet --bare "$scripts_remote"
@@ -209,7 +209,7 @@ cp distribution/push-repos.sh "$atomic/scripts/distribution/push-repos.sh"
 cp distribution/publish-workspace.sh \
   "$atomic/scripts/distribution/publish-workspace.sh"
 cp workspace/repos-lock.py "$atomic/scripts/workspace/repos-lock.py"
-cat > "$atomic/scripts/workspace/stack-contract.py" <<'EOF'
+cat > "$atomic/scripts/workspace/stack-contract.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 contract=""
@@ -240,7 +240,7 @@ EOF
 chmod +x "$atomic/scripts/distribution/push-repos.sh" \
   "$atomic/scripts/distribution/publish-workspace.sh" \
   "$atomic/scripts/workspace/repos-lock.py" \
-  "$atomic/scripts/workspace/stack-contract.py"
+  "$atomic/scripts/workspace/stack-contract.sh"
 
 atomic_scripts_remote="$atomic/scripts.git"
 git init --quiet --bare "$atomic_scripts_remote"

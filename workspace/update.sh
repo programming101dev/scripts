@@ -27,6 +27,8 @@ IFS=$' \t\n'
 CDPATH='' cd -- "$P101_UPDATE_ROOT"
 # shellcheck source=../shared/compilers.sh
 . ./shared/compilers.sh
+# shellcheck source=../shared/bootstrap.sh
+. ./shared/bootstrap.sh
 
 # ----------------- globals and defaults -----------------
 c_compiler=""
@@ -574,7 +576,8 @@ fi
 # --standard: render the standard subset into flags-standard/ before any
 # probe decision, so a fresh or edited standard selection is picked up.
 if $standard && ! $dry_run; then
-  run_or_echo ./generators/render-flags.py --selection flag-selection.standard.json --out flags-standard
+  bootstrap="$(p101_bootstrap_build "$P101_UPDATE_ROOT" "${CC:-cc}")"
+  run_or_echo "$bootstrap" flags-render flag-selection.standard.json flags-standard write
 fi
 
 # In --no-flags mode there is nothing to probe: the caches are left exactly

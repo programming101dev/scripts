@@ -362,7 +362,7 @@ candidate_lock="$out_dir/repos.candidate.lock"
   --allow-ahead
 candidate_stack_contract="$out_dir/p101-stack-contract.candidate.json"
 P101_STACK_REPOS_LOCK="$candidate_lock" \
-  ./workspace/stack-contract.py \
+  ./workspace/stack-contract.sh \
     --contract "$candidate_stack_contract" refresh
 
 printf '\n==> complete governed acceptance graph\n'

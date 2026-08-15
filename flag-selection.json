@@ -1,5 +1,5 @@
 {
-  "_doc": "Selection source of truth. Edit here, then run render-flags.py. Order is significant (last-one-wins on the final command line). Per-family override: add \"gcc\": false or \"clang\": false to an entry.",
+  "_doc": "Selection source of truth. Edit here, then run the C bootstrap helper's flags-render command. Order is significant (last-one-wins on the final command line). Per-family override: add \"gcc\": false or \"clang\": false to an entry.",
   "files": {
     "address_sanitizer_flags.txt": {
       "entries": [

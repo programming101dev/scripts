@@ -441,7 +441,7 @@ requires that receipt and validates every
 omitted prerequisite; it is not an unchecked skip. `--measure` disables reuse
 and runs sequentially so timings are comparable. This is wall-clock
 child-command profiling, not CPU sampling inside those commands. Performance
-claims can be checked with `checks/compare-check-performance.py`, which requires
+claims can be checked with `checks/compare-check-performance.sh`, which requires
 at least five result- and identity-matched samples in each population. With
 `--interactive`, a failure pauses and retries exactly that node after the fix.
 

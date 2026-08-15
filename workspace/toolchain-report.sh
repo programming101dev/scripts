@@ -63,7 +63,10 @@ SCRIPT_DIR="$PWD"
 OUT="$SCRIPT_DIR/toolchain-report"
 # shellcheck source=../shared/compilers.sh
 . "$SCRIPT_DIR/shared/compilers.sh"
+# shellcheck source=../shared/bootstrap.sh
+. "$SCRIPT_DIR/shared/bootstrap.sh"
 COMPILER_PLATFORM_ARG="$(p101_compiler_platform_argument)"
+BOOTSTRAP="$(p101_bootstrap_build "$SCRIPT_DIR" "${CC:-cc}")"
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
@@ -224,12 +227,8 @@ note "wrote compilers.txt (working:${working_compilers:- none})"
   echo "== compiler-discovery.log (rejected compilers + why) =="
   cat compiler-discovery.log 2>/dev/null || echo "(absent — check-compilers.sh not run since rejection tracking landed)"
   echo
-  echo "== lint-flags.py (negation/downgrade conflicts among actives) =="
-  if [ -x ./generators/lint-flags.py ] && have python3; then
-    python3 ./generators/lint-flags.py 2>&1
-  else
-    echo "(lint-flags.py or python3 not available)"
-  fi
+  echo "== native flag lint (negation/downgrade conflicts among actives) =="
+  "$BOOTSTRAP" flags-lint flags 2>&1
 } > "$OUT/curation.txt" 2>&1
 note "wrote curation.txt"
 

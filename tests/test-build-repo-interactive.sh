@@ -49,9 +49,12 @@ trap cleanup EXIT
 # diagnose drift without touching the checkout; local apply mode must update
 # the bytes and continue successfully so later cache identities see them.
 format_fixture="$sandbox/format-fixture"
-mkdir -p "$format_fixture/scripts/checks" "$format_fixture/bin"
+mkdir -p "$format_fixture/scripts/checks" \
+  "$format_fixture/scripts/shared" "$format_fixture/bin"
 cp ./checks/format-workspace.sh \
   "$format_fixture/scripts/checks/format-workspace.sh"
+cp ./shared/bootstrap.sh \
+  "$format_fixture/scripts/shared/bootstrap.sh"
 mkdir -p "$format_fixture/scripts/cmake"
 cp ./cmake/p101_compile_db.c \
   "$format_fixture/scripts/cmake/p101_compile_db.c"
@@ -1010,6 +1013,7 @@ mkdir -p "$snapshot_scripts/workspace" "$snapshot_scripts/distribution" \
   "$snapshot_root/.flags" "$snapshot_root/bin"
 cp ./workspace/update.sh "$snapshot_scripts/workspace/update.sh"
 cp ./shared/compilers.sh "$snapshot_scripts/shared/compilers.sh"
+cp ./shared/bootstrap.sh "$snapshot_scripts/shared/bootstrap.sh"
 chmod +x "$snapshot_scripts/workspace/update.sh"
 
 cat > "$snapshot_root/bin/tool" <<'EOF'

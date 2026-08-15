@@ -21,8 +21,8 @@
         "-frecord-gcc-switches"
         "-fpic"
         "-fPIC"
-#        "-fpie"    # executable-only PIE codegen; do not put in shared-library compile flags
-#        "-fPIE"    # executable-only PIE codegen; do not put in shared-library compile flags
+#        "-fpie"    # Executable-only PIE code generation. It can make shared-library links fail on ELF platforms when combined with shared-library targets, so keep it out of the shared compile flag corpus.
+#        "-fPIE"    # Executable-only PIE code generation. It can make shared-library links fail on ELF platforms when combined with shared-library targets, so keep it out of the shared compile flag corpus.
         "-fno-plt"
 #        "-fno-jump-tables"
 #        "-fno-bit-tests"

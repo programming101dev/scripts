@@ -38,7 +38,7 @@ The playground curriculum owns:
 `playgrounds/lessons/manifest.json` is also the single source of truth for the
 finding ID, lesson ID, lesson location, and public lesson URL. Native tools do
 not maintain parallel mapping tables. Run
-`./generators/generate-tool-lesson-catalog.py` after editing the manifest; it
+`./generators/generate-tool-lesson-catalog.sh` after editing the manifest; it
 generates the typed `lib_tool_event` catalog and the shared
 `p101_tool_rule_definition_lookup()` implementation. The governed
 `tool-lesson-catalog` check rejects generated drift.
@@ -123,8 +123,8 @@ or the playground case's fixed-state oracle.
 
 ```sh
 ./tests/test-p101-lessons.py
-./tests/test-tool-lesson-catalog.py
-./generators/generate-tool-lesson-catalog.py --check
+./tests/test-tool-lesson-catalog.sh
+./generators/generate-tool-lesson-catalog.sh --check
 ./runtime/p101_lessons.py check
 ./runtime/p101_lessons.py show P101-FD-001
 ./runtime/p101_lessons.py run P101-FD-001
