@@ -11,6 +11,13 @@ mkdir -p "$work/scripts/checks" "$work/scripts/contracts" "$work/scripts/shared"
   "$work/repos/charlie/test" "$work/probe"
 cp "$scripts_root/checks/check-repository-tests.sh" "$work/scripts/checks/"
 cp "$scripts_root/shared/compilers.sh" "$work/scripts/shared/"
+cat > "$work/scripts/test-repo.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+exec "$P101_REPOSITORY_ROOT/test.sh"
+EOF
+chmod +x "$work/scripts/test-repo.sh"
+export P101_TEST_RUNNER="$work/scripts/test-repo.sh"
 cat > "$work/scripts/contracts/repository-test-costs.tsv" <<'EOF'
 # Repository|Expected seconds
 *|1

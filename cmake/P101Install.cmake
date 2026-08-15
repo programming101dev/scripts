@@ -1,8 +1,9 @@
 # Shared install policy for p101 C/C++ repositories.
 #
 # Admitted inputs are the target/header lists assembled by the root
-# CMakeLists.txt. This module owns installation layout only; it does not decide
-# which targets or headers belong to a repository.
+# CMakeLists.txt. An executable may set <target>_INSTALL to OFF when it is a
+# build-only teaching example. This module owns installation layout only; it
+# does not decide which targets or headers belong to a repository.
 
 if(_ALL_HEADERS_FOR_INSTALL)
     foreach(_h IN LISTS _ALL_HEADERS_FOR_INSTALL)
@@ -30,6 +31,12 @@ foreach(_lib IN LISTS LIBRARY_TARGETS)
 endforeach()
 
 foreach(_exe IN LISTS EXECUTABLE_TARGETS)
-    install(TARGETS ${_exe}
-            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    set(_p101_install_executable TRUE)
+    if(DEFINED ${_exe}_INSTALL)
+        set(_p101_install_executable "${${_exe}_INSTALL}")
+    endif()
+    if(_p101_install_executable)
+        install(TARGETS ${_exe}
+                RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    endif()
 endforeach()

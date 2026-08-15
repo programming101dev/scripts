@@ -16,8 +16,7 @@ clang_format_name="clang-format"
 clang_tidy_name="clang-tidy"
 cppcheck_name="cppcheck"
 sanitizers=""
-sanitizers_given=false
-forward_skip_cache=false   # if true, pass -S to install.sh (skip cache refresh)
+forward_skip_cache=false   # if true, skip the platform loader-cache refresh
 skip_install=false
 interactive=false
 defer_install=false
@@ -39,8 +38,8 @@ Usage: $0 -c <C compiler> -x <C++ compiler> [-f <clang-format>] [-t <clang-tidy>
   -s  sanitizers list    (e.g. address,undefined) — if omitted, repo may read sanitizers.txt
   -B  quality lane key   (normally computed from the complete compiler pair)
   -U  runtime lane key   (instrumentation-free companion to -B)
-  -S  forward 'skip cache update' to install.sh (passes -S to install.sh)
-  -I  skip install.sh after building repos
+  -S  skip the platform loader-cache refresh after installation
+  -I  skip installation after building repositories
   -i, --interactive
       Pause after a configure, build, or install failure. Push the fix from
       another terminal, then press Enter to pull it and retry that same phase.
@@ -88,7 +87,7 @@ while getopts ":c:x:f:t:k:s:B:U:SIi" opt; do
     f) clang_format_name="$OPTARG" ;;
     t) clang_tidy_name="$OPTARG" ;;
     k) cppcheck_name="$OPTARG" ;;
-    s) sanitizers="$OPTARG"; sanitizers_given=true ;;
+    s) sanitizers="$OPTARG" ;;
     B) build_key="$OPTARG" ;;
     U) runtime_build_key="$OPTARG" ;;
     S) forward_skip_cache=true ;;
@@ -543,20 +542,101 @@ resolve_any() {
   fi
 }
 
-change_compiler_supports_sanitizers() {
-  # Inspect the option parser instead of executing --help: older repository
-  # scripts do not all give --help the same exit behavior.
-  grep -Fq -- '-s)' ./change-compiler.sh
+configure_cmake_repository() {
+  local repo_type="$1"
+  local build_directory="$2"
+  local lane_kind="$3"
+  local lane_key="$4"
+  local lane_sanitizers="$sanitizers"
+  local lane_level="$build_level"
+  local runtime_only=OFF
+  local coverage_value=OFF
+  local profile_value=OFF
+  local cmake_args
+
+  if [[ "$lane_kind" == runtime ]]; then
+    lane_sanitizers=""
+    lane_level=1
+    runtime_only=ON
+  else
+    [[ "$coverage_mode" -eq 0 ]] || coverage_value=ON
+    [[ "$profile_mode" -eq 0 ]] || profile_value=ON
+  fi
+
+  if [[ -z "$repository_build_cache" ]]; then
+    case "$build_directory" in
+      build|build-*|cmake-build-*) rm -rf -- "$build_directory" ;;
+      *)
+        printf 'Error: unsafe CMake build directory: %s\n' "$build_directory" >&2
+        return 2
+        ;;
+    esac
+  fi
+
+  cmake_args=(
+    -S . -B "$build_directory"
+    -DCLANG_FORMAT_NAME="$CLANG_FORMAT_PATH"
+    -DCLANG_TIDY_NAME="$CLANG_TIDY_PATH"
+    -DCPPCHECK_NAME="$CPPCHECK_PATH"
+    -DSANITIZER_LIST="$lane_sanitizers"
+    -DP101_BUILD_KEY="$lane_key"
+    -DP101_BUILD_LEVEL="$lane_level"
+    -DP101_RUNTIME_ONLY="$runtime_only"
+    -DP101_COVERAGE_MODE="$coverage_value"
+    -DP101_PROFILE_MODE="$profile_value"
+    -DCMAKE_BUILD_TYPE=Debug
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+  )
+  # Test trees commonly compile both C APIs and C++ header-compatibility
+  # probes, even when the production project enables only one language.
+  cmake_args+=(
+    -DCMAKE_C_COMPILER="$CC_PATH"
+    -DCMAKE_CXX_COMPILER="$CXX_PATH"
+  )
+  if [[ "$lane_kind" == runtime ]]; then
+    cmake_args+=(-DP101_DISABLE_INSTRUMENTATION=ON)
+  fi
+  cmake "${cmake_args[@]}"
 }
 
-change_compiler_supports_runtime_artifact() {
-  grep -Fq -- '-b)' ./change-compiler.sh &&
-    grep -Fq -- '--)' ./change-compiler.sh &&
-    change_compiler_supports_sanitizers
+build_cmake_repository() {
+  local build_directory="$1"
+  local build_args=(cmake --build "$build_directory")
+
+  [[ -n "${P101_QUIET:-}" ]] || build_args+=(--verbose)
+  [[ -z "${JOBS:-${CMAKE_BUILD_PARALLEL_LEVEL:-}}" ]] ||
+    build_args+=(--parallel "${JOBS:-${CMAKE_BUILD_PARALLEL_LEVEL}}")
+  "${build_args[@]}"
 }
 
-change_compiler_supports_build_dir() {
-  grep -Fq -- '-b)' ./change-compiler.sh
+install_cmake_repository() {
+  local build_directory="$1"
+  local install_prefix="/usr/local"
+  local cached_prefix
+  local install_args=(cmake --install "$build_directory")
+
+  cached_prefix="$(sed -n 's/^CMAKE_INSTALL_PREFIX:[^=]*=//p' \
+    "$build_directory/CMakeCache.txt" | head -n 1)"
+  [[ -z "$cached_prefix" ]] || install_prefix="$cached_prefix"
+  if [[ -d "$install_prefix" ]]; then
+    if [[ -w "$install_prefix" ]]; then
+      "${install_args[@]}"
+    else
+      sudo "${install_args[@]}"
+    fi
+  elif [[ -w "$(dirname "$install_prefix")" ]]; then
+    "${install_args[@]}"
+  else
+    sudo "${install_args[@]}"
+  fi
+
+  if ! $forward_skip_cache; then
+    if [[ "$(uname -s)" != Darwin ]] && command -v ldconfig >/dev/null 2>&1; then
+      sudo ldconfig
+    elif command -v update_dyld_shared_cache >/dev/null 2>&1; then
+      sudo update_dyld_shared_cache -force
+    fi
+  fi
 }
 
 CC_PATH="$(resolve_any "$c_compiler")"
@@ -566,8 +646,8 @@ if [[ "$build_level" -eq 3 ]]; then
   CLANG_TIDY_PATH="$(resolve_any "$clang_tidy_name")"
   CPPCHECK_PATH="$(resolve_any "$cppcheck_name")"
 else
-  # change-compiler.sh accepts concrete tool arguments even when the selected
-  # CMake level does not admit those tools. Use a ubiquitous successful
+  # The CMake configuration accepts concrete tool arguments even when the
+  # selected level does not admit those tools. Use a ubiquitous successful
   # command as an inert value instead of making quick/medium users install the
   # full analyzer toolchain.
   CLANG_TIDY_PATH="$(resolve_any true)"
@@ -621,11 +701,6 @@ esac
 say "Quality artifact lane: $build_key"
 say "Runtime artifact lane: $runtime_build_key"
 
-build_script_args=()
-if [[ -n "${P101_QUIET:-}" ]]; then
-  build_script_args+=(-q)
-fi
-
 # ----------------- iterate repos -----------------
 repos_file="repos.txt"
 [[ -f "$repos_file" ]] || { echo "Error: $repos_file not found" >&2; exit 3; }
@@ -644,9 +719,7 @@ trim() {
 failures=0
 processed=0
 
-# Read repos.txt on fd 3 so the children (change-compiler.sh, build.sh,
-# install.sh — which may legitimately read stdin, e.g. a sudo password
-# prompt in install.sh) keep the real stdin.
+# Read repos.txt on fd 3 so CMake and sudo keep the real stdin.
 while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   # Strip CR (CRLF files), comments, and surrounding whitespace — same
   # semantics as clone-repos.sh / link-*.sh / copy-cmake.sh.
@@ -680,6 +753,10 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     say "  -> Bootstrap repository is present but not active; skipping."
     continue
   fi
+  if [[ "$repo_type" == "c-reference" ]]; then
+    say "  -> Source-reference repository has no executable build contract; skipping."
+    continue
+  fi
 
   pushd "$dir" >/dev/null
   marker_snapshot_repository "$PWD"
@@ -691,21 +768,21 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   quality_cache_state=disabled
   runtime_cache_state=disabled
   runtime_install_supported=1
-  make_tree=false
+  installable_repository=false
+  [[ "$dir" == ../libraries/* ]] && installable_repository=true
 
   # Resolve the artifact identity before configuring. Parallel compiler-pair
   # workers must never depend on the shared .last-build-dir marker: another
   # worker may legitimately update that convenience marker at any time.
   case "$repo_type" in
     c)
-      if [[ ! -x ./change-compiler.sh ]]; then
-        say "  -> FAIL: no executable change-compiler.sh in ${dir}."
+      if [[ ! -f ./CMakeLists.txt ]]; then
+        say "  -> FAIL: no CMakeLists.txt in ${dir}."
         failures=$((failures + 1))
         popd >/dev/null
         continue
-      fi
-      quality_build_dir="$(content_addressed_build_directory "build-${build_key}")"
-      if change_compiler_supports_build_dir; then
+      else
+        quality_build_dir="$(content_addressed_build_directory "build-${build_key}")"
         if activate_repository_build_cache "$repository_cache_label" "$quality_build_dir"; then
           quality_cache_state="$P101_LANE_CACHE_STATE"
         else
@@ -713,16 +790,11 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
           popd >/dev/null
           exit "$status"
         fi
-        change_args=(-c "$CC_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH" -b "$quality_build_dir")
-      else
-        # A Makefile tree accepts its toolchain through make's environment.
-        # Do not run its source-mutating change-compiler helper in a matrix.
-        make_tree=true
       fi
       ;;
     cxx)
-      if [[ ! -x ./change-compiler.sh ]]; then
-        say "  -> FAIL: no executable change-compiler.sh in ${dir}."
+      if [[ ! -f ./CMakeLists.txt ]]; then
+        say "  -> FAIL: no CMakeLists.txt in ${dir}."
         failures=$((failures + 1))
         popd >/dev/null
         continue
@@ -735,7 +807,6 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         popd >/dev/null
         exit "$status"
       fi
-      change_args=(-c "$CXX_PATH" -f "$CLANG_FORMAT_PATH" -t "$CLANG_TIDY_PATH" -k "$CPPCHECK_PATH" -b "$quality_build_dir")
       ;;
     python)
       say "Python tool: no CMake/compiler configuration required."
@@ -749,21 +820,10 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   esac
 
   if ! $finalize_only; then
-    if [[ "$repo_type" == "c" || "$repo_type" == "cxx" ]] && ! $make_tree; then
-      if $sanitizers_given && change_compiler_supports_sanitizers; then
-        change_args+=(-s "$sanitizers")
-      elif [[ -n "$sanitizers" ]]; then
-        say "  -> change-compiler.sh does not accept -s; using the repository's configured sanitizer flags."
-      fi
-      if [[ -n "$repository_build_cache" ]]; then
-        change_args+=(-R)
-      fi
-      change_args+=(-- "-DP101_BUILD_KEY=$build_key"
-        "-DP101_BUILD_LEVEL=$build_level"
-        "-DP101_COVERAGE_MODE=$([[ "$coverage_mode" -eq 1 ]] && printf ON || printf OFF)"
-        "-DP101_PROFILE_MODE=$([[ "$profile_mode" -eq 1 ]] && printf ON || printf OFF)")
+    if [[ "$repo_type" == "c" || "$repo_type" == "cxx" ]]; then
       say "Configuring ${dir} in ${quality_build_dir}"
-      if run_repo_phase "configure ${dir}" ./change-compiler.sh "${change_args[@]}"; then
+      if run_repo_phase "configure ${dir}" \
+          configure_cmake_repository "$repo_type" "$quality_build_dir" quality "$build_key"; then
         write_lane_receipt "$quality_build_dir" "$build_key" quality "${quality_cache_state:-disabled}"
         marker_restore_current_repository
       else
@@ -773,18 +833,11 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       fi
     fi
 
-    if [[ -x ./build.sh ]]; then
+    if [[ -f ./CMakeLists.txt ]]; then
       say "Building: ${dir}"
-      if $make_tree; then
-        build_command=(env P101_INCREMENTAL_BUILD=1 "CC=$CC_PATH" "CXX=$CXX_PATH" "CLANG_FORMAT=$CLANG_FORMAT_PATH" "CLANG_TIDY=$CLANG_TIDY_PATH" "CPPCHECK=$CPPCHECK_PATH" ./build.sh)
-      else
-        build_command=(env P101_INCREMENTAL_BUILD=1 ./build.sh -b "$quality_build_dir")
-      fi
-      if [[ "${#build_script_args[@]}" -gt 0 ]]; then
-        build_command+=("${build_script_args[@]}")
-      fi
+      build_command=(build_cmake_repository "$quality_build_dir")
       if run_repo_phase "build ${dir} with $([[ "$repo_type" == "cxx" ]] && printf '%s' "$CXX_PATH" || printf '%s' "$CC_PATH")" "${build_command[@]}"; then
-        if ! $make_tree && [[ -n "$quality_build_dir" ]]; then
+        if [[ -n "$quality_build_dir" ]]; then
           publish_exact_lane_alias "$quality_build_dir" "$build_key"
           marker_queue_value .last-build-dir "$quality_build_dir"
         fi
@@ -808,14 +861,11 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
   # and install rules while omitting the analyzer pipeline already exercised
   # by the quality build above.
   if ! $finalize_only &&
+     $installable_repository &&
      [[ "$skip_install" == false || "$defer_install" == true ]] &&
-     [[ -x ./install.sh ]] &&
+     [[ -f ./CMakeLists.txt ]] &&
      [[ "$repo_type" == "c" || "$repo_type" == "cxx" ]]; then
-    if ! change_compiler_supports_runtime_artifact; then
-      runtime_install_supported=0
-      say "  -> SKIP install: change-compiler.sh cannot create a separate instrumentation-free runtime artifact."
-    else
-      runtime_build_dir="$(content_addressed_build_directory "build-${runtime_build_key}")"
+    runtime_build_dir="$(content_addressed_build_directory "build-${runtime_build_key}")"
       if activate_repository_build_cache "$repository_cache_label" "$runtime_build_dir"; then
         runtime_cache_state="$P101_LANE_CACHE_STATE"
       else
@@ -823,34 +873,11 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         popd >/dev/null
         exit "$status"
       fi
-      if [[ "$repo_type" == "cxx" ]]; then
-        runtime_change_args=(-c "$CXX_PATH")
-      else
-        runtime_change_args=(-c "$CC_PATH")
-      fi
-      runtime_change_args+=(
-        -f "$CLANG_FORMAT_PATH"
-        -t "$CLANG_TIDY_PATH"
-        -k "$CPPCHECK_PATH"
-        -s ""
-        -b "$runtime_build_dir"
-        --
-        -DP101_RUNTIME_ONLY=ON
-        -DP101_BUILD_LEVEL=1
-        -DP101_DISABLE_INSTRUMENTATION=ON
-        -DP101_COVERAGE_MODE=OFF
-        -DP101_PROFILE_MODE=OFF
-        "-DP101_BUILD_KEY=$runtime_build_key"
-      )
-      if [[ -n "$repository_build_cache" ]]; then
-        runtime_change_args=(-R "${runtime_change_args[@]}")
-      fi
-
       say "Configuring instrumentation-free runtime artifact: ${dir}"
       if run_repo_phase "configure runtime artifact ${dir}" \
           env P101_COVERAGE=0 P101_PROFILE=0 \
           CFLAGS= CXXFLAGS= CPPFLAGS= LDFLAGS= \
-          ./change-compiler.sh "${runtime_change_args[@]}"; then
+          configure_cmake_repository "$repo_type" "$runtime_build_dir" runtime "$runtime_build_key"; then
         write_lane_receipt "$runtime_build_dir" "$runtime_build_key" runtime "${runtime_cache_state:-disabled}"
         marker_restore_current_repository
       else
@@ -860,11 +887,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       fi
 
       say "Building instrumentation-free runtime artifact: ${dir}"
-      if [[ "${#build_script_args[@]}" -gt 0 ]]; then
-        runtime_build_command=(env P101_INCREMENTAL_BUILD=1 ./build.sh -b "$runtime_build_dir" "${build_script_args[@]}")
-      else
-        runtime_build_command=(env P101_INCREMENTAL_BUILD=1 ./build.sh -b "$runtime_build_dir")
-      fi
+      runtime_build_command=(build_cmake_repository "$runtime_build_dir")
       if run_repo_phase "build runtime artifact ${dir}" \
           "${runtime_build_command[@]}"; then
         publish_exact_lane_alias "$runtime_build_dir" "$runtime_build_key"
@@ -875,13 +898,12 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       fi
 
       marker_queue_value .last-runtime-build-dir "$runtime_build_dir"
-    fi
   fi
 
   # After concurrent workers finish, update-all calls --finalize-only once for
   # its deterministic host pair. Publish only that pair's markers and select
   # its instrumentation-free runtime artifact for installation.
-  if $finalize_only && [[ "$repo_type" == "c" || "$repo_type" == "cxx" ]] && ! $make_tree; then
+  if $finalize_only && [[ "$repo_type" == "c" || "$repo_type" == "cxx" ]]; then
     if [[ ! -f "$quality_build_dir/CMakeCache.txt" ]] ||
        ! lane_receipt_matches "$quality_build_dir" "$build_key" quality; then
       say "  -> FAIL: host artifact is missing: ${dir}/${quality_build_dir}"
@@ -894,7 +916,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
       if [[ -f "$runtime_candidate/CMakeCache.txt" ]] &&
          lane_receipt_matches "$runtime_candidate" "$runtime_build_key" runtime; then
         runtime_build_dir="$runtime_candidate"
-      elif ! $skip_install && [[ -x ./install.sh ]]; then
+      elif $installable_repository && ! $skip_install && [[ -f ./CMakeLists.txt ]]; then
         say "  -> FAIL: host runtime artifact is missing: ${dir}/${runtime_candidate}"
         failures=$((failures + 1))
         runtime_install_supported=0
@@ -910,23 +932,17 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     fi
   fi
 
-  # If there’s an installer, run it (forward -s to skip cache if -S was given)
+  # Install directly from the selected CMake runtime artifact.
   if $defer_install; then
     say "Deferring install until compiler matrix completion: ${dir}"
   elif $skip_install; then
     say "Skipping install: ${dir}"
   elif [[ "$runtime_install_supported" -eq 0 ]]; then
     say "Skipping install without an instrumentation-free runtime artifact: ${dir}"
-  elif [[ -x ./install.sh ]]; then
-    if $forward_skip_cache; then
-      say "Installing (skip cache update): ${dir}"
-      install_command=(./install.sh -S)
-    else
-      say "Installing: ${dir}"
-      install_command=(./install.sh)
-    fi
-    install_command+=(-b "${runtime_build_dir:-$quality_build_dir}")
-    if run_repo_phase "install ${dir}" "${install_command[@]}"; then
+  elif $installable_repository && [[ -f ./CMakeLists.txt ]]; then
+    say "Installing: ${dir}"
+    if run_repo_phase "install ${dir}" \
+        install_cmake_repository "${runtime_build_dir:-$quality_build_dir}"; then
       :
     else
       status=$?

@@ -136,14 +136,14 @@
       "sha256": "d8df15ecc6f0aa6f318d80003c2d721b7ff260ba26a28878925ed45dba0dd055"
     },
     {
-      "bytes": 13451,
+      "bytes": 13652,
       "path": "../playgrounds/lessons/manifest.json",
-      "sha256": "50693f8eed39191ef80efdfa452704f2d70441e615f116ab08a783aa26ab7eb8"
+      "sha256": "eeddcdb831cae57794de694a0c9b0a45d5c04a765c0fac7002cfdf9ce8f03495"
     },
     {
-      "bytes": 3728,
+      "bytes": 3827,
       "path": "../programs/p101-audit/README.md",
-      "sha256": "4175d922b5bf9bf141922bd8b9d1742efc5913204157d4a5def78094ddb59824"
+      "sha256": "fef2706e9fa8cb6a4a5dfa6e44807bfeee56c2f94319d78f246cc2d7a298a46c"
     },
     {
       "bytes": 27014,
@@ -186,9 +186,9 @@
       "sha256": "27cd2a525869e1f73d489b91afe777d1be8128065c19494eae863b83be8b24dc"
     },
     {
-      "bytes": 26192,
+      "bytes": 25415,
       "path": "../programs/p101-audit/components/workspace/src/test_inventory.c",
-      "sha256": "6a88263296e9d1451a461ac4557395241dbe77d9c43348bebefbc917f106e6b5"
+      "sha256": "a0a59dba3cee64553aacc4452f5a8e6de00a9826e764df5a1db679cfc65817a7"
     },
     {
       "bytes": 5290,
@@ -211,44 +211,19 @@
       "sha256": "03c3f344a1b5df365fda8788fd93e5b659ea82ba7f04b6e89785cad60f0bae2d"
     },
     {
-      "bytes": 1464,
-      "path": "../programs/p101-audit/test-components.sh",
-      "sha256": "a144c0e96008ab60b9a6c561ff90ec225f5e378907a5163dec603614d82b84b5"
-    },
-    {
-      "bytes": 14555,
-      "path": "../programs/p101-audit/test.sh",
-      "sha256": "29ce621dae9439ba62aa34e9cc0b0d8ef633a3e3bdab1439e817c3b742a293c8"
-    },
-    {
       "bytes": 1840,
       "path": "../programs/p101-inspect/src/rule_catalog.inc",
       "sha256": "72a5a03e237fdd8cc4c7ab0a42791763ac83f30bfb34ea4263f76ef6ccd40eaa"
     },
     {
-      "bytes": 1158,
-      "path": "../programs/p101-test/test-components.sh",
-      "sha256": "304548a849214ae8a850f051bd52e54974d0c52a4eef0a780115f28fb04aae74"
-    },
-    {
-      "bytes": 14555,
-      "path": "../programs/p101-test/test.sh",
-      "sha256": "29ce621dae9439ba62aa34e9cc0b0d8ef633a3e3bdab1439e817c3b742a293c8"
-    },
-    {
-      "bytes": 14555,
+      "bytes": 14337,
       "path": "../templates/template-c/test.sh",
-      "sha256": "29ce621dae9439ba62aa34e9cc0b0d8ef633a3e3bdab1439e817c3b742a293c8"
+      "sha256": "0bf191fd47e582dc4e7ab32e741799a34187b5c0d4b3f0763f4eef431d2d3b3d"
     },
     {
-      "bytes": 11430,
-      "path": "../templates/template-cxx/test.sh",
-      "sha256": "68f27d037859342ef6e9c57a5d2ddf5b4aae0600de1dd901a7664f49f0ab7799"
-    },
-    {
-      "bytes": 86937,
+      "bytes": 87870,
       "path": "CMakeLists.txt",
-      "sha256": "86e05ae527337586a12ba6da376e78efb2fe306ff76af7bac0291e281f0ec489"
+      "sha256": "d4f29ad2ec6dec0f0173d51aa9990e842ac98a66a62ac9d9b4e643db1645bc1b"
     },
     {
       "bytes": 14841,
@@ -271,9 +246,9 @@
       "sha256": "2a2ff71f59214c02279b6487a668cf653ecf1ff4371e2612f72c093f6f1ee922"
     },
     {
-      "bytes": 6289,
+      "bytes": 6611,
       "path": "checks/check-shell-scripts.sh",
-      "sha256": "b44f9fca1250fe60535093985a5fb15ff81349fd55bed5c07aa1caf34683d845"
+      "sha256": "ffd2244f99059adda7598ca470f111edd57bd2f16c57914de469c27683bca449"
     },
     {
       "bytes": 8477,
@@ -281,9 +256,9 @@
       "sha256": "525253f6975505f4a4b581227ea610487675efa10ec85720f8a2644c4f757f0d"
     },
     {
-      "bytes": 8160,
+      "bytes": 8230,
       "path": "checks/check-wrapper-conformance.sh",
-      "sha256": "39b99768d2ae0b14766cf5945adcff106ca907f405666a057e5cfe1bc286238d"
+      "sha256": "951fbe9ca78a6bcc493fb82eafff11562a270f89c256178e582fa5fc1eee19e7"
     },
     {
       "bytes": 23346,
@@ -326,9 +301,9 @@
       "sha256": "06dab604906597e8b90db34e780bf54dd5d91936d56a01c026b56460fd460700"
     },
     {
-      "bytes": 1338,
+      "bytes": 1623,
       "path": "cmake/P101Install.cmake",
-      "sha256": "cdb614ce14222d9f31242bb4c666a1c13d4aee87da94a27a0acef8338934ca21"
+      "sha256": "45f4af1f72d05e8e0a0023b0ebcfab7ac1ccf4a0c0cb47b8fb7d9e6875e22586"
     },
     {
       "bytes": 3960,
@@ -361,9 +336,9 @@
       "sha256": "c2a97d6d1432d8254ad16557e13c44032937a1336044518bcfec466547101d97"
     },
     {
-      "bytes": 60333,
+      "bytes": 59079,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "5da094b3f2dd4587765b55021daa91c50fda459839412d31103e2e2f2eabbcde"
+      "sha256": "ea6272c525eba279cdc909e155da34a6289310a540d4133a82a6ce913da774b6"
     },
     {
       "bytes": 63097,
@@ -391,14 +366,14 @@
       "sha256": "a9aec64abe3674712989ee5093eddb8fb6ee92e2edfaa8212594c02d6d92b402"
     },
     {
-      "bytes": 5127,
+      "bytes": 4911,
       "path": "contracts/p101-stack-paths.txt",
-      "sha256": "f5e87577017cbd0f52d5cdd35620686ae4f02e79b2874647b9029d5432937967"
+      "sha256": "dc631e17f97830184b222a6fdd2c4e0416a8355ecf66f9f2cbfd629cfd1709c9"
     },
     {
-      "bytes": 1952,
+      "bytes": 1995,
       "path": "contracts/p101-test-inventory.json",
-      "sha256": "1a36e8cc76cc3fb86d9496e830bdfd7081d3e4df9ba9a3e7fd0d344eb303fa0e"
+      "sha256": "c0cba086a2cbcb44958dc847e2a3c90e24a40e12b20be7ea89b10f059e8e23c0"
     },
     {
       "bytes": 1221,
@@ -441,9 +416,9 @@
       "sha256": "2b49e18ff463e14b3c052b61895693a64c8386819545412697b5998e28c3cab1"
     },
     {
-      "bytes": 9018,
+      "bytes": 10042,
       "path": "distribution/copy-scripts.sh",
-      "sha256": "752fe3ed1fb0892aa8d1bfda8ff0de2482dcbc3fbf1b76acf9b1ca432ac05d35"
+      "sha256": "264dc6220d64d0d212016196b81ab78acf2b9d572006a25019703bff49351213"
     },
     {
       "bytes": 12135,
@@ -501,14 +476,14 @@
       "sha256": "0b325298a6b1756143e52456b2a6fa1ea5c907f635d0a65267e935c3cf1458f5"
     },
     {
-      "bytes": 9072,
+      "bytes": 14319,
       "path": "repos.lock",
-      "sha256": "8709c28fcf48803f1520437d742f6f48000faa581414e3165a9de5c9ff5be189"
+      "sha256": "7077d6409f28e0d21829e0efe8a16eae9089500ec2508996f985a4f816b579ac"
     },
     {
-      "bytes": 3549,
+      "bytes": 6422,
       "path": "repos.txt",
-      "sha256": "8fe344acebcef5139712a1c7e29279903afa3e69bc71e70bcfe91c2b4a8c58a3"
+      "sha256": "2756246097366a5a475a4f4c383bb41db20329ebb21b773685787f4b47a896f5"
     },
     {
       "bytes": 42612,
@@ -556,9 +531,9 @@
       "sha256": "b129021011ddd818cbd2ee2c62fe7b50a5348604f3e0092863122fdd6c3b4356"
     },
     {
-      "bytes": 22786,
+      "bytes": 22632,
       "path": "tests/test-audit-workspace.sh",
-      "sha256": "3e380ea3433c7d689ae7c86462a371b9827d3991da9b9611a2db3e705a99c0fb"
+      "sha256": "d5c4a1e82536e4840d3391ecce839b80bef6bd786fde246306c4c7bba3d7e5dd"
     },
     {
       "bytes": 4054,
@@ -566,19 +541,14 @@
       "sha256": "ae1ec88e860f0cb00d89601cdccb5bce0f1f43123843ea6235f8cf586bbd238f"
     },
     {
-      "bytes": 49374,
+      "bytes": 4385,
       "path": "tests/test-build-repo-interactive.sh",
-      "sha256": "8b8f8ddb6e686191897281b64173f7da2038dad5c825e01e6cd5f0c21a0d5b57"
+      "sha256": "95378f68e0d6eccc198ee4b6cadf340c5e12aa2e31bca2e4b315d4b4f17ab3df"
     },
     {
-      "bytes": 9542,
-      "path": "tests/test-copy-scripts-standalone.sh",
-      "sha256": "6dc9a2eb4f791c8a47a26a6cbf02a9082e52bf47609ed1e52b3f82844d2e07ca"
-    },
-    {
-      "bytes": 9167,
+      "bytes": 8995,
       "path": "tests/test-github-actions-summary.sh",
-      "sha256": "55651c503ba25f9f3cc0e06dab3f7fb891adacfb5c60514646e2d363f1059e4e"
+      "sha256": "bf2207fac12d9ca04c30810d0588569331684fc0bfc297bf0f899e012dd00bff"
     },
     {
       "bytes": 58467,
@@ -631,9 +601,9 @@
       "sha256": "346c4bfd5311aabb11c3481797b9951cfa3c07db659f4f3e384ba4e92028f588"
     },
     {
-      "bytes": 31754,
+      "bytes": 31388,
       "path": "workspace/build-repo.sh",
-      "sha256": "7722c7460fbc32a76115ddf31a78703fe93b0480f49e0a0a3f3a434a4c01530f"
+      "sha256": "36dfbdec52a844a19a21a217aef9028369de12aa9682a2136b10f0264272edcb"
     },
     {
       "bytes": 4281,
@@ -651,9 +621,9 @@
       "sha256": "682e76bcc9ad0a64a2c32f3615980fb6359aed26f81afd4feea229895d769ef0"
     },
     {
-      "bytes": 28425,
+      "bytes": 28294,
       "path": "workspace/update.sh",
-      "sha256": "ac7d04b6540b7624f8a121456cff77a5c3be55842198ab50f26a9ecd76554e76"
+      "sha256": "0bfddf59328a46b369d09d05b29e8e2b2e7e60894568b1d89158a4f2d330f0d6"
     }
   ],
   "does_not_prove": "This contract binds the declared stack policy bytes. It does not prove that the policy is complete, correct, or sufficient for an undeclared platform.",

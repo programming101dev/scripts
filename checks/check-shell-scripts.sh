@@ -58,19 +58,32 @@ repos_file="$workspace/scripts/repos.txt"
 scripts=()
 discovery_failures=0
 
+append_script_if_shell() {
+  local candidate="$1"
+  local first_line=""
+
+  [[ -f "$candidate" ]] || return 0
+  IFS= read -r first_line < "$candidate" || true
+  case "$first_line" in
+    '#!'*'/sh'|'#!'*'/sh '*|'#!'*'/bash'|'#!'*'/bash '*|'#!'*'/env sh'|'#!'*'/env bash')
+      scripts+=("$candidate")
+      ;;
+  esac
+}
+
 append_repository_scripts() {
   local repository_candidate="$1"
   local allow_source_snapshot="${2:-false}"
   local repository_root
   local requested_root
-  local relative_script
+  local relative_path
 
   requested_root="$(CDPATH='' cd -- "$repository_candidate" 2>/dev/null && pwd -P || true)"
   repository_root="$(git -C "$repository_candidate" rev-parse --show-toplevel 2>/dev/null || true)"
   if [[ -n "$requested_root" && -n "$repository_root" && "$requested_root" == "$repository_root" ]]; then
-    while IFS= read -r -d '' relative_script; do
-      scripts+=("$repository_root/$relative_script")
-    done < <(git -C "$repository_root" ls-files -z -- '*.sh')
+    while IFS= read -r -d '' relative_path; do
+      append_script_if_shell "$repository_root/$relative_path"
+    done < <(git -C "$repository_root" ls-files -z)
     return
   fi
 
@@ -81,8 +94,8 @@ append_repository_scripts() {
         && -n "$requested_root" \
         && -f "$requested_root/repos.txt" \
         && -f "$requested_root/check-after-update-all.sh" ]]; then
-    while IFS= read -r -d '' relative_script; do
-      scripts+=("$relative_script")
+    while IFS= read -r -d '' relative_path; do
+      append_script_if_shell "$relative_path"
     done < <(
       find "$requested_root" \
         \( -type d \( \
@@ -93,7 +106,7 @@ append_repository_scripts() {
           -name ci-output -o \
           -name 'build*' \
         \) -prune \) -o \
-        \( -type f -name '*.sh' -print0 \)
+        \( -type f -perm -u+x -print0 \)
     )
     return
   fi

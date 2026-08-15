@@ -43,15 +43,15 @@ mkdir -p "$inventory_root/contracts" \
     "$inventory_root/checks" \
     "$inventory_root/workspace" \
     "$inventory_root/tests" \
-    "$inventory_root/repositories/sample"
+    "$inventory_root/repositories/sample" \
+    "$inventory_root/repositories/reference"
 printf '%s\n' \
     '{' \
     '  "schema": "p101-test-inventory-v1",' \
     '  "repository_manifest": "repos.txt",' \
     '  "entry_points": {' \
-    '    "check.sh": {"owner":"repository","oracle":"build","runner":"update-all.sh"},' \
-    '    "test.sh": {"owner":"repository","oracle":"test","runner":"checks/check-repository-tests.sh"},' \
-    '    "fuzz.sh": {"owner":"repository","oracle":"fuzz","runner":"checks/check-repository-tests.sh"}' \
+    '    "cmake-build": {"owner":"repository","oracle":"build","runner":"workspace/build-repo.sh"},' \
+    '    "cmake-test": {"owner":"repository","oracle":"test","runner":"checks/check-repository-tests.sh"}' \
     '  },' \
     '  "standalone_verification_exclusions": [' \
     '    {"path":"check-after-update-all.sh","owner":"scripts","oracle":"graph","reason":"compatibility entry point"}' \
@@ -63,21 +63,21 @@ printf '%s\n' \
     '{"nodes":[' \
     '  {"command":["./checks/check-repository-tests.sh"]}' \
     ']}' >"$inventory_root/contracts/p101-check-graph.json"
-printf 'sample|repositories/sample|c\n' >"$inventory_root/repos.txt"
+printf '%s\n' \
+    'sample|repositories/sample|c' \
+    'reference|repositories/reference|c-reference' \
+    >"$inventory_root/repos.txt"
 printf '#!/usr/bin/env sh\nexit 0\n' >"$inventory_root/update-all.sh"
 printf '#!/usr/bin/env sh\nexit 0\n' >"$inventory_root/check-after-update-all.sh"
 printf '#!/usr/bin/env sh\nexit 0\n' >"$inventory_root/checks/check-repository-tests.sh"
 printf '#!/usr/bin/env sh\nexit 0\n' >"$inventory_root/checks/p101-check-graph.py"
-printf '#!/usr/bin/env sh\nexit 0\n' >"$inventory_root/repositories/sample/check.sh"
-printf '#!/usr/bin/env sh\nexit 0\n' >"$inventory_root/repositories/sample/test.sh"
-printf '#!/usr/bin/env sh\nexit 0\n' >"$inventory_root/repositories/sample/fuzz.sh"
+printf '#!/usr/bin/env sh\nexit 0\n' >"$inventory_root/workspace/build-repo.sh"
+printf 'cmake_minimum_required(VERSION 3.20)\n' >"$inventory_root/repositories/sample/CMakeLists.txt"
 chmod +x "$inventory_root/update-all.sh" \
     "$inventory_root/check-after-update-all.sh" \
     "$inventory_root/checks/check-repository-tests.sh" \
     "$inventory_root/checks/p101-check-graph.py" \
-    "$inventory_root/repositories/sample/check.sh" \
-    "$inventory_root/repositories/sample/test.sh" \
-    "$inventory_root/repositories/sample/fuzz.sh"
+    "$inventory_root/workspace/build-repo.sh"
 
 check_repository_order()
 {

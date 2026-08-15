@@ -1,13 +1,12 @@
 #!/bin/sh
-# copy-scripts.sh — distribute the canonical per-repo helper scripts from the
-# templates into every repo, so they stay identical (kills drift). Same model
-# as copy-cmake.sh.
+# copy-scripts.sh — distribute repository policy files and retire obsolete
+# per-repository command shims.
 #
 #   C repos   <- templates/template-c/<script>
 #   C++ repos <- templates/template-cxx/<script>
 #
-# The aggregate c-examples repo keeps its Makefile-tree build/configure scripts.
-# The eight library-example repos are ordinary root CMake projects, so their
+# Source-reference archives have no executable helper scripts. Library-example
+# repositories are ordinary root CMake projects, so their
 # build/configure/environment/doctor helpers use the same canonical template
 # copies as every other C repo.
 #
@@ -57,17 +56,17 @@ CXX_SRC="$SCRIPT_DIR/../templates/template-cxx"
 BACKUP_DIR="${P101_SCRIPT_BACKUP_DIR:-$SCRIPT_DIR/.p101-script-backups}"
 BACKUP_STAMP=$(date +%Y%m%d%H%M%S)
 
-# The per-repo scripts kept in lock-step across repos (chmod +x on copy).
-SYNC_SCRIPTS="build-all.sh build.sh change-compiler.sh check-compilers.sh check-env.sh check.sh clean.sh coverage-report.sh create-links.sh debug.sh doctor.sh fuzz.sh profile-report.sh report.sh test-all.sh test.sh"
+# Build, test, analysis, and installation are CMake/workspace responsibilities.
+# These historical shims must not be copied back into repositories.
+SYNC_SCRIPTS=""
+RETIRED_SCRIPTS="build-all.sh build.sh change-compiler.sh check-compilers.sh check-env.sh check.sh clean.sh coverage-report.sh create-links.sh debug.sh doctor.sh fuzz.sh profile-report.sh report.sh test-all.sh test.sh install.sh uninstall.sh"
 
 # Non-executable canonical files kept in lock-step the same way.
 SYNC_FILES=".gitignore .clang-format LICENSE coverage.txt profile.txt"
-SYNC_EXAMPLE_SCRIPTS="build.sh change-compiler.sh check-compilers.sh check-env.sh doctor.sh"
-SYNC_EXAMPLE_FILES=".gitignore LICENSE"
-SYNC_AGGREGATE_EXAMPLE_SCRIPTS="check-compilers.sh doctor.sh"
-
+SYNC_EXAMPLE_SCRIPTS=""
+SYNC_EXAMPLE_FILES=".gitignore LICENSE coverage.txt profile.txt"
 # Library-only scripts; canonical is this scripts repo itself (see header).
-SYNC_LIB_SCRIPTS="install.sh uninstall.sh"
+SYNC_LIB_SCRIPTS=""
 LIB_SRC="$SCRIPT_DIR/shared/library"
 
 [ -f "$REPOS_FILE" ] || { printf 'Error: %s not found.\n' "$REPOS_FILE" >&2; exit 1; }
@@ -142,6 +141,23 @@ sync_one() {
   updated=$((updated + 1))
 }
 
+retire_one() {
+  r_destdir="$1"; r_dest="$2"; r_file="$3"
+  [ -e "$r_destdir/$r_file" ] || return 0
+  if [ "$CHECK" -eq 1 ]; then
+    printf 'FAIL: retired repository shim remains: %s/%s\n' "$r_dest" "$r_file" >&2
+    failures=$((failures + 1))
+  elif [ "$DRYRUN" -eq 1 ]; then
+    printf '[dry-run] retire: %s/%s\n' "$r_dest" "$r_file"
+    updated=$((updated + 1))
+  else
+    backup_existing "$r_destdir" "$r_dest" "$r_file"
+    rm -f -- "$r_destdir/$r_file"
+    printf 'Retired: %s/%s\n' "$r_dest" "$r_file"
+    updated=$((updated + 1))
+  fi
+}
+
 updated=0
 failures=0
 while IFS= read -r line || [ -n "$line" ]; do
@@ -155,10 +171,7 @@ while IFS= read -r line || [ -n "$line" ]; do
   fi
 
   example_kind=none
-  case "$dest" in
-    ../examples/c-examples) example_kind=aggregate ;;
-    *examples*) example_kind=library ;;
-  esac
+  case "$dest" in *examples*) example_kind=library ;; esac
 
   destdir="$SCRIPT_DIR/$dest"
   if [ ! -d "$destdir" ]; then
@@ -167,9 +180,20 @@ while IFS= read -r line || [ -n "$line" ]; do
     continue
   fi
 
+  # The canonical template retains test.sh/fuzz.sh as the two shared
+  # runners used by workspace acceptance until they are native CMake drivers.
+  for retired in $RETIRED_SCRIPTS; do
+    if [ "$dest" = "../templates/template-c" ] &&
+       { [ "$retired" = test.sh ] || [ "$retired" = fuzz.sh ]; }; then
+      continue
+    fi
+    retire_one "$destdir" "$dest" "$retired"
+  done
+
   case "$lang" in
     c|C) src="$C_SRC" ;;
     cxx|CXX|CPP) src="$CXX_SRC" ;;
+    c-reference) [ "$VERBOSE" -eq 1 ] && printf 'Skip (source-reference archive): %s\n' "$dest"; continue ;;
     python) [ "$VERBOSE" -eq 1 ] && printf 'Skip (Python tool has its own scripts): %s\n' "$dest"; continue ;;
     c-bootstrap) [ "$VERBOSE" -eq 1 ] && printf 'Skip (C repository is not populated yet): %s\n' "$dest"; continue ;;
     *)
@@ -189,15 +213,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     continue
   fi
 
-  if [ "$example_kind" = "aggregate" ]; then
-    for s in $SYNC_AGGREGATE_EXAMPLE_SCRIPTS; do
-      sync_one "$src" "$destdir" "$dest" "$s" x
-    done
-    for s in $SYNC_EXAMPLE_FILES; do
-      sync_one "$src" "$destdir" "$dest" "$s" -
-    done
-    continue
-  elif [ "$example_kind" = "library" ]; then
+  if [ "$example_kind" = "library" ]; then
     for s in $SYNC_EXAMPLE_SCRIPTS; do
       sync_one "$src" "$destdir" "$dest" "$s" x
     done
@@ -223,6 +239,15 @@ while IFS= read -r line || [ -n "$line" ]; do
   esac
 done < "$REPOS_FILE"
 
+# Playground tracks are subprojects of the playground repository. They use the
+# one root track-runner and must not retain copied or symlinked command shims.
+for track in "$SCRIPT_DIR"/../playgrounds/tracks/[0-9][0-9]-*; do
+  [ -d "$track" ] || continue
+  for retired in build.sh change-compiler.sh test.sh run.sh; do
+    retire_one "$track" "../playgrounds/${track#*/playgrounds/}" "$retired"
+  done
+done
+
 # The scripts and setup repositories are workspace conductors rather than
 # repos.txt entries. A scripts-only checkout (including GitHub Actions) does
 # not contain the separate setup repository, so synchronize setup only when it
@@ -242,10 +267,10 @@ if [ -d "$SCRIPT_DIR/../setup" ]; then
 fi
 
 if [ "$failures" -gt 0 ]; then
-  printf 'Shared script distribution failed: %d problem(s).\n' "$failures" >&2
+  printf 'Repository policy check failed: %d problem(s).\n' "$failures" >&2
   exit 1
 elif [ "$CHECK" -eq 1 ]; then
-  printf 'PASS: all shared repo scripts match their canonical copies.\n'
+  printf 'PASS: repository policy files match and retired shims are absent.\n'
 elif [ "$DRYRUN" -eq 1 ]; then
   printf '(dry-run) %d file(s) would change.\n' "$updated"
 else

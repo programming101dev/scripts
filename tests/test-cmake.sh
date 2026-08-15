@@ -264,6 +264,28 @@ else
   bad "exe-simple: configure failed" "$PROJ/configure.log"
 fi
 
+# ---------- case: build-only example executable ----------
+new_proj executable-install-opt-out
+write_c_config_exe "$PROJ"
+printf 'set(hello_INSTALL OFF)\n' >> "$PROJ/config.cmake"
+printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
+configure "$PROJ" -DP101_BUILD_LEVEL=1 -DSANITIZER_LIST=
+if (( RC == 0 )); then
+  build "$PROJ"
+  RC=0
+  cmake --install "$PROJ/build" --prefix "$PROJ/install" \
+    > "$PROJ/install.log" 2>&1 || RC=$?
+  if (( RC == 0 )) && [[ -x "$PROJ/build/hello" ]] &&
+     [[ ! -e "$PROJ/install/bin/hello" ]]; then
+    ok "executable-install-opt-out: builds examples without installing them"
+  else
+    bad "executable-install-opt-out: build-only executable crossed install boundary" \
+      "$PROJ/install.log"
+  fi
+else
+  bad "executable-install-opt-out: configure failed" "$PROJ/configure.log"
+fi
+
 # ---------- case: instrumentation-free runtime artifact ----------
 new_proj runtime-only
 write_c_config_exe "$PROJ"
@@ -297,8 +319,14 @@ fi
 new_proj quick-level
 write_c_config_exe "$PROJ"
 printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
-printf '#!/usr/bin/env bash\ntest "${P101_TEST_MAIN_BUILD:-}" = "%s/build"\nprintf tested > "%s/test-ran"\n' \
-  "$PROJ" "$PROJ" > "$PROJ/test.sh"
+mkdir -p "$PROJ/test"
+cat > "$PROJ/test/CMakeLists.txt" <<EOF
+cmake_minimum_required(VERSION 3.20)
+project(quick_level_tests NONE)
+enable_testing()
+add_test(NAME quick_level_receipt
+  COMMAND "${CMAKE_COMMAND:-cmake}" -E touch "$PROJ/test-ran")
+EOF
 RC=0
 cmake -S "$PROJ" -B "$PROJ/build" -DCMAKE_C_COMPILER="$c_compiler" \
   > "$PROJ/configure.log" 2>&1 || RC=$?
@@ -319,8 +347,14 @@ fi
 new_proj medium-level
 write_c_config_exe "$PROJ"
 printf 'int main(void)\n{\n    return 0;\n}\n' > "$PROJ/src/main.c"
-printf '#!/usr/bin/env bash\nprintf tested > "%s/test-ran"\n' "$PROJ" \
-  > "$PROJ/test.sh"
+mkdir -p "$PROJ/test"
+cat > "$PROJ/test/CMakeLists.txt" <<EOF
+cmake_minimum_required(VERSION 3.20)
+project(medium_level_tests NONE)
+enable_testing()
+add_test(NAME medium_level_receipt
+  COMMAND "${CMAKE_COMMAND:-cmake}" -E touch "$PROJ/test-ran")
+EOF
 configure "$PROJ" -DP101_BUILD_LEVEL=2
 if (( RC == 0 )); then
   build "$PROJ"

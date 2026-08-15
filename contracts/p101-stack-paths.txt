@@ -40,13 +40,8 @@
 ../programs/p101-audit/include/workspace_analysis.h
 ../programs/p101-audit/include/workspace_audit.h
 ../programs/p101-audit/include/workspace_json.h
-../programs/p101-audit/test-components.sh
-../programs/p101-audit/test.sh
 ../programs/p101-inspect/src/rule_catalog.inc
-../programs/p101-test/test-components.sh
-../programs/p101-test/test.sh
 ../templates/template-c/test.sh
-../templates/template-cxx/test.sh
 CMakeLists.txt
 check-after-update-all.sh
 checks/check-c-facts-external-corpus.sh
@@ -112,7 +107,6 @@ shared/library/install.sh
 tests/test-audit-workspace.sh
 tests/test-build-lane.sh
 tests/test-build-repo-interactive.sh
-tests/test-copy-scripts-standalone.sh
 tests/test-github-actions-summary.sh
 tests/test-p101-check-graph.py
 tests/test-p101-semantic-prime.py

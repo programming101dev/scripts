@@ -1,4 +1,4 @@
 # Code coverage (gcov). Set to 1 to build this project with coverage.
-# Off by default. Per-build alternative: the --coverage flag on
-# change-compiler.sh / build-all.sh / update / update-all / setup.
+# Off by default. Select it with -DP101_COVERAGE_MODE=ON or the workspace
+# update/setup coverage option.
 0

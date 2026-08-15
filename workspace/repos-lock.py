@@ -24,7 +24,7 @@ PLATFORM_QUALIFICATION_SCHEMA = "p101-workspace-platform-qualification-v1"
 QUALIFICATION_SCHEMA = "p101-workspace-qualification-v1"
 COMMIT_PATTERN = re.compile(r"[0-9a-f]{40}")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
-SUPPORTED_TYPES = {"c", "cxx", "python", "c-bootstrap"}
+SUPPORTED_TYPES = {"c", "cxx", "c-reference", "python", "c-bootstrap"}
 SUPPORTED_QUALIFICATION_PLATFORMS = {"linux", "macos", "freebsd"}
 
 

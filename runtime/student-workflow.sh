@@ -24,7 +24,7 @@ Usage: student-workflow.sh [options] [<source-path>] -- <command> [args...]
        student-workflow.sh [options] <command> [args...]
 
 Run the golden-path p101 teaching workflow:
-  1. project quality gate via ./check.sh when present;
+  1. project quality gate via CMake build level 3;
   2. audit-doctor source/module preflight;
   3. one capture and one shared-model runtime analysis;
   4. systematic error-path walking;
@@ -34,11 +34,11 @@ Run the golden-path p101 teaching workflow:
 Options:
   -o <dir>          Output directory. Default: ./student-workflow-<pid>
   -s <path>         Source path passed to audit-doctor. Default: .
-  -p <dir>          Project directory for check.sh/coverage-report.sh. Default: caller cwd.
+  -p <dir>          Project directory for CMake quality/coverage. Default: caller cwd.
   -n <count>        Fault-injection cases for test-faults. Default: 16
   -x                Skip static source-contract checks inside audit-doctor.
-  --skip-quality    Do not run ./check.sh before doctor.
-  --coverage        Also run ./coverage-report.sh --no-open when available.
+  --skip-quality    Do not run the CMake level-3 build before doctor.
+  --coverage        Also run an instrumented CMake build and gcovr.
   --skip-html       Do not render HTML reports.
   --skip-bundle     Do not create bug-bundle.tar.gz.
   -h, --help        Show this help.
@@ -134,6 +134,23 @@ run_logged() {
   return "$rc"
 }
 
+run_project_quality() {
+  cmake -S "$project_dir" -B "$out_dir/project-build" -DP101_BUILD_LEVEL=3 &&
+    cmake --build "$out_dir/project-build"
+}
+
+run_project_coverage() {
+  command -v gcovr >/dev/null 2>&1 || {
+    printf 'gcovr is required for --coverage\n' >&2
+    return 2
+  }
+  cmake -S "$project_dir" -B "$out_dir/project-coverage-build" \
+    -DP101_BUILD_LEVEL=2 -DP101_COVERAGE_MODE=ON &&
+    cmake --build "$out_dir/project-coverage-build" &&
+    mkdir -p "$out_dir/coverage" &&
+    gcovr -r "$project_dir" --html-details "$out_dir/coverage/index.html"
+}
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
@@ -214,15 +231,10 @@ bundle_state="PASS"
 
 printf 'student workflow output: %s\n' "$out_dir"
 
-if [ "$skip_quality" -eq 0 ] && [ -x "$project_dir/check.sh" ]; then
-  (cd "$project_dir" && run_logged "project quality gate" "$log_dir/quality-check.log" ./check.sh)
+if [ "$skip_quality" -eq 0 ]; then
+  (cd "$project_dir" && run_logged "project quality gate" "$log_dir/quality-check.log" run_project_quality)
   quality_status=$?
   if [ "$quality_status" -eq 0 ]; then quality_state="PASS"; else quality_state="FAIL"; fi
-elif [ "$skip_quality" -eq 0 ]; then
-  quality_status=2
-  quality_state="FAIL"
-  printf '==> project quality gate\n    FAIL (no executable check.sh in %s)\n' "$project_dir"
-  printf 'FAIL: no executable check.sh in %s\n' "$project_dir" > "$log_dir/quality-check.log"
 else
   printf '==> project quality gate\n    SKIP\n'
   printf 'SKIP: --skip-quality\n' > "$log_dir/quality-check.log"
@@ -266,15 +278,10 @@ else
   } > "$out_dir/lesson-guide.md"
 fi
 
-if [ "$run_coverage" -eq 1 ] && [ -x "$project_dir/coverage-report.sh" ]; then
-  (cd "$project_dir" && run_logged "project coverage receipt" "$log_dir/coverage.log" ./coverage-report.sh --no-open -- "$@")
+if [ "$run_coverage" -eq 1 ]; then
+  (cd "$project_dir" && run_logged "project coverage receipt" "$log_dir/coverage.log" run_project_coverage)
   coverage_status=$?
   if [ "$coverage_status" -eq 0 ]; then coverage_state="PASS"; else coverage_state="FAIL"; fi
-elif [ "$run_coverage" -eq 1 ]; then
-  coverage_status=2
-  coverage_state="FAIL"
-  printf '==> project coverage receipt\n    FAIL (no executable coverage-report.sh in %s)\n' "$project_dir"
-  printf 'FAIL: no executable coverage-report.sh in %s\n' "$project_dir" > "$log_dir/coverage.log"
 else
   printf '==> project coverage receipt\n    SKIP\n'
   printf 'SKIP: --coverage not requested\n' > "$log_dir/coverage.log"

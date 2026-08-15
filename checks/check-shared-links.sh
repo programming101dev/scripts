@@ -49,7 +49,7 @@ while IFS= read -r raw || [[ -n "${raw:-}" ]]; do
     failures=$((failures + 1))
     continue
   fi
-  case "$repo_type" in c|cxx) ;; python|c-bootstrap) continue ;; *)
+  case "$repo_type" in c|cxx) ;; c-reference|python|c-bootstrap) continue ;; *)
     echo "FAIL: unsupported repo type '$repo_type': $dest" >&2
     failures=$((failures + 1))
     continue ;;

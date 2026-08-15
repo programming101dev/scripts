@@ -221,7 +221,10 @@ check_script_references() {
 
   # Scripts may use paths within the fresh project instance, but they must not search
   # parent workspace layouts or bake in this developer's absolute workspace.
-  if find "$dir" -name '*.sh' -type f -exec grep -nE '(\.\./scripts|\.\./\.\./scripts|/Users/ds|programming101dev|source_dir/\.\./\.flags)' {} + > "$bad_refs" 2>/dev/null; then
+  find "$dir" -name '*.sh' -type f \
+    -exec grep -nE '(\.\./scripts|\.\./\.\./scripts|/Users/ds|programming101dev|source_dir/\.\./\.flags)' {} + \
+    > "$bad_refs" 2>/dev/null || true
+  if [ -s "$bad_refs" ]; then
     fail "$template fresh-instance scripts contain non-standalone references; see $bad_refs"
   else
     rm -f "$bad_refs"
@@ -232,11 +235,6 @@ check_copy_shape() {
   dir="$1"
   template="$2"
 
-  require_executable "$dir/change-compiler.sh"
-  require_executable "$dir/build.sh"
-  require_executable "$dir/test.sh"
-  require_executable "$dir/doctor.sh"
-  require_executable "$dir/test-all.sh"
   require_file "$dir/CMakeLists.txt"
   require_file "$dir/config.cmake"
   require_file "$dir/sanitizers.txt"
@@ -265,25 +263,24 @@ copy_and_check() {
 
   if [ "$run_build" -eq 1 ] && [ "$failed" -eq "$template_failures" ]; then
     build_log="$log_dir/${template}-build.log"
+    build_level=1
+    if [ "$run_tests" -eq 1 ]; then
+      build_level=2
+    fi
 
     if [ "$lang" = "cxx" ]; then
       dependency_link_dirs="$(workspace_link_dirs "$cxx")"
       sanitizer_selection="$(effective_template_sanitizers "$dest" "$cxx")"
       run_logged "configure/build fresh $template instance" "$build_log" \
-        bash -c 'cd "$1" && ./change-compiler.sh -c "$2" -s "$5" -b build-standalone-check -- "-DP101_PUBLIC_INCLUDE_DIRS=$3" "-DP101_PUBLIC_LINK_DIRS=$4" && ./build.sh -q' \
-        sh "$dest" "$cxx" "$workspace_include_dirs" "$dependency_link_dirs" "$sanitizer_selection"
+        bash -c 'cmake -S "$1" -B "$1/build-standalone-check" -DCMAKE_C_COMPILER="$2" -DCMAKE_CXX_COMPILER="$3" -DP101_BUILD_LEVEL="$4" -DP101_USE_PROBED_FLAGS=OFF -DSANITIZER_LIST="$5" -DP101_PUBLIC_INCLUDE_DIRS="$6" -DP101_PUBLIC_LINK_DIRS="$7" && cmake --build "$1/build-standalone-check"' \
+        sh "$dest" "$cc" "$cxx" "$build_level" "$sanitizer_selection" "$workspace_include_dirs" "$dependency_link_dirs"
     else
       dependency_link_dirs="$(workspace_link_dirs "$cc")"
       sanitizer_selection="$(effective_template_sanitizers "$dest" "$cc")"
       run_logged "configure/build fresh $template instance" "$build_log" \
-        bash -c 'cd "$1" && ./change-compiler.sh -c "$2" -s "$5" -b build-standalone-check -- "-DP101_PUBLIC_INCLUDE_DIRS=$3" "-DP101_PUBLIC_LINK_DIRS=$4" && ./build.sh -q' \
-        sh "$dest" "$cc" "$workspace_include_dirs" "$dependency_link_dirs" "$sanitizer_selection"
+        bash -c 'cmake -S "$1" -B "$1/build-standalone-check" -DCMAKE_C_COMPILER="$2" -DCMAKE_CXX_COMPILER="$3" -DP101_BUILD_LEVEL="$4" -DP101_USE_PROBED_FLAGS=OFF -DSANITIZER_LIST="$5" -DP101_PUBLIC_INCLUDE_DIRS="$6" -DP101_PUBLIC_LINK_DIRS="$7" && cmake --build "$1/build-standalone-check"' \
+        sh "$dest" "$cc" "$cxx" "$build_level" "$sanitizer_selection" "$workspace_include_dirs" "$dependency_link_dirs"
     fi
-  fi
-
-  if [ "$run_tests" -eq 1 ] && [ "$failed" -eq "$template_failures" ]; then
-    test_log="$log_dir/${template}-test.log"
-    run_logged "test fresh $template instance" "$test_log" bash -c 'cd "$1" && ./test.sh' sh "$dest"
   fi
 }
 

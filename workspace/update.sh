@@ -77,7 +77,6 @@ LINK_COMPILERS_SH="./distribution/link-compilers.sh"
 LINK_CMAKE_SH="./distribution/link-cmake.sh"
 BUILD_REPO_SH="./workspace/build-repo.sh"
 COPY_SCRIPTS_SH="./distribution/copy-scripts.sh"
-COPY_PLAYGROUND_TRACK_SCRIPTS_SH="./distribution/copy-playground-track-scripts.sh"
 REMOVE_RETIRED_REPOS_SH="./distribution/remove-retired-repos.sh"
 
 # ----------------- messaging helpers -----------------
@@ -704,7 +703,6 @@ if [[ -x ./distribution/copy-cmake.sh ]]; then
   run_or_echo ./distribution/copy-cmake.sh
 fi
 run_or_echo "$COPY_SCRIPTS_SH" -a
-run_or_echo "$COPY_PLAYGROUND_TRACK_SCRIPTS_SH"
 
 # ----------------- link discovered flags & compilers into each repo -----------------
 run_or_echo "$LINK_FLAGS_SH"

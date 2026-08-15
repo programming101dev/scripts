@@ -63,9 +63,7 @@ grep -Fq "steps.freebsd-cache.outputs.save == 'true'" \
   .github/workflows/p101-stack.yml
 if [[ "${P101_SNAPSHOT_ONLY:-0}" != 1 ]]; then
   grep -Fq 'P101_TEST_BUILD_CACHE' ../templates/template-c/test.sh
-  grep -Fq 'P101_TEST_BUILD_CACHE' ../templates/template-cxx/test.sh
-  grep -Fq 'components/$component_name' ../programs/p101-audit/test-components.sh
-  grep -Fq 'components/mutation' ../programs/p101-test/test-components.sh
+  grep -Fq 'RunRepositoryTests.cmake' CMakeLists.txt
 fi
 [[ "$(grep -c '^[[:space:]]\{12\}exit 0$' \
   .github/workflows/p101-stack.yml)" -ge 1 ]]

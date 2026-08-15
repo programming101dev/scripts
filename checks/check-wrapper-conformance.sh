@@ -9,6 +9,7 @@ compiler="${CC:-cc}"
 instrumentation=""
 jobs="${P101_JOBS:-4}"
 libraries=()
+test_runner="$PWD/../templates/template-c/test.sh"
 
 usage() {
   cat <<'USAGE'
@@ -102,15 +103,14 @@ run_library() {
   rm -f "$calls" "$resources" "$outcomes" "$model" "$receipt"
   set +e
   (
-    cd "$repo"
+    P101_REPOSITORY_ROOT="$repo" \
     P101_EVENT_RUN_ID="p101-wrapper-conformance-${library//_/-}" \
     P101_WRAPPER_CONFORMANCE=1 \
     P101_CALL_LOG="$calls" \
     P101_CALL_LOG_ARGS=1 \
     P101_CALL_LOG_RESULT=1 \
     P101_RESOURCE_LOG="$resources" \
-    P101_WRAPPER_OUTCOME_LOG="$outcomes" \
-    ./test.sh
+    P101_WRAPPER_OUTCOME_LOG="$outcomes" "$test_runner"
   ) > "$test_log" 2>&1
   test_status=$?
   set -e

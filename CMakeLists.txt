@@ -602,8 +602,9 @@ if (_p101_profile_selected)
         message(WARNING "Profiling selected, but no usable profiling flags for this "
                 "compiler/target. Either .flags has not been (re)probed yet — run "
                 "./update.sh or ./update-all.sh — or profiling is unsupported here "
-                "(e.g. gprof/-pg is unavailable on macOS; use a sampling profiler "
-                "such as ./profile-report.sh). No profiling instrumentation applied.")
+                "(e.g. gprof/-pg is unavailable on macOS; use a native sampling "
+                "profiler such as Instruments, sample, perf, or pmcstat). No "
+                "profiling instrumentation applied.")
     endif ()
 endif ()
 
@@ -1242,23 +1243,37 @@ if (P101_BUILD_LEVEL STREQUAL "1")
 endif ()
 
 # Level 2 adds the repository's native unit suite. Tests remain in their
-# existing standalone CMake tree so
-# vendored frameworks are not subjected to the production analyzer policy.
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test.sh")
-    find_program(P101_TEST_BASH_EXECUTABLE NAMES bash REQUIRED)
-    if (PROJECT_LANGUAGE STREQUAL "CXX")
-        set(_P101_TEST_COMPILER_ENV
-                "P101_TEST_CXX=${CMAKE_CXX_COMPILER}")
-    else ()
-        set(_P101_TEST_COMPILER_ENV
-                "P101_TEST_CC=${CMAKE_C_COMPILER}")
+# existing standalone CMake trees so vendored frameworks are not subjected to
+# the production analyzer policy. CMake owns this path directly; repositories
+# do not need a copied test launcher.
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/CMakeLists.txt"
+        OR IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/components")
+    if (NOT CMAKE_C_COMPILER)
+        find_program(CMAKE_C_COMPILER NAMES cc clang gcc REQUIRED)
     endif ()
+    if (NOT CMAKE_CXX_COMPILER)
+        find_program(CMAKE_CXX_COMPILER NAMES c++ clang++ g++ REQUIRED)
+    endif ()
+    string(REPLACE ";" " " _P101_TEST_SANITIZER_FLAGS
+            "${DETECTED_SANITIZERS}")
+    string(REPLACE ";" " " _P101_TEST_PUBLIC_INCLUDE_DIRS
+            "${P101_PUBLIC_INCLUDE_DIRS}")
+    string(REPLACE ";" " " _P101_TEST_PUBLIC_LINK_DIRS
+            "${P101_PUBLIC_LINK_DIRS}")
     add_custom_target(${PROJECT_NAME}_test_all ALL
-            COMMAND "${CMAKE_COMMAND}" -E env
-                    "${_P101_TEST_COMPILER_ENV}"
-                    "P101_TEST_MAIN_BUILD=${CMAKE_BINARY_DIR}"
-                    "${P101_TEST_BASH_EXECUTABLE}"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/test.sh"
+            COMMAND "${CMAKE_COMMAND}"
+                    "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+                    "-DBINARY_DIR=${CMAKE_BINARY_DIR}"
+                    "-DC_COMPILER=${CMAKE_C_COMPILER}"
+                    "-DCXX_COMPILER=${CMAKE_CXX_COMPILER}"
+                    "-DC_COMPILER_ARG1=${CMAKE_C_COMPILER_ARG1}"
+                    "-DCXX_COMPILER_ARG1=${CMAKE_CXX_COMPILER_ARG1}"
+                    "-DC_FLAGS=${_P101_TEST_SANITIZER_FLAGS}"
+                    "-DCXX_FLAGS=${_P101_TEST_SANITIZER_FLAGS}"
+                    "-DLINK_FLAGS=${_P101_TEST_SANITIZER_FLAGS}"
+                    "-DPUBLIC_INCLUDE_DIRS=${_P101_TEST_PUBLIC_INCLUDE_DIRS}"
+                    "-DPUBLIC_LINK_DIRS=${_P101_TEST_PUBLIC_LINK_DIRS}"
+                    -P "${P101_CMAKE_DIR}/RunRepositoryTests.cmake"
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
             USES_TERMINAL
             COMMENT "Running repository unit tests (P101 build level ${P101_BUILD_LEVEL})"
@@ -1509,7 +1524,7 @@ add_dependencies(${PROJECT_NAME}_tidy_all ${PROJECT_NAME}_analyze_all)
 # On-demand code fix ("format" target): clang-tidy --fix (FULL check set),
 # then clang-format -i.  NOT part of the build — a normal compile keeps tidy as
 # a CHECK that fails on diagnostics.  Fixes are applied ONLY when explicitly
-# requested:   cmake --build <dir> --target format   (./build.sh --format)
+# requested:   cmake --build <dir> --target format
 # =========================
 # 1) clang-tidy --fix over the SAME sanitized DB / args / file list as the check.
 add_custom_target(${PROJECT_NAME}_tidy_fix

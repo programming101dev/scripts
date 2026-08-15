@@ -2,19 +2,19 @@
   "schema": "p101-test-inventory-v1",
   "repository_manifest": "repos.txt",
   "entry_points": {
-    "check.sh": {
+    "cmake-build": {
       "owner": "repository",
-      "oracle": "strict repository build and static-analysis pipeline",
-      "runner": "update-all.sh"
+      "oracle": "level-selected repository build and static-analysis pipeline",
+      "runner": "workspace/build-repo.sh"
     },
-    "test.sh": {
+    "cmake-test": {
       "owner": "repository",
-      "oracle": "repository-owned unit tests",
+      "oracle": "repository-owned CMake unit-test trees",
       "runner": "checks/check-repository-tests.sh"
     },
-    "fuzz.sh": {
+    "cmake-fuzz": {
       "owner": "repository",
-      "oracle": "bounded repository-owned fuzz target",
+      "oracle": "bounded repository-owned CMake fuzz trees",
       "runner": "checks/check-repository-tests.sh"
     }
   },

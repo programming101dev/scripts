@@ -238,15 +238,15 @@ different compiler. On macOS, sanitized executables also link their
 compiler-matched ASan dylib before application libraries so its interceptors
 initialize before any p101 dylib.
 
-The distributed `build.sh` remains clean-first for a direct student invocation.
-The governed workspace driver opts into its `--incremental` behavior after the
-lane has been configured, avoiding unconditional deletion while retaining the
-same strict default at the repository boundary. Analyze, clang-tidy, and
-cppcheck stages are dependency-tracked CMake outputs; a no-op lane build reuses
-them, while source, public/dependency-header, compile-database, policy, or tool
+Repository builds are direct CMake invocations. The governed workspace driver
+selects content-addressed compiler lanes, while a student's ordinary level-1
+build uses the build directory they name. Analyze, clang-tidy, and cppcheck
+stages are dependency-tracked CMake outputs; a no-op lane build reuses them,
+while source, public/dependency-header, compile-database, policy, or tool
 identity changes rerun the affected stages.
 
-`repos.txt` uses `c`, `cxx`, and `python` for active projects. A newly created,
+`repos.txt` uses `c`, `cxx`, and `python` for active projects, and
+`c-reference` for a source archive with no aggregate build. A newly created,
 not-yet-populated C repository uses `c-bootstrap`: `clone-repos.sh` keeps it
 present and updated, while build, distribution, test, and audit gates skip it.
 Change the type to `c` in the same change that adds its project contract; an
@@ -595,8 +595,9 @@ Runtime wrapper feature coverage is enforced by each split library's generated
 wrapper tests and `unit-test-manifest.tsv`. Reports are written under one
 artifact directory.
 
-There is deliberately no `p101` dispatcher. CMake and each repository's
-`check.sh` own compilation, formatting, analyzers, unit tests, and fuzzing.
+There is deliberately no `p101` dispatcher. CMake owns repository compilation,
+formatting, analyzers, and unit tests; the shared fuzz launcher owns bounded
+fuzz execution.
 The workspace CMake graph owns the host runtime, the audit/test/inspect tools,
 their qualification, and the stable `p101_acceptance` target;
 `check-after-update-all.sh` remains the compatibility entry point for the

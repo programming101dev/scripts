@@ -5,7 +5,7 @@
 # present (and whether the REQUIRED ones for a build are), and — per compiler —
 # what the probe actually found for coverage, profiling and each sanitizer.
 # It does NOT re-probe: it reads the buckets already written under .flags/ by
-# ./change-compiler.sh, so an empty coverage_flags.txt shows up as
+# update-all.sh, so an empty coverage_flags.txt shows up as
 # "coverage n/a", a
 # dropped leak sanitizer shows up as "leak n/a", etc. Read-only and safe.
 #
@@ -98,7 +98,7 @@ configured_cc() {
   [ -n "$cc" ] && basename "$cc"
 }
 
-# matching gcov tool for a compiler basename (mirrors coverage-report.sh)
+# matching gcov tool for a compiler basename
 gcov_for() {
   case "$1" in
     gcc-*)  echo "gcov-${1#gcc-}" ;;
@@ -125,7 +125,7 @@ printf 'platform: %s (%s)\n' "$osname" "$arch"
 if [ -L "$flags_root" ] || [ -d "$flags_root" ]; then
   printf 'flags:    %s\n' "$(cd "$flags_root" 2>/dev/null && pwd || printf '%s' "$flags_root")"
 else
-  printf 'flags:    %s %s not found — run ./change-compiler.sh to probe this machine\n' "$WARN" "$flags_root"
+  printf 'flags:    %s %s not found — run ./update-all.sh --level 3 to probe this machine\n' "$WARN" "$flags_root"
 fi
 
 # ========================= toolchain =========================
@@ -169,8 +169,8 @@ if have cppcheck; then
   printf '    %s cppcheck      %s  [required] (%s)\n' "$OK" "$_cpv" "$_cl"
 else printf '    %s cppcheck      missing  [required]\n' "$NO"; required_missing=1; fi
 
-if have clang-format; then printf '    %s clang-format  %s  -> ./build.sh --format enabled\n' "$OK" "$(ver_num clang-format --version)"
-else printf '    %s clang-format  missing  (optional; ./build.sh --format skips formatting)\n' "$WARN"; fi
+if have clang-format; then printf '    %s clang-format  %s  [required; level 1 runs it first]\n' "$OK" "$(ver_num clang-format --version)"
+else printf '    %s clang-format  missing  [required]\n' "$NO"; required_missing=1; fi
 
 # ===================== instrumentation =====================
 report_instr() {
@@ -185,7 +185,7 @@ report_instr() {
     return 1
   fi
   if [ ! -d "$d" ]; then
-    printf '  %s no probed flags in %s/%s — run ./change-compiler.sh -c %s\n' "$WARN" "$flags_root" "$key" "$key"
+    printf '  %s no probed flags in %s/%s — run ./update-all.sh --level 3\n' "$WARN" "$flags_root" "$key"
     return 0
   fi
 
@@ -205,10 +205,10 @@ report_instr() {
     printf '  profiling   %s  compile-time (-pg) unavailable here — sampling only\n' "$WARN"
   fi
   case "$os" in
-    Darwin) if have xctrace; then printf '              sampling: %s xctrace (Instruments) via ./report.sh profile\n' "$OK"
-            elif have sample; then printf '              sampling: %s sample via ./report.sh profile\n' "$OK"
+    Darwin) if have xctrace; then printf '              sampling: %s xctrace (Instruments)\n' "$OK"
+            elif have sample; then printf '              sampling: %s sample\n' "$OK"
             else printf '              sampling: %s install Xcode / Command Line Tools\n' "$NO"; fi ;;
-    Linux)  if have perf; then printf '              sampling: %s perf via ./report.sh profile\n' "$OK"
+    Linux)  if have perf; then printf '              sampling: %s perf\n' "$OK"
             else printf '              sampling: %s perf not installed (apt install linux-tools-...)\n' "$NO"; fi ;;
     *)      printf '              sampling: use pmcstat / dtrace (FreeBSD)\n' ;;
   esac
@@ -221,7 +221,7 @@ report_instr() {
     if [ -s "$f" ]; then avail="$avail $nm"; else na="$na $nm"; fi
   done
   shopt -u nullglob
-  printf '  sanitizers  avail:%s\n' "${avail:-  (none — run ./change-compiler.sh)}"
+  printf '  sanitizers  avail:%s\n' "${avail:-  (none — run update-all.sh)}"
   [ -n "$na" ] && printf '              n/a  :%s\n' "$na"
   [ -n "$_san_default" ] && printf '              default selection: %s\n' "$_san_default"
 }
@@ -249,7 +249,7 @@ else
       if [ -n "$resolved" ]; then cc="$c"; break; fi
     done
     line
-    printf '%s no build configured (run ./change-compiler.sh) — showing %s\n' "$WARN" "${cc:-<none>}"
+    printf '%s no build configured (run ./update-all.sh --level 1) — showing %s\n' "$WARN" "${cc:-<none>}"
   fi
   if [ -n "$cc" ]; then
     if ! report_instr "$cc"; then

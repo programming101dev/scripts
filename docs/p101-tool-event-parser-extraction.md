@@ -48,8 +48,8 @@ unobserved kernel-side effect occurred.
 
 ```sh
 cd libraries/lib_tool_event
-./build.sh -q
-./test.sh
+cmake -S . -B build -DP101_BUILD_LEVEL=2
+cmake --build build
 ```
 
 The test covers non-current-version rejection, version-4 context metadata and

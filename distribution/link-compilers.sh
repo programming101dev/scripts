@@ -105,7 +105,7 @@ EOF
         ;;
       *)
         # Python tools do not consume the C/C++ compiler-list contract.
-        if [[ "${repo_type:-}" == "python" || "${repo_type:-}" == "c-bootstrap" ]]; then
+        if [[ "${repo_type:-}" == "c-reference" || "${repo_type:-}" == "python" || "${repo_type:-}" == "c-bootstrap" ]]; then
           continue
         fi
         echo "FAIL: unsupported repo type '${repo_type:-}' for ${dir}" >&2

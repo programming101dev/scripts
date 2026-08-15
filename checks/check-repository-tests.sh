@@ -12,14 +12,16 @@ c_compiler=""
 cxx_compiler=""
 jobs="${P101_JOBS:-0}"
 unit_evidence_files=()
+test_runner="${P101_TEST_RUNNER:-$PWD/../templates/template-c/test.sh}"
+fuzz_runner="${P101_FUZZ_RUNNER:-$PWD/../templates/template-c/fuzz.sh}"
 
 usage() {
   cat <<'USAGE'
 Usage: ./check-repository-tests.sh [-c <cc>] [-x <cxx>] [-o <dir>] [-j <jobs>] [--unit-evidence <tsv>] [--fuzz-secs <seconds>] [--skip-fuzz]
 
-Runs every standalone test.sh named by repos.txt, plus local p101-* program
+Runs every CMake test tree named by repos.txt, plus local p101-* program
 repositories that have not yet been added to that manifest. Repositories with a
-fuzz target also receive a bounded fuzz run when a fuzzer-capable compiler is
+fuzz CMake tree also receive a bounded fuzz run when a fuzzer-capable compiler is
 available. A missing test suite is reported as NO TEST rather than silently
 treated as tested.
 The --fuzz-secs default is 5. A value of 0 is intentionally unbounded; use
@@ -171,29 +173,30 @@ run_repository() {
     unit="REUSED"
     printf 'Reused stricter wrapper-conformance test.sh evidence for %s.\n' \
       "$name" > "$test_log"
-  elif [ "$has_unit_suite" -eq 1 ] && [ -x "$repo/test.sh" ]; then
-    if (CDPATH='' cd "$repo" && P101_TEST_CC="$c_compiler" P101_TEST_CXX="$cxx_compiler" ./test.sh) > "$test_log" 2>&1; then
+  elif [ "$has_unit_suite" -eq 1 ] && [ -x "$test_runner" ]; then
+    if P101_REPOSITORY_ROOT="$repo" P101_TEST_CC="$c_compiler" \
+       P101_TEST_CXX="$cxx_compiler" "$test_runner" > "$test_log" 2>&1; then
       unit="PASS"
     else
       unit="FAIL"
     fi
   elif [ "$has_unit_suite" -eq 1 ]; then
     unit="MISSING"
-    printf 'Declared unit suite has no executable test.sh: %s\n' "$repo" \
+    printf 'Declared unit suite has no shared CMake test runner: %s\n' "$repo" \
       > "$test_log"
   fi
 
   if [ "$skip_fuzz" -eq 1 ]; then
     fuzz="SKIP"
-  elif [ -x "$repo/fuzz.sh" ] && [ -f "$repo/fuzz/CMakeLists.txt" ]; then
+  elif [ -x "$fuzz_runner" ] && [ -f "$repo/fuzz/CMakeLists.txt" ]; then
     fuzz_compiler="$c_compiler"
     case "$language" in cxx|CXX|CPP) fuzz_compiler="$cxx_compiler" ;; esac
-    fuzz_command=(./fuzz.sh)
+    fuzz_command=(env "P101_REPOSITORY_ROOT=$repo" "$fuzz_runner")
     if [ -n "$fuzz_compiler" ]; then
-      fuzz_command=(env "FUZZ_CC=$fuzz_compiler" ./fuzz.sh)
+      fuzz_command=(env "P101_REPOSITORY_ROOT=$repo" "FUZZ_CC=$fuzz_compiler" "$fuzz_runner")
     fi
-    if (CDPATH='' cd "$repo" && "${fuzz_command[@]}" --can-fuzz) > "$fuzz_log" 2>&1; then
-      if (CDPATH='' cd "$repo" && "${fuzz_command[@]}" -t "$fuzz_secs") > "$fuzz_log" 2>&1; then
+    if "${fuzz_command[@]}" --can-fuzz > "$fuzz_log" 2>&1; then
+      if "${fuzz_command[@]}" -t "$fuzz_secs" > "$fuzz_log" 2>&1; then
         fuzz="PASS"
       else
         fuzz="FAIL"
@@ -257,7 +260,7 @@ worklist="$results_dir/worklist.tsv"
 : > "$worklist"
 while IFS='|' read -r _url relative language || [ -n "${relative:-}" ]; do
   [ -n "${relative:-}" ] || continue
-  [ "$language" != "c-bootstrap" ] || continue
+  case "$language" in c-reference|c-bootstrap) continue ;; esac
   name="$(basename "$relative")"
   configured_cost="$(awk -F'|' -v name="$name" '$1 == name { print $2; exit }' "$cost_contract")"
   cost="${configured_cost:-$default_cost}"
