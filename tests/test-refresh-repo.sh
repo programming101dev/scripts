@@ -19,6 +19,26 @@ remote="$sandbox/remote.git"
 publisher="$sandbox/publisher"
 consumer="$sandbox/consumer"
 
+unpublished_remote="$sandbox/unpublished.git"
+unpublished="$sandbox/unpublished"
+git init --quiet --bare "$unpublished_remote"
+git init --quiet "$unpublished"
+git -C "$unpublished" config user.name "p101 refresh test"
+git -C "$unpublished" config user.email "refresh-test@invalid.example"
+printf 'first\n' > "$unpublished/value.txt"
+git -C "$unpublished" add value.txt
+git -C "$unpublished" commit --quiet -m first
+git -C "$unpublished" branch -M main
+git -C "$unpublished" remote add origin "$unpublished_remote"
+git -C "$unpublished" config branch.main.remote origin
+git -C "$unpublished" config branch.main.merge refs/heads/main
+P101_GIT_RETRY_ATTEMPTS=1 ./distribution/refresh-repo.sh "$unpublished" \
+    > "$sandbox/unpublished.out"
+grep -Fq 'preserving local commit for first publication' \
+    "$sandbox/unpublished.out"
+[[ "$(git -C "$unpublished" rev-parse HEAD)" == \
+   "$(git -C "$unpublished" rev-parse main)" ]]
+
 git init --quiet --bare "$remote"
 git init --quiet "$publisher"
 git -C "$publisher" config user.name "p101 refresh test"

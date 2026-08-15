@@ -123,6 +123,16 @@ if [[ "$remote" == "." ]]; then
     upstream_ref="$merge_ref"
 else
     upstream_ref="refs/remotes/${remote}/${merge_ref#refs/heads/}"
+    if ! git -C "$requested_root" show-ref --verify --quiet "$upstream_ref"; then
+        remote_probe_status=0
+        git -C "$requested_root" ls-remote --exit-code "$remote" "$merge_ref" \
+            >/dev/null 2>&1 || remote_probe_status=$?
+        if [[ "$remote_probe_status" -eq 2 ]]; then
+            printf '%s has no published %s yet; preserving local commit for first publication.\n' \
+                "$name" "$merge_ref"
+            exit 0
+        fi
+    fi
     if ! retry_git git -C "$requested_root" fetch --tags --prune "$remote" "+${merge_ref}:${upstream_ref}"; then
         printf 'Error: failed to refresh %s from %s.\n' "$name" "$remote" >&2
         exit 3
