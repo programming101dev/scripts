@@ -115,22 +115,54 @@ fi
 
 eligible_repositories=()
 blocked=0
+unrecoverable_ignored_paths=()
+is_recoverable_ignored_path() {
+  local ignored_path="$1"
+
+  case "$ignored_path" in
+    build|build/*|build-*|*/build|*/build/*|*/build-*|\
+    cmake-build-*|*/cmake-build-*|\
+    .flags|.flags/*|*/.flags|*/.flags/*|\
+    .flags-standard|.flags-standard/*|*/.flags-standard|*/.flags-standard/*|\
+    _deps|_deps/*|*/_deps|*/_deps/*|\
+    CMakeFiles/*|*/CMakeFiles/*|CMakeScripts/*|*/CMakeScripts/*|\
+    Testing/*|*/Testing/*|\
+    debug/*|debug-*|*/debug/*|*/debug-*|\
+    coverage/*|coverage-*|*/coverage/*|*/coverage-*|\
+    coverage_report/*|*/coverage_report/*|\
+    profile/*|profile-*|*/profile/*|*/profile-*|\
+    flag_report/*|*/flag_report/*|toolchain-report/*|*/toolchain-report/*|\
+    findings/*|*/findings/*|artifacts/*|*/artifacts/*|\
+    __pycache__/*|*/__pycache__/*|*.pyc|*.pyo|\
+    *.d|*.o|*.ko|*.obj|*.elf|*.ilk|*.map|*.exp|*.gch|*.pch|\
+    *.lib|*.a|*.la|*.lo|*.dll|*.so|*.so.*|*.dylib|\
+    *.exe|*.out|*.app/*|*.dSYM/*|*.su|*.gcno|*.gcda|*.gcov|\
+    CMakeCache.txt|*/CMakeCache.txt|cmake_install.cmake|*/cmake_install.cmake|\
+    install_manifest.txt|*/install_manifest.txt|\
+    compile_commands.json|*/compile_commands.json|\
+    CTestTestfile.cmake|*/CTestTestfile.cmake|Makefile|*/Makefile|makefile|*/makefile|\
+    .last-build-dir|*/.last-build-dir|.last-runtime-build-dir|*/.last-runtime-build-dir|\
+    compiler_paths.txt|supported_c_compilers.txt|supported_cxx_compilers.txt|\
+    sanitizers.txt|compiler-discovery.log|coverage.info|*/coverage.info|\
+    main|*/main|client|*/client|server|*/server|*-traceable|\
+    .DS_Store|*/.DS_Store|._*|*/._*|.fuse_hidden*|*/.fuse_hidden*|.nfs*|*/.nfs*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 contains_unrecoverable_ignored_content() {
   local listing="$1"
   local ignored_path
 
+  unrecoverable_ignored_paths=()
   while IFS= read -r ignored_path || [[ -n "$ignored_path" ]]; do
     [[ -n "$ignored_path" ]] || continue
-    case "$ignored_path" in
-      build|build/*|build-*|\
-      .flags|.flags/*|.flags-standard|.flags-standard/*|\
-      .last-build-dir|.last-runtime-build-dir|\
-      compile_commands.json|compiler_paths.txt)
-        ;;
-      *) return 0 ;;
-    esac
+    is_recoverable_ignored_path "$ignored_path" || \
+      unrecoverable_ignored_paths+=("$ignored_path")
   done <<< "$listing"
-  return 1
+  [[ "${#unrecoverable_ignored_paths[@]}" -gt 0 ]]
 }
 
 for repository in "${retired_repositories[@]}"; do
@@ -150,6 +182,9 @@ for repository in "${retired_repositories[@]}"; do
   )" || ignored_listing="__p101_invalid_ignored_listing__"
   if contains_unrecoverable_ignored_content "$ignored_listing"; then
     printf 'BLOCKED (contains ignored files): %s\n' "$repository" >&2
+    for ignored_path in "${unrecoverable_ignored_paths[@]}"; do
+      printf '  ignored: %s\n' "$ignored_path" >&2
+    done
     blocked=$((blocked + 1))
     continue
   fi

@@ -48,6 +48,9 @@ printf '%s|../libraries/active|c\n' "$sandbox/remotes/active.git" \
 printf 'local work\n' >> "$sandbox/workspace/libraries/retired-dirty/value.txt"
 mkdir -p "$sandbox/workspace/libraries/retired-clean/build-clang"
 printf 'generated\n' > "$sandbox/workspace/libraries/retired-clean/build-clang/output.o"
+mkdir -p "$sandbox/workspace/libraries/retired-clean/test/build-clang/CMakeFiles"
+printf 'generated\n' \
+  > "$sandbox/workspace/libraries/retired-clean/test/build-clang/CMakeFiles/test.o"
 printf 'credential\n' > "$sandbox/workspace/libraries/retired-secret/.env"
 
 (
@@ -63,6 +66,7 @@ printf 'credential\n' > "$sandbox/workspace/libraries/retired-secret/.env"
 grep -Fq 'WOULD REMOVE:' "$sandbox/dry-run.out"
 grep -Fq 'BLOCKED (dirty):' "$sandbox/dry-run.err"
 grep -Fq 'BLOCKED (contains ignored files):' "$sandbox/dry-run.err"
+grep -Fq '  ignored: .env' "$sandbox/dry-run.err"
 
 (
   cd "$sandbox/workspace/scripts"

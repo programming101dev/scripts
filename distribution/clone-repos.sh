@@ -27,6 +27,7 @@ esac
 interactive=false
 latest=false
 interaction_aborted=false
+alignment_failure_reason=""
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -i|--interactive)
@@ -160,6 +161,7 @@ align_repository() {
 
     while true; do
         align_status=0
+        alignment_failure_reason=""
         align_locked_repository "${target_dir}" "${expected_commit}" || align_status=$?
         if [[ "${align_status}" -eq 0 ]]; then
             return 0
@@ -192,14 +194,26 @@ align_locked_repository() {
     local expected_commit="$2"
     local current_commit
     local branch
+    local worktree_status
 
-    current_commit="$(git -C "${target_dir}" rev-parse HEAD)" || return 2
+    current_commit="$(git -C "${target_dir}" rev-parse HEAD)" || {
+        alignment_failure_reason="cannot read the current HEAD"
+        return 2
+    }
     if [[ "${current_commit}" == "${expected_commit}" ]]; then
         echo "  -> Locked revision already checked out: ${expected_commit:0:12}"
         return 0
     fi
-    if [[ -n "$(git -C "${target_dir}" status --porcelain=v1 --untracked-files=normal)" ]]; then
+    worktree_status="$(git -C "${target_dir}" status --porcelain=v1 --untracked-files=normal)" || {
+        alignment_failure_reason="cannot inspect the worktree status"
+        return 2
+    }
+    if [[ -n "${worktree_status}" ]]; then
         echo "  ! Cannot align a modified worktree to locked ${expected_commit:0:12}." >&2
+        while IFS= read -r status_line || [[ -n "${status_line}" ]]; do
+            printf '    %s\n' "${status_line}" >&2
+        done <<< "${worktree_status}"
+        alignment_failure_reason="modified worktree prevents locked revision alignment; run: git -C ${target_dir} status --short"
         if git -C "${target_dir}" merge-base --is-ancestor "${expected_commit}" "${current_commit}"; then
             echo "  ! The worktree is based on the lock but contains newer development work." >&2
             echo "  ! Abort and rerun the calling command with --latest to preserve and build it." >&2
@@ -207,21 +221,32 @@ align_locked_repository() {
         return 3
     fi
     echo "  -> Fetching locked revision ${expected_commit:0:12}..."
-    retry_git git -C "${target_dir}" fetch --tags --prune origin || return 3
+    retry_git git -C "${target_dir}" fetch --tags --prune origin || {
+        alignment_failure_reason="fetching the locked revision from origin failed"
+        return 3
+    }
     if ! git -C "${target_dir}" cat-file -e "${expected_commit}^{commit}" 2>/dev/null; then
         echo "  ! Locked commit is not available from origin: ${expected_commit}" >&2
+        alignment_failure_reason="locked commit ${expected_commit} is unavailable from origin"
         return 3
     fi
     if ! git -C "${target_dir}" merge-base --is-ancestor "${current_commit}" "${expected_commit}"; then
         echo "  ! Current HEAD ${current_commit:0:12} cannot fast-forward to locked ${expected_commit:0:12}." >&2
         echo "  ! Refusing to rewind or discard local commits." >&2
+        alignment_failure_reason="current HEAD cannot fast-forward to locked revision without discarding local commits"
         return 3
     fi
     branch="$(git -C "${target_dir}" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
     if [[ -n "${branch}" ]]; then
-        git -C "${target_dir}" merge --ff-only --quiet "${expected_commit}" || return 3
+        git -C "${target_dir}" merge --ff-only --quiet "${expected_commit}" || {
+            alignment_failure_reason="fast-forward merge to the locked revision failed"
+            return 3
+        }
     else
-        git -C "${target_dir}" checkout --quiet --detach "${expected_commit}" || return 3
+        git -C "${target_dir}" checkout --quiet --detach "${expected_commit}" || {
+            alignment_failure_reason="detached checkout of the locked revision failed"
+            return 3
+        }
     fi
     echo "  -> Aligned to locked revision ${expected_commit:0:12}."
 }
@@ -370,7 +395,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
                 fi
                 echo "  ! Locked repository alignment failed (exit ${align_status})."
                 record_failure "${target_dir}" \
-                    "locked revision alignment failed (exit ${align_status})"
+                    "${alignment_failure_reason:-locked revision alignment failed (exit ${align_status})}"
                 echo
                 continue
             fi

@@ -633,6 +633,10 @@ class RepositoryLockTests(unittest.TestCase):
             (consumer / "value.txt").write_text("local\n", encoding="utf-8")
             before_head = git(consumer, "rev-parse", "HEAD")
             before_status = git(consumer, "status", "--porcelain=v1")
+            summarized = run(distribution / "clone-repos.sh")
+            self.assertEqual(summarized.returncode, 1, summarized.stdout + summarized.stderr)
+            self.assertIn("modified worktree prevents locked revision alignment", summarized.stderr)
+            self.assertIn(" M value.txt", summarized.stderr)
             aborted = run_with_input(
                 "q\n", distribution / "clone-repos.sh", "--interactive"
             )
