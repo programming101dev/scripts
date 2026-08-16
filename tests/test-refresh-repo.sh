@@ -135,6 +135,28 @@ printf '\n' | "$sandbox/interactive-driver/distribution/clone-repos.sh" --intera
 grep -Fq 'FAILED: refresh' "$sandbox/interactive.err"
 grep -Fq 'Retrying repository refresh' "$sandbox/interactive.err"
 
+# A multi-repository update must repeat every failure and its reason in the
+# final terminal summary; the operator should not have to search earlier logs.
+summary_driver="$sandbox/summary-driver"
+summary_repository="$sandbox/summary-repository"
+mkdir -p "$summary_driver/distribution"
+cp ./distribution/clone-repos.sh ./distribution/refresh-repo.sh \
+    "$summary_driver/distribution/"
+chmod +x "$summary_driver/distribution/clone-repos.sh" \
+    "$summary_driver/distribution/refresh-repo.sh"
+git init --quiet "$summary_repository"
+git -C "$summary_repository" remote add origin \
+    https://invalid.example/wrong.git
+printf '%s|%s|c\n' "https://invalid.example/wanted.git" "$summary_repository" \
+    > "$summary_driver/repos.txt"
+status=0
+"$summary_driver/distribution/clone-repos.sh" --latest \
+    > "$sandbox/summary.out" 2> "$sandbox/summary.err" || status=$?
+[[ "$status" -eq 1 ]]
+grep -Fq 'Failed repositories:' "$sandbox/summary.err"
+grep -Fq "$summary_repository: origin mismatch:" "$sandbox/summary.err"
+grep -Fq 'Repository update failed: 1 problem(s).' "$sandbox/summary.err"
+
 mkdir "$sandbox/snapshot"
 printf 'gitdir: /definitely/missing/p101-refresh-test\n' > "$sandbox/snapshot/.git"
 ./distribution/refresh-repo.sh --allow-snapshot "$sandbox/snapshot" > "$sandbox/snapshot.out"

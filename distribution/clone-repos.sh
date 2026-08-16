@@ -264,6 +264,17 @@ fi
 
 failures=0
 processed=0
+failed_repositories=()
+failure_reasons=()
+
+record_failure() {
+    local repository="$1"
+    local reason="$2"
+
+    failures=$((failures + 1))
+    failed_repositories+=("${repository}")
+    failure_reasons+=("${reason}")
+}
 
 # Read repos.txt on fd 3 so children (git credential prompts, ssh host-key
 # confirmations, submodule hooks) keep the real stdin instead of silently
@@ -285,14 +296,15 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
 
     if [[ -z "${repo_url}" || -z "${target_dir}" || -z "${repo_type}" ]]; then
         echo "FAIL: malformed line: ${raw}" >&2
-        failures=$((failures + 1))
+        record_failure "<manifest>" "malformed entry: ${raw}"
         continue
     fi
     case "${repo_type}" in
         c|cxx|c-reference|python|c-bootstrap) ;;
         *)
             echo "FAIL: unsupported repo type '${repo_type}': ${target_dir}" >&2
-            failures=$((failures + 1))
+            record_failure "${target_dir:-<manifest>}" \
+                "unsupported repository type '${repo_type}'"
             continue
             ;;
     esac
@@ -309,7 +321,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
     if [[ -d "${target_dir}" ]]; then
         if ! git -C "${target_dir}" rev-parse --git-dir >/dev/null 2>&1; then
             echo "  ! Exists but not a git repo."
-            failures=$((failures + 1))
+            record_failure "${target_dir}" "path exists but is not a Git repository"
             echo
             continue
         fi
@@ -320,12 +332,13 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
             echo "  ! Origin mismatch:"
             echo "     current: ${current_origin}"
             echo "     wanted : ${repo_url}"
-            failures=$((failures + 1))
+            record_failure "${target_dir}" \
+                "origin mismatch: current=${current_origin} wanted=${repo_url}"
             echo
             continue
         elif [[ -z "${current_origin}" ]]; then
             echo "  ! Missing origin remote; expected ${repo_url}."
-            failures=$((failures + 1))
+            record_failure "${target_dir}" "missing origin remote; expected ${repo_url}"
             echo
             continue
         fi
@@ -333,14 +346,15 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         if ! ${latest}; then
             if [[ -z "${locked_commit}" && "${repo_type}" != "c-bootstrap" ]]; then
                 echo "  ! Missing locked commit: ${target_dir}" >&2
-                failures=$((failures + 1))
+                record_failure "${target_dir}" "non-bootstrap repository has no locked commit"
                 echo
                 continue
             fi
             if [[ -z "${locked_commit}" ]]; then
                 if git -C "${target_dir}" rev-parse --verify HEAD >/dev/null 2>&1; then
                     echo "  ! Bootstrap repository now has a commit; refresh repos.lock." >&2
-                    failures=$((failures + 1))
+                    record_failure "${target_dir}" \
+                        "bootstrap repository has a commit but repos.lock records it as empty"
                     echo
                     continue
                 fi
@@ -355,7 +369,8 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
                     exit "${align_status}"
                 fi
                 echo "  ! Locked repository alignment failed (exit ${align_status})."
-                failures=$((failures + 1))
+                record_failure "${target_dir}" \
+                    "locked revision alignment failed (exit ${align_status})"
                 echo
                 continue
             fi
@@ -376,7 +391,8 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
                 fi
                 echo "  ! Repository refresh failed (exit ${refresh_status})."
                 echo "  ! Resolve manually in ${target_dir}."
-                failures=$((failures + 1))
+                record_failure "${target_dir}" \
+                    "upstream refresh failed (exit ${refresh_status})"
                 echo
                 continue
             fi
@@ -388,7 +404,8 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
             if ! ${latest} && [[ -z "${locked_commit}" ]]; then
                 if git -C "${target_dir}" rev-parse --verify HEAD >/dev/null 2>&1; then
                     echo "  ! Bootstrap repository now has a commit; refresh repos.lock." >&2
-                    failures=$((failures + 1))
+                    record_failure "${target_dir}" \
+                        "newly cloned bootstrap repository has a commit but repos.lock records it as empty"
                     echo
                     continue
                 fi
@@ -396,7 +413,8 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
             elif ! ${latest} && [[ "$(git -C "${target_dir}" rev-parse HEAD)" != "${locked_commit}" ]]; then
                 if ! git -C "${target_dir}" checkout --quiet --detach "${locked_commit}"; then
                     echo "  ! Could not check out locked commit ${locked_commit}."
-                    failures=$((failures + 1))
+                    record_failure "${target_dir}" \
+                        "could not check out locked commit ${locked_commit}"
                     echo
                     continue
                 fi
@@ -404,7 +422,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
             fi
         else
             echo "  ! Clone failed."
-            failures=$((failures + 1))
+            record_failure "${target_dir}" "clone failed from ${repo_url}"
             echo
             continue
         fi
@@ -414,7 +432,7 @@ while IFS= read -r raw <&3 || [[ -n "${raw:-}" ]]; do
         echo "  -> Updating submodules..."
         if ! retry_git git -C "${target_dir}" submodule update --init --recursive; then
             echo "  ! Submodule update failed."
-            failures=$((failures + 1))
+            record_failure "${target_dir}" "submodule update failed"
         fi
     fi
 
@@ -426,6 +444,14 @@ if (( processed == 0 )); then
     exit 1
 fi
 if (( failures > 0 )); then
+    failure_index=0
+    printf '\nFailed repositories:\n' >&2
+    while (( failure_index < ${#failed_repositories[@]} )); do
+        printf '  - %s: %s\n' \
+            "${failed_repositories[${failure_index}]}" \
+            "${failure_reasons[${failure_index}]}" >&2
+        failure_index=$((failure_index + 1))
+    done
     echo "Repository update failed: ${failures} problem(s)." >&2
     exit 1
 fi
