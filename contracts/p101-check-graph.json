@@ -963,7 +963,7 @@
       "group": "stack",
       "required": true,
       "cacheable": false,
-      "command": ["../playgrounds/tour.sh", "-o", "{out}/playground-tour", "-n", "{fault_count}", "-t", "{fuzz_secs}", "-c", "{cc}", "{playground_skip_quality}", "{playground_skip_coverage}", "{playground_skip_fuzz}"],
+      "command": ["./runtime/playground-tour.sh", "-o", "{out}/playground-tour", "-n", "{fault_count}", "-t", "{fuzz_secs}", "-c", "{cc}", "{playground_skip_quality}", "{playground_skip_coverage}", "{playground_skip_fuzz}"],
       "inputs": ["scripts/runtime/**", "scripts/contracts/**", "libraries/**", "programs/**", "playgrounds/**"],
       "inputs_complete": true,
       "depends_on": ["templates-standalone"],

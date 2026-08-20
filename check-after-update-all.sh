@@ -88,9 +88,9 @@ Options:
   --skip-regression   Skip the p101 regression corpus.
   --template-no-tests Build fresh template instances but skip their tests.
 
-  --playground-quality  Let tour.sh run build/test/fuzz/coverage quality steps.
-  --playground-coverage Let tour.sh run coverage.
-  --playground-fuzz     Let tour.sh run fuzz smoke.
+  --playground-quality  Let the playground tour run build/test/fuzz/coverage.
+  --playground-coverage Let the playground tour run coverage.
+  --playground-fuzz     Let the playground tour run a fuzz smoke.
   --interactive         Pause at a failed graph node and retry that exact node.
   --resume              Reuse only exact clean records from the receipt under -o.
   --from <node>         Resume at the named node after validating omitted prerequisites.

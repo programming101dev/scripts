@@ -44,10 +44,12 @@ The implementation is grouped by responsibility:
 
 - `checks/` contains acceptance and policy gates.
 - `tests/` contains regression tests for shared scripts and contracts.
-- `generators/` contains flag, wrapper-test, and source-data generators.
+- `generators/` contains flag, wrapper-test, source-data, and playground-track
+  generators.
 - `workspace/` contains configure/build and local toolchain mechanics.
 - `distribution/` contains repository refresh and shared-file distribution.
-- `runtime/` contains narrow capture/replay, lesson, and student-workflow scripts.
+- `runtime/` contains narrow capture/replay, lesson, student-workflow, and
+  cross-tool demonstration scripts.
 - `contracts/` contains machine-readable manifests and policies.
 - `shared/library/` contains the canonical library-only install helpers.
 
@@ -55,6 +57,17 @@ This boundary is intentional: maintainers use the explicit owning script, while 
 invoke the owning category executable or runtime script directly. The C/C++
 repositories still carry their own root build scripts because templates must
 remain usable after being copied outside this workspace.
+
+The scripts-owned playground orchestration entry points are:
+
+```bash
+./generators/sync-playground-track-map.py
+./runtime/playground-tour.sh --skip-quality --skip-coverage -n 5
+```
+
+The generator materializes the reviewed wrapper-to-track policy into the
+`playgrounds` repository. The tour composes workspace tools around the
+playground executable; neither mechanism is student lesson content.
 
 Governed advanced checks are direct scripts:
 

@@ -226,9 +226,9 @@
       "sha256": "311282a94dea12340cbc7f0e8d6121d6a52554d14bd08c06dbb58c71f26eda14"
     },
     {
-      "bytes": 14841,
+      "bytes": 14865,
       "path": "check-after-update-all.sh",
-      "sha256": "c0f9b34998b413c3339736e4a532d03c6c494658b4109a89411b0b356db207d4"
+      "sha256": "a77c33e1461d547819cbd5595f61410966ba8776e59239eb4d19182d7f6878b5"
     },
     {
       "bytes": 16376,
@@ -336,9 +336,9 @@
       "sha256": "c2a97d6d1432d8254ad16557e13c44032937a1336044518bcfec466547101d97"
     },
     {
-      "bytes": 59879,
+      "bytes": 59885,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "d2ae46d31020894f2e7f596ab5a8a3f71ba496518ba92a9dee0dec03b18ca0a3"
+      "sha256": "ab034519159cf49c26c6e0e3c2a21b43ee063be126943f6f486ff5ee6985bd36"
     },
     {
       "bytes": 63097,
@@ -366,9 +366,9 @@
       "sha256": "a9aec64abe3674712989ee5093eddb8fb6ee92e2edfaa8212594c02d6d92b402"
     },
     {
-      "bytes": 4970,
+      "bytes": 5037,
       "path": "contracts/p101-stack-paths.txt",
-      "sha256": "076fbb29796b5a98cf0cf6716da685ebbb808ef648d56823bd2143e4cbd3862d"
+      "sha256": "badef979d6aca85dfbfdc72dbefef4992cbc4fca4fa386cb8f32dc18d10d3ee7"
     },
     {
       "bytes": 1995,
@@ -461,6 +461,11 @@
       "sha256": "ab2092d765df55abd788a8214b92aab16bad8467a91cffea9b6e450168ccf54c"
     },
     {
+      "bytes": 52759,
+      "path": "generators/sync-playground-track-map.py",
+      "sha256": "8eb82d8ec79136122a7dafce1af8066d05b74a6b43bffc28f205823f5b74fc7f"
+    },
+    {
       "bytes": 22354,
       "path": "github-actions/p101-stack.yml",
       "sha256": "01c07b0195443fa5fa317a45896f7e9d3a2be2c66c0ac411e378825a5d2a870d"
@@ -478,7 +483,7 @@
     {
       "bytes": 14319,
       "path": "repos.lock",
-      "sha256": "02879c001ea5c114e2d822101cf9a7c8a0452d7f1ba8f46c47c038d8968d265c"
+      "sha256": "2e66f26f1e994543d2107b2289a73fdfc730ab7b3b5e39177e5f3c7423f26d2a"
     },
     {
       "bytes": 6422,
@@ -499,6 +504,11 @@
       "bytes": 5304,
       "path": "runtime/content_manifest.py",
       "sha256": "85e0e42887887adfd5bbfea010b994d97bfdbde9f7ea4311ff4742d92c546d23"
+    },
+    {
+      "bytes": 13440,
+      "path": "runtime/playground-tour.sh",
+      "sha256": "39f05e862e6db6ca905403630d113c024e64d84b900549a27cdf6e814d531bfd"
     },
     {
       "bytes": 1383,
