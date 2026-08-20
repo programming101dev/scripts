@@ -14,7 +14,7 @@
       "url": "https://github.com/programming101dev/lib_transition.git"
     },
     {
-      "commit": "4b4644cda87e129a21eb59e765934da4227e1f6c",
+      "commit": "a9e4e441cb7a6603b53c2a8c53be57c62dae9f74",
       "path": "../libraries/lib_record",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_record.git"
@@ -200,7 +200,7 @@
       "url": "https://github.com/programming101dev/p101-inspect.git"
     },
     {
-      "commit": "82d8bc537dd6531db30253be03a92cefdc95309f",
+      "commit": "e42fef545af92322eb094de442da181bce734662",
       "path": "../programs/p101-test",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-test.git"
