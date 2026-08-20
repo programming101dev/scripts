@@ -586,15 +586,18 @@ Those candidates are deterministic evidence, not proof that a general-purpose
 wrapper API should be removed; use `--fail-findings` only after reviewing or
 allowlisting intentional API.
 
-For a shorter behavior-only gate, run:
+For a shorter playground behavior gate, run the owning `p101-test` engine:
 
 ```bash
-./checks/check-p101-regression-corpus.sh
+../programs/p101-test/test-corpus --strict --keep-going -o /tmp/p101-corpus
 ```
 
-Every runtime fixture in that gate is captured once and analyzed from one
-`p101-run-model-v1`. The gate checks executable expectations and the shared
-resource, synchronization, trace, and correlated views.
+Every admitted lesson fixture is executed through the student workflow and its
+exit, diagnostic, error-path, and output expectations are recorded in one
+`p101-corpus-receipt-v1`. Scripts schedules this engine but does not carry a
+second corpus implementation. Full lesson acceptance reuses the same receipt
+for playground-case evidence; only its distinct owning-tool profiles execute
+separately.
 
 To stress `lib_c_facts` against pinned external code rather than only p101
 sources, run:
@@ -689,23 +692,22 @@ documented in [`docs/rule-packs.md`](docs/rule-packs.md).
 To run the checked playground lesson corpus:
 
 ```bash
-../playgrounds/corpus.sh --quick
-../playgrounds/corpus.sh
+../programs/p101-test/test-corpus --quick --strict -o /tmp/p101-corpus-quick
+../programs/p101-test/test-corpus --strict --keep-going -o /tmp/p101-corpus
 ```
 
 To turn that corpus into a student-facing lab series:
 
 ```bash
-../playgrounds/lab.sh --quick
-../playgrounds/lab.sh
+../playgrounds/lab.sh --receipt /tmp/p101-corpus/receipt.json --quick
+../playgrounds/lab.sh --receipt /tmp/p101-corpus/receipt.json
 ```
 
-The lab runner writes a self-contained `index.html`, a Markdown lab outline, the
-checked corpus reports, and the command logs. Each lab has an issue ID, lesson,
-fix checklist, and progress state. Students can fix one issue at a time and
-re-run the command to watch labs move from `OPEN` to `FIXED`. Use
-`--strict-corpus` for instructor/CI checks that should fail if the committed
-broken fixtures stop producing their expected diagnostics.
+The lab renderer writes `index.html` and a Markdown lab outline from the
+completed p101-test receipt. It does not rerun or re-judge the corpus. Each lab
+has an issue ID, lesson, fix checklist, and progress state. Students can fix one
+issue at a time, rerun `test-corpus`, and render the new receipt to watch labs
+move from `OPEN` to `FIXED`.
 
 Every stable finding ID is resolved through the checked playground lesson
 catalog. Runtime JSON and HTML reports carry a primary lesson plus any related
@@ -839,6 +841,7 @@ post-update graph:
 ```bash
 ./check-after-update-all.sh --only templates-standalone
 ./check-after-update-all.sh --only playground-tour
+./check-after-update-all.sh --only playground-corpus
 ./check-after-update-all.sh --only playground-lab
 ```
 

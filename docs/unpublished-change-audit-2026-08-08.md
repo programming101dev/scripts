@@ -84,7 +84,7 @@ Runtime findings and error-contract findings are not covered by that amnesty.
 - `lib_env` parser fuzzing passed.
 - `p101-error-path-walk` and `p101-doctor` tests passed.
 - The playground strict build and unit test passed.
-- `p101 lab --quick --strict-corpus` passed: the clean case remained clean and
+- The then-current strict quick lab corpus passed: the clean case remained clean and
   `fd-leak` still produced `P101-FD-001`.
 - `github-actions/preflight.sh` rebuilt all 46 repositories and passed the
   complete governed acceptance graph on macOS. Receipt:

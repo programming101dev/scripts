@@ -27,12 +27,13 @@ engines own policy only; they must not grow private parsers.
 
 ### `programs/p101-test`
 
-This repository owns executable fault and mutation campaigns. Its internal
-engines are `test-faults` and `test-mutation`.
+This repository owns executable fault, mutation, and teaching-corpus campaigns.
+Its internal engines are `test-faults`, `test-mutation`, and `test-corpus`.
 
 - Inputs: a command under test, the wrapper fault contract, mutation
-  candidates, and bounded campaign options.
-- Outputs: per-case evidence, surviving/killed mutation results, and status.
+  candidates, playground `expected.json` fixtures, and bounded campaign options.
+- Outputs: per-case evidence, surviving/killed mutation results, corpus
+  receipts, and status.
 - Blind spots: paths not executed, direct calls that bypass instrumented
   wrappers, third-party internals, and schedules outside declared bounds.
 
@@ -89,6 +90,6 @@ programs/p101-inspect/test.sh
 programs/p101-inspect/test/test_native_cli.sh
 scripts/tests/test-p101-lessons.py
 scripts/runtime/p101_lessons.py check
-scripts/checks/check-p101-regression-corpus.sh
+programs/p101-test/test-corpus --strict --keep-going -o /tmp/p101-corpus
 scripts/check-after-update-all.sh
 ```

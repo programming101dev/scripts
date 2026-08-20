@@ -360,7 +360,12 @@ def load_catalog(path: Path) -> Catalog:
                 track=tracks[0],
                 prerequisites=prerequisites,
                 finding_ids=tuple(finding_ids),
-                verification=f"./lab.sh --case {name} --require-all-fixed",
+                verification=(
+                    f"../programs/p101-test/test-corpus --case {name} "
+                    f"--keep-going -o /tmp/p101-{name}; "
+                    f"./lab.sh --receipt /tmp/p101-{name}/receipt.json "
+                    f"--case {name} --require-all-fixed"
+                ),
                 order=int(case.get("lab_order", 1000)),
                 case_name=name,
             )
@@ -711,7 +716,7 @@ def _acceptance_for_lesson(
             "prerequisites": list(lesson.prerequisites),
             "native_evidence": "playground-case",
             "native_reference": lesson.case_name,
-            "broken_command": f"playgrounds/corpus.sh --case {lesson.case_name}",
+            "broken_command": f"programs/p101-test/test-corpus --case {lesson.case_name}",
             "repair_command": lesson.verification,
             "repair_oracle": (
                 "finding-disappears"
@@ -1059,23 +1064,46 @@ def _run_case(
     repaired: bool,
 ) -> dict[str, Any]:
     destination = output / (("repaired-" if repaired else "broken-") + case_name)
-    command = [
-        str(catalog.workspace / "playgrounds" / ("lab.sh" if repaired else "corpus.sh")),
+    corpus_destination = destination / "corpus"
+    corpus_command = [
+        str(catalog.workspace / "programs" / "p101-test" / "test-corpus"),
         "--case",
         case_name,
         "--skip-html",
         "--skip-bundle",
+        "--keep-going",
         "-o",
-        str(destination),
+        str(corpus_destination),
     ]
-    if repaired:
-        command.extend(["--strict-corpus", "--require-all-fixed"])
-    return _run_logged(
-        command,
+    corpus_result = _run_logged(
+        corpus_command,
+        catalog.workspace / "programs" / "p101-test",
+        output,
+        ("repaired-corpus-" if repaired else "broken-") + case_name,
+    )
+    if not repaired:
+        return corpus_result
+    receipt = corpus_destination / "receipt.json"
+    if not receipt.is_file():
+        return corpus_result
+    lab_command = [
+        str(catalog.workspace / "playgrounds" / "lab.sh"),
+        "--receipt",
+        str(receipt),
+        "--case",
+        case_name,
+        "--require-all-fixed",
+        "-o",
+        str(destination / "lab"),
+    ]
+    lab_result = _run_logged(
+        lab_command,
         catalog.workspace / "playgrounds",
         output,
-        ("repaired-" if repaired else "broken-") + case_name,
+        "repaired-" + case_name,
     )
+    lab_result["corpus_status"] = corpus_result["status"]
+    return lab_result
 
 
 def _run_profiles(
@@ -1193,6 +1221,48 @@ def _run_native_evidence(
                 )
         results.extend(future.result() for future in case_futures)
         return results
+
+
+def _corpus_receipt_results(
+    receipt_path: Path,
+    case_names: list[str],
+) -> list[dict[str, Any]]:
+    try:
+        document = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise LessonCatalogError(f"cannot read p101-test corpus receipt {receipt_path}: {error}") from error
+    if not isinstance(document, dict) or document.get("schema") != "p101-corpus-receipt-v1":
+        raise LessonCatalogError(f"{receipt_path}: unsupported p101-test corpus receipt")
+    records = document.get("cases")
+    if not isinstance(records, list):
+        raise LessonCatalogError(f"{receipt_path}: corpus receipt has no case records")
+    by_name = {
+        str(record["name"]): record
+        for record in records
+        if isinstance(record, dict) and isinstance(record.get("name"), str)
+    }
+    if len(by_name) != document.get("selected_cases") or len(by_name) != document.get("completed_cases"):
+        raise LessonCatalogError(f"{receipt_path}: corpus receipt is incomplete")
+    results: list[dict[str, Any]] = []
+    for case_name in case_names:
+        record = by_name.get(case_name)
+        if record is None:
+            raise LessonCatalogError(f"{receipt_path}: missing playground case {case_name}")
+        status = record.get("status")
+        if status not in {"PASS", "FAIL"}:
+            raise LessonCatalogError(f"{receipt_path}: case {case_name} has no verification status")
+        problems = record.get("problems")
+        reason = "; ".join(str(problem) for problem in problems) if isinstance(problems, list) else ""
+        results.append(
+            {
+                "label": "broken-" + case_name,
+                "status": status,
+                "duration_ns": 0,
+                "reason": reason,
+                "corpus_receipt": str(receipt_path),
+            }
+        )
+    return results
 
 
 def _write_unit_test_evidence(
@@ -1570,13 +1640,21 @@ def command_verify_all(args: argparse.Namespace) -> int:
                 )
             else:
                 case_names = ["orientation", "fd-leak", "short-read"]
-            native_results = _run_native_evidence(
-                catalog,
-                profiles,
-                [case_name or "" for case_name in case_names],
-                output,
-                jobs,
-            )
+            admitted_case_names = [case_name or "" for case_name in case_names]
+            corpus_receipt = getattr(args, "corpus_receipt", None)
+            if corpus_receipt is None:
+                native_results = _run_native_evidence(
+                    catalog,
+                    profiles,
+                    admitted_case_names,
+                    output,
+                    jobs,
+                )
+            else:
+                native_results = _run_profiles(catalog, profiles, output, jobs)
+                native_results.extend(
+                    _corpus_receipt_results(corpus_receipt.resolve(), admitted_case_names)
+                )
             results.extend(native_results)
             _write_unit_test_evidence(
                 catalog,
@@ -1824,6 +1902,11 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
         help="run every owning-tool suite and every native playground case",
     )
     verify.add_argument("-o", "--output", type=Path)
+    verify.add_argument(
+        "--corpus-receipt",
+        type=Path,
+        help="reuse a complete p101-test corpus receipt instead of rerunning playground cases",
+    )
     verify.add_argument(
         "-j",
         "--jobs",

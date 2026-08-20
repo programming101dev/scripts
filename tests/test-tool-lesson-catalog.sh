@@ -55,4 +55,26 @@ run_generator >"$sandbox/duplicate.out" 2>"$sandbox/duplicate.err" || status=$?
 [ "$status" -eq 2 ]
 grep -q 'malformed catalog' "$sandbox/duplicate.err"
 
-printf 'PASS: native lesson catalog generation, drift, and duplicate rejection\n'
+# Tool sources name findings, not playground internals. Routes come from the
+# generated lib_tool_support catalog, and repair guidance stays in lesson.md.
+workspace=$(dirname -- "$root")
+if rg -n \
+  --glob '*.c' --glob '*.h' --glob '!**/test/**' \
+  --glob '!**/lib_tool_support/src/lesson_catalog.c' \
+  --glob '!**/lib_tool_support/include/p101_tool_support/lesson_catalog.h' \
+  '(playgrounds/(lessons|corpus|tracks)|programming101dev/playgrounds/(blob|tree))' \
+  "$workspace/programs" "$workspace/libraries" > "$sandbox/private-routes.txt"; then
+  cat "$sandbox/private-routes.txt" >&2
+  printf '%s\n' 'tool source embeds a private playground route' >&2
+  exit 1
+fi
+if rg -n \
+  --glob '*.c' --glob '!**/test/**' \
+  '"[^"\n]*\[P101-([A-Z]+-)+[0-9][0-9][0-9]\]' \
+  "$workspace/programs" "$workspace/libraries" > "$sandbox/raw-diagnostics.txt"; then
+  cat "$sandbox/raw-diagnostics.txt" >&2
+  printf '%s\n' 'tool source bypasses the shared diagnostic/lesson lookup' >&2
+  exit 1
+fi
+
+printf 'PASS: native lesson catalog generation, drift, duplicate rejection, and centralized routes\n'

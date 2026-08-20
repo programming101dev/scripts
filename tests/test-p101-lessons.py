@@ -1410,6 +1410,33 @@ class LessonCatalogTests(unittest.TestCase):
             with patch.object(sys, "argv", ["p101", "list"]):
                 self.assertEqual(p101_lessons.main(), 7)
 
+    def test_complete_p101_test_corpus_receipt_reuses_case_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            receipt = Path(directory) / "receipt.json"
+            receipt.write_text(
+                json.dumps(
+                    {
+                        "schema": "p101-corpus-receipt-v1",
+                        "passed": True,
+                        "selected_cases": 1,
+                        "completed_cases": 1,
+                        "cases": [
+                            {
+                                "name": "orientation",
+                                "status": "PASS",
+                                "problems": [],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            results = p101_lessons._corpus_receipt_results(
+                receipt, ["orientation"]
+            )
+            self.assertEqual(results[0]["label"], "broken-orientation")
+            self.assertEqual(results[0]["status"], "PASS")
+
 
 if __name__ == "__main__":
     unittest.main()

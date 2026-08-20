@@ -659,7 +659,7 @@
     },
     {
       "kind": "known-defect-corpus",
-      "oracle": "regression-corpus"
+      "oracle": "playground-corpus"
     },
     {
       "kind": "teaching-acceptance",

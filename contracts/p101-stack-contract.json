@@ -101,14 +101,14 @@
       "sha256": "bc11462570be672030db493ee6844197ad31d1a40ccc7cee0a29cb7197a5ea06"
     },
     {
-      "bytes": 2533,
+      "bytes": 2787,
       "path": "../libraries/lib_tool_support/include/p101_tool_support/diagnostic.h",
-      "sha256": "f921f3832cbc7be05f664213616ede4133d858a3c4f16f50dffe3c6167c4243b"
+      "sha256": "5a31379678035f63ebdf5d62ab7a7553387318a1b977cc63a4a7ea23df6a4f80"
     },
     {
-      "bytes": 3272,
+      "bytes": 3709,
       "path": "../libraries/lib_tool_support/include/p101_tool_support/lesson_catalog.h",
-      "sha256": "14c1abb21d1f0133731eed613867d95621effd05c9001cdad1c66e11ef3d6412"
+      "sha256": "aefe5c973542ae408c944e7cd7bd3e2a025fe21be3a0a7d8eb56d4b0be67f5bc"
     },
     {
       "bytes": 4251,
@@ -136,9 +136,9 @@
       "sha256": "d8df15ecc6f0aa6f318d80003c2d721b7ff260ba26a28878925ed45dba0dd055"
     },
     {
-      "bytes": 13652,
+      "bytes": 16209,
       "path": "../playgrounds/lessons/manifest.json",
-      "sha256": "eeddcdb831cae57794de694a0c9b0a45d5c04a765c0fac7002cfdf9ce8f03495"
+      "sha256": "7ad8790182a2756ea618472bd198acd61b9330170f15e9b2029a02f73eefeb31"
     },
     {
       "bytes": 3827,
@@ -336,9 +336,9 @@
       "sha256": "c2a97d6d1432d8254ad16557e13c44032937a1336044518bcfec466547101d97"
     },
     {
-      "bytes": 59885,
+      "bytes": 60290,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "ab034519159cf49c26c6e0e3c2a21b43ee063be126943f6f486ff5ee6985bd36"
+      "sha256": "f42f36f09b13782288ea7b4136e77ebd9a5903fd137b416fc30aab7adfaaf044"
     },
     {
       "bytes": 63097,
@@ -358,7 +358,7 @@
     {
       "bytes": 22550,
       "path": "contracts/p101-quality-contract.json",
-      "sha256": "b795fd62484fe71e1a8486db920aa398b13abc4aef2a40d57bf608721a5c8c02"
+      "sha256": "94e95c379a1ce25413e7ed16a2124b1173f09c2a454e3a2330209a4336f1fd90"
     },
     {
       "bytes": 3264,
@@ -461,9 +461,9 @@
       "sha256": "ab2092d765df55abd788a8214b92aab16bad8467a91cffea9b6e450168ccf54c"
     },
     {
-      "bytes": 52759,
+      "bytes": 27470,
       "path": "generators/sync-playground-track-map.py",
-      "sha256": "8eb82d8ec79136122a7dafce1af8066d05b74a6b43bffc28f205823f5b74fc7f"
+      "sha256": "335ce07ed40df170ee0ca2b0e7bd15f5203ca7adfdeced26193bccc9df94c4bd"
     },
     {
       "bytes": 22354,
