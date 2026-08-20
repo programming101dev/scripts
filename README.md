@@ -44,7 +44,7 @@ The implementation is grouped by responsibility:
 
 - `checks/` contains acceptance and policy gates.
 - `tests/` contains regression tests for shared scripts and contracts.
-- `generators/` contains flag, wrapper-test, source-data, and playground-track
+- `generators/` contains flag, wrapper-test, source-data, and semantic graph
   generators.
 - `workspace/` contains configure/build and local toolchain mechanics.
 - `distribution/` contains repository refresh and shared-file distribution.
@@ -58,16 +58,9 @@ invoke the owning category executable or runtime script directly. The C/C++
 repositories still carry their own root build scripts because templates must
 remain usable after being copied outside this workspace.
 
-The scripts-owned playground orchestration entry points are:
-
-```bash
-./generators/sync-playground-track-map.py
-./runtime/playground-tour.sh --skip-quality --skip-coverage -n 5
-```
-
-The generator materializes the reviewed wrapper-to-track policy into the
-`playgrounds` repository. The tour composes workspace tools around the
-playground executable; neither mechanism is student lesson content.
+The playground is a static catalog of the 76 registered diagnostics. Scripts
+validate its ID-to-lesson mapping and invoke the owning tool suites; they do
+not generate course tracks or run a second playground-specific corpus.
 
 Governed advanced checks are direct scripts:
 
@@ -488,8 +481,8 @@ inventory-visible but deliberately excluded.
 
 The graph includes the shared CMake regression harness, tool and wrapper
 audits, fresh-template standalone checks, every repository-owned unit suite,
-bounded fuzz smoke tests where supported, the playground tour, and the p101
-behavior regression corpus. `contracts/p101-boundaries.json` separately binds shared
+bounded fuzz smoke tests where supported, and the 76-entry diagnostic lesson
+contract. `contracts/p101-boundaries.json` separately binds shared
 mechanisms to one owner and to clean, typed-refusal, binding-swap,
 identity-mismatch, resource-limit, and stale-version tests.
 `contracts/p101-test-inventory.json` prevents a repository or scripts verification entry
@@ -573,9 +566,9 @@ platform configuration omitted by the caller were analyzed.
 
 Independent wrapper-library suites and native lesson evidence use bounded
 worker queues. Wrapper results are still judged and written in repository
-order, and lesson receipts still list owning-tool profiles before playground
-cases. The scheduler merely removes artificial barriers: long owning-tool
-suites may overlap playground cases, and a successful wrapper unit-test receipt
+order, and lesson receipts still list owning-tool profiles deterministically.
+The scheduler merely removes artificial barriers: long owning-tool
+suites may overlap, and a successful wrapper unit-test receipt
 can satisfy the later repository-test phase. This improves the critical path
 without weakening a test or changing its admitted inputs.
 
@@ -585,19 +578,6 @@ types, and macros unused by every checked-in consumer become review candidates.
 Those candidates are deterministic evidence, not proof that a general-purpose
 wrapper API should be removed; use `--fail-findings` only after reviewing or
 allowlisting intentional API.
-
-For a shorter playground behavior gate, run the owning `p101-test` engine:
-
-```bash
-../programs/p101-test/test-corpus --strict --keep-going -o /tmp/p101-corpus
-```
-
-Every admitted lesson fixture is executed through the student workflow and its
-exit, diagnostic, error-path, and output expectations are recorded in one
-`p101-corpus-receipt-v1`. Scripts schedules this engine but does not carry a
-second corpus implementation. Full lesson acceptance reuses the same receipt
-for playground-case evidence; only its distinct owning-tool profiles execute
-separately.
 
 To stress `lib_c_facts` against pinned external code rather than only p101
 sources, run:
@@ -689,29 +669,9 @@ The model contract and expectation language are documented in
 [`docs/run-model.md`](docs/run-model.md). Declarative course-policy packs are
 documented in [`docs/rule-packs.md`](docs/rule-packs.md).
 
-To run the checked playground lesson corpus:
-
-```bash
-../programs/p101-test/test-corpus --quick --strict -o /tmp/p101-corpus-quick
-../programs/p101-test/test-corpus --strict --keep-going -o /tmp/p101-corpus
-```
-
-To turn that corpus into a student-facing lab series:
-
-```bash
-../playgrounds/lab.sh --receipt /tmp/p101-corpus/receipt.json --quick
-../playgrounds/lab.sh --receipt /tmp/p101-corpus/receipt.json
-```
-
-The lab renderer writes `index.html` and a Markdown lab outline from the
-completed p101-test receipt. It does not rerun or re-judge the corpus. Each lab
-has an issue ID, lesson, fix checklist, and progress state. Students can fix one
-issue at a time, rerun `test-corpus`, and render the new receipt to watch labs
-move from `OPEN` to `FIXED`.
-
 Every stable finding ID is resolved through the checked playground lesson
-catalog. Runtime JSON and HTML reports carry a primary lesson plus any related
-labs; static findings can be resolved with the same dispatcher:
+catalog. Runtime JSON and HTML reports carry the one registered lesson route;
+static findings can be resolved with the same dispatcher:
 
 ```bash
 ./runtime/p101_lessons.py show P101-FD-001
@@ -725,14 +685,14 @@ labs; static findings can be resolved with the same dispatcher:
 ```
 
 The lesson check scans the diagnostic IDs emitted by the tools and fails if
-any non-fallback ID lacks a real lesson file, prerequisites, native acceptance
+any non-fallback ID lacks exactly one defect-and-repair example, native acceptance
 evidence, and a replayable repair oracle. `runtime/p101_lessons.py verify` materializes a
 broken/repaired protocol pair for every ID; `--quick` runs representative
-native evidence and `--full` runs every owning suite and playground issue case.
+native evidence and `--full` runs every owning suite.
 Native checks use up to four isolated workers by default; pass `--jobs 1` for
 serial execution or a different bounded worker count for the host.
 `runtime/p101_lessons.py coverage` exposes evidence level and platform support. The
-mapping is curriculum policy in
+mapping is diagnostic lesson policy in
 `playgrounds/lessons/manifest.json`; the tools continue to own the evidence and
 diagnostic IDs. The boundary and completeness claim are documented in
 [`docs/finding-lessons.md`](docs/finding-lessons.md).
@@ -835,18 +795,15 @@ It copies `template-c`, `template-c-program`, and `template-cxx` to `/tmp`,
 rejects hidden parent-workspace script dependencies, and configures, builds,
 and tests each fresh project instance.
 
-The broader template and playground ratchet is owned directly by the governed
-post-update graph:
+The fresh-template ratchet is owned directly by the governed post-update graph:
 
 ```bash
 ./check-after-update-all.sh --only templates-standalone
-./check-after-update-all.sh --only playground-tour
-./check-after-update-all.sh --only playground-corpus
-./check-after-update-all.sh --only playground-lab
 ```
 
-These are separate nodes so failures, caching, and receipts retain the exact
-owning operation instead of being hidden under a second orchestration layer.
+Diagnostic lesson completeness and executable owning-tool evidence are the
+separate `finding-lesson-tests`, `finding-lesson-completeness`, and
+`lesson-acceptance` graph nodes.
 
 ## **Discovering new flags**
 

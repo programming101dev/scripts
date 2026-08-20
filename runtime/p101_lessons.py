@@ -19,11 +19,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-SCHEMA = "p101-finding-lesson-catalog-v2"
+SCHEMA = "p101-finding-lesson-catalog-v3"
 RECEIPT_SCHEMA = "p101-lesson-acceptance-receipt-v1"
 COVERAGE_SCHEMA = "p101-lesson-acceptance-coverage-v1"
 DIAGNOSTIC_PATTERN = re.compile(r"\bP101-[A-Z][A-Z0-9_-]*-[0-9]{3}\b")
 SUPPORTED_PLATFORMS = frozenset({"macos", "linux", "freebsd"})
+ENVIRONMENT_ARGUMENT = re.compile(r"^\$\{([A-Z][A-Z0-9_]*)\}$")
 
 
 class LessonCatalogError(ValueError):
@@ -36,21 +37,19 @@ class Lesson:
     title: str
     path: str
     url: str
-    track: str
-    prerequisites: tuple[str, ...]
     finding_ids: tuple[str, ...]
     verification: str
     order: int
     acceptance_profile: str | None = None
-    case_name: str | None = None
 
-    def finding_json(self) -> dict[str, Any]:
+    def url_for(self, finding_id: str | None = None) -> str:
+        return self.url + (f"#{finding_id}" if finding_id is not None else "")
+
+    def finding_json(self, finding_id: str) -> dict[str, Any]:
         return {
             "lesson_id": self.lesson_id,
             "title": self.title,
-            "url": self.url,
-            "track": self.track,
-            "prerequisites": list(self.prerequisites),
+            "url": self.url_for(finding_id),
             "verification": self.verification,
         }
 
@@ -75,6 +74,7 @@ class Catalog:
     ignored_diagnostic_ids: frozenset[str]
     profiles: tuple[AcceptanceProfile, ...]
     default_platforms: tuple[str, ...]
+    scope: dict[str, Any]
 
     @property
     def by_lesson_id(self) -> dict[str, Lesson]:
@@ -125,11 +125,18 @@ def _lesson(
     source: Path,
     order: int,
 ) -> Lesson:
-    required = ("lesson_id", "title", "path", "track", "prerequisites", "finding_ids", "verification")
+    required = (
+        "lesson_id",
+        "title",
+        "path",
+        "finding_ids",
+        "verification",
+        "reference_examples",
+    )
     missing = [field for field in required if field not in raw]
     if missing:
         raise LessonCatalogError(f"{source}: missing lesson fields: {', '.join(missing)}")
-    scalar = {field: raw[field] for field in ("lesson_id", "title", "path", "track", "verification")}
+    scalar = {field: raw[field] for field in ("lesson_id", "title", "path", "verification")}
     if not all(isinstance(value, str) and value for value in scalar.values()):
         raise LessonCatalogError(f"{source}: lesson scalar fields must be non-empty strings")
     acceptance_profile = raw.get("acceptance_profile")
@@ -147,14 +154,119 @@ def _lesson(
     text = lesson_path.read_text(encoding="utf-8")
     if not text.startswith("# ") or len(text.split()) < 25:
         raise LessonCatalogError(f"{source}: lesson must have a heading and substantive guidance")
+    if text.count("\n## Platform boundary\n") != 1 or text.count("\n## Verification boundary\n") != 1:
+        raise LessonCatalogError(
+            f"{lesson_path}: lesson needs one explicit platform boundary and one verification boundary"
+        )
+    finding_ids = _strings(raw["finding_ids"], "finding_ids", source)
+    example_ids = tuple(
+        re.findall(r"^## (P101-[A-Z][A-Z0-9_-]*-[0-9]{3})\b", text, re.MULTILINE)
+    )
+    anchor_ids = tuple(
+        re.findall(
+            r'^<a id="(P101-[A-Z][A-Z0-9_-]*-[0-9]{3})"></a>$',
+            text,
+            re.MULTILINE,
+        )
+    )
+    if len(example_ids) != len(set(example_ids)):
+        raise LessonCatalogError(f"{lesson_path}: duplicate diagnostic example heading")
+    if set(example_ids) != set(finding_ids):
+        missing_examples = sorted(set(finding_ids) - set(example_ids))
+        extra_examples = sorted(set(example_ids) - set(finding_ids))
+        detail: list[str] = []
+        if missing_examples:
+            detail.append("missing " + ", ".join(missing_examples))
+        if extra_examples:
+            detail.append("unregistered " + ", ".join(extra_examples))
+        raise LessonCatalogError(
+            f"{lesson_path}: diagnostic examples do not match the manifest: "
+            + "; ".join(detail)
+        )
+    if anchor_ids != example_ids:
+        raise LessonCatalogError(
+            f"{lesson_path}: every diagnostic heading needs its matching stable anchor"
+        )
+    required_example_fields = (
+        "Broken input:",
+        "Expected diagnostic:",
+        "Repaired input:",
+        "Expected clean result:",
+    )
+    if any(text.count(f"\n{field}\n") != len(finding_ids) for field in required_example_fields):
+        raise LessonCatalogError(
+            f"{lesson_path}: every diagnostic example needs one broken input, "
+            "expected diagnostic, repaired input, and expected clean result"
+        )
+    section_matches = list(
+        re.finditer(
+            r"^## (P101-[A-Z][A-Z0-9_-]*-[0-9]{3})\b",
+            text,
+            re.MULTILINE,
+        )
+    )
+    for index, match in enumerate(section_matches):
+        end = section_matches[index + 1].start() if index + 1 < len(section_matches) else len(text)
+        section = text[match.start() : end]
+        finding_id = match.group(1)
+        expected_match = re.search(
+            r"^Expected diagnostic:\n\n```text\n(.*?)\n```$",
+            section,
+            re.MULTILINE | re.DOTALL,
+        )
+        clean_match = re.search(
+            r"^Expected clean result:\n\n```text\n(.*?)\n```$",
+            section,
+            re.MULTILINE | re.DOTALL,
+        )
+        if (
+            expected_match is None
+            or finding_id not in expected_match.group(1)
+            or clean_match is None
+            or finding_id not in clean_match.group(1)
+        ):
+            raise LessonCatalogError(
+                f"{lesson_path}: {finding_id} expected diagnostic and clean result "
+                "must name the same diagnostic ID"
+            )
+    references = raw["reference_examples"]
+    if not isinstance(references, list) or not references:
+        raise LessonCatalogError(
+            f"{source}: concept lesson {scalar['lesson_id']} needs reference_examples"
+        )
+    workspace = source.parent.parent.parent
+    for index, reference in enumerate(references):
+        if not isinstance(reference, dict) or not all(
+            isinstance(reference.get(field), str) and reference.get(field)
+            for field in ("repository", "path", "url")
+        ):
+            raise LessonCatalogError(
+                f"{source}: {scalar['lesson_id']} reference_examples[{index}] "
+                "needs repository, path, and url"
+            )
+        reference_path = workspace / "examples" / reference["repository"] / reference["path"]
+        if not reference_path.is_file():
+            raise LessonCatalogError(
+                f"{source}: correct reference does not exist: {reference_path}"
+            )
+        if reference["url"] not in text:
+            raise LessonCatalogError(
+                f"{lesson_path}: correct reference URL is not visible in the lesson: "
+                f"{reference['url']}"
+            )
+    verification_command = scalar["verification"].split()[0]
+    if verification_command.startswith(("./", "scripts/", "programs/")):
+        verification_path = workspace / verification_command.removeprefix("./")
+        if not verification_path.is_file():
+            raise LessonCatalogError(
+                f"{source}: verification command does not exist: {verification_path}"
+            )
     return Lesson(
         lesson_id=scalar["lesson_id"],
         title=scalar["title"],
         path=relative_path,
         url=url_base + relative_path,
-        track=scalar["track"],
-        prerequisites=_strings(raw["prerequisites"], "prerequisites", source),
-        finding_ids=_strings(raw["finding_ids"], "finding_ids", source),
+        finding_ids=finding_ids,
         verification=scalar["verification"],
         order=order,
         acceptance_profile=acceptance_profile,
@@ -249,11 +361,8 @@ def load_catalog(path: Path) -> Catalog:
     if document.get("schema") != SCHEMA:
         raise LessonCatalogError(f"{path}: schema must be {SCHEMA}")
     url_base = document.get("url_base")
-    case_glob = document.get("case_glob")
     if not isinstance(url_base, str) or not url_base.endswith("/"):
         raise LessonCatalogError(f"{path}: url_base must be a non-empty URL ending in /")
-    if not isinstance(case_glob, str) or not case_glob:
-        raise LessonCatalogError(f"{path}: case_glob must be a non-empty string")
     ignored = frozenset(
         _strings(document.get("ignored_diagnostic_ids", []), "ignored_diagnostic_ids", path)
     )
@@ -268,10 +377,6 @@ def load_catalog(path: Path) -> Catalog:
     if set(default_platforms) != set(SUPPORTED_PLATFORMS):
         raise LessonCatalogError(
             f"{path}: default_platforms must cover macos, linux, and freebsd"
-        )
-    if document.get("case_prerequisite_mode") != "previous-in-track":
-        raise LessonCatalogError(
-            f"{path}: case_prerequisite_mode must be previous-in-track"
         )
     manifest_dir = path.parent
     workspace = manifest_dir.parent.parent
@@ -298,82 +403,37 @@ def load_catalog(path: Path) -> Catalog:
             raise LessonCatalogError(f"{path}: lessons[{index}] must be an object")
         lessons.append(_lesson(raw, manifest_dir, url_base, path, 10000 + index))
 
-    case_paths = sorted(manifest_dir.glob(case_glob))
-    if not case_paths:
-        raise LessonCatalogError(f"{path}: case_glob matched no expected.json files")
-    cases: list[tuple[Path, dict[str, Any]]] = []
-    for case_path in case_paths:
-        case_path = case_path.resolve()
-        cases.append((case_path, _read_object(case_path)))
-    cases.sort(
-        key=lambda item: (
-            int(item[1].get("lab_order", 1000)),
-            str(item[1].get("name", "")),
+    scope = document.get("scope")
+    if not isinstance(scope, dict):
+        raise LessonCatalogError(f"{path}: scope must be an object")
+    example_count = scope.get("example_count")
+    if not isinstance(example_count, int) or isinstance(example_count, bool):
+        raise LessonCatalogError(f"{path}: scope.example_count must be an integer")
+    responsibilities = scope.get("supporting_responsibilities")
+    if not isinstance(responsibilities, list) or not responsibilities:
+        raise LessonCatalogError(
+            f"{path}: scope.supporting_responsibilities must be a non-empty array"
         )
+    for index, responsibility in enumerate(responsibilities):
+        if not isinstance(responsibility, dict) or not all(
+            isinstance(responsibility.get(field), str)
+            and responsibility.get(field)
+            for field in ("id", "description")
+        ):
+            raise LessonCatalogError(
+                f"{path}: scope.supporting_responsibilities[{index}] needs "
+                "non-empty id and description strings"
+            )
+    excluded_content = _strings(
+        scope.get("excluded_content"), "scope.excluded_content", path
     )
-    previous_by_track: dict[str, str] = {}
-    for case_path, case in cases:
-        lesson_id = case.get("issue_id")
-        title = case.get("title")
-        name = case.get("name")
-        tracks = case.get("tracks")
-        if not isinstance(lesson_id, str) or not lesson_id:
-            raise LessonCatalogError(f"{case_path}: issue_id must be a non-empty string")
-        if not isinstance(title, str) or not title or not isinstance(name, str) or not name:
-            raise LessonCatalogError(f"{case_path}: name and title must be non-empty strings")
-        if not isinstance(tracks, list) or not tracks or not all(isinstance(item, str) and item for item in tracks):
-            raise LessonCatalogError(f"{case_path}: tracks must be a non-empty string array")
-        finding_ids = list(_strings(case.get("expected_findings", []), "expected_findings", case_path))
-        finding_ids.extend(
-            _strings(
-                case.get("lesson_finding_ids", []),
-                "lesson_finding_ids",
-                case_path,
-            )
+    if not excluded_content:
+        raise LessonCatalogError(
+            f"{path}: scope.excluded_content must not be empty"
         )
-        logic_id = case.get("logic_issue_id", "")
-        if logic_id:
-            if not isinstance(logic_id, str):
-                raise LessonCatalogError(f"{case_path}: logic_issue_id must be a string")
-            finding_ids.append(logic_id)
-        lesson_path = case_path.parent / "lesson.md"
-        if not lesson_path.is_file():
-            raise LessonCatalogError(f"{case_path}: missing lesson.md")
-        relative = lesson_path.relative_to(manifest_dir.parent).as_posix()
-        text = lesson_path.read_text(encoding="utf-8")
-        if not text.startswith("# ") or len(text.split()) < 10:
-            raise LessonCatalogError(f"{lesson_path}: lesson must have a heading and guidance")
-        prerequisites: tuple[str, ...] = ()
-        if lesson_id != "P101-LAB-ORIENTATION":
-            prerequisites = tuple(
-                dict.fromkeys(
-                    previous_by_track.get(track, "P101-LAB-ORIENTATION")
-                    for track in tracks
-                )
-            )
-        lessons.append(
-            Lesson(
-                lesson_id=lesson_id,
-                title=title,
-                path=relative,
-                url=url_base + relative,
-                track=tracks[0],
-                prerequisites=prerequisites,
-                finding_ids=tuple(finding_ids),
-                verification=(
-                    f"../programs/p101-test/test-corpus --case {name} "
-                    f"--keep-going -o /tmp/p101-{name}; "
-                    f"./lab.sh --receipt /tmp/p101-{name}/receipt.json "
-                    f"--case {name} --require-all-fixed"
-                ),
-                order=int(case.get("lab_order", 1000)),
-                case_name=name,
-            )
-        )
-        for track in tracks:
-            previous_by_track[track] = lesson_id
 
     lesson_ids: set[str] = set()
+    finding_owners: dict[str, str] = {}
     for lesson in lessons:
         if lesson.lesson_id in lesson_ids:
             raise LessonCatalogError(f"{path}: duplicate lesson_id {lesson.lesson_id}")
@@ -383,6 +443,13 @@ def load_catalog(path: Path) -> Catalog:
                 raise LessonCatalogError(
                     f"{path}: invalid finding ID {finding_id} in {lesson.lesson_id}"
                 )
+            previous = finding_owners.get(finding_id)
+            if previous is not None:
+                raise LessonCatalogError(
+                    f"{path}: finding {finding_id} appears in lessons "
+                    f"{previous} and {lesson.lesson_id}"
+                )
+            finding_owners[finding_id] = lesson.lesson_id
         if (
             lesson.acceptance_profile is not None
             and lesson.acceptance_profile not in set(profile_ids)
@@ -390,12 +457,6 @@ def load_catalog(path: Path) -> Catalog:
             raise LessonCatalogError(
                 f"{path}: {lesson.lesson_id} names unknown acceptance profile "
                 f"{lesson.acceptance_profile}"
-            )
-    for lesson in lessons:
-        missing = sorted(set(lesson.prerequisites) - lesson_ids)
-        if missing:
-            raise LessonCatalogError(
-                f"{path}: {lesson.lesson_id} has unknown prerequisites: {', '.join(missing)}"
             )
     profile_findings: dict[str, str] = {}
     for profile in profiles:
@@ -423,12 +484,18 @@ def load_catalog(path: Path) -> Catalog:
                 f"{path}: {lesson.lesson_id} findings missing from profile "
                 f"{profile.profile_id}: {', '.join(absent)}"
             )
+    if example_count != len(finding_owners):
+        raise LessonCatalogError(
+            f"{path}: scope.example_count is {example_count}, expected "
+            f"{len(finding_owners)}"
+        )
     catalog = Catalog(
         path,
         tuple(lessons),
         ignored,
         tuple(profiles),
         default_platforms,
+        scope,
     )
     _validate_acceptance_contract(catalog)
     return catalog
@@ -454,26 +521,6 @@ def _evidence_text(workspace: Path, relative_paths: Iterable[str]) -> str:
     return "\n".join(chunks)
 
 
-def _case_expected(catalog: Catalog, lesson: Lesson) -> dict[str, Any]:
-    if lesson.case_name is None:
-        raise LessonCatalogError(f"{lesson.lesson_id} is not a playground case")
-    path = catalog.workspace / "playgrounds" / "corpus" / "cases" / lesson.case_name / "expected.json"
-    return _read_object(path)
-
-
-def _case_has_repair_oracle(case: dict[str, Any]) -> bool:
-    if case.get("expected_findings") or case.get("expected_error_path_findings"):
-        return True
-    return any(
-        field in case
-        for field in (
-            "fixed_output_size",
-            "fixed_output_contains",
-            "fixed_output_not_contains",
-        )
-    )
-
-
 def _native_finding_symbol(finding_id: str) -> str:
     return "P101_TOOL_FINDING_" + finding_id.removeprefix("P101-").replace("-", "_")
 
@@ -497,28 +544,7 @@ def _validate_acceptance_contract(catalog: Catalog) -> None:
 
     covered: set[str] = set()
     for lesson in catalog.lessons:
-        if lesson.case_name is not None:
-            case = _case_expected(catalog, lesson)
-            fix_goal = case.get("fix_goal")
-            fix_steps = case.get("fix_steps")
-            if not isinstance(fix_goal, str) or not fix_goal:
-                raise LessonCatalogError(
-                    f"{catalog.path}: {lesson.lesson_id} needs a fix_goal"
-                )
-            if (
-                not isinstance(fix_steps, list)
-                or not fix_steps
-                or not all(isinstance(item, str) and item for item in fix_steps)
-            ):
-                raise LessonCatalogError(
-                    f"{catalog.path}: {lesson.lesson_id} needs substantive fix_steps"
-                )
-            if lesson.finding_ids and not _case_has_repair_oracle(case):
-                raise LessonCatalogError(
-                    f"{catalog.path}: {lesson.lesson_id} has no repaired-state oracle"
-                )
-            covered.update(lesson.finding_ids)
-        elif lesson.acceptance_profile is not None:
+        if lesson.acceptance_profile is not None:
             profile = profile_by_id[lesson.acceptance_profile]
             covered.update(set(lesson.finding_ids) & set(profile.finding_ids))
     missing = sorted(set(catalog.by_finding_id) - covered)
@@ -543,8 +569,10 @@ def annotate_document(document: dict[str, Any], catalog: Catalog) -> dict[str, A
         lessons = by_finding.get(finding_id, ())
         if lessons:
             finding["lesson"] = {
-                "primary": lessons[0].finding_json(),
-                "related": [lesson.finding_json() for lesson in lessons[1:]],
+                "primary": lessons[0].finding_json(finding_id),
+                "related": [
+                    lesson.finding_json(finding_id) for lesson in lessons[1:]
+                ],
             }
     document["lesson_catalog"] = {
         "schema": SCHEMA,
@@ -586,13 +614,10 @@ def catalog_digest(catalog: Catalog) -> str:
                     "title": lesson.title,
                     "path": lesson.path,
                     "url": lesson.url,
-                    "track": lesson.track,
-                    "prerequisites": lesson.prerequisites,
                     "finding_ids": lesson.finding_ids,
                     "verification": lesson.verification,
                     "order": lesson.order,
                     "acceptance_profile": lesson.acceptance_profile,
-                    "case_name": lesson.case_name,
                 },
                 sort_keys=True,
             ).encode("utf-8")
@@ -633,16 +658,17 @@ def discover_diagnostic_ids(workspace: Path) -> set[str]:
             ):
                 candidates.append(candidate)
         for candidate in candidates:
-            if not candidate.is_file() or candidate.suffix not in {"", ".c", ".h", ".py"}:
+            if not candidate.is_file() or candidate.suffix not in {"", ".c", ".h", ".inc", ".py"}:
                 continue
             try:
                 ids.update(DIAGNOSTIC_PATTERN.findall(candidate.read_text(encoding="utf-8")))
             except (OSError, UnicodeError):
                 continue
-    for candidate in (
+    candidates = [
         workspace / "libraries" / "lib_tool_event" / "src" / "analysis.c",
-        workspace / "scripts" / "rules" / "resource-clean.json",
-    ):
+        *sorted((workspace / "scripts" / "rules").glob("*.json")),
+    ]
+    for candidate in candidates:
         try:
             ids.update(DIAGNOSTIC_PATTERN.findall(candidate.read_text(encoding="utf-8")))
         except (OSError, UnicodeError):
@@ -706,26 +732,6 @@ def _acceptance_for_lesson(
     lesson: Lesson,
     finding_id: str | None,
 ) -> dict[str, Any]:
-    if lesson.case_name is not None:
-        case = _case_expected(catalog, lesson)
-        return {
-            "finding_id": finding_id,
-            "lesson_id": lesson.lesson_id,
-            "lesson_title": lesson.title,
-            "track": lesson.track,
-            "prerequisites": list(lesson.prerequisites),
-            "native_evidence": "playground-case",
-            "native_reference": lesson.case_name,
-            "broken_command": f"programs/p101-test/test-corpus --case {lesson.case_name}",
-            "repair_command": lesson.verification,
-            "repair_oracle": (
-                "finding-disappears"
-                if case.get("expected_findings")
-                or case.get("expected_error_path_findings")
-                else "fixed-output-contract"
-            ),
-            "platforms": list(catalog.default_platforms),
-        }
     if lesson.acceptance_profile is None:
         raise LessonCatalogError(f"{lesson.lesson_id} has no acceptance evidence")
     profile = catalog.by_profile_id[lesson.acceptance_profile]
@@ -733,8 +739,6 @@ def _acceptance_for_lesson(
         "finding_id": finding_id,
         "lesson_id": lesson.lesson_id,
         "lesson_title": lesson.title,
-        "track": lesson.track,
-        "prerequisites": list(lesson.prerequisites),
         "native_evidence": profile.kind,
         "native_reference": profile.profile_id,
         "broken_command": " ".join(profile.command),
@@ -748,14 +752,7 @@ def acceptance_for(catalog: Catalog, finding_id: str) -> dict[str, Any]:
     lessons = catalog.by_finding_id.get(finding_id, ())
     if not lessons:
         raise LessonCatalogError(f"no lesson for {finding_id}")
-    case_lesson = next(
-        (lesson for lesson in lessons if lesson.case_name is not None), None
-    )
-    return _acceptance_for_lesson(
-        catalog,
-        case_lesson if case_lesson is not None else lessons[0],
-        finding_id,
-    )
+    return _acceptance_for_lesson(catalog, lessons[0], finding_id)
 
 
 def resolve_target(
@@ -821,7 +818,6 @@ def coverage_document(
             {
                 "lesson_id": lesson.lesson_id,
                 "title": lesson.title,
-                "track": lesson.track,
                 "finding_ids": list(lesson.finding_ids),
                 "native_evidence": acceptance["native_evidence"],
                 "native_reference": acceptance["native_reference"],
@@ -832,7 +828,6 @@ def coverage_document(
                 ),
             }
         )
-    native_cases = sum(row["native_evidence"] == "playground-case" for row in rows)
     return {
         "schema": COVERAGE_SCHEMA,
         "catalog_schema": SCHEMA,
@@ -842,8 +837,8 @@ def coverage_document(
             "lessons": len(catalog.lessons),
             "lessons_with_acceptance": len(lesson_rows),
             "diagnostic_ids": len(rows),
-            "native_case_ids": native_cases,
-            "native_suite_ids": len(rows) - native_cases,
+            "native_case_ids": 0,
+            "native_suite_ids": len(rows),
             "protocol_pairs": len(rows),
             "uncovered_ids": len(missing_ids),
             "platform_contract": list(catalog.default_platforms),
@@ -862,7 +857,6 @@ def coverage_markdown(document: dict[str, Any]) -> str:
         f"- Lessons: {summary['lessons']}",
         f"- Lessons with acceptance evidence: {summary['lessons_with_acceptance']}",
         f"- Diagnostic IDs: {summary['diagnostic_ids']}",
-        f"- Diagnostic IDs backed by native playground cases: {summary['native_case_ids']}",
         f"- Diagnostic IDs backed by native owning-tool suites: {summary['native_suite_ids']}",
         f"- Broken/repaired protocol pairs: {summary['protocol_pairs']}",
         f"- Uncovered IDs: {summary['uncovered_ids']}",
@@ -1040,9 +1034,24 @@ def _run_profile(
             "status": "SKIP",
             "reason": f"{current} is not in the profile platform contract",
         }
+    command: list[str] = []
+    for argument in profile.command:
+        match = ENVIRONMENT_ARGUMENT.fullmatch(argument)
+        if match is None:
+            command.append(argument)
+            continue
+        name = match.group(1)
+        value = os.environ.get(name, "")
+        if not value:
+            return {
+                "label": profile.profile_id,
+                "status": "SKIP",
+                "reason": f"qualified tool environment is missing: {name}",
+            }
+        command.append(value)
     repository = (catalog.workspace / profile.cwd).resolve()
     return _run_logged(
-        list(profile.command),
+        command,
         repository,
         output,
         "profile-" + profile.profile_id,
@@ -1054,56 +1063,6 @@ def _run_profile(
             "P101_TEST_BUILD_CACHE": "",
         },
     )
-
-
-def _run_case(
-    catalog: Catalog,
-    case_name: str,
-    output: Path,
-    *,
-    repaired: bool,
-) -> dict[str, Any]:
-    destination = output / (("repaired-" if repaired else "broken-") + case_name)
-    corpus_destination = destination / "corpus"
-    corpus_command = [
-        str(catalog.workspace / "programs" / "p101-test" / "test-corpus"),
-        "--case",
-        case_name,
-        "--skip-html",
-        "--skip-bundle",
-        "--keep-going",
-        "-o",
-        str(corpus_destination),
-    ]
-    corpus_result = _run_logged(
-        corpus_command,
-        catalog.workspace / "programs" / "p101-test",
-        output,
-        ("repaired-corpus-" if repaired else "broken-") + case_name,
-    )
-    if not repaired:
-        return corpus_result
-    receipt = corpus_destination / "receipt.json"
-    if not receipt.is_file():
-        return corpus_result
-    lab_command = [
-        str(catalog.workspace / "playgrounds" / "lab.sh"),
-        "--receipt",
-        str(receipt),
-        "--case",
-        case_name,
-        "--require-all-fixed",
-        "-o",
-        str(destination / "lab"),
-    ]
-    lab_result = _run_logged(
-        lab_command,
-        catalog.workspace / "playgrounds",
-        output,
-        "repaired-" + case_name,
-    )
-    lab_result["corpus_status"] = corpus_result["status"]
-    return lab_result
 
 
 def _run_profiles(
@@ -1152,116 +1111,6 @@ def _run_profiles(
                     "shared_with": original["label"],
                 }
             )
-    return results
-
-
-def _run_cases(
-    catalog: Catalog,
-    case_names: list[str],
-    output: Path,
-    jobs: int,
-) -> list[dict[str, Any]]:
-    with ThreadPoolExecutor(max_workers=jobs) as executor:
-        return list(
-            executor.map(
-                lambda case_name: _run_case(
-                    catalog, case_name, output, repaired=False
-                ),
-                case_names,
-            )
-        )
-
-
-def _run_native_evidence(
-    catalog: Catalog,
-    profiles: list[AcceptanceProfile],
-    case_names: list[str],
-    output: Path,
-    jobs: int,
-) -> list[dict[str, Any]]:
-    """Run independent profile and playground evidence in one bounded queue."""
-    representative_by_key: dict[
-        tuple[tuple[str, ...], str], AcceptanceProfile
-    ] = {}
-    for profile in profiles:
-        key = (profile.command, profile.cwd)
-        representative_by_key.setdefault(key, profile)
-
-    with ThreadPoolExecutor(max_workers=jobs) as executor:
-        profile_futures = {
-            key: executor.submit(_run_profile, catalog, profile, output)
-            for key, profile in representative_by_key.items()
-        }
-        case_futures = [
-            executor.submit(
-                _run_case,
-                catalog,
-                case_name,
-                output,
-                repaired=False,
-            )
-            for case_name in case_names
-        ]
-
-        results: list[dict[str, Any]] = []
-        for profile in profiles:
-            key = (profile.command, profile.cwd)
-            original = profile_futures[key].result()
-            representative = representative_by_key[key]
-            if profile is representative:
-                results.append(original)
-            else:
-                results.append(
-                    {
-                        **original,
-                        "label": "profile-" + profile.profile_id,
-                        "duration_ns": 0,
-                        "shared_with": original["label"],
-                    }
-                )
-        results.extend(future.result() for future in case_futures)
-        return results
-
-
-def _corpus_receipt_results(
-    receipt_path: Path,
-    case_names: list[str],
-) -> list[dict[str, Any]]:
-    try:
-        document = json.loads(receipt_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise LessonCatalogError(f"cannot read p101-test corpus receipt {receipt_path}: {error}") from error
-    if not isinstance(document, dict) or document.get("schema") != "p101-corpus-receipt-v1":
-        raise LessonCatalogError(f"{receipt_path}: unsupported p101-test corpus receipt")
-    records = document.get("cases")
-    if not isinstance(records, list):
-        raise LessonCatalogError(f"{receipt_path}: corpus receipt has no case records")
-    by_name = {
-        str(record["name"]): record
-        for record in records
-        if isinstance(record, dict) and isinstance(record.get("name"), str)
-    }
-    if len(by_name) != document.get("selected_cases") or len(by_name) != document.get("completed_cases"):
-        raise LessonCatalogError(f"{receipt_path}: corpus receipt is incomplete")
-    results: list[dict[str, Any]] = []
-    for case_name in case_names:
-        record = by_name.get(case_name)
-        if record is None:
-            raise LessonCatalogError(f"{receipt_path}: missing playground case {case_name}")
-        status = record.get("status")
-        if status not in {"PASS", "FAIL"}:
-            raise LessonCatalogError(f"{receipt_path}: case {case_name} has no verification status")
-        problems = record.get("problems")
-        reason = "; ".join(str(problem) for problem in problems) if isinstance(problems, list) else ""
-        results.append(
-            {
-                "label": "broken-" + case_name,
-                "status": status,
-                "duration_ns": 0,
-                "reason": reason,
-                "corpus_receipt": str(receipt_path),
-            }
-        )
     return results
 
 
@@ -1418,9 +1267,7 @@ def command_show(args: argparse.Namespace) -> int:
     for index, lesson in enumerate(lessons):
         label = "Primary lesson" if index == 0 else "Related lesson"
         print(f"{label}: {lesson.lesson_id} — {lesson.title}")
-        print(f"  {lesson.url}")
-        print(f"  track: {lesson.track}")
-        print(f"  prerequisites: {', '.join(lesson.prerequisites) or 'none'}")
+        print(f"  {lesson.url_for(args.finding_id if args.finding_id in lesson.finding_ids else None)}")
         print(f"  verify: {lesson.verification}")
     print(
         "Acceptance: "
@@ -1438,7 +1285,10 @@ def command_list(args: argparse.Namespace) -> int:
         print(f"p101 lessons: {error}", file=sys.stderr)
         return 2
     for finding_id, lessons in sorted(catalog.by_finding_id.items()):
-        print(f"{finding_id}\t{lessons[0].lesson_id}\t{lessons[0].title}\t{lessons[0].url}")
+        print(
+            f"{finding_id}\t{lessons[0].lesson_id}\t{lessons[0].title}\t"
+            f"{lessons[0].url_for(finding_id)}"
+        )
     return 0
 
 
@@ -1470,14 +1320,15 @@ def command_guide(args: argparse.Namespace) -> int:
             if args.markdown:
                 print(f"## {finding_id}: {lessons[0].title}")
                 print()
-                print(f"- Lesson: [{lessons[0].lesson_id}]({lessons[0].url})")
-                print(f"- Track: {lessons[0].track}")
-                print(f"- Prerequisites: {', '.join(lessons[0].prerequisites) or 'none'}")
+                print(
+                    f"- Lesson: [{lessons[0].lesson_id}]"
+                    f"({lessons[0].url_for(finding_id)})"
+                )
                 print(f"- Verify: `{lessons[0].verification}`")
                 print()
             else:
                 print(f"{finding_id}: {lessons[0].title}")
-                print(f"  {lessons[0].url}")
+                print(f"  {lessons[0].url_for(finding_id)}")
                 print(f"  verify: {lessons[0].verification}")
     if unmapped:
         print("Unmapped findings: " + ", ".join(unmapped), file=sys.stderr)
@@ -1520,15 +1371,10 @@ def command_run(args: argparse.Namespace) -> int:
         )
         results: list[dict[str, Any]] = []
         if not args.protocol_only:
-            if lesson.case_name is not None:
-                results.append(
-                    _run_case(catalog, lesson.case_name, output, repaired=False)
-                )
-            else:
-                profile_id = str(acceptance["native_reference"])
-                results.append(
-                    _run_profile(catalog, catalog.by_profile_id[profile_id], output)
-                )
+            profile_id = str(acceptance["native_reference"])
+            results.append(
+                _run_profile(catalog, catalog.by_profile_id[profile_id], output)
+            )
         receipt = _receipt(catalog, "lesson-run", results, len(pairs))
         receipt["target"] = args.finding_id
         receipt["lesson_id"] = lesson.lesson_id
@@ -1592,13 +1438,9 @@ def command_verify_one(args: argparse.Namespace) -> int:
                 }
             )
         else:
-            if lesson.case_name is None:
-                raise LessonCatalogError(
-                    "source-analysis lessons require one or more report paths; "
-                    f"run `{acceptance['repair_command']}` and pass its JSON report"
-                )
-            results.append(
-                _run_case(catalog, lesson.case_name, output, repaired=True)
+            raise LessonCatalogError(
+                "lesson verification requires one or more report paths; "
+                f"run `{acceptance['repair_command']}` and pass its JSON report"
             )
         receipt = _receipt(catalog, "student-verify", results, 0)
         receipt["target"] = args.finding_id
@@ -1606,7 +1448,6 @@ def command_verify_one(args: argparse.Namespace) -> int:
         if finding_id is not None:
             receipt["finding_id"] = finding_id
         receipt["acceptance"] = acceptance
-        receipt["remaining_prerequisites"] = acceptance["prerequisites"]
         _write_json(output / "receipt.json", receipt)
     except LessonCatalogError as error:
         print(f"p101 lessons: {error}", file=sys.stderr)
@@ -1630,31 +1471,7 @@ def command_verify_all(args: argparse.Namespace) -> int:
                 for profile in catalog.profiles
                 if args.full or profile.quick
             ]
-            if args.full:
-                case_names = sorted(
-                    {
-                        lesson.case_name
-                        for lesson in catalog.lessons
-                        if lesson.case_name is not None
-                    }
-                )
-            else:
-                case_names = ["orientation", "fd-leak", "short-read"]
-            admitted_case_names = [case_name or "" for case_name in case_names]
-            corpus_receipt = getattr(args, "corpus_receipt", None)
-            if corpus_receipt is None:
-                native_results = _run_native_evidence(
-                    catalog,
-                    profiles,
-                    admitted_case_names,
-                    output,
-                    jobs,
-                )
-            else:
-                native_results = _run_profiles(catalog, profiles, output, jobs)
-                native_results.extend(
-                    _corpus_receipt_results(corpus_receipt.resolve(), admitted_case_names)
-                )
+            native_results = _run_profiles(catalog, profiles, output, jobs)
             results.extend(native_results)
             _write_unit_test_evidence(
                 catalog,
@@ -1730,33 +1547,12 @@ def progress_document(catalog: Catalog, paths: Iterable[Path]) -> dict[str, Any]
             completed_findings.add(finding_id)
 
     lesson_by_id = catalog.by_lesson_id
-    curriculum_completed: set[str] = set()
-    changed = True
-    while changed:
-        changed = False
-        for lesson_id in sorted(completed_lessons):
-            if lesson_id in curriculum_completed:
-                continue
-            lesson = lesson_by_id.get(lesson_id)
-            if lesson is not None and set(lesson.prerequisites) <= curriculum_completed:
-                curriculum_completed.add(lesson_id)
-                changed = True
-    out_of_order = sorted(completed_lessons - curriculum_completed)
-    available: list[str] = []
-    blocked: dict[str, list[str]] = {}
-    for lesson in sorted(catalog.lessons, key=lambda item: (item.order, item.lesson_id)):
-        if lesson.lesson_id in completed_lessons:
-            continue
-        missing = sorted(set(lesson.prerequisites) - curriculum_completed)
-        if missing:
-            blocked[lesson.lesson_id] = missing
-        else:
-            available.append(lesson.lesson_id)
+    unresolved = sorted(set(lesson_by_id) - completed_lessons)
     return {
         "schema": "p101-lesson-progress-v1",
         "catalog_sha256": digest,
         "summary": {
-            "lessons_completed": len(curriculum_completed),
+            "lessons_completed": len(completed_lessons),
             "lessons_verified": len(completed_lessons),
             "lessons_total": len(catalog.lessons),
             "findings_resolved": len(completed_findings),
@@ -1765,17 +1561,13 @@ def progress_document(catalog: Catalog, paths: Iterable[Path]) -> dict[str, Any]
             "invalid_receipts": len(invalid_receipts),
         },
         "completed_lesson_ids": sorted(completed_lessons),
-        "curriculum_completed_lesson_ids": sorted(curriculum_completed),
-        "verified_out_of_order_lesson_ids": out_of_order,
         "completed_finding_ids": sorted(completed_findings),
-        "available_lesson_ids": available,
-        "blocked_lessons": blocked,
+        "unresolved_lesson_ids": unresolved,
         "stale_receipt_paths": stale_receipts,
         "invalid_receipt_paths": invalid_receipts,
         "lessons": {
             lesson_id: {
                 "title": lesson_by_id[lesson_id].title,
-                "track": lesson_by_id[lesson_id].track,
                 "url": lesson_by_id[lesson_id].url,
             }
             for lesson_id in sorted(lesson_by_id)
@@ -1796,31 +1588,22 @@ def progress_markdown(document: dict[str, Any]) -> str:
         f"- Stale receipts: {summary['stale_receipts']}",
         f"- Invalid receipts: {summary['invalid_receipts']}",
         "",
-        "## Available next",
+        "## Unresolved lesson groups",
         "",
     ]
-    available = document["available_lesson_ids"]
-    if not available:
-        lines.append("No lessons are currently available.")
+    unresolved = document["unresolved_lesson_ids"]
+    if not unresolved:
+        lines.append("No unresolved lesson groups remain.")
     else:
-        for lesson_id in available:
+        for lesson_id in unresolved:
             lesson = lessons[lesson_id]
-            lines.append(
-                f"- [{lesson_id}: {lesson['title']}]({lesson['url']}) "
-                f"({lesson['track']})"
-            )
+            lines.append(f"- [{lesson_id}: {lesson['title']}]({lesson['url']})")
     lines.extend(["", "## Verified repairs", ""])
     completed = document["completed_lesson_ids"]
     if not completed:
         lines.append("No verified lesson receipts yet.")
     else:
         for lesson_id in completed:
-            lesson = lessons[lesson_id]
-            lines.append(f"- `{lesson_id}` — {lesson['title']}")
-    out_of_order = document["verified_out_of_order_lesson_ids"]
-    if out_of_order:
-        lines.extend(["", "## Verified but prerequisites remain", ""])
-        for lesson_id in out_of_order:
             lesson = lessons[lesson_id]
             lines.append(f"- `{lesson_id}` — {lesson['title']}")
     return "\n".join(lines) + "\n"
@@ -1850,7 +1633,7 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     default_catalog = Path(__file__).resolve().parents[2] / "playgrounds" / "lessons" / "manifest.json"
     parser = argparse.ArgumentParser(
         prog="p101_lessons.py",
-        description="Resolve diagnostics to lessons and verify curriculum completeness.",
+        description="Resolve diagnostics to lessons and verify catalog completeness.",
     )
     parser.add_argument("--catalog", type=Path, default=default_catalog)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -1899,14 +1682,9 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     modes.add_argument(
         "--full",
         action="store_true",
-        help="run every owning-tool suite and every native playground case",
+        help="run every owning-tool suite",
     )
     verify.add_argument("-o", "--output", type=Path)
-    verify.add_argument(
-        "--corpus-receipt",
-        type=Path,
-        help="reuse a complete p101-test corpus receipt instead of rerunning playground cases",
-    )
     verify.add_argument(
         "-j",
         "--jobs",
@@ -1931,7 +1709,7 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     coverage.set_defaults(function=command_coverage)
     progress = subparsers.add_parser(
         "progress",
-        help="summarize verified lesson receipts and show available prerequisites",
+        help="summarize verified diagnostic-repair receipts",
     )
     progress.add_argument("paths", nargs="+", type=Path)
     progress.add_argument("-j", "--json", action="store_true")

@@ -6,15 +6,11 @@
     "audit_workspace",
     "cc",
     "cxx",
-    "fault_count",
     "formatter",
     "fuzz_secs",
     "inspect_capture",
     "out",
     "p101_inspect",
-    "playground_skip_coverage",
-    "playground_skip_fuzz",
-    "playground_skip_quality",
     "semantic_cache",
     "template_no_tests",
     "temporary_root",
@@ -94,10 +90,7 @@
       "repository-tests-runner-tests",
       "repository-tests",
       "boundary-execution",
-      "templates-standalone",
-      "playground-tour",
-      "playground-corpus",
-      "playground-lab"
+      "templates-standalone"
     ]
   },
   "nodes": [
@@ -633,10 +626,10 @@
       "title": "p101 executable lesson acceptance",
       "group": "lessons",
       "required": true,
-      "command": ["./runtime/p101_lessons.py", "verify", "--full", "--corpus-receipt", "{out}/playground-corpus/receipt.json", "-o", "{out}/lesson-acceptance"],
+      "command": ["./runtime/p101_lessons.py", "verify", "--full", "-o", "{out}/lesson-acceptance"],
       "inputs": ["scripts/runtime/**", "scripts/contracts/**", "playgrounds/**", "programs/**", "libraries/lib_tool_event/**", "libraries/lib_env/**", "libraries/lib_error/**"],
       "inputs_complete": true,
-      "depends_on": ["lesson-completeness", "external-facts-manifest", "playground-corpus"],
+      "depends_on": ["lesson-completeness", "external-facts-manifest"],
       "replace_outputs": true,
       "resources": {"writes": ["{out}/lesson-acceptance"], "units": {}},
       "guarantee": "Lesson controls and intended fixes execute against the current tools."
@@ -822,7 +815,7 @@
       "group": "library-audit",
       "required": true,
       "command": ["./tests/test-wrapper-conformance-output.sh"],
-      "inputs": ["scripts/tests/test-wrapper-conformance-output.sh", "programs/p101-test/components/conformance/src/main.c", "scripts/checks/check-wrapper-conformance.sh", "libraries/*/api-manifest.tsv", "libraries/*/test/unit-test-manifest.tsv", "libraries/*/test/fault-outcome-manifest.tsv", "libraries/*/test/conformance-manifest.tsv"],
+      "inputs": ["scripts/tests/test-wrapper-conformance-output.sh", "programs/p101-test/components/conformance/src/main.c", "programs/p101-test/components/repository-receipt/src/main.c", "scripts/checks/check-wrapper-conformance.sh", "libraries/*/api-manifest.tsv", "libraries/*/test/unit-test-manifest.tsv", "libraries/*/test/fault-outcome-manifest.tsv", "libraries/*/test/conformance-manifest.tsv"],
       "inputs_complete": true,
       "depends_on": ["instrumentation"],
       "resources": {"writes": [], "units": {}},
@@ -898,7 +891,7 @@
       "command": ["./checks/p101-semantic-snapshot.py", "--cache", "{semantic_cache}", "--usage-directory", "{out}/semantic-usage", "--receipt", "{out}/semantic-snapshot-receipt.json", "--prune"],
       "inputs": ["**"],
       "inputs_complete": true,
-      "depends_on": ["header-standalone", "interactive-build-retry", "playground-lab", "playground-tour", "push-preflight-tests", "script-distribution", "shared-links"],
+      "depends_on": ["causal-model", "header-standalone", "interactive-build-retry", "push-preflight-tests", "script-distribution", "shared-links", "templates-standalone"],
       "wait_for_selected": true,
       "resources": {"writes": ["{out}/semantic-snapshot-receipt.json"], "units": {}},
       "guarantee": "Every shared semantic-cache entry used by this governed run belongs to one integrity-checked, canonical content set while unreferenced stale cache entries are excluded."
@@ -956,48 +949,6 @@
       "replace_outputs": true,
       "resources": {"writes": ["{out}/templates"], "units": {"compiler": 1}},
       "guarantee": "Fresh template instances configure, build, and test without hidden workspace dependencies."
-    },
-    {
-      "id": "playground-tour",
-      "title": "playground teaching tour",
-      "group": "stack",
-      "required": true,
-      "cacheable": false,
-      "command": ["./runtime/playground-tour.sh", "-o", "{out}/playground-tour", "-n", "{fault_count}", "-t", "{fuzz_secs}", "-c", "{cc}", "{playground_skip_quality}", "{playground_skip_coverage}", "{playground_skip_fuzz}"],
-      "inputs": ["scripts/runtime/**", "scripts/contracts/**", "libraries/**", "programs/**", "playgrounds/**"],
-      "inputs_complete": true,
-      "depends_on": ["templates-standalone"],
-      "replace_outputs": true,
-      "resources": {"writes": ["{out}/playground-tour"], "units": {"compiler": 1}},
-      "guarantee": "The teaching tour composes with the current installed p101 stack."
-    },
-    {
-      "id": "playground-corpus",
-      "title": "p101 executable playground corpus",
-      "group": "regression",
-      "required": true,
-      "cacheable": false,
-      "command": ["../programs/p101-test/test-corpus", "--keep-going", "--strict", "-o", "{out}/playground-corpus"],
-      "inputs": ["scripts/runtime/student-workflow.sh", "libraries/**", "programs/p101-test/**", "programs/p101-audit/**", "programs/p101-inspect/**", "playgrounds/corpus/cases/**", "playgrounds/src/**", "playgrounds/include/**"],
-      "inputs_complete": true,
-      "depends_on": ["causal-model"],
-      "replace_outputs": true,
-      "resources": {"writes": ["{out}/playground-corpus"], "units": {}},
-      "guarantee": "p101-test executes the committed playground cases and verifies their exit, diagnostic, error-path, and output oracles in one versioned receipt."
-    },
-    {
-      "id": "playground-lab",
-      "title": "playground lab-book smoke",
-      "group": "stack",
-      "required": true,
-      "cacheable": false,
-      "command": ["../playgrounds/lab.sh", "--receipt", "{out}/playground-corpus/receipt.json", "--require-corpus-pass", "--quick", "-o", "{out}/playground-lab"],
-      "inputs": ["playgrounds/lab.sh", "playgrounds/corpus/build-lab.py", "playgrounds/corpus/cases/**"],
-      "inputs_complete": true,
-      "depends_on": ["playground-corpus"],
-      "replace_outputs": true,
-      "resources": {"writes": ["{out}/playground-lab"], "units": {}},
-      "guarantee": "The student-facing lab renders only a complete, passing p101-test corpus receipt and does not execute regression policy itself."
     }
   ]
 }

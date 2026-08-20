@@ -2,9 +2,14 @@
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
-tool="${P101_TEST_WRAPPER_CONFORMANCE:-}"
+tool="${1:-${P101_TEST_WRAPPER_CONFORMANCE:-}}"
+receipt_tool="${2:-${P101_TEST_REPOSITORY_RECEIPT:-}}"
 [ -x "$tool" ] || {
   printf '%s:1:1: error: P101_TEST_WRAPPER_CONFORMANCE is not executable\n' "$0" >&2
+  exit 2
+}
+[ -x "$receipt_tool" ] || {
+  printf '%s:1:1: error: repository receipt tool is not executable\n' "$0" >&2
   exit 2
 }
 
@@ -49,6 +54,13 @@ common=(
   --macros "$work/macros.txt"
 )
 
+set +e
+"$tool" > "$work/conformance-cli.out" 2> "$work/conformance-cli.err"
+status=$?
+set -e
+[ "$status" -eq 2 ]
+grep -q 'P101-TEST-CONFORMANCE-001' "$work/conformance-cli.err"
+
 "$tool" "${common[@]}" --receipt "$work/pass.json"
 grep -q '"passed":true' "$work/pass.json"
 
@@ -60,5 +72,12 @@ set -e
 [ "$status" -eq 1 ]
 grep -q 'missing direct platform fault outcome' "$work/stderr"
 grep -q '"passed":false' "$work/fail.json"
+
+set +e
+"$receipt_tool" > "$work/receipt-cli.out" 2> "$work/receipt-cli.err"
+status=$?
+set -e
+[ "$status" -eq 2 ]
+grep -q 'P101-TEST-RECEIPT-001' "$work/receipt-cli.err"
 
 printf 'wrapper conformance diagnostics: PASS\n'

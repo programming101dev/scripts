@@ -6,8 +6,7 @@
       "id": "P101-POLICY-SYNC-001",
       "kind": "forbid-finding",
       "pattern": "P101-SYNC-*",
-      "title": "Synchronization behavior is not clean",
-      "lesson": "docs/rule-packs.md#synchronization-discipline"
+      "title": "Synchronization behavior is not clean"
     }
   ]
 }

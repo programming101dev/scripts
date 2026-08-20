@@ -28,11 +28,10 @@ summary counters, typed outcome, and Unix exit status around those same
 diagnostic objects. There is no `-j` or `--json` alias; one exact parser keeps
 the command line consistent across tools.
 
-The playground curriculum owns:
+The playground owns:
 
-- the primary lesson and related practice labs;
-- prerequisite lessons and track placement;
-- conceptual explanation and repair walkthrough;
+- exactly one defect-and-repair example for each registered diagnostic ID;
+- conceptual explanation and a repair walkthrough;
 - the command that verifies the repair.
 
 `playgrounds/lessons/manifest.json` is also the single source of truth for the
@@ -51,7 +50,7 @@ program passes, and a diagnostic should not contain an answer key.
 `p101_lessons.py` admits:
 
 - `playgrounds/lessons/manifest.json`;
-- the `expected.json` and `lesson.md` files selected by its `case_glob`;
+- the lesson Markdown files named by the manifest;
 - tool source files used by the workspace completeness check;
 - finding JSON or text reports supplied to `guide`.
 
@@ -67,7 +66,7 @@ It produces:
 - `python3 runtime/p101_lessons.py list` mappings;
 - `python3 runtime/p101_lessons.py verify [--quick|--full]` executable acceptance receipts;
 - `python3 runtime/p101_lessons.py coverage` as Markdown or JSON;
-- `python3 runtime/p101_lessons.py progress <receipt-path ...>` prerequisite-aware progress;
+- `python3 runtime/p101_lessons.py progress <receipt-path ...>` verified-repair progress;
 - a linked Markdown guide for a check directory;
 - lesson annotations in runtime JSON and HTML reports;
 - a cohort ranking of the lessons implicated most often;
@@ -85,25 +84,22 @@ lesson file and executable acceptance evidence. Fallback IDs ending in `000`
 are explicitly listed rather than silently ignored. Stale ignored IDs also
 fail the gate.
 
-There are two deliberately separate receipts:
+There are two deliberately separate forms of evidence:
 
-- native evidence runs either the real playground scenario or the owning
-  tool/policy test suite;
+- native evidence runs the owning tool/policy test suite;
 - a canonical broken/repaired report pair proves that the finding routes to the
   intended lesson and that repaired evidence is accepted.
 
 The coverage matrix labels these columns independently. Passing the protocol
 pair cannot be reported as proof that the analyzer detected the original bug.
-Playground cases also carry a deterministic repair oracle: the detecting
-finding must disappear, or the documented fixed-output contract must hold.
+Student repair evidence has a deterministic oracle: the detecting finding
+must disappear from the new tool report.
 Declared macOS/Linux/FreeBSD support is a contract, not evidence: a platform is
 listed as verified only when its successful `--full` receipt is supplied with
 `python3 runtime/p101_lessons.py coverage --receipts <path>`.
 
-The first lesson by curriculum order is the primary lesson. Additional labs
-using the same diagnostic become related practice. This lets `P101-FD-001`, for
-example, teach basic descriptor ownership first and then point to early-return
-and partial-cleanup variants.
+Each diagnostic ID has one owner in the manifest, so tools cannot disagree
+about the primary lesson or maintain duplicate repair text.
 
 ## Blind spots
 
@@ -117,7 +113,7 @@ An owning-tool suite proves the checked fixture and analyzer behavior, not every
 possible C program. Static heuristics remain bounded by their admitted facts,
 and runtime lessons remain bounded by emitted wrapper events. A student repair
 is accepted only by `python3 runtime/p101_lessons.py verify-one` using the original detecting evidence
-or the playground case's fixed-state oracle.
+or the owning tool suite's fixed-state oracle.
 
 ## Replayable evidence
 
@@ -135,7 +131,6 @@ or the playground case's fixed-state oracle.
 ./runtime/p101_lessons.py guide --markdown /path/to/check-output
 ```
 
-The governed `templates-standalone`, `playground-tour`, and `playground-lab`
-nodes run the representative native acceptance set.
-`check-after-update-all.sh` runs every owning-tool profile and every native
-playground issue case on the current platform.
+The governed `finding-lesson-tests`, `finding-lesson-completeness`, and
+`lesson-acceptance` nodes validate the static 76-example catalog and run the
+owning-tool profiles on the current platform.

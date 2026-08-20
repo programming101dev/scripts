@@ -1259,11 +1259,11 @@ else
 fi
 
 # ---------- case: nested workspace declared local-header precedence ----------
-# Playground tracks are one level deeper than libraries/programs. Their local
+# Nested projects are one level deeper than libraries/programs. Their local
 # checked-out, declared dependency headers must use -I and win over stale
 # installed headers. Unrelated workspace libraries must not be exposed.
 nested_root="$SANDBOX/nested-workspace"
-PROJ="$nested_root/playgrounds/tracks/sample"
+PROJ="$nested_root/nested/projects/sample"
 mkdir -p "$PROJ/src" "$PROJ/include" "$PROJ/.flags/$(basename "$c_compiler")"
 mkdir -p "$nested_root/libraries/lib_fixture/include"
 mkdir -p "$nested_root/libraries/lib_record/include"
@@ -1418,8 +1418,7 @@ cat > "$rule_directory/sample.json" <<'EOF'
       "id": "P101-POLICY-SAMPLE-001",
       "kind": "forbid-finding",
       "pattern": "P101-SAMPLE-*",
-      "title": "Sample finding",
-      "lesson": "docs/sample.md"
+      "title": "Sample finding"
     }
   ]
 }

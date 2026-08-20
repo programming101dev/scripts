@@ -4273,7 +4273,7 @@ static bool lesson_entries_load(const char *catalog_path,
       json_document_load(catalog_path, &document) && document.count > 0U &&
       document.tokens[0].kind == JSON_OBJECT &&
       json_object_get(&document, 0U, "schema", &schema) &&
-      json_token_equals(&document, schema, "p101-finding-lesson-catalog-v2") &&
+      json_token_equals(&document, schema, "p101-finding-lesson-catalog-v3") &&
       json_object_get(&document, 0U, "url_base", &base_token) &&
       json_object_get(&document, 0U, "lessons", &lessons) &&
       document.tokens[lessons].kind == JSON_ARRAY;
@@ -4346,11 +4346,13 @@ static bool lesson_entries_load(const char *catalog_path,
                   string_list_add(&seen_enums, duplicate_text(enum_name));
       }
       if (success) {
-        url_size = strlen(url_base) + strlen(relative_path) + 1U;
+        url_size =
+            strlen(url_base) + strlen(relative_path) + strlen(finding_id) + 2U;
         url = malloc(url_size);
         success = url != NULL;
         if (success) {
-          snprintf(url, url_size, "%s%s", url_base, relative_path);
+          snprintf(url, url_size, "%s%s#%s", url_base, relative_path,
+                   finding_id);
         }
       }
       if (success) {
@@ -4652,8 +4654,7 @@ static char *inspect_rule_identifier(const char *name) {
 
 static bool inspect_rule_pack_write(FILE *stream, const char *path,
                                     struct string_list *pack_names) {
-  static const char *const fields[] = {"id", "kind", "pattern", "title",
-                                       "lesson"};
+  static const char *const fields[] = {"id", "kind", "pattern", "title"};
   struct json_document document;
   struct string_list seen_ids;
   size_t schema;
@@ -4690,14 +4691,14 @@ static bool inspect_rule_pack_write(FILE *stream, const char *path,
   for (rule_index = 0U; success && rule_index < document.tokens[rules].children;
        rule_index++) {
     size_t rule;
-    char *values[5];
+    char *values[4];
     size_t field_index;
 
     memset(values, 0, sizeof(values));
     success = json_array_get(&document, rules, rule_index, &rule) &&
               document.tokens[rule].kind == JSON_OBJECT &&
-              document.tokens[rule].children == 10U;
-    for (field_index = 0U; success && field_index < 5U; field_index++) {
+              document.tokens[rule].children == 8U;
+    for (field_index = 0U; success && field_index < 4U; field_index++) {
       size_t token;
 
       success = json_object_get(&document, rule, fields[field_index], &token);
@@ -4714,7 +4715,7 @@ static bool inspect_rule_pack_write(FILE *stream, const char *path,
     if (success) {
       success = fputs("    {", stream) >= 0;
     }
-    for (field_index = 0U; success && field_index < 5U; field_index++) {
+    for (field_index = 0U; success && field_index < 4U; field_index++) {
       if (field_index > 0U) {
         success = fputs(", ", stream) >= 0;
       }
@@ -4725,7 +4726,7 @@ static bool inspect_rule_pack_write(FILE *stream, const char *path,
     if (success) {
       success = fputs("},\n", stream) >= 0;
     }
-    for (field_index = 0U; field_index < 5U; field_index++) {
+    for (field_index = 0U; field_index < 4U; field_index++) {
       free(values[field_index]);
     }
   }

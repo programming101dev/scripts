@@ -106,9 +106,9 @@
       "sha256": "5a31379678035f63ebdf5d62ab7a7553387318a1b977cc63a4a7ea23df6a4f80"
     },
     {
-      "bytes": 3709,
+      "bytes": 3957,
       "path": "../libraries/lib_tool_support/include/p101_tool_support/lesson_catalog.h",
-      "sha256": "aefe5c973542ae408c944e7cd7bd3e2a025fe21be3a0a7d8eb56d4b0be67f5bc"
+      "sha256": "3f07dadf3ffec180db2545fe8cb46e309ce7740ec671213f4ed1302c8478e790"
     },
     {
       "bytes": 4251,
@@ -136,9 +136,9 @@
       "sha256": "d8df15ecc6f0aa6f318d80003c2d721b7ff260ba26a28878925ed45dba0dd055"
     },
     {
-      "bytes": 16209,
+      "bytes": 19490,
       "path": "../playgrounds/lessons/manifest.json",
-      "sha256": "7ad8790182a2756ea618472bd198acd61b9330170f15e9b2029a02f73eefeb31"
+      "sha256": "421139c8338056f2c56c4ce2206d8478fab5fc5d65c85d9fb0a02c04fb9eeeec"
     },
     {
       "bytes": 3827,
@@ -211,9 +211,9 @@
       "sha256": "03c3f344a1b5df365fda8788fd93e5b659ea82ba7f04b6e89785cad60f0bae2d"
     },
     {
-      "bytes": 1840,
+      "bytes": 1501,
       "path": "../programs/p101-inspect/src/rule_catalog.inc",
-      "sha256": "72a5a03e237fdd8cc4c7ab0a42791763ac83f30bfb34ea4263f76ef6ccd40eaa"
+      "sha256": "b9652b4731e36192435b8a0e00a60f7bd58f03d7510bbafaa3fb7fb9968aa20a"
     },
     {
       "bytes": 14401,
@@ -226,9 +226,9 @@
       "sha256": "311282a94dea12340cbc7f0e8d6121d6a52554d14bd08c06dbb58c71f26eda14"
     },
     {
-      "bytes": 14865,
+      "bytes": 13452,
       "path": "check-after-update-all.sh",
-      "sha256": "a77c33e1461d547819cbd5595f61410966ba8776e59239eb4d19182d7f6878b5"
+      "sha256": "87812de53531fc481da31824da02b39c471a18569566792b8f86bfeb1ec970d5"
     },
     {
       "bytes": 16376,
@@ -271,9 +271,9 @@
       "sha256": "75e2fce0b3a0bf204382bd66d2e832b0d4bd8ef678b4ab0946c5f1d9c3f0e3d6"
     },
     {
-      "bytes": 74800,
+      "bytes": 74895,
       "path": "checks/p101-check-graph.py",
-      "sha256": "0e45b36141f96f0be174c0b62b7f4bf693f947a019060b47bd2a58e942f3ce62"
+      "sha256": "95bd6bf2da564b27a6e5f44fb35b984d100b30fd7997dfc3714aa77b06a76aa3"
     },
     {
       "bytes": 8508,
@@ -321,9 +321,9 @@
       "sha256": "5e3ca02a1ea5102f866ccf185ddbf2faf6f918286d828cfacb4225c3f177b653"
     },
     {
-      "bytes": 167934,
+      "bytes": 167951,
       "path": "cmake/p101_compile_db.c",
-      "sha256": "9db0fb55b2d2a4b719c5f3db420d32c20b4793272d1e5aecd59427f053e5a400"
+      "sha256": "054c0c3f5a6ddf1f1f71aec2524c3f806d9f1b5f6004de03a3843e8c9e698d98"
     },
     {
       "bytes": 12553,
@@ -336,9 +336,9 @@
       "sha256": "c2a97d6d1432d8254ad16557e13c44032937a1336044518bcfec466547101d97"
     },
     {
-      "bytes": 60290,
+      "bytes": 57694,
       "path": "contracts/p101-check-graph.json",
-      "sha256": "f42f36f09b13782288ea7b4136e77ebd9a5903fd137b416fc30aab7adfaaf044"
+      "sha256": "482c5e6078efdda24166fde4e6110269a1784407b2b18dfd85fc4cadf6e398d0"
     },
     {
       "bytes": 63097,
@@ -351,14 +351,9 @@
       "sha256": "da9d35aec8d8fc5a6c4ab2cb0a5ebbc3cb0b03ee87cc75074366d22ce43bcf30"
     },
     {
-      "bytes": 10283,
-      "path": "contracts/p101-playground-tracks.json",
-      "sha256": "0dfc17712b7896ef4fd8ab862d455f99f3158a6bcf09bc970279e50209b78a3b"
-    },
-    {
       "bytes": 22550,
       "path": "contracts/p101-quality-contract.json",
-      "sha256": "94e95c379a1ce25413e7ed16a2124b1173f09c2a454e3a2330209a4336f1fd90"
+      "sha256": "0d5265a16967c99fc2461a391e3541795702672387bb641904d46d08ae2d3c70"
     },
     {
       "bytes": 3264,
@@ -366,9 +361,9 @@
       "sha256": "a9aec64abe3674712989ee5093eddb8fb6ee92e2edfaa8212594c02d6d92b402"
     },
     {
-      "bytes": 5037,
+      "bytes": 4932,
       "path": "contracts/p101-stack-paths.txt",
-      "sha256": "badef979d6aca85dfbfdc72dbefef4992cbc4fca4fa386cb8f32dc18d10d3ee7"
+      "sha256": "c75d128313099eaa24271d4b352dc2028b4fdb6372d02a237d058358bd09534b"
     },
     {
       "bytes": 1995,
@@ -416,9 +411,9 @@
       "sha256": "2b49e18ff463e14b3c052b61895693a64c8386819545412697b5998e28c3cab1"
     },
     {
-      "bytes": 10042,
+      "bytes": 9635,
       "path": "distribution/copy-scripts.sh",
-      "sha256": "264dc6220d64d0d212016196b81ab78acf2b9d572006a25019703bff49351213"
+      "sha256": "66e202cac4df1412af8d848ce33c53579037d2ad1a4e5467a5e3aeb076cdceee"
     },
     {
       "bytes": 12135,
@@ -441,9 +436,9 @@
       "sha256": "90f9da50b7153fceb5e9067319638ed79539d588b7814a79e5330d5f26ff75b2"
     },
     {
-      "bytes": 14583,
+      "bytes": 11902,
       "path": "generators/analyze-lib-function-graph.py",
-      "sha256": "42339a01aa77858bcb294e7edeb6c61c5828086d88d87be80b62633982f38448"
+      "sha256": "30d1e2961081fec71c78418c1b97f546e65d80ea90cfc29bdf759a617148e93f"
     },
     {
       "bytes": 583,
@@ -461,11 +456,6 @@
       "sha256": "ab2092d765df55abd788a8214b92aab16bad8467a91cffea9b6e450168ccf54c"
     },
     {
-      "bytes": 27470,
-      "path": "generators/sync-playground-track-map.py",
-      "sha256": "335ce07ed40df170ee0ca2b0e7bd15f5203ca7adfdeced26193bccc9df94c4bd"
-    },
-    {
       "bytes": 22354,
       "path": "github-actions/p101-stack.yml",
       "sha256": "01c07b0195443fa5fa317a45896f7e9d3a2be2c66c0ac411e378825a5d2a870d"
@@ -481,14 +471,14 @@
       "sha256": "0b325298a6b1756143e52456b2a6fa1ea5c907f635d0a65267e935c3cf1458f5"
     },
     {
-      "bytes": 14319,
+      "bytes": 14329,
       "path": "repos.lock",
-      "sha256": "0904229080e550cce3cd050c0fa05eaedcb79a5001a1dcecaf1e6c5a4fc23320"
+      "sha256": "f5f311b8105c59b02e0a304b04db35ccb3c6542345d22a67104ee4d829509267"
     },
     {
-      "bytes": 6422,
+      "bytes": 6432,
       "path": "repos.txt",
-      "sha256": "2756246097366a5a475a4f4c383bb41db20329ebb21b773685787f4b47a896f5"
+      "sha256": "f90e2102717ec235402ffe76f094d731af92617716a048338d3518e49a685af4"
     },
     {
       "bytes": 42612,
@@ -504,11 +494,6 @@
       "bytes": 5304,
       "path": "runtime/content_manifest.py",
       "sha256": "85e0e42887887adfd5bbfea010b994d97bfdbde9f7ea4311ff4742d92c546d23"
-    },
-    {
-      "bytes": 13440,
-      "path": "runtime/playground-tour.sh",
-      "sha256": "39f05e862e6db6ca905403630d113c024e64d84b900549a27cdf6e814d531bfd"
     },
     {
       "bytes": 1383,

@@ -9,20 +9,17 @@
 #   2. GitHub Actions starter workflow drift check;
 #   3. shared CMakeLists distribution drift check;
 #   4. shared per-repository script distribution drift check;
-#   5. shared playground-track runner distribution drift check;
-#   6. replay-analysis receipt/integrity regression tests;
-#   7. shared CMakeLists regression harness;
-#   8. p101 tool contract documentation checks;
-#   9. finding-to-lesson curriculum completeness;
+#   5. replay-analysis receipt/integrity regression tests;
+#   6. shared CMakeLists regression harness;
+#   7. p101 tool contract documentation checks;
+#   8. finding-to-lesson diagnostic completeness;
 #  10. strict source/module audits over every p101 tool;
 #  11. source-contract, instrumentation, and executable wrapper conformance;
 #  12. model-based wrapper lifecycle/fault/replay laboratory;
 #  13. closed-workspace public API candidate audit;
 #  14. every repository-owned unit suite and bounded fuzz target;
 #  15. fresh-template standalone instantiate/build/test;
-#  16. p101-tool-playground tour over observe/resource/trace/report/fault-walk/doctor;
-#  17. the external C/C++ facts corpus manifest contract;
-#  18. the cross-tool behavior regression corpus.
+#  16. the external C/C++ facts corpus manifest contract.
 
 set -euo pipefail
 CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
@@ -44,10 +41,6 @@ skip_library_audit=0
 skip_stack=0
 skip_regression=0
 template_no_tests=0
-playground_quality=0
-playground_coverage=0
-playground_fuzz=0
-fault_count=1
 fuzz_secs=5
 interactive=0
 from_node=""
@@ -76,21 +69,16 @@ Options:
   -X <file>        C++ compiler list. Default: supported_cxx_compilers.txt.
   -o <dir>         Artifact directory. Default: a new
                    ${TMPDIR:-/tmp}/p101-after-update-all-check.* directory.
-  -n <count>       Fault-injection cases for playground tour. Default: 1.
-  --fuzz-secs <s>  Per-target repository fuzz budget and optional playground
-                   fuzz budget. Default: 5.
+  --fuzz-secs <s>  Per-target repository fuzz budget. Default: 5.
 
   --skip-cmake        Skip the shared CMakeLists regression harness.
   --skip-tool-audit   Skip strict wrapper/module audits over p101 tools.
   --skip-library-audit
                       Skip wrapper/error/module audits over lib_* repos.
-  --skip-stack        Skip template/playground stack checks.
-  --skip-regression   Skip the p101 regression corpus.
+  --skip-stack        Skip fresh-template stack checks.
+  --skip-regression   Skip the regression group.
   --template-no-tests Build fresh template instances but skip their tests.
 
-  --playground-quality  Let the playground tour run build/test/fuzz/coverage.
-  --playground-coverage Let the playground tour run coverage.
-  --playground-fuzz     Let the playground tour run a fuzz smoke.
   --interactive         Pause at a failed graph node and retry that exact node.
   --resume              Reuse only exact clean records from the receipt under -o.
   --from <node>         Resume at the named node after validating omitted prerequisites.
@@ -115,7 +103,6 @@ while [ "$#" -gt 0 ]; do
     -C) c_list_file="${2:?}"; shift 2 ;;
     -X) cxx_list_file="${2:?}"; shift 2 ;;
     -o) out_dir="${2:?}"; shift 2 ;;
-    -n) fault_count="${2:?}"; shift 2 ;;
     --fuzz-secs) fuzz_secs="${2:?}"; shift 2 ;;
     --skip-cmake) skip_cmake=1; shift ;;
     --skip-tool-audit) skip_tool_audit=1; shift ;;
@@ -123,9 +110,6 @@ while [ "$#" -gt 0 ]; do
     --skip-stack) skip_stack=1; shift ;;
     --skip-regression) skip_regression=1; shift ;;
     --template-no-tests) template_no_tests=1; shift ;;
-    --playground-quality) playground_quality=1; shift ;;
-    --playground-coverage) playground_coverage=1; shift ;;
-    --playground-fuzz) playground_fuzz=1; shift ;;
     --interactive) interactive=1; shift ;;
     --resume) resume=1; shift ;;
     --from) from_node="${2:?}"; shift 2 ;;
@@ -178,9 +162,6 @@ run_checks() {
   local run_cxx="$2"
   local run_out_dir="$3"
   local template_no_tests_arg=""
-  local playground_skip_quality_arg="--skip-quality"
-  local playground_skip_coverage_arg="--skip-coverage"
-  local playground_skip_fuzz_arg="--skip-fuzz"
   local profile
   local summary
   local graph_status
@@ -223,9 +204,6 @@ run_checks() {
   fi
 
   [ "$template_no_tests" -eq 0 ] || template_no_tests_arg="--no-tests"
-  [ "$playground_quality" -eq 0 ] || playground_skip_quality_arg=""
-  [ "$playground_coverage" -eq 0 ] || playground_skip_coverage_arg=""
-  [ "$playground_fuzz" -eq 0 ] || playground_skip_fuzz_arg=""
 
   graph_args=(
     run
@@ -234,15 +212,11 @@ run_checks() {
     --var "cxx=$run_cxx"
     --var "formatter=$formatter"
     --var "fuzz_secs=$fuzz_secs"
-    --var "fault_count=$fault_count"
     --var "inspect_capture=$inspect_capture"
     --var "p101_inspect=$inspect_tool"
     --var "tool_receipt=$tool_receipt"
     --var "audit_workspace=$audit_workspace"
     --var "template_no_tests=$template_no_tests_arg"
-    --var "playground_skip_quality=$playground_skip_quality_arg"
-    --var "playground_skip_coverage=$playground_skip_coverage_arg"
-    --var "playground_skip_fuzz=$playground_skip_fuzz_arg"
   )
 
   [ "$skip_cmake" -eq 0 ] || graph_args+=(--skip-group cmake)

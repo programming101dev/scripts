@@ -239,15 +239,6 @@ while IFS= read -r line || [ -n "$line" ]; do
   esac
 done < "$REPOS_FILE"
 
-# Playground tracks are subprojects of the playground repository. They use the
-# one root track-runner and must not retain copied or symlinked command shims.
-for track in "$SCRIPT_DIR"/../playgrounds/tracks/[0-9][0-9]-*; do
-  [ -d "$track" ] || continue
-  for retired in build.sh change-compiler.sh test.sh run.sh; do
-    retire_one "$track" "../playgrounds/${track#*/playgrounds/}" "$retired"
-  done
-done
-
 # The scripts and setup repositories are workspace conductors rather than
 # repos.txt entries. A scripts-only checkout (including GitHub Actions) does
 # not contain the separate setup repository, so synchronize setup only when it

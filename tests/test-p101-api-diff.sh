@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-tool=${P101_AUDIT_API:?P101_AUDIT_API is required}
+tool=${1:-${P101_AUDIT_API:-}}
+[ -x "$tool" ] || {
+  printf '%s:1:1: error: audit-api executable is required [P101-API-TEST]\n' "$0" >&2
+  exit 2
+}
 work=$(mktemp -d "${TMPDIR:-/tmp}/p101-api-diff.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 

@@ -20,7 +20,7 @@ write_catalog()
 {
   duplicate=$1
   {
-    printf '%s\n' '{"schema":"p101-finding-lesson-catalog-v2","url_base":"https://example.test/","lessons":['
+    printf '%s\n' '{"schema":"p101-finding-lesson-catalog-v3","url_base":"https://example.test/","lessons":['
     printf '%s' '{"lesson_id":"P101-LESSON-SAMPLE","path":"sample.md","finding_ids":["P101-SAMPLE-001"]}'
     if [ "$duplicate" = yes ]; then
       printf '%s' ',{"lesson_id":"P101-LESSON-SECOND","path":"sample.md","finding_ids":["P101-SAMPLE-001"]}'
@@ -41,7 +41,7 @@ grep -q 'P101_TOOL_FINDING_SAMPLE_001' "$header"
 grep -q '"P101-SAMPLE-001"' "$source"
 grep -q '"P101-LESSON-SAMPLE"' "$source"
 grep -q '"lessons/sample.md"' "$source"
-grep -q '"https://example.test/lessons/sample.md"' "$source"
+grep -q '"https://example.test/lessons/sample.md#P101-SAMPLE-001"' "$source"
 run_generator --check >/dev/null
 printf 'drift\n' >> "$source"
 status=0
