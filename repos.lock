@@ -26,13 +26,13 @@
       "url": "https://github.com/programming101dev/lib_json.git"
     },
     {
-      "commit": "f5c541cb6bb90dca9a78df2683451c9cccc439e1",
+      "commit": "d7079f7ad0eded109db22d3c7efb10739206a4cb",
       "path": "../libraries/lib_tool_support",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_tool_support.git"
     },
     {
-      "commit": "14a0607d9264a4eac6fa9324e2128f5270d2072b",
+      "commit": "881d28ac6fef7ad4ac2908d1c4c7e5b4f6fc26fb",
       "path": "../libraries/lib_tool_event",
       "type": "c",
       "url": "https://github.com/programming101dev/lib_tool_event.git"
@@ -194,25 +194,25 @@
       "url": "https://github.com/programming101dev/p101-port-forwarder.git"
     },
     {
-      "commit": "3d1d2941f3b5425138604b19436c673388e8d2d3",
+      "commit": "1d17cf9932b5788194a51e0129519b1ae76ee0ad",
       "path": "../programs/p101-inspect",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-inspect.git"
     },
     {
-      "commit": "5d20add195098f49e982b310595bbd14944b92ef",
+      "commit": "06db65f77891fd9ca85555fd05a426a2dc79817a",
       "path": "../programs/p101-test",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-test.git"
     },
     {
-      "commit": "81a74cc854832095969aa37634db20f52d7af0ff",
+      "commit": "2deaba8ad9d56a8ff37ec431cdd8db72f87223a7",
       "path": "../programs/p101-audit",
       "type": "c",
       "url": "https://github.com/programming101dev/p101-audit.git"
     },
     {
-      "commit": "37b331702abd04f4307d8b7645438669891a9af6",
+      "commit": "bbec2743c4231a03ccfc89d7ba2c461fe8700d61",
       "path": "../playgrounds",
       "type": "c",
       "url": "https://github.com/programming101dev/playgrounds.git"
