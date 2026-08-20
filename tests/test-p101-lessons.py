@@ -102,9 +102,9 @@ class LessonCatalogTests(unittest.TestCase):
         cls.catalog = p101_lessons.load_catalog(cls.catalog_path)
 
     def test_playground_scope_is_exactly_the_registered_diagnostics(self) -> None:
-        self.assertEqual(len(self.catalog.by_finding_id), 76)
-        self.assertEqual(self.catalog.scope["example_count"], 76)
-        self.assertEqual(len(self.catalog.lessons), 11)
+        self.assertEqual(len(self.catalog.by_finding_id), 111)
+        self.assertEqual(self.catalog.scope["example_count"], 111)
+        self.assertEqual(len(self.catalog.lessons), 14)
         self.assertEqual(
             set(self.catalog.scope["excluded_content"]),
             {
@@ -148,8 +148,8 @@ class LessonCatalogTests(unittest.TestCase):
 
     def test_every_diagnostic_has_owning_tool_acceptance(self) -> None:
         coverage = p101_lessons.coverage_document(self.catalog)
-        self.assertEqual(coverage["summary"]["diagnostic_ids"], 76)
-        self.assertEqual(coverage["summary"]["native_suite_ids"], 76)
+        self.assertEqual(coverage["summary"]["diagnostic_ids"], 111)
+        self.assertEqual(coverage["summary"]["native_suite_ids"], 111)
         self.assertEqual(coverage["summary"]["native_case_ids"], 0)
         self.assertEqual(coverage["summary"]["uncovered_ids"], 0)
         for row in coverage["diagnostics"]:
@@ -195,7 +195,7 @@ class LessonCatalogTests(unittest.TestCase):
                 stderr=subprocess.PIPE,
             )
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(len(completed.stdout.splitlines()), 76)
+        self.assertEqual(len(completed.stdout.splitlines()), 111)
 
     def test_check_command_reports_the_exact_count(self) -> None:
         completed = subprocess.run(
@@ -207,7 +207,7 @@ class LessonCatalogTests(unittest.TestCase):
             stderr=subprocess.PIPE,
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertIn("76 diagnostic IDs", completed.stdout)
+        self.assertIn("111 diagnostic IDs", completed.stdout)
 
     def test_loader_rejects_scope_or_example_drift(self) -> None:
         mutations = [
@@ -262,7 +262,7 @@ class LessonCatalogTests(unittest.TestCase):
             with self.assertRaises(p101_lessons.LessonCatalogError):
                 p101_lessons.load_catalog(path)
 
-    def test_structural_verification_writes_76_pairs(self) -> None:
+    def test_structural_verification_writes_all_pairs(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "verification"
             result = p101_lessons.command_verify_all(
@@ -276,7 +276,7 @@ class LessonCatalogTests(unittest.TestCase):
             )
             receipt = json.loads((output / "receipt.json").read_text(encoding="utf-8"))
         self.assertEqual(result, 0)
-        self.assertEqual(receipt["protocol_pairs"], 76)
+        self.assertEqual(receipt["protocol_pairs"], 111)
         self.assertEqual(receipt["summary"]["result"], "PASS")
 
     def test_native_profile_uses_qualified_tool_without_a_shell(self) -> None:

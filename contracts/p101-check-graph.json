@@ -13,6 +13,7 @@
     "p101_inspect",
     "semantic_cache",
     "template_no_tests",
+    "test_command_contract",
     "temporary_root",
     "tool_receipt"
   ],
@@ -64,6 +65,7 @@
       "lesson-tests",
       "tool-lesson-catalog-tests",
       "tool-lesson-catalog",
+      "command-contract-tests",
       "inspect-rule-catalog",
       "lesson-completeness",
       "external-facts-manifest",
@@ -547,7 +549,7 @@
       "inputs_complete": true,
       "depends_on": ["functional-library-split"],
       "resources": {"writes": ["{temporary_root}"], "units": {}},
-      "guarantee": "Manifest snapshots reject removals, library moves, header moves, and platform-support loss."
+      "guarantee": "Manifest snapshots bound to shared Clang facts reject removals, Clang-observed function-type or declared ownership-role changes, library moves, header moves, and platform-support loss."
     },
     {
       "id": "lesson-tests",
@@ -586,6 +588,18 @@
       "guarantee": "Native tools consume finding identifiers, lesson identifiers, paths, and URLs generated from the single playground JSON catalog."
     },
     {
+      "id": "command-contract-tests",
+      "title": "command behavior contract tests",
+      "group": "lessons",
+      "required": true,
+      "command": ["../programs/p101-test/test/test_command_contract.sh", "{test_command_contract}"],
+      "inputs": ["programs/p101-test/components/command-contract/**", "programs/p101-test/test/test_command_contract.sh", "libraries/lib_tool_support/**", "playgrounds/lessons/manifest.json", "playgrounds/lessons/command-contracts.md"],
+      "inputs_complete": true,
+      "depends_on": ["tool-lesson-catalog"],
+      "resources": {"writes": ["{temporary_root}"], "units": {}},
+      "guarantee": "Explicitly admitted command scenarios exercise deterministic output and filesystem-effect manifests, synthetic-probe redaction, bounded output and elapsed time, caller recovery, and retained-schema acceptance."
+    },
+    {
       "id": "inspect-rule-catalog",
       "title": "generated native inspection rule catalog",
       "group": "lessons",
@@ -593,7 +607,7 @@
       "command": ["./generators/generate-inspect-rule-catalog.sh", "--check"],
       "inputs": ["scripts/generators/generate-inspect-rule-catalog.sh", "scripts/shared/bootstrap.sh", "scripts/cmake/p101_compile_db.c", "scripts/rules/*.json", "programs/p101-inspect/src/rule_catalog.inc"],
       "inputs_complete": true,
-      "depends_on": ["tool-lesson-catalog"],
+      "depends_on": ["command-contract-tests"],
       "resources": {"writes": [], "units": {}},
       "guarantee": "The native policy evaluator consumes a generated catalog whose checked-in bytes match the JSON rule-pack source of truth."
     },

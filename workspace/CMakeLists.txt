@@ -134,6 +134,7 @@ set(P101_HOST_TOOL_TARGETS
         test_mutation
         test_repository_receipt
         test_wrapper_conformance
+        test_command_contract
         inspect_capture
         p101_inspect
         p101_event_model
@@ -260,6 +261,7 @@ else()
                     -DTEST_MUTATION=$<TARGET_FILE:test_mutation>
                     -DTEST_REPOSITORY_RECEIPT=$<TARGET_FILE:test_repository_receipt>
                     -DTEST_WRAPPER_CONFORMANCE=$<TARGET_FILE:test_wrapper_conformance>
+                    -DTEST_COMMAND_CONTRACT=$<TARGET_FILE:test_command_contract>
                     -DEVENT_MODEL=$<TARGET_FILE:p101_event_model>
                     -DNO_CACHE=${P101_ACCEPTANCE_NO_CACHE}
                     -DVERIFY_INCREMENTAL=${P101_VERIFY_INCREMENTAL_ACCEPTANCE}
